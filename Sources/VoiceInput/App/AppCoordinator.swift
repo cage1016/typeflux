@@ -1,0 +1,32 @@
+import AppKit
+
+final class AppCoordinator {
+    private let di = DIContainer()
+
+    private var statusBarController: StatusBarController?
+    private var workflowController: WorkflowController?
+
+    func start() {
+        statusBarController = StatusBarController(appState: di.appState, settingsStore: di.settingsStore)
+        statusBarController?.start()
+
+        workflowController = WorkflowController(
+            appState: di.appState,
+            settingsStore: di.settingsStore,
+            hotkeyService: di.hotkeyService,
+            audioRecorder: di.audioRecorder,
+            sttRouter: di.sttRouter,
+            llmService: di.llmService,
+            textInjector: di.textInjector,
+            clipboard: di.clipboard,
+            historyStore: di.historyStore,
+            overlayController: di.overlayController
+        )
+        workflowController?.start()
+    }
+
+    func stop() {
+        workflowController?.stop()
+        statusBarController?.stop()
+    }
+}
