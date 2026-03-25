@@ -1,4 +1,7 @@
 run:
 	./scripts/run_dev_app.sh
 
-.PHONY: run
+dev:
+	./scripts/run_dev_attached.sh
+
+.PHONY: run dev

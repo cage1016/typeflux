@@ -3,6 +3,10 @@ import ApplicationServices
 import Foundation
 
 final class EventTapHotkeyService: HotkeyService {
+    private enum PrimaryModifierHotkey {
+        static let rightCommandKeyCode = 54
+    }
+
     var onPressBegan: (() -> Void)?
     var onPressEnded: (() -> Void)?
     var onError: ((String) -> Void)?
@@ -196,18 +200,36 @@ final class EventTapHotkeyService: HotkeyService {
 
          case .flagsChanged:
              guard settingsStore.enableFnHotkey else { return }
-             let fnDown = event.modifierFlags.contains(.function)
-             let hasOtherModifiers = event.modifierFlags.intersection([.command, .shift, .control, .option]).rawValue != 0
+//             let fnDown = event.modifierFlags.contains(.function)
+//             let hasOtherModifiers = event.modifierFlags.intersection([.command, .shift, .control, .option]).rawValue != 0
+//
+//             if fnDown, !hasOtherModifiers, !nseventIsPressed {
+//                 nseventIsPressed = true
+//                 ErrorLogStore.shared.log("Hotkey(NSEvent): fn down")
+//                 DispatchQueue.main.async { [weak self] in
+//                     self?.onPressBegan?()
+//                 }
+//             } else if !fnDown, nseventIsPressed {
+//                 nseventIsPressed = false
+//                 ErrorLogStore.shared.log("Hotkey(NSEvent): fn up")
+//                 DispatchQueue.main.async { [weak self] in
+//                     self?.onPressEnded?()
+//                 }
+//             }
 
-             if fnDown, !hasOtherModifiers, !nseventIsPressed {
+             let isRightCommandEvent = Int(event.keyCode) == PrimaryModifierHotkey.rightCommandKeyCode
+             let rightCommandDown = isRightCommandEvent && event.modifierFlags.contains(.command)
+             let hasOtherModifiers = event.modifierFlags.intersection([.shift, .control, .option]).rawValue != 0
+
+             if rightCommandDown, !hasOtherModifiers, !nseventIsPressed {
                  nseventIsPressed = true
-                 ErrorLogStore.shared.log("Hotkey(NSEvent): fn down")
+                 ErrorLogStore.shared.log("Hotkey(NSEvent): right command down")
                  DispatchQueue.main.async { [weak self] in
                      self?.onPressBegan?()
                  }
-             } else if !fnDown, nseventIsPressed {
+             } else if isRightCommandEvent, !rightCommandDown, nseventIsPressed {
                  nseventIsPressed = false
-                 ErrorLogStore.shared.log("Hotkey(NSEvent): fn up")
+                 ErrorLogStore.shared.log("Hotkey(NSEvent): right command up")
                  DispatchQueue.main.async { [weak self] in
                      self?.onPressEnded?()
                  }
@@ -267,27 +289,51 @@ final class EventTapHotkeyService: HotkeyService {
             return Unmanaged.passUnretained(event)
         }
 
-        // Note: Fn on macOS may not be reliably detectable via event tap on all machines.
-        // Here we attempt a best-effort heuristic: treat flagsChanged with a function flag as press/release.
+//        // Note: Fn on macOS may not be reliably detectable via event tap on all machines.
+//        // Here we attempt a best-effort heuristic: treat flagsChanged with a function flag as press/release.
         if type == .flagsChanged {
             let flags = event.flags
-            let fnDown = flags.contains(.maskSecondaryFn)
-            
-            // Only consider pure Fn press (no other modifiers like Command, Option, etc.)
-            let hasOtherModifiers = flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate]).rawValue != 0
-            
-            // Only trigger on pure Fn press without other modifiers
-            if fnDown, !hasOtherModifiers, !isPressed {
+            let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+
+//            let fnDown = flags.contains(.maskSecondaryFn)
+//
+//            // Only consider pure Fn press (no other modifiers like Command, Option, etc.)
+//            let hasOtherModifiers = flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate]).rawValue != 0
+//
+//            // Only trigger on pure Fn press without other modifiers
+//            if fnDown, !hasOtherModifiers, !isPressed {
+//                isPressed = true
+//                NSLog("[Hotkey] Fn down - starting recording")
+//                ErrorLogStore.shared.log("Hotkey: fn down")
+//                DispatchQueue.main.async { [weak self] in
+//                    self?.onPressBegan?()
+//                }
+//            } else if !fnDown, isPressed {
+//                isPressed = false
+//                NSLog("[Hotkey] Fn up - stopping recording")
+//                ErrorLogStore.shared.log("Hotkey: fn up")
+//                DispatchQueue.main.async { [weak self] in
+//                    self?.onPressEnded?()
+//                }
+//            }
+
+            let isRightCommandEvent = keyCode == PrimaryModifierHotkey.rightCommandKeyCode
+            let rightCommandDown = isRightCommandEvent && flags.contains(.maskCommand)
+
+            // Only consider pure right-command press without Option/Shift/Control.
+            let hasOtherModifiers = flags.intersection([.maskShift, .maskControl, .maskAlternate]).rawValue != 0
+
+            if rightCommandDown, !hasOtherModifiers, !isPressed {
                 isPressed = true
-                NSLog("[Hotkey] Fn down - starting recording")
-                ErrorLogStore.shared.log("Hotkey: fn down")
+                NSLog("[Hotkey] Right Command down - starting recording")
+                ErrorLogStore.shared.log("Hotkey: right command down")
                 DispatchQueue.main.async { [weak self] in
                     self?.onPressBegan?()
                 }
-            } else if !fnDown, isPressed {
+            } else if isRightCommandEvent, !rightCommandDown, isPressed {
                 isPressed = false
-                NSLog("[Hotkey] Fn up - stopping recording")
-                ErrorLogStore.shared.log("Hotkey: fn up")
+                NSLog("[Hotkey] Right Command up - stopping recording")
+                ErrorLogStore.shared.log("Hotkey: right command up")
                 DispatchQueue.main.async { [weak self] in
                     self?.onPressEnded?()
                 }

@@ -105,7 +105,9 @@ private struct SettingsView: View {
 
             GroupBox {
                 VStack(alignment: .leading, spacing: 10) {
-                    Toggle("Enable Fn (press-and-hold)", isOn: $enableFn)
+//                    Toggle("Enable Fn (press-and-hold)", isOn: $enableFn)
+//                        .onChange(of: enableFn) { settingsStore.enableFnHotkey = $0 }
+                    Toggle("Enable Right Command (press-and-hold, temporary debug override)", isOn: $enableFn)
                         .onChange(of: enableFn) { settingsStore.enableFnHotkey = $0 }
 
                     HStack {

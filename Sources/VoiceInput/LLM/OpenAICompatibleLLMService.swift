@@ -51,23 +51,31 @@ final class OpenAICompatibleLLMService: LLMService {
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        NetworkDebugLogger.logRequest(request)
 
         var final = ""
 
-        for try await line in try await SSEClient.lines(for: request) {
-            if line == "[DONE]" { break }
+        do {
+            for try await line in try await SSEClient.lines(for: request) {
+                if line == "[DONE]" { break }
 
-            guard let data = line.data(using: .utf8) else { continue }
-            let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let data = line.data(using: .utf8) else { continue }
+                let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
-            let choices = obj?["choices"] as? [[String: Any]]
-            let delta = choices?.first?["delta"] as? [String: Any]
-            let content = delta?["content"] as? String
-            if let content {
-                final += content
-                continuation.yield(content)
+                let choices = obj?["choices"] as? [[String: Any]]
+                let delta = choices?.first?["delta"] as? [String: Any]
+                let content = delta?["content"] as? String
+                if let content {
+                    final += content
+                    continuation.yield(content)
+                }
             }
+        } catch {
+            NetworkDebugLogger.logError(context: "LLM stream failed", error: error)
+            throw error
         }
+
+        NetworkDebugLogger.logMessage("LLM final result: \(final.isEmpty ? "<empty stream result>" : final)")
 
         return final
     }
@@ -76,9 +84,22 @@ final class OpenAICompatibleLLMService: LLMService {
 enum SSEClient {
     static func lines(for request: URLRequest) async throws -> AsyncThrowingStream<String, Error> {
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else {
+            NetworkDebugLogger.logResponse(response, bodyDescription: "<invalid non-http response>")
             throw NSError(domain: "SSE", code: 1)
         }
+
+        if !(200..<300).contains(http.statusCode) {
+            var errorBodyData = Data()
+            for try await byte in bytes {
+                errorBodyData.append(byte)
+            }
+            NetworkDebugLogger.logResponse(http, data: errorBodyData)
+            let errorBody = String(data: errorBodyData, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "SSE", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(errorBody)"])
+        }
+
+        NetworkDebugLogger.logResponse(http, bodyDescription: "<stream opened>")
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -99,6 +120,7 @@ enum SSEClient {
                     }
                     continuation.finish()
                 } catch {
+                    NetworkDebugLogger.logError(context: "SSE stream parsing failed", error: error)
                     continuation.finish(throwing: error)
                 }
             }

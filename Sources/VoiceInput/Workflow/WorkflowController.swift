@@ -1,6 +1,8 @@
 import Foundation
 
 final class WorkflowController {
+    private static let recordingTimeoutNanoseconds: UInt64 = 600_000_000_000 // 10 minutes
+
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
     private let hotkeyService: HotkeyService
@@ -15,6 +17,7 @@ final class WorkflowController {
     private var currentSelectedText: String?
     private var isRecording = false
     private var recordingTimeoutTask: Task<Void, Never>?
+    private var selectionTask: Task<String?, Never>?
 
     init(
         appState: AppStateStore,
@@ -105,9 +108,16 @@ final class WorkflowController {
             overlayController.show()
         }
 
-        currentSelectedText = textInjector.getSelectedText()?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if currentSelectedText?.isEmpty == true {
-            currentSelectedText = nil
+        selectionTask = Task { [weak self] in
+            guard let self else { return nil }
+            let text = await self.textInjector.getSelectedText()?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let result = (text?.isEmpty == true) ? nil : text
+            if let result {
+                NSLog("[Workflow] Selected text: \(result)")
+            } else {
+                NSLog("[Workflow] No selected text")
+            }
+            return result
         }
 
         do {
@@ -115,10 +125,10 @@ final class WorkflowController {
                 self?.overlayController.updateLevel(level)
             })
             
-            // Set a timeout to auto-stop recording after 60 seconds
+            // Set a timeout to auto-stop recording after 10 minutes
             recordingTimeoutTask?.cancel()
             recordingTimeoutTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 60_000_000_000) // 60 seconds
+                try? await Task.sleep(nanoseconds: Self.recordingTimeoutNanoseconds)
                 guard !Task.isCancelled else { return }
                 NSLog("[Workflow] Recording timeout - auto stopping")
                 self?.handlePressEnded()
@@ -158,6 +168,9 @@ final class WorkflowController {
             do {
                 let audioFile = try self.audioRecorder.stop()
                 let instructionText = try await self.sttRouter.transcribe(audioFile: audioFile)
+
+                let selectedText = await self.selectionTask?.value
+                self.currentSelectedText = selectedText
 
                 if let selected = self.currentSelectedText, !selected.isEmpty {
                     let finalText = try await self.generateEdit(selectedText: selected, instruction: instructionText)

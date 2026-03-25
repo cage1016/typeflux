@@ -7,7 +7,6 @@ swift build --package-path "$ROOT_DIR" -c debug
 
 BIN="$ROOT_DIR/.build/debug/VoiceInput"
 APP_DIR="$ROOT_DIR/.build/VoiceInput.app"
-
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 

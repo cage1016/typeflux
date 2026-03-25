@@ -28,11 +28,29 @@ final class WhisperAPITranscriber: Transcriber {
         ])
         request.httpBody = body
 
+        NetworkDebugLogger.logRequest(
+            request,
+            bodyDescription: """
+            {
+              "model": "\(model)",
+              "file": {
+                "path": "\(audioFile.fileURL.path)",
+                "filename": "\(audioFile.fileURL.lastPathComponent)",
+                "mimeType": "audio/m4a",
+                "sizeBytes": \(body.count)
+              }
+            }
+            """
+        )
+
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
+            NetworkDebugLogger.logResponse(response, data: data)
             throw NSError(domain: "WhisperAPITranscriber", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid response type"])
         }
-        
+
+        NetworkDebugLogger.logResponse(http, data: data)
+
         guard (200..<300).contains(http.statusCode) else {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw NSError(domain: "WhisperAPITranscriber", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(errorBody)"])
