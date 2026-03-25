@@ -63,6 +63,7 @@ final class StatusBarController: NSObject {
         button.title = title
     }
 
+    @MainActor
     @objc private func openSettings() {
         SettingsWindowController.shared.show(settingsStore: settingsStore)
     }

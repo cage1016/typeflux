@@ -73,6 +73,10 @@
 
 ## Modules/Settings
 - 目标：提供设置 UI 与配置存储。
+- 分层：
+  - Presentation：`SettingsWindowController`、`SettingsView`
+  - Application：`SettingsViewModel`
+  - Infrastructure：`SettingsStore`、`OllamaLocalModelManager`
 - 配置项：
   - 快捷键集合（含 Fn 与其他组合键）
   - LLM：BaseURL、API Key、Model
@@ -80,3 +84,6 @@
 - 存储：
   - 非敏感（BaseURL/Model/开关）放 UserDefaults
   - API Key 建议放 Keychain
+- 约束：
+  - View 只负责渲染和事件绑定，不直接读写 `UserDefaults`
+  - ViewModel 负责状态同步、配置写入和本地模型准备等用例编排
