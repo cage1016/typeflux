@@ -19,6 +19,14 @@ final class SettingsStore {
         set { defaults.set(newValue.rawValue, forKey: "llm.provider") }
     }
 
+    var appearanceMode: AppearanceMode {
+        get {
+            let raw = defaults.string(forKey: "ui.appearance") ?? AppearanceMode.light.rawValue
+            return AppearanceMode(rawValue: raw) ?? .system
+        }
+        set { defaults.set(newValue.rawValue, forKey: "ui.appearance") }
+    }
+
     var llmBaseURL: String {
         get { defaults.string(forKey: "llm.baseURL") ?? "" }
         set { defaults.set(newValue, forKey: "llm.baseURL") }

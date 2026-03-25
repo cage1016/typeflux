@@ -28,6 +28,23 @@ enum LLMProvider: String, CaseIterable, Codable {
     }
 }
 
+enum AppearanceMode: String, CaseIterable, Codable {
+    case system
+    case light
+    case dark
+
+    var displayName: String {
+        switch self {
+        case .system:
+            return "System"
+        case .light:
+            return "Light"
+        case .dark:
+            return "Dark"
+        }
+    }
+}
+
 struct PersonaProfile: Codable, Identifiable, Equatable {
     let id: UUID
     var name: String

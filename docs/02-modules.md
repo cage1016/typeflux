@@ -74,9 +74,12 @@
 ## Modules/Settings
 - 目标：提供设置 UI 与配置存储。
 - 分层：
-  - Presentation：`SettingsWindowController`、`SettingsView`
-  - Application：`SettingsViewModel`
+  - Presentation：`SettingsWindowController`、`StudioView`
+  - Application：`StudioViewModel`
   - Infrastructure：`SettingsStore`、`OllamaLocalModelManager`
+- UI 组件库：
+  - `UI/StudioTheme.swift`：颜色、尺寸、亮暗主题 token
+  - `UI/StudioComponents.swift`：Shell、Sidebar、Card、Button、SearchField、MetricCard 等基础组件
 - 配置项：
   - 快捷键集合（含 Fn 与其他组合键）
   - LLM：BaseURL、API Key、Model
@@ -87,3 +90,5 @@
 - 约束：
   - View 只负责渲染和事件绑定，不直接读写 `UserDefaults`
   - ViewModel 负责状态同步、配置写入和本地模型准备等用例编排
+  - 页面优先复用组件库，不直接重复实现视觉样式
+  - 所有组件默认同时兼容亮色和暗色模式

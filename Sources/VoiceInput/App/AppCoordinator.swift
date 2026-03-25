@@ -7,7 +7,11 @@ final class AppCoordinator {
     private var workflowController: WorkflowController?
 
     func start() {
-        statusBarController = StatusBarController(appState: di.appState, settingsStore: di.settingsStore)
+        statusBarController = StatusBarController(
+            appState: di.appState,
+            settingsStore: di.settingsStore,
+            historyStore: di.historyStore
+        )
         statusBarController?.start()
 
         workflowController = WorkflowController(

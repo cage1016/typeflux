@@ -5,13 +5,15 @@ import SwiftUI
 final class StatusBarController: NSObject {
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
+    private let historyStore: HistoryStore
 
     private var statusItem: NSStatusItem?
     private var cancellables = Set<AnyCancellable>()
 
-    init(appState: AppStateStore, settingsStore: SettingsStore) {
+    init(appState: AppStateStore, settingsStore: SettingsStore, historyStore: HistoryStore) {
         self.appState = appState
         self.settingsStore = settingsStore
+        self.historyStore = historyStore
     }
 
     func start() {
@@ -65,11 +67,20 @@ final class StatusBarController: NSObject {
 
     @MainActor
     @objc private func openSettings() {
-        SettingsWindowController.shared.show(settingsStore: settingsStore)
+        SettingsWindowController.shared.show(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .settings
+        )
     }
 
+    @MainActor
     @objc private func openHistory() {
-        HistoryWindowController.shared.show()
+        SettingsWindowController.shared.show(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .history
+        )
     }
 
     @objc private func quit() {
