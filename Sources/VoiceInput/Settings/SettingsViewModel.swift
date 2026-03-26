@@ -51,6 +51,7 @@ final class StudioViewModel: ObservableObject {
     @Published var toastMessage: String?
     @Published private(set) var permissionRows: [StudioPermissionRowModel] = []
     @Published private(set) var isRefreshingPermissions = false
+    @Published private(set) var isRefreshingHistory = false
 
     let errorLogStore = ErrorLogStore.shared
 
@@ -299,6 +300,26 @@ final class StudioViewModel: ObservableObject {
 
     func refreshHistory() {
         historyRecords = historyStore.list()
+    }
+
+    func refreshHistoryWithFeedback() {
+        guard !isRefreshingHistory else { return }
+
+        isRefreshingHistory = true
+
+        Task {
+            let startedAt = ContinuousClock.now
+            refreshHistory()
+
+            let elapsed = startedAt.duration(to: .now)
+            let minimumFeedback = Duration.milliseconds(450)
+            if elapsed < minimumFeedback {
+                try? await Task.sleep(for: minimumFeedback - elapsed)
+            }
+
+            isRefreshingHistory = false
+            showToast("History refreshed.")
+        }
     }
 
     func setAppearanceMode(_ mode: AppearanceMode) {

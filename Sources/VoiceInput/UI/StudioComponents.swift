@@ -9,6 +9,119 @@ struct StudioInteractiveButtonStyle: ButtonStyle {
     }
 }
 
+private struct StudioButtonChromeModifier: ViewModifier {
+    let variant: StudioButton.Variant
+    let isDisabled: Bool
+    let isLoading: Bool
+    let isPressed: Bool
+    let minWidth: CGFloat?
+
+    func body(content: Content) -> some View {
+        content
+            .frame(minWidth: minWidth)
+            .foregroundStyle(foreground)
+            .background(background)
+            .overlay(overlay)
+            .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
+            .scaleEffect(isPressed ? 0.985 : 1)
+            .opacity(opacity)
+            .animation(.easeOut(duration: 0.14), value: isPressed)
+            .animation(.easeOut(duration: 0.18), value: isLoading)
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        switch variant {
+        case .primary:
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                .fill(StudioTheme.accent)
+                .brightness(isPressed ? -0.06 : (isLoading ? -0.03 : 0))
+        case .secondary:
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                .fill(StudioTheme.surfaceMuted)
+                .brightness(isPressed ? -0.03 : (isLoading ? -0.015 : 0))
+        case .ghost:
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                .fill(isPressed ? StudioTheme.surfaceMuted.opacity(0.52) : (isLoading ? StudioTheme.surfaceMuted.opacity(0.28) : Color.clear))
+        }
+    }
+
+    @ViewBuilder
+    private var overlay: some View {
+        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+            .stroke(borderColor, lineWidth: borderWidth)
+    }
+
+    private var foreground: Color {
+        switch variant {
+        case .primary:
+            return .white
+        case .secondary:
+            return StudioTheme.textPrimary
+        case .ghost:
+            return StudioTheme.textSecondary
+        }
+    }
+
+    private var borderColor: Color {
+        switch variant {
+        case .primary:
+            return Color.clear
+        case .secondary, .ghost:
+            return StudioTheme.border.opacity(isPressed || isLoading ? 0.82 : 1)
+        }
+    }
+
+    private var borderWidth: CGFloat {
+        switch variant {
+        case .ghost:
+            return isPressed || isLoading ? StudioTheme.BorderWidth.thin : 0
+        case .primary, .secondary:
+            return StudioTheme.BorderWidth.thin
+        }
+    }
+
+    private var opacity: Double {
+        if isDisabled { return 0.72 }
+        return 1
+    }
+}
+
+private struct StudioButtonChrome<Label: View>: View {
+    let variant: StudioButton.Variant
+    let isDisabled: Bool
+    let isLoading: Bool
+    let minWidth: CGFloat?
+    let action: () -> Void
+    let label: () -> Label
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button {
+            isPressed = true
+            action()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                isPressed = false
+            }
+        } label: {
+            label()
+        }
+        .disabled(isDisabled || isLoading)
+        .buttonStyle(StudioInteractiveButtonStyle())
+        .modifier(
+            StudioButtonChromeModifier(
+                variant: variant,
+                isDisabled: isDisabled || isLoading,
+                isLoading: isLoading,
+                isPressed: isPressed,
+                minWidth: minWidth
+            )
+        )
+    }
+}
+
 struct StudioShell<Content: View>: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
@@ -187,12 +300,23 @@ struct StudioButton: View {
     let systemImage: String?
     let variant: Variant
     var isDisabled: Bool = false
+    var isLoading: Bool = false
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        StudioButtonChrome(
+            variant: variant,
+            isDisabled: isDisabled,
+            isLoading: isLoading,
+            minWidth: variant == .ghost ? nil : StudioTheme.ControlSize.buttonMinWidth,
+            action: action
+        ) {
             HStack(spacing: StudioTheme.Spacing.xSmall) {
-                if let systemImage {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(variant == .primary ? .white : StudioTheme.textSecondary)
+                } else if let systemImage {
                     Image(systemName: systemImage)
                         .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
                 }
@@ -201,48 +325,39 @@ struct StudioButton: View {
             }
             .padding(.horizontal, variant == .ghost ? StudioTheme.Insets.none : StudioTheme.Insets.buttonHorizontal)
             .padding(.vertical, variant == .ghost ? StudioTheme.Insets.none : StudioTheme.Insets.buttonVertical)
-            .frame(minWidth: variant == .ghost ? nil : StudioTheme.ControlSize.buttonMinWidth)
             .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
         }
-        .disabled(isDisabled)
-        .buttonStyle(StudioInteractiveButtonStyle())
-        .foregroundStyle(foreground)
-        .background(background)
-        .overlay(overlay)
-        .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
-        .opacity(isDisabled ? 0.72 : 1)
     }
+}
 
-    @ViewBuilder
-    private var background: some View {
-        switch variant {
-        case .primary:
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(StudioTheme.accent)
-        case .secondary:
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(StudioTheme.surfaceMuted)
-        case .ghost:
-            Color.clear
-        }
-    }
+struct StudioIconButton: View {
+    let systemImage: String
+    var variant: StudioButton.Variant = .ghost
+    var isDisabled: Bool = false
+    var isLoading: Bool = false
+    var frame: CGFloat = 32
+    let action: () -> Void
 
-    @ViewBuilder
-    private var overlay: some View {
-        if variant != .ghost {
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .stroke(variant == .primary ? Color.clear : StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin)
-        }
-    }
-
-    private var foreground: Color {
-        switch variant {
-        case .primary:
-            return .white
-        case .secondary:
-            return StudioTheme.textPrimary
-        case .ghost:
-            return StudioTheme.textSecondary
+    var body: some View {
+        StudioButtonChrome(
+            variant: variant,
+            isDisabled: isDisabled,
+            isLoading: isLoading,
+            minWidth: nil,
+            action: action
+        ) {
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(variant == .primary ? .white : StudioTheme.textSecondary)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.system(size: StudioTheme.Typography.iconRegular, weight: .medium))
+                }
+            }
+            .frame(width: frame, height: frame)
+            .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
         }
     }
 }
@@ -460,14 +575,8 @@ struct StudioHistoryRow: View {
     }
 
     private func historyIconButton(systemImage: String, helpText: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: StudioTheme.Typography.iconRegular, weight: .medium))
-                .foregroundStyle(StudioTheme.textSecondary)
-                .frame(width: 32, height: 32)
-        }
-        .buttonStyle(StudioInteractiveButtonStyle())
-        .help(helpText)
+        StudioIconButton(systemImage: systemImage, action: action)
+            .help(helpText)
     }
 
     @ViewBuilder
@@ -487,13 +596,8 @@ struct StudioHistoryRow: View {
                     Spacer()
 
                     if let copyAction {
-                        Button(action: copyAction) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
-                                .foregroundStyle(StudioTheme.textSecondary)
-                        }
-                        .buttonStyle(StudioInteractiveButtonStyle())
-                        .help("复制转写文本")
+                        StudioIconButton(systemImage: "doc.on.doc", frame: 24, action: copyAction)
+                            .help("复制转写文本")
                     }
                 }
 

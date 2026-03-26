@@ -321,8 +321,13 @@ struct StudioView: View {
                         title: "Keep local history",
                         subtitle: "Recent dictation sessions stay on this device unless you export them."
                     ) {
-                        StudioButton(title: "Refresh", systemImage: "arrow.clockwise", variant: .secondary) {
-                            viewModel.refreshHistory()
+                        StudioButton(
+                            title: viewModel.isRefreshingHistory ? "Refreshing..." : "Refresh",
+                            systemImage: "arrow.clockwise",
+                            variant: .secondary,
+                            isLoading: viewModel.isRefreshingHistory
+                        ) {
+                            viewModel.refreshHistoryWithFeedback()
                         }
                     }
 
@@ -555,9 +560,9 @@ struct StudioView: View {
                     ) {
                         StudioButton(
                             title: viewModel.isRefreshingPermissions ? "Refreshing..." : "Refresh",
-                            systemImage: viewModel.isRefreshingPermissions ? "arrow.clockwise.circle" : "arrow.clockwise",
+                            systemImage: "arrow.clockwise",
                             variant: .secondary,
-                            isDisabled: viewModel.isRefreshingPermissions
+                            isLoading: viewModel.isRefreshingPermissions
                         ) {
                             viewModel.refreshPermissionRowsWithFeedback()
                         }
