@@ -32,9 +32,13 @@ cp "$BIN" "$APP_DIR/Contents/MacOS/VoiceInput"
 
 chmod +x "$APP_EXEC"
 
-# Optional: ad-hoc sign the app so macOS treats it more consistently.
-if command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - "$APP_DIR" >/dev/null 2>&1 || true
+# Important: do not ad-hoc sign by default in dev mode.
+# TCC/Accessibility may treat each fresh ad-hoc signature as a different app,
+# which causes the permission entry to stop matching after rebuilds.
+# If you want signing, provide a stable identity explicitly:
+#   DEV_CODESIGN_IDENTITY="Apple Development: Your Name (...)" ./scripts/run_dev_attached.sh
+if [[ -n "${DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
+  codesign --force --deep --sign "$DEV_CODESIGN_IDENTITY" "$APP_DIR"
 fi
 
 if pgrep -f "$APP_EXEC" >/dev/null 2>&1; then

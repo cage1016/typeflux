@@ -2,11 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP_DIR="$ROOT_DIR/.build/VoiceInput.app"
 
 swift build --package-path "$ROOT_DIR" -c debug
 
 BIN="$ROOT_DIR/.build/debug/VoiceInput"
-APP_DIR="$ROOT_DIR/.build/VoiceInput.app"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
@@ -16,9 +16,13 @@ cp "$BIN" "$APP_DIR/Contents/MacOS/VoiceInput"
 
 chmod +x "$APP_DIR/Contents/MacOS/VoiceInput"
 
-# Optional: ad-hoc sign the app so macOS treats it more consistently.
-if command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - "$APP_DIR" >/dev/null 2>&1 || true
+# Important: do not ad-hoc sign by default in dev mode.
+# TCC/Accessibility may treat each fresh ad-hoc signature as a different app,
+# which causes the permission entry to stop matching after rebuilds.
+# If you want signing, provide a stable identity explicitly:
+#   DEV_CODESIGN_IDENTITY="Apple Development: Your Name (...)" ./scripts/run_dev_app.sh
+if [[ -n "${DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
+  codesign --force --deep --sign "$DEV_CODESIGN_IDENTITY" "$APP_DIR"
 fi
 
 # Prompt Accessibility permission immediately at launch (instead of waiting for hotkey usage)

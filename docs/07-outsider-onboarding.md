@@ -70,7 +70,8 @@ VoiceInput 是一个 macOS 菜单栏常驻工具：
 - `swift build -c debug`
 - 生成 `.build/VoiceInput.app`（路径固定，避免反复授权）
 - 复制 `app/Info.plist` 到 `.app`（里面有权限说明 key）
-- 可选 ad-hoc `codesign`（让系统更一致地对待这个 app）
+- 默认不做 ad-hoc `codesign`，避免 Accessibility 把每次重编译后的 app 识别成新应用
+- 如果确实需要签名，可传 `DEV_CODESIGN_IDENTITY` 使用固定签名身份
 - `open` 启动并传 `--prompt-accessibility`（尽早触发辅助功能授权）
 
 ### 2.3 首次运行要授予哪些权限？
@@ -647,4 +648,3 @@ SwiftUI View 通过 `NSHostingView(rootView:)` 放进 AppKit window。
 - **AX / Accessibility**：辅助功能 API，允许读取/操作当前 UI 元素
 - **SSE**：Server-Sent Events，LLM streaming 常用的传输方式
 - **DI（依赖注入）**：把“用到什么实现”集中在一个地方组装（这里是 `DIContainer`）
-

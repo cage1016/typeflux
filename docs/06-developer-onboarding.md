@@ -61,7 +61,8 @@
 - **构建**：`swift build -c debug`
 - **生成稳定路径 `.app`**：`.build/VoiceInput.app`
 - **复制 Info.plist**：使用 `app/Info.plist`（包含权限描述 key）
-- **可选 ad-hoc codesign**：减少系统对同一路径 app 的不一致判定
+- **默认不签名**：开发态保持固定 `.app` 路径，避免 TCC/Accessibility 因 ad-hoc 签名变化而把它当成新应用
+- **可选稳定签名**：如需签名，传 `DEV_CODESIGN_IDENTITY` 使用固定 identity
 - **启动**：`open .build/VoiceInput.app --args --prompt-accessibility`
 
 ### 4.2 `swift run` 的行为（了解即可）
