@@ -21,7 +21,13 @@ struct StudioView: View {
                 currentPage
             }
         }
+        .onAppear {
+            viewModel.schedulePermissionRefresh()
+        }
         .preferredColorScheme(viewModel.preferredColorScheme)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            viewModel.schedulePermissionRefresh()
+        }
         .overlay(alignment: .bottom) {
             if let toast = viewModel.toastMessage {
                 Text(toast)
@@ -538,7 +544,79 @@ struct StudioView: View {
                     .frame(width: StudioTheme.Layout.appearancePickerWidth)
                 }
             }
+
+            StudioSectionTitle(title: "Permissions")
+
+            StudioCard {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                    StudioSettingRow(
+                        title: "Permission Status",
+                        subtitle: "Review the macOS permissions VoiceInput depends on, then grant access where needed."
+                    ) {
+                        StudioButton(
+                            title: viewModel.isRefreshingPermissions ? "Refreshing..." : "Refresh",
+                            systemImage: viewModel.isRefreshingPermissions ? "arrow.clockwise.circle" : "arrow.clockwise",
+                            variant: .secondary,
+                            isDisabled: viewModel.isRefreshingPermissions
+                        ) {
+                            viewModel.refreshPermissionRowsWithFeedback()
+                        }
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
+                        ForEach(viewModel.permissionRows) { permission in
+                            permissionRow(permission)
+
+                            if permission.id != viewModel.permissionRows.last?.id {
+                                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    private func permissionRow(_ permission: StudioPermissionRowModel) -> some View {
+        HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    Image(systemName: permission.isGranted ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .foregroundStyle(permission.isGranted ? StudioTheme.success : StudioTheme.warning)
+
+                    Text(permission.title)
+                        .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    StudioPill(
+                        title: permission.badgeText,
+                        tone: permission.isGranted ? StudioTheme.success : StudioTheme.warning,
+                        fill: (permission.isGranted ? StudioTheme.success : StudioTheme.warning).opacity(0.12)
+                    )
+                }
+
+                Text(permission.summary)
+                    .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                    .foregroundStyle(StudioTheme.textSecondary)
+
+                Text(permission.detail)
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textTertiary)
+            }
+
+            Spacer(minLength: StudioTheme.Spacing.pageGroup)
+
+            StudioButton(
+                title: permission.actionTitle,
+                systemImage: permission.isGranted ? "arrow.up.right.square" : "lock.open.display",
+                variant: permission.isGranted ? .secondary : .primary
+            ) {
+                viewModel.requestPermission(permission.id)
+            }
+        }
+        .padding(.vertical, StudioTheme.Spacing.xSmall)
     }
 
     private var parameterCard: some View {
@@ -627,7 +705,21 @@ struct StudioView: View {
                         .padding(.vertical, StudioTheme.Insets.historyEmptyVertical)
                 } else {
                     ForEach(records) { record in
-                        StudioHistoryRow(record: record)
+                        StudioHistoryRow(
+                            record: record,
+                            onCopyTranscript: {
+                                viewModel.copyTranscript(id: record.id)
+                            },
+                            onDownloadAudio: {
+                                viewModel.downloadAudio(id: record.id)
+                            },
+                            onDelete: {
+                                viewModel.deleteHistoryRecord(id: record.id)
+                            },
+                            onRetry: {
+                                viewModel.retryHistoryRecord(id: record.id)
+                            }
+                        )
                         if record.id != records.last?.id {
                             Divider().overlay(StudioTheme.border)
                         }
@@ -803,7 +895,21 @@ struct StudioView: View {
             } else {
                 VStack(spacing: StudioTheme.Spacing.none) {
                     ForEach(records) { record in
-                        StudioHistoryRow(record: record)
+                        StudioHistoryRow(
+                            record: record,
+                            onCopyTranscript: {
+                                viewModel.copyTranscript(id: record.id)
+                            },
+                            onDownloadAudio: {
+                                viewModel.downloadAudio(id: record.id)
+                            },
+                            onDelete: {
+                                viewModel.deleteHistoryRecord(id: record.id)
+                            },
+                            onRetry: {
+                                viewModel.retryHistoryRecord(id: record.id)
+                            }
+                        )
                         if record.id != records.last?.id {
                             Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.listDivider))
                         }
@@ -967,7 +1073,7 @@ struct StudioView: View {
                     name: "Local Models",
                     summary: "Run Whisper, SenseVoice Small, or Qwen3-ASR locally through an embedded service runtime.",
                     badge: "Local",
-                    metadata: viewModel.localSTTModelIdentifier.isEmpty ? viewModel.localSTTModel.defaultModelIdentifier : viewModel.localSTTModelIdentifier,
+                    metadata: viewModel.localSTTModel.displayName,
                     isSelected: viewModel.sttProvider == .localModel,
                     isMuted: false,
                     actionTitle: "Use Local"
@@ -1104,16 +1210,6 @@ struct StudioView: View {
 
                 if viewModel.focusedModelProvider == .localSTT {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                        if !viewModel.isLocalSTTPrepared {
-                            StudioButton(
-                                title: viewModel.isPreparingLocalSTT ? "Preparing..." : "Prepare Local Speech Model",
-                                systemImage: viewModel.isPreparingLocalSTT ? nil : "arrow.down.circle",
-                                variant: .primary
-                            ) {
-                                viewModel.prepareLocalSTTModel()
-                            }
-                        }
-
                         HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
                             ProgressView(value: viewModel.localSTTPreparationProgress, total: 1)
                                 .progressViewStyle(.linear)
@@ -1198,28 +1294,15 @@ struct StudioView: View {
                     .foregroundStyle(StudioTheme.textSecondary)
 
             case .localSTT:
-                Picker(
-                    "Local Model",
-                    selection: Binding(get: { viewModel.localSTTModel }, set: viewModel.setLocalSTTModel)
-                ) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
+                    Text("Local Model")
+                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textSecondary)
+
                     ForEach(LocalSTTModel.allCases, id: \.self) { model in
-                        Text(model.displayName).tag(model)
+                        localSTTModelOptionCard(model)
                     }
                 }
-                .pickerStyle(.segmented)
-
-                StudioTextInputCard(
-                    label: "Model Identifier",
-                    placeholder: viewModel.localSTTModel.defaultModelIdentifier,
-                    text: Binding(get: { viewModel.localSTTModelIdentifier }, set: viewModel.setLocalSTTModelIdentifier)
-                )
-
-                Text("Downloads use automatic fallback: ModelScope first, then Hugging Face if needed.")
-                    .font(.studioBody(StudioTheme.Typography.caption))
-                    .foregroundStyle(StudioTheme.textSecondary)
-
-                Toggle("Automatically install runtime and download model when missing", isOn: Binding(get: { viewModel.localSTTAutoSetup }, set: viewModel.setLocalSTTAutoSetup))
-                    .toggleStyle(.switch)
 
             case .whisperAPI:
                 StudioTextInputCard(label: "Transcription Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL))
@@ -1345,12 +1428,73 @@ struct StudioView: View {
         }
     }
 
+    private func localSTTModelOptionCard(_ model: LocalSTTModel) -> some View {
+        let isSelected = viewModel.localSTTModel == model
+        let specs = model.specs
+
+        return Button {
+            viewModel.setLocalSTTModel(model)
+        } label: {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
+                        Text(model.displayName)
+                            .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+
+                        Text(specs.summary)
+                            .font(.studioBody(StudioTheme.Typography.bodySmall))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    if isSelected {
+                        StudioPill(
+                            title: "Selected",
+                            tone: StudioTheme.accent,
+                            fill: StudioTheme.accentSoft
+                        )
+                    }
+                }
+
+                HStack(spacing: StudioTheme.Spacing.xSmall) {
+                    localSTTSpecPill(specs.parameterInfo)
+                    localSTTSpecPill(specs.sizeInfo)
+                }
+            }
+            .padding(StudioTheme.Insets.cardCompact)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(isSelected ? StudioTheme.accentSoft : StudioTheme.surfaceMuted.opacity(0.45))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .stroke(isSelected ? StudioTheme.accent.opacity(0.65) : StudioTheme.border.opacity(0.75), lineWidth: isSelected ? StudioTheme.BorderWidth.emphasis : StudioTheme.BorderWidth.thin)
+            )
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+    }
+
+    private func localSTTSpecPill(_ text: String) -> some View {
+        Text(text)
+            .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
+            .foregroundStyle(StudioTheme.textSecondary)
+            .padding(.horizontal, StudioTheme.Insets.pillHorizontal)
+            .padding(.vertical, StudioTheme.Insets.pillVertical)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(StudioTheme.surface)
+            )
+    }
+
     private func providerIsConfigured(_ provider: StudioModelProviderID) -> Bool {
         switch provider {
         case .appleSpeech:
             return true
         case .localSTT:
-            return !viewModel.localSTTModelIdentifier.isEmpty
+            return true
         case .whisperAPI:
             return !viewModel.whisperBaseURL.isEmpty && !viewModel.whisperModel.isEmpty
         case .ollama:
@@ -1366,9 +1510,6 @@ struct StudioView: View {
             viewModel.setSTTModelSelection(.appleSpeech, suggestedModel: viewModel.whisperModel)
         case .localSTT:
             viewModel.setSTTProvider(.localModel)
-            if viewModel.localSTTAutoSetup {
-                viewModel.prepareLocalSTTModel()
-            }
         case .whisperAPI:
             viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel)
         case .ollama:
@@ -1478,7 +1619,7 @@ struct StudioView: View {
         case .appleSpeech:
             return "Apple Speech"
         case .localSTT:
-            return viewModel.localSTTModelIdentifier.isEmpty ? viewModel.localSTTModel.defaultModelIdentifier : viewModel.localSTTModelIdentifier
+            return viewModel.localSTTModel.displayName
         case .whisperAPI:
             return viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel
         case .ollama:

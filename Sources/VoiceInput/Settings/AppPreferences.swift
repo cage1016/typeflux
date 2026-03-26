@@ -22,6 +22,12 @@ enum LocalSTTModel: String, CaseIterable, Codable {
     case senseVoiceSmall
     case qwen3ASR
 
+    struct Specs {
+        let summary: String
+        let parameterInfo: String
+        let sizeInfo: String
+    }
+
     var displayName: String {
         switch self {
         case .whisperLocal:
@@ -50,6 +56,29 @@ enum LocalSTTModel: String, CaseIterable, Codable {
             return .huggingFace
         case .senseVoiceSmall, .qwen3ASR:
             return .modelScope
+        }
+    }
+
+    var specs: Specs {
+        switch self {
+        case .whisperLocal:
+            return Specs(
+                summary: "Balanced local ASR with stable English and multilingual dictation, suitable for most offline transcription needs.",
+                parameterInfo: "Whisper small, around 244M parameters",
+                sizeInfo: "Model file about 460 MB"
+            )
+        case .senseVoiceSmall:
+            return Specs(
+                summary: "Fast multilingual speech recognition with strong Mandarin, Cantonese, English, Japanese, and Korean support.",
+                parameterInfo: "SenseVoiceSmall, about 234M parameters",
+                sizeInfo: "Runtime files usually around 1.1 GB"
+            )
+        case .qwen3ASR:
+            return Specs(
+                summary: "Larger multilingual ASR model with stronger context understanding and better long-form recognition quality.",
+                parameterInfo: "Qwen3-ASR-0.6B, about 600M parameters",
+                sizeInfo: "Runtime files usually around 1.6 GB"
+            )
         }
     }
 }

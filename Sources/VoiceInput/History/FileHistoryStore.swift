@@ -14,10 +14,14 @@ final class FileHistoryStore: HistoryStore {
         try? FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
     }
 
-    func append(record: HistoryRecord) {
+    func save(record: HistoryRecord) {
         queue.async {
             var list = self.readIndex()
-            list.insert(record, at: 0)
+            if let existingIndex = list.firstIndex(where: { $0.id == record.id }) {
+                list[existingIndex] = record
+            } else {
+                list.insert(record, at: 0)
+            }
             self.writeIndex(list)
         }
     }
@@ -25,6 +29,16 @@ final class FileHistoryStore: HistoryStore {
     func list() -> [HistoryRecord] {
         queue.sync {
             readIndex()
+        }
+    }
+
+    func delete(id: UUID) {
+        queue.async {
+            var list = self.readIndex()
+            guard let index = list.firstIndex(where: { $0.id == id }) else { return }
+            let record = list.remove(at: index)
+            self.removeAudioFileIfNeeded(for: record)
+            self.writeIndex(list)
         }
     }
 
@@ -38,7 +52,7 @@ final class FileHistoryStore: HistoryStore {
             self.writeIndex(list)
 
             for r in drop {
-                try? FileManager.default.removeItem(atPath: r.audioFilePath)
+                self.removeAudioFileIfNeeded(for: r)
             }
         }
     }
@@ -47,7 +61,7 @@ final class FileHistoryStore: HistoryStore {
         queue.async {
             let list = self.readIndex()
             for r in list {
-                try? FileManager.default.removeItem(atPath: r.audioFilePath)
+                self.removeAudioFileIfNeeded(for: r)
             }
             self.writeIndex([])
         }
@@ -60,7 +74,35 @@ final class FileHistoryStore: HistoryStore {
         var md = "# VoiceInput History\n\n"
         for r in records {
             md += "## \(dateFmt.string(from: r.date))\n\n"
-            md += r.text
+            md += "- Mode: \(r.mode.rawValue)\n"
+            md += "- Recording: \(r.recordingStatus.rawValue)\n"
+            md += "- Transcription: \(r.transcriptionStatus.rawValue)\n"
+            md += "- Processing: \(r.processingStatus.rawValue)\n"
+            md += "- Apply: \(r.applyStatus.rawValue)\n"
+            if let audioFilePath = r.audioFilePath {
+                md += "- Audio: \(audioFilePath)\n"
+            }
+            if let transcriptText = r.transcriptText, !transcriptText.isEmpty {
+                md += "\n### Transcript\n\n\(transcriptText)\n"
+            }
+            if let personaPrompt = r.personaPrompt, !personaPrompt.isEmpty {
+                md += "\n### Persona Prompt\n\n\(personaPrompt)\n"
+            }
+            if let personaResultText = r.personaResultText, !personaResultText.isEmpty {
+                md += "\n### Persona Result\n\n\(personaResultText)\n"
+            }
+            if let selectionOriginalText = r.selectionOriginalText, !selectionOriginalText.isEmpty {
+                md += "\n### Selected Text\n\n\(selectionOriginalText)\n"
+            }
+            if let selectionEditedText = r.selectionEditedText, !selectionEditedText.isEmpty {
+                md += "\n### Selection Result\n\n\(selectionEditedText)\n"
+            }
+            if let applyMessage = r.applyMessage, !applyMessage.isEmpty {
+                md += "\n### Apply Status\n\n\(applyMessage)\n"
+            }
+            if let errorMessage = r.errorMessage, !errorMessage.isEmpty {
+                md += "\n### Error\n\n\(errorMessage)\n"
+            }
             md += "\n\n"
         }
 
@@ -78,9 +120,17 @@ final class FileHistoryStore: HistoryStore {
         do {
             let data = try JSONEncoder().encode(list)
             try data.write(to: indexURL, options: [.atomic])
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .historyStoreDidChange, object: nil)
+            }
         } catch {
             // ignore
         }
+    }
+
+    private func removeAudioFileIfNeeded(for record: HistoryRecord) {
+        guard let audioFilePath = record.audioFilePath, !audioFilePath.isEmpty else { return }
+        try? FileManager.default.removeItem(atPath: audioFilePath)
     }
 }
 

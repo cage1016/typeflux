@@ -1,23 +1,165 @@
 import Foundation
 
 struct HistoryRecord: Codable, Identifiable {
-    let id: UUID
-    let date: Date
-    let text: String
-    let audioFilePath: String
+    enum Mode: String, Codable {
+        case dictation
+        case personaRewrite
+        case editSelection
+    }
 
-    init(id: UUID = UUID(), date: Date, text: String, audioFilePath: String) {
+    enum StepStatus: String, Codable {
+        case pending
+        case running
+        case succeeded
+        case failed
+        case skipped
+    }
+
+    let id: UUID
+    var date: Date
+    var mode: Mode
+    var audioFilePath: String?
+    var transcriptText: String?
+    var personaPrompt: String?
+    var personaResultText: String?
+    var selectionOriginalText: String?
+    var selectionEditedText: String?
+    var errorMessage: String?
+    var applyMessage: String?
+    var recordingStatus: StepStatus
+    var transcriptionStatus: StepStatus
+    var processingStatus: StepStatus
+    var applyStatus: StepStatus
+
+    init(
+        id: UUID = UUID(),
+        date: Date,
+        mode: Mode = .dictation,
+        audioFilePath: String? = nil,
+        transcriptText: String? = nil,
+        personaPrompt: String? = nil,
+        personaResultText: String? = nil,
+        selectionOriginalText: String? = nil,
+        selectionEditedText: String? = nil,
+        errorMessage: String? = nil,
+        applyMessage: String? = nil,
+        recordingStatus: StepStatus = .pending,
+        transcriptionStatus: StepStatus = .pending,
+        processingStatus: StepStatus = .pending,
+        applyStatus: StepStatus = .pending
+    ) {
         self.id = id
         self.date = date
-        self.text = text
         self.audioFilePath = audioFilePath
+        self.mode = mode
+        self.transcriptText = transcriptText
+        self.personaPrompt = personaPrompt
+        self.personaResultText = personaResultText
+        self.selectionOriginalText = selectionOriginalText
+        self.selectionEditedText = selectionEditedText
+        self.errorMessage = errorMessage
+        self.applyMessage = applyMessage
+        self.recordingStatus = recordingStatus
+        self.transcriptionStatus = transcriptionStatus
+        self.processingStatus = processingStatus
+        self.applyStatus = applyStatus
+    }
+
+    var text: String {
+        selectionEditedText ?? personaResultText ?? transcriptText ?? errorMessage ?? ""
+    }
+
+    var finalText: String? {
+        selectionEditedText ?? personaResultText ?? transcriptText
+    }
+
+    var hasFailure: Bool {
+        recordingStatus == .failed ||
+        transcriptionStatus == .failed ||
+        processingStatus == .failed ||
+        applyStatus == .failed ||
+        !(errorMessage?.isEmpty ?? true)
+    }
+
+    var hasProcessingDetails: Bool {
+        !(transcriptText?.isEmpty ?? true) ||
+        !(personaResultText?.isEmpty ?? true) ||
+        !(selectionOriginalText?.isEmpty ?? true) ||
+        !(selectionEditedText?.isEmpty ?? true) ||
+        !(errorMessage?.isEmpty ?? true) ||
+        !(applyMessage?.isEmpty ?? true)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case date
+        case mode
+        case audioFilePath
+        case transcriptText
+        case personaPrompt
+        case personaResultText
+        case selectionOriginalText
+        case selectionEditedText
+        case errorMessage
+        case applyMessage
+        case recordingStatus
+        case transcriptionStatus
+        case processingStatus
+        case applyStatus
+        case text
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+        mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .dictation
+        audioFilePath = try container.decodeIfPresent(String.self, forKey: .audioFilePath)
+
+        let legacyText = try container.decodeIfPresent(String.self, forKey: .text)
+        transcriptText = try container.decodeIfPresent(String.self, forKey: .transcriptText) ?? legacyText
+        personaPrompt = try container.decodeIfPresent(String.self, forKey: .personaPrompt)
+        personaResultText = try container.decodeIfPresent(String.self, forKey: .personaResultText)
+        selectionOriginalText = try container.decodeIfPresent(String.self, forKey: .selectionOriginalText)
+        selectionEditedText = try container.decodeIfPresent(String.self, forKey: .selectionEditedText)
+        errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
+        applyMessage = try container.decodeIfPresent(String.self, forKey: .applyMessage)
+        recordingStatus = try container.decodeIfPresent(StepStatus.self, forKey: .recordingStatus) ?? .succeeded
+        transcriptionStatus = try container.decodeIfPresent(StepStatus.self, forKey: .transcriptionStatus) ?? (legacyText == nil ? .pending : .succeeded)
+        processingStatus = try container.decodeIfPresent(StepStatus.self, forKey: .processingStatus) ?? .skipped
+        applyStatus = try container.decodeIfPresent(StepStatus.self, forKey: .applyStatus) ?? (legacyText == nil ? .pending : .succeeded)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(date, forKey: .date)
+        try container.encode(mode, forKey: .mode)
+        try container.encodeIfPresent(audioFilePath, forKey: .audioFilePath)
+        try container.encodeIfPresent(transcriptText, forKey: .transcriptText)
+        try container.encodeIfPresent(personaPrompt, forKey: .personaPrompt)
+        try container.encodeIfPresent(personaResultText, forKey: .personaResultText)
+        try container.encodeIfPresent(selectionOriginalText, forKey: .selectionOriginalText)
+        try container.encodeIfPresent(selectionEditedText, forKey: .selectionEditedText)
+        try container.encodeIfPresent(errorMessage, forKey: .errorMessage)
+        try container.encodeIfPresent(applyMessage, forKey: .applyMessage)
+        try container.encode(recordingStatus, forKey: .recordingStatus)
+        try container.encode(transcriptionStatus, forKey: .transcriptionStatus)
+        try container.encode(processingStatus, forKey: .processingStatus)
+        try container.encode(applyStatus, forKey: .applyStatus)
     }
 }
 
 protocol HistoryStore {
-    func append(record: HistoryRecord)
+    func save(record: HistoryRecord)
     func list() -> [HistoryRecord]
+    func delete(id: UUID)
     func purge(olderThanDays days: Int)
     func clear()
     func exportMarkdown() throws -> URL
+}
+
+extension Notification.Name {
+    static let historyStoreDidChange = Notification.Name("historyStoreDidChange")
 }

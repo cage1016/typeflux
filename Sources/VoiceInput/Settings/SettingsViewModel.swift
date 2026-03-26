@@ -32,7 +32,7 @@ final class StudioViewModel: ObservableObject {
     @Published var localSTTAutoSetup: Bool
     @Published var localSTTStatus = "Local speech model has not been prepared yet."
     @Published var localSTTPreparationProgress: Double = 0
-    @Published var localSTTPreparationDetail = "Waiting to prepare local speech model."
+    @Published var localSTTPreparationDetail = "The selected local speech model will be prepared automatically when needed."
     @Published var localSTTStoragePath: String
     @Published var localSTTPreparedSource = "Automatic"
     @Published var isLocalSTTPrepared = false
@@ -49,6 +49,8 @@ final class StudioViewModel: ObservableObject {
     @Published var customHotkeys: [HotkeyBinding]
     @Published private(set) var historyRecords: [HistoryRecord]
     @Published var toastMessage: String?
+    @Published private(set) var permissionRows: [StudioPermissionRowModel] = []
+    @Published private(set) var isRefreshingPermissions = false
 
     let errorLogStore = ErrorLogStore.shared
 
@@ -56,11 +58,14 @@ final class StudioViewModel: ObservableObject {
     private let historyStore: HistoryStore
     private let modelManager: OllamaLocalModelManager
     private let localSTTServiceManager: LocalSTTServiceManager
+    private let onRetryHistory: (HistoryRecord) -> Void
+    private var historyObserver: NSObjectProtocol?
 
     init(
         settingsStore: SettingsStore,
         historyStore: HistoryStore,
         initialSection: StudioSection,
+        onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         modelManager: OllamaLocalModelManager = OllamaLocalModelManager(),
         localSTTServiceManager: LocalSTTServiceManager = LocalSTTServiceManager()
     ) {
@@ -68,6 +73,7 @@ final class StudioViewModel: ObservableObject {
         self.historyStore = historyStore
         self.modelManager = modelManager
         self.localSTTServiceManager = localSTTServiceManager
+        self.onRetryHistory = onRetryHistory
 
         let currentPersonas = settingsStore.personas
 
@@ -93,9 +99,9 @@ final class StudioViewModel: ObservableObject {
         whisperModel = settingsStore.whisperModel
         whisperAPIKey = settingsStore.whisperAPIKey
         localSTTModel = settingsStore.localSTTModel
-        localSTTModelIdentifier = settingsStore.localSTTModelIdentifier
+        localSTTModelIdentifier = settingsStore.localSTTModel.defaultModelIdentifier
         localSTTDownloadSource = settingsStore.localSTTDownloadSource
-        localSTTAutoSetup = settingsStore.localSTTAutoSetup
+        localSTTAutoSetup = true
         localSTTStoragePath = ""
         enableFn = settingsStore.enableFnHotkey
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
@@ -105,8 +111,26 @@ final class StudioViewModel: ObservableObject {
         activePersonaID = settingsStore.activePersonaID
         customHotkeys = settingsStore.customHotkeys
         historyRecords = historyStore.list()
+        settingsStore.localSTTModelIdentifier = localSTTModelIdentifier
+        settingsStore.localSTTDownloadSource = localSTTModel.recommendedDownloadSource
+        settingsStore.localSTTAutoSetup = true
         refreshLocalSTTStoragePath()
         refreshLocalSTTPreparedState()
+        historyObserver = NotificationCenter.default.addObserver(
+            forName: .historyStoreDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshHistory()
+            }
+        }
+    }
+
+    deinit {
+        if let historyObserver {
+            NotificationCenter.default.removeObserver(historyObserver)
+        }
     }
 
     var preferredColorScheme: ColorScheme? {
@@ -194,7 +218,7 @@ final class StudioViewModel: ObservableObject {
                     name: "Local Models",
                     summary: "Run curated local speech models such as Whisper, SenseVoice, or Qwen3-ASR through an embedded service.",
                     badge: "Local",
-                    metadata: localSTTModelIdentifier.isEmpty ? localSTTModel.defaultModelIdentifier : localSTTModelIdentifier,
+                    metadata: localSTTModel.displayName,
                     isSelected: sttProvider == .localModel,
                     isMuted: false,
                     actionTitle: sttProvider == .localModel ? "Selected" : "Use Local"
@@ -290,6 +314,11 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .appleSpeech
         case .localModel:
             focusedModelProvider = .localSTT
+            settingsStore.localSTTAutoSetup = true
+            localSTTAutoSetup = true
+            if !isLocalSTTPrepared && !isPreparingLocalSTT {
+                prepareLocalSTTModel()
+            }
         case .whisperAPI:
             focusedModelProvider = .whisperAPI
         }
@@ -320,6 +349,8 @@ final class StudioViewModel: ObservableObject {
         let recommendedSource = value.recommendedDownloadSource
         localSTTDownloadSource = recommendedSource
         settingsStore.localSTTDownloadSource = recommendedSource
+        localSTTAutoSetup = true
+        settingsStore.localSTTAutoSetup = true
         refreshLocalSTTStoragePath()
         refreshLocalSTTPreparedState()
     }
@@ -356,8 +387,11 @@ final class StudioViewModel: ObservableObject {
     func setWhisperModel(_ value: String) { whisperModel = value; settingsStore.whisperModel = value }
     func setWhisperAPIKey(_ value: String) { whisperAPIKey = value; settingsStore.whisperAPIKey = value }
     func setLocalSTTModelIdentifier(_ value: String) {
-        localSTTModelIdentifier = value
-        settingsStore.localSTTModelIdentifier = value
+        let identifier = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? localSTTModel.defaultModelIdentifier
+            : value.trimmingCharacters(in: .whitespacesAndNewlines)
+        localSTTModelIdentifier = identifier
+        settingsStore.localSTTModelIdentifier = identifier
         refreshLocalSTTStoragePath()
         refreshLocalSTTPreparedState()
     }
@@ -474,6 +508,16 @@ final class StudioViewModel: ObservableObject {
     func prepareLocalSTTModel() {
         guard !isPreparingLocalSTT else { return }
 
+        setLocalSTTModelIdentifier(localSTTModel.defaultModelIdentifier)
+        localSTTAutoSetup = true
+        settingsStore.localSTTAutoSetup = true
+
+        if localSTTServiceManager.preparedModelInfo(settingsStore: settingsStore) != nil {
+            refreshLocalSTTPreparedState()
+            showToast("Local speech model is ready.")
+            return
+        }
+
         isPreparingLocalSTT = true
         localSTTStatus = "Preparing local speech model..."
         localSTTPreparationProgress = 0.02
@@ -531,6 +575,60 @@ final class StudioViewModel: ObservableObject {
         showToast("History cleared.")
     }
 
+    func retryHistoryRecord(id: UUID) {
+        guard let record = historyRecords.first(where: { $0.id == id }) else { return }
+        onRetryHistory(record)
+        showToast("Retry started.")
+    }
+
+    func copyTranscript(id: UUID) {
+        guard
+            let record = historyRecords.first(where: { $0.id == id }),
+            let transcriptText = record.transcriptText,
+            !transcriptText.isEmpty
+        else { return }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(transcriptText, forType: .string)
+        showToast("Transcript copied.")
+    }
+
+    func downloadAudio(id: UUID) {
+        guard
+            let record = historyRecords.first(where: { $0.id == id }),
+            let audioFilePath = record.audioFilePath,
+            !audioFilePath.isEmpty
+        else { return }
+
+        let sourceURL = URL(fileURLWithPath: audioFilePath)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            showToast("Audio file is unavailable.")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = sourceURL.lastPathComponent
+        panel.canCreateDirectories = true
+
+        if panel.runModal() == .OK, let destinationURL = panel.url {
+            do {
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
+                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+                showToast("Audio downloaded.")
+            } catch {
+                showToast("Failed to download audio.")
+            }
+        }
+    }
+
+    func deleteHistoryRecord(id: UUID) {
+        historyStore.delete(id: id)
+        refreshHistory()
+        showToast("Transcript deleted.")
+    }
+
     func applyModelConfiguration() {
         showToast("Configuration saved.")
     }
@@ -551,11 +649,67 @@ final class StudioViewModel: ObservableObject {
         toastMessage = nil
     }
 
+    func refreshPermissionRows() {
+        permissionRows = PrivacyGuard.snapshots().map { snapshot in
+            StudioPermissionRowModel(
+                id: snapshot.id,
+                title: snapshot.title,
+                summary: snapshot.summary,
+                detail: snapshot.detail,
+                isGranted: snapshot.isGranted,
+                badgeText: snapshot.badgeText,
+                actionTitle: snapshot.actionTitle
+            )
+        }
+    }
+
+    func refreshPermissionRowsWithFeedback() {
+        guard !isRefreshingPermissions else { return }
+
+        isRefreshingPermissions = true
+
+        Task {
+            let startedAt = ContinuousClock.now
+            refreshPermissionRows()
+
+            let elapsed = startedAt.duration(to: .now)
+            let minimumFeedback = Duration.milliseconds(450)
+            if elapsed < minimumFeedback {
+                try? await Task.sleep(for: minimumFeedback - elapsed)
+            }
+
+            isRefreshingPermissions = false
+            showToast("Permission status updated.")
+        }
+    }
+
+    func schedulePermissionRefresh() {
+        Task {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            refreshPermissionRows()
+        }
+    }
+
+    func requestPermission(_ id: PrivacyGuard.PermissionID) {
+        Task {
+            await PrivacyGuard.requestPermission(id)
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            refreshPermissionRows()
+            if let row = permissionRows.first(where: { $0.id == id }) {
+                showToast(row.isGranted ? "\(row.title) is ready." : "Review \(row.title) in System Settings.")
+            }
+        }
+    }
+
     private var filteredHistory: [HistoryRecord] {
         guard !searchQuery.isEmpty else { return historyRecords }
         return historyRecords.filter {
             $0.text.localizedCaseInsensitiveContains(searchQuery) ||
-            URL(fileURLWithPath: $0.audioFilePath).lastPathComponent.localizedCaseInsensitiveContains(searchQuery)
+            ($0.transcriptText?.localizedCaseInsensitiveContains(searchQuery) ?? false) ||
+            ($0.personaResultText?.localizedCaseInsensitiveContains(searchQuery) ?? false) ||
+            ($0.selectionEditedText?.localizedCaseInsensitiveContains(searchQuery) ?? false) ||
+            ($0.errorMessage?.localizedCaseInsensitiveContains(searchQuery) ?? false) ||
+            ($0.audioFilePath.map { URL(fileURLWithPath: $0).lastPathComponent.localizedCaseInsensitiveContains(searchQuery) } ?? false)
         }
     }
 
@@ -618,7 +772,7 @@ final class StudioViewModel: ObservableObject {
             isLocalSTTPrepared = false
             localSTTPreparedSource = "Automatic"
             localSTTStatus = "Local speech model has not been prepared yet."
-            localSTTPreparationDetail = "The selected local speech model still needs to be downloaded."
+            localSTTPreparationDetail = "The selected local speech model will be prepared automatically when needed."
             localSTTPreparationProgress = 0
         }
     }
@@ -628,10 +782,10 @@ final class StudioViewModel: ObservableObject {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
 
-        let fileName = URL(fileURLWithPath: record.audioFilePath).lastPathComponent
+        let fileName = record.audioFilePath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "No audio file"
         let preview = record.text.replacingOccurrences(of: "\n", with: " ")
 
-        let fileExtension = URL(fileURLWithPath: record.audioFilePath).pathExtension.lowercased()
+        let fileExtension = record.audioFilePath.map { URL(fileURLWithPath: $0).pathExtension.lowercased() } ?? ""
         let iconData: (String, String)
         switch fileExtension {
         case "wav":
@@ -648,7 +802,19 @@ final class StudioViewModel: ObservableObject {
             id: record.id,
             timestampText: formatter.string(from: record.date),
             sourceName: fileName,
-            previewText: "“\(preview.prefix(84))\(preview.count > 84 ? "..." : "")”",
+            previewText: "\(preview.prefix(84))\(preview.count > 84 ? "..." : "")",
+            audioFilePath: record.audioFilePath,
+            transcriptText: record.transcriptText,
+            personaPrompt: record.personaPrompt,
+            personaResultText: record.personaResultText,
+            selectionOriginalText: record.selectionOriginalText,
+            selectionEditedText: record.selectionEditedText,
+            errorMessage: record.errorMessage,
+            applyMessage: record.applyMessage,
+            hasTranscriptToCopy: !(record.transcriptText?.isEmpty ?? true),
+            canRetry: record.hasFailure && record.audioFilePath.map { FileManager.default.fileExists(atPath: $0) } == true,
+            hasFailure: record.hasFailure,
+            failureMessage: record.errorMessage,
             accentName: iconData.0,
             accentColorName: iconData.1
         )

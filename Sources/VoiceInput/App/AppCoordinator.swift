@@ -7,14 +7,7 @@ final class AppCoordinator {
     private var workflowController: WorkflowController?
 
     func start() {
-        statusBarController = StatusBarController(
-            appState: di.appState,
-            settingsStore: di.settingsStore,
-            historyStore: di.historyStore
-        )
-        statusBarController?.start()
-
-        workflowController = WorkflowController(
+        let workflowController = WorkflowController(
             appState: di.appState,
             settingsStore: di.settingsStore,
             hotkeyService: di.hotkeyService,
@@ -26,7 +19,18 @@ final class AppCoordinator {
             historyStore: di.historyStore,
             overlayController: di.overlayController
         )
-        workflowController?.start()
+        self.workflowController = workflowController
+
+        statusBarController = StatusBarController(
+            appState: di.appState,
+            settingsStore: di.settingsStore,
+            historyStore: di.historyStore,
+            onRetryHistory: { [weak workflowController] record in
+                workflowController?.retry(record: record)
+            }
+        )
+        statusBarController?.start()
+        self.workflowController?.start()
     }
 
     func stop() {

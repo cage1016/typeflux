@@ -8,7 +8,12 @@ final class SettingsWindowController: NSObject {
     private var window: NSWindow?
     private var viewModel: StudioViewModel?
 
-    func show(settingsStore: SettingsStore, historyStore: HistoryStore, initialSection: StudioSection = .settings) {
+    func show(
+        settingsStore: SettingsStore,
+        historyStore: HistoryStore,
+        initialSection: StudioSection = .settings,
+        onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in }
+    ) {
         if let window {
             viewModel?.navigate(to: initialSection)
             window.makeKeyAndOrderFront(nil)
@@ -19,7 +24,8 @@ final class SettingsWindowController: NSObject {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: initialSection
+            initialSection: initialSection,
+            onRetryHistory: onRetryHistory
         )
         let view = StudioView(viewModel: viewModel)
         let hosting = NSHostingView(rootView: view)

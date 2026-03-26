@@ -32,9 +32,15 @@ cp "$BIN" "$APP_DIR/Contents/MacOS/VoiceInput"
 
 chmod +x "$APP_EXEC"
 
-# Important: do not ad-hoc sign by default in dev mode.
-# TCC/Accessibility may treat each fresh ad-hoc signature as a different app,
-# which causes the permission entry to stop matching after rebuilds.
+# SwiftPM debug builds may carry a transient ad-hoc signature with a generated
+# identifier. Re-sign the assembled app bundle with a stable identifier so the
+# dev app is launchable and privacy services see a consistent app identity.
+if command -v codesign >/dev/null 2>&1; then
+  codesign --force --deep --sign - --identifier "dev.voiceinput" "$APP_DIR"
+fi
+
+# If you want a fully stable identity across machines and clean TCC behavior,
+# provide an explicit signing identity instead of the fallback dev signature.
 # If you want signing, provide a stable identity explicitly:
 #   DEV_CODESIGN_IDENTITY="Apple Development: Your Name (...)" ./scripts/run_dev_attached.sh
 if [[ -n "${DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then

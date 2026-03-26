@@ -146,6 +146,28 @@ struct HistoryPresentationRecord: Identifiable {
     let timestampText: String
     let sourceName: String
     let previewText: String
+    let audioFilePath: String?
+    let transcriptText: String?
+    let personaPrompt: String?
+    let personaResultText: String?
+    let selectionOriginalText: String?
+    let selectionEditedText: String?
+    let errorMessage: String?
+    let applyMessage: String?
+    let hasTranscriptToCopy: Bool
+    let canRetry: Bool
+    let hasFailure: Bool
+    let failureMessage: String?
     let accentName: String
     let accentColorName: String
+}
+
+struct StudioPermissionRowModel: Identifiable, Equatable {
+    let id: PrivacyGuard.PermissionID
+    let title: String
+    let summary: String
+    let detail: String
+    let isGranted: Bool
+    let badgeText: String
+    let actionTitle: String
 }

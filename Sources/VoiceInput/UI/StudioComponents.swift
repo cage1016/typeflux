@@ -186,6 +186,7 @@ struct StudioButton: View {
     let title: String
     let systemImage: String?
     let variant: Variant
+    var isDisabled: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -203,11 +204,13 @@ struct StudioButton: View {
             .frame(minWidth: variant == .ghost ? nil : StudioTheme.ControlSize.buttonMinWidth)
             .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
         }
+        .disabled(isDisabled)
         .buttonStyle(StudioInteractiveButtonStyle())
         .foregroundStyle(foreground)
         .background(background)
         .overlay(overlay)
         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
+        .opacity(isDisabled ? 0.72 : 1)
     }
 
     @ViewBuilder
@@ -363,52 +366,149 @@ struct StudioTextInputCard: View {
 
 struct StudioHistoryRow: View {
     let record: HistoryPresentationRecord
+    let onCopyTranscript: (() -> Void)?
+    let onDownloadAudio: (() -> Void)?
+    let onDelete: (() -> Void)?
+    let onRetry: (() -> Void)?
+
+    @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-            HStack(spacing: StudioTheme.Spacing.smallMedium) {
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
                 Text(record.timestampText)
                     .font(.studioBody(StudioTheme.Typography.bodySmall))
                     .foregroundStyle(StudioTheme.textTertiary)
+                    .frame(width: 108, alignment: .leading)
 
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.historyBadge, style: .continuous)
-                    .fill(record.accentColor.opacity(StudioTheme.Opacity.historyAccent))
-                    .frame(width: StudioTheme.ControlSize.historyBadge, height: StudioTheme.ControlSize.historyBadge)
-                    .overlay(
-                        Image(systemName: record.accentName)
-                            .font(.system(size: StudioTheme.Typography.iconTiny, weight: .semibold))
-                            .foregroundStyle(record.accentColor)
-                    )
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    HStack(alignment: .top, spacing: StudioTheme.Spacing.xSmall) {
+                        Text(record.previewText)
+                            .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                            .foregroundStyle(record.hasFailure ? StudioTheme.danger : StudioTheme.textPrimary)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                Text(record.sourceName)
-                    .font(.studioBody(StudioTheme.Typography.body, weight: .medium))
-                    .foregroundStyle(StudioTheme.textPrimary)
+                        if record.hasFailure {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+                                .foregroundStyle(StudioTheme.danger)
+                                .padding(.top, 3)
+                                .help(record.failureMessage ?? "Processing failed.")
+                        }
+                    }
+                }
 
-                Spacer()
+                Spacer(minLength: StudioTheme.Spacing.small)
+
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    if let onCopyTranscript, record.hasTranscriptToCopy {
+                        historyIconButton(systemImage: "doc.on.doc", helpText: "复制转写文本", action: onCopyTranscript)
+                    }
+
+                    Menu {
+                        if let onRetry {
+                            Button("Retry", systemImage: "arrow.clockwise", action: onRetry)
+                                .disabled(!record.canRetry)
+                        }
+                        if let onDownloadAudio {
+                            Button("Download audio", systemImage: "arrow.down.circle", action: onDownloadAudio)
+                                .disabled(record.audioFilePath == nil)
+                        }
+                        Divider()
+                        if let onDelete {
+                            Button("Delete transcript", systemImage: "trash", role: .destructive, action: onDelete)
+                        }
+                    } label: {
+                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                            .fill(StudioTheme.surfaceMuted)
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.textSecondary)
+                            )
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                }
             }
 
-            Text(record.previewText)
-                .font(.studioBody(StudioTheme.Typography.bodyLarge))
-                .foregroundStyle(StudioTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if isExpanded {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
+                    historyDetailSection(title: "音频文件", content: record.sourceName)
+                    historyDetailSection(title: "原始音频路径", content: record.audioFilePath ?? "未生成音频文件")
+                    historyDetailSection(title: "模型原始转写", content: record.transcriptText, copyAction: record.hasTranscriptToCopy ? onCopyTranscript : nil)
+                    historyDetailSection(title: "Persona Prompt", content: record.personaPrompt)
+                    historyDetailSection(title: "Persona 处理结果", content: record.personaResultText)
+                    historyDetailSection(title: "选中文本", content: record.selectionOriginalText)
+                    historyDetailSection(title: "选中文本修改结果", content: record.selectionEditedText)
+                    historyDetailSection(title: "写入结果", content: record.applyMessage)
+                    historyDetailSection(title: "错误信息", content: record.errorMessage, emphasize: true)
+                }
+                .padding(.top, StudioTheme.Spacing.xSmall)
+            }
         }
         .padding(.horizontal, StudioTheme.Insets.historyRowHorizontal)
         .padding(.vertical, StudioTheme.Insets.historyRowVertical)
         .background(StudioTheme.surface)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isExpanded.toggle()
+        }
     }
-}
 
-private extension HistoryPresentationRecord {
-    var accentColor: Color {
-        switch accentColorName {
-        case "purple":
-            return StudioTheme.Colors.historyPurple.opacity(StudioTheme.Opacity.historyAccentStrong)
-        case "green":
-            return StudioTheme.Colors.historyGreen.opacity(StudioTheme.Opacity.historyAccentStrong)
-        case "orange":
-            return StudioTheme.Colors.historyOrange.opacity(StudioTheme.Opacity.historyAccentStrong)
-        default:
-            return StudioTheme.accent
+    private func historyIconButton(systemImage: String, helpText: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: StudioTheme.Typography.iconRegular, weight: .medium))
+                .foregroundStyle(StudioTheme.textSecondary)
+                .frame(width: 32, height: 32)
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+        .help(helpText)
+    }
+
+    @ViewBuilder
+    private func historyDetailSection(
+        title: String,
+        content: String?,
+        emphasize: Bool = false,
+        copyAction: (() -> Void)? = nil
+    ) -> some View {
+        if let content, !content.isEmpty {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
+                    Text(title)
+                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textTertiary)
+
+                    Spacer()
+
+                    if let copyAction {
+                        Button(action: copyAction) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                        }
+                        .buttonStyle(StudioInteractiveButtonStyle())
+                        .help("复制转写文本")
+                    }
+                }
+
+                Text(content)
+                    .font(.studioBody(StudioTheme.Typography.bodySmall))
+                    .foregroundStyle(emphasize ? StudioTheme.danger : StudioTheme.textPrimary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(StudioTheme.Insets.cardDense)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                    .fill(StudioTheme.surfaceMuted.opacity(0.72))
+            )
         }
     }
 }

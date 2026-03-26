@@ -3,6 +3,20 @@ import Foundation
 final class WorkflowController {
     private static let recordingTimeoutNanoseconds: UInt64 = 600_000_000_000 // 10 minutes
 
+    private enum ApplyOutcome {
+        case inserted
+        case copiedToClipboard
+
+        var message: String {
+            switch self {
+            case .inserted:
+                return "Applied to the active app."
+            case .copiedToClipboard:
+                return "Copied to the clipboard because direct insertion was unavailable."
+            }
+        }
+    }
+
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
     private let hotkeyService: HotkeyService
@@ -66,6 +80,19 @@ final class WorkflowController {
     func stop() {
         hotkeyService.stop()
         cancelRecording()
+    }
+
+    func retry(record: HistoryRecord) {
+        guard !isRecording else { return }
+
+        Task.detached { [weak self] in
+            guard let self else { return }
+            await MainActor.run {
+                self.appState.setStatus(.processing)
+                self.overlayController.showProcessing()
+            }
+            await self.reprocess(record: record)
+        }
     }
     
     /// Force cancel any ongoing recording
@@ -135,6 +162,15 @@ final class WorkflowController {
             }
         } catch {
             isRecording = false
+            var record = HistoryRecord(
+                date: Date(),
+                recordingStatus: .failed,
+                transcriptionStatus: .skipped,
+                processingStatus: .skipped,
+                applyStatus: .skipped
+            )
+            record.errorMessage = "Audio start failed: \(error.localizedDescription)"
+            historyStore.save(record: record)
             Task { @MainActor in
                 let msg = "Audio start failed: \(error.localizedDescription)"
                 appState.setStatus(.failed(message: "Audio start failed"))
@@ -164,57 +200,7 @@ final class WorkflowController {
 
         Task.detached { [weak self] in
             guard let self else { return }
-
-            do {
-                let audioFile = try self.audioRecorder.stop()
-                let transcribedText = try await self.sttRouter.transcribe(audioFile: audioFile)
-
-                let selectedText = await self.selectionTask?.value
-                self.currentSelectedText = selectedText
-                let activePersona = self.settingsStore.activePersona
-
-                if let selected = self.currentSelectedText, !selected.isEmpty {
-                    let finalText = try await self.generateRewrite(
-                        request: LLMRewriteRequest(
-                            mode: .editSelection,
-                            sourceText: selected,
-                            spokenInstruction: transcribedText,
-                            personaPrompt: activePersona?.prompt
-                        )
-                    )
-                    self.applyText(finalText, replace: true)
-                    self.historyStore.append(record: .init(date: Date(), text: finalText, audioFilePath: audioFile.fileURL.path))
-                } else if let activePersona {
-                    let finalText = try await self.generateRewrite(
-                        request: LLMRewriteRequest(
-                            mode: .rewriteTranscript,
-                            sourceText: transcribedText,
-                            spokenInstruction: nil,
-                            personaPrompt: activePersona.prompt
-                        )
-                    )
-                    self.applyText(finalText, replace: false)
-                    self.historyStore.append(record: .init(date: Date(), text: finalText, audioFilePath: audioFile.fileURL.path))
-                } else {
-                    self.applyText(transcribedText, replace: false)
-                    self.historyStore.append(record: .init(date: Date(), text: transcribedText, audioFilePath: audioFile.fileURL.path))
-                }
-
-                self.historyStore.purge(olderThanDays: 7)
-
-                await MainActor.run {
-                    self.appState.setStatus(.idle)
-                    self.overlayController.dismissSoon()
-                }
-            } catch {
-                let msg = "Processing failed: \(error.localizedDescription)"
-                ErrorLogStore.shared.log(msg)
-                await MainActor.run {
-                    self.appState.setStatus(.failed(message: "Processing failed"))
-                    self.overlayController.showFailure(message: msg)
-                    self.overlayController.dismiss(after: 3.0)
-                }
-            }
+            await self.finishRecordingAndProcess()
         }
     }
 
@@ -238,7 +224,7 @@ final class WorkflowController {
         return buffer.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func applyText(_ text: String, replace: Bool) {
+    private func applyText(_ text: String, replace: Bool) -> ApplyOutcome {
         clipboard.write(text: text)
 
         do {
@@ -247,12 +233,239 @@ final class WorkflowController {
             } else {
                 try textInjector.insert(text: text)
             }
+            return .inserted
         } catch {
             // Text is already in clipboard, just show a brief info (not an error)
             Task { @MainActor in
                 overlayController.updateStreamingText("已复制到剪贴板 (⌘V 粘贴)")
                 overlayController.dismiss(after: 2.0)
             }
+            return .copiedToClipboard
+        }
+    }
+
+    private func finishRecordingAndProcess() async {
+        do {
+            let audioFile = try audioRecorder.stop()
+            let selectedText = await selectionTask?.value?.trimmingCharacters(in: .whitespacesAndNewlines)
+            currentSelectedText = selectedText
+            let personaPrompt = settingsStore.activePersona?.prompt
+
+            let record = HistoryRecord(
+                date: Date(),
+                mode: inferredMode(selectedText: selectedText, personaPrompt: personaPrompt),
+                audioFilePath: audioFile.fileURL.path,
+                personaPrompt: personaPrompt,
+                selectionOriginalText: selectedText,
+                recordingStatus: .succeeded,
+                transcriptionStatus: .running,
+                processingStatus: .pending,
+                applyStatus: .pending
+            )
+            historyStore.save(record: record)
+
+            await process(audioFile: audioFile, record: record, selectedText: selectedText, personaPrompt: personaPrompt)
+        } catch {
+            let msg = "Processing failed: \(error.localizedDescription)"
+            ErrorLogStore.shared.log(msg)
+
+            var record = HistoryRecord(
+                date: Date(),
+                recordingStatus: .failed,
+                transcriptionStatus: .skipped,
+                processingStatus: .skipped,
+                applyStatus: .skipped
+            )
+            record.errorMessage = msg
+            historyStore.save(record: record)
+
+            await MainActor.run {
+                self.appState.setStatus(.failed(message: "Processing failed"))
+                self.overlayController.showFailure(message: msg)
+                self.overlayController.dismiss(after: 3.0)
+            }
+        }
+    }
+
+    private func reprocess(record: HistoryRecord) async {
+        guard let audioFilePath = record.audioFilePath, !audioFilePath.isEmpty else {
+            await failRetry(record: record, message: "Retry failed: audio file is missing.")
+            return
+        }
+
+        let audioURL = URL(fileURLWithPath: audioFilePath)
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            await failRetry(record: record, message: "Retry failed: audio file no longer exists.")
+            return
+        }
+
+        var mutableRecord = record
+        mutableRecord.date = Date()
+        mutableRecord.errorMessage = nil
+        mutableRecord.applyMessage = nil
+        mutableRecord.transcriptText = nil
+        mutableRecord.personaResultText = nil
+        mutableRecord.selectionEditedText = nil
+        mutableRecord.recordingStatus = .succeeded
+        mutableRecord.transcriptionStatus = .running
+        mutableRecord.processingStatus = .pending
+        mutableRecord.applyStatus = .pending
+        historyStore.save(record: mutableRecord)
+
+        let audioFile = AudioFile(fileURL: audioURL, duration: 0)
+        let selectedText = mutableRecord.selectionOriginalText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let personaPrompt = personaPrompt(for: mutableRecord)
+        await process(audioFile: audioFile, record: mutableRecord, selectedText: selectedText, personaPrompt: personaPrompt)
+    }
+
+    private func process(
+        audioFile: AudioFile,
+        record: HistoryRecord,
+        selectedText: String?,
+        personaPrompt: String?
+    ) async {
+        var record = record
+        do {
+            let transcribedText = try await sttRouter.transcribe(audioFile: audioFile)
+            record.transcriptText = transcribedText
+            record.transcriptionStatus = .succeeded
+            historyStore.save(record: record)
+
+            if let selectedText, !selectedText.isEmpty {
+                record.mode = .editSelection
+                record.processingStatus = .running
+                historyStore.save(record: record)
+
+                let finalText = try await generateRewrite(
+                    request: LLMRewriteRequest(
+                        mode: .editSelection,
+                        sourceText: selectedText,
+                        spokenInstruction: transcribedText,
+                        personaPrompt: personaPrompt
+                    )
+                )
+
+                record.selectionEditedText = finalText
+                record.processingStatus = .succeeded
+                record.applyStatus = .running
+                historyStore.save(record: record)
+
+                let outcome = applyText(finalText, replace: true)
+                record.applyStatus = .succeeded
+                record.applyMessage = outcome.message
+            } else if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                record.mode = .personaRewrite
+                record.processingStatus = .running
+                historyStore.save(record: record)
+
+                let finalText = try await generateRewrite(
+                    request: LLMRewriteRequest(
+                        mode: .rewriteTranscript,
+                        sourceText: transcribedText,
+                        spokenInstruction: nil,
+                        personaPrompt: personaPrompt
+                    )
+                )
+
+                record.personaResultText = finalText
+                record.processingStatus = .succeeded
+                record.applyStatus = .running
+                historyStore.save(record: record)
+
+                let outcome = applyText(finalText, replace: false)
+                record.applyStatus = .succeeded
+                record.applyMessage = outcome.message
+            } else {
+                record.mode = .dictation
+                record.processingStatus = .skipped
+                record.applyStatus = .running
+                historyStore.save(record: record)
+
+                let outcome = applyText(transcribedText, replace: false)
+                record.applyStatus = .succeeded
+                record.applyMessage = outcome.message
+            }
+
+            historyStore.save(record: record)
+            historyStore.purge(olderThanDays: 7)
+
+            await MainActor.run {
+                self.appState.setStatus(.idle)
+                self.overlayController.dismissSoon()
+            }
+        } catch {
+            let msg = "Processing failed: \(error.localizedDescription)"
+            ErrorLogStore.shared.log(msg)
+            markFailure(&record, message: msg)
+            historyStore.save(record: record)
+
+            await MainActor.run {
+                self.appState.setStatus(.failed(message: "Processing failed"))
+                self.overlayController.showFailure(message: msg)
+                self.overlayController.dismiss(after: 3.0)
+            }
+        }
+    }
+
+    private func failRetry(record: HistoryRecord, message: String) async {
+        ErrorLogStore.shared.log(message)
+        var mutableRecord = record
+        mutableRecord.errorMessage = message
+        if mutableRecord.audioFilePath == nil {
+            mutableRecord.recordingStatus = .failed
+        } else if mutableRecord.transcriptText == nil {
+            mutableRecord.transcriptionStatus = .failed
+        } else {
+            mutableRecord.processingStatus = .failed
+        }
+        historyStore.save(record: mutableRecord)
+
+        await MainActor.run {
+            self.appState.setStatus(.failed(message: "Processing failed"))
+            self.overlayController.showFailure(message: message)
+            self.overlayController.dismiss(after: 3.0)
+        }
+    }
+
+    private func markFailure(_ record: inout HistoryRecord, message: String) {
+        record.errorMessage = message
+        if record.transcriptionStatus == .running {
+            record.transcriptionStatus = .failed
+            record.processingStatus = .skipped
+            record.applyStatus = .skipped
+            return
+        }
+
+        if record.processingStatus == .running {
+            record.processingStatus = .failed
+            record.applyStatus = .skipped
+            return
+        }
+
+        if record.applyStatus == .running {
+            record.applyStatus = .failed
+            return
+        }
+
+        record.processingStatus = .failed
+    }
+
+    private func inferredMode(selectedText: String?, personaPrompt: String?) -> HistoryRecord.Mode {
+        if let selectedText, !selectedText.isEmpty {
+            return .editSelection
+        }
+
+        if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .personaRewrite
+        }
+
+        return .dictation
+    }
+
+    private func personaPrompt(for record: HistoryRecord) -> String? {
+        switch record.mode {
+        case .dictation, .editSelection, .personaRewrite:
+            return record.personaPrompt ?? settingsStore.activePersona?.prompt
         }
     }
 }

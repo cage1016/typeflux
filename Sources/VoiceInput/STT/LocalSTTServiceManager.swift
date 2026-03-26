@@ -95,6 +95,23 @@ final class LocalSTTServiceManager {
             source: nil
         ))
         try await ensurePackages(for: configuration)
+        if let existing = existingPreparedModelInfo(for: configuration) {
+            try savePreparedRecord(
+                LocalSTTPreparedRecord(
+                    model: configuration.model.rawValue,
+                    modelIdentifier: configuration.modelIdentifier,
+                    storagePath: existing.storagePath,
+                    source: existing.source.rawValue
+                )
+            )
+            onUpdate?(LocalSTTPreparationUpdate(
+                message: "\(configuration.model.displayName) is ready.",
+                progress: 1,
+                storagePath: existing.storagePath,
+                source: existing.source.displayName
+            ))
+            return
+        }
         onUpdate?(LocalSTTPreparationUpdate(
             message: "Downloading and preparing \(configuration.model.displayName)...",
             progress: 0.68,
@@ -120,16 +137,23 @@ final class LocalSTTServiceManager {
 
     func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo? {
         let configuration = normalizedConfiguration(from: settingsStore)
-        guard
+        if
             let record = loadPreparedRecord(for: configuration),
-            FileManager.default.fileExists(atPath: record.storagePath)
-        else {
+            modelExists(at: record.storagePath, for: configuration.model)
+        {
+            return LocalSTTPreparedModelInfo(
+                storagePath: record.storagePath,
+                sourceDisplayName: ModelDownloadSource(rawValue: record.source)?.displayName ?? "Unknown"
+            )
+        }
+
+        guard let existing = existingPreparedModelInfo(for: configuration) else {
             return nil
         }
 
         return LocalSTTPreparedModelInfo(
-            storagePath: record.storagePath,
-            sourceDisplayName: ModelDownloadSource(rawValue: record.source)?.displayName ?? "Unknown"
+            storagePath: existing.storagePath,
+            sourceDisplayName: existing.source.displayName
         )
     }
 
@@ -137,6 +161,14 @@ final class LocalSTTServiceManager {
         let configuration = normalizedConfiguration(from: settingsStore)
 
         if await isHealthy(for: configuration) {
+            return serverBaseURL
+        }
+
+        if preparedModelInfo(settingsStore: settingsStore) != nil {
+            try await ensurePythonEnvironment()
+            try await ensurePackages(for: configuration)
+            try startServer(with: configuration)
+            try await waitUntilHealthy(for: configuration)
             return serverBaseURL
         }
 
@@ -325,6 +357,46 @@ final class LocalSTTServiceManager {
             return modelsRootURL.appendingPathComponent("\(configuration.modelIdentifier).pt", isDirectory: false).path
         case .senseVoiceSmall, .qwen3ASR:
             return modelsRootURL.appendingPathComponent(configuration.modelIdentifier.replacingOccurrences(of: "/", with: "--"), isDirectory: true).path
+        }
+    }
+
+    private func existingPreparedModelInfo(for configuration: LocalSTTConfiguration) -> (storagePath: String, source: ModelDownloadSource)? {
+        let expectedPath = expectedStoragePath(for: configuration)
+        guard modelExists(at: expectedPath, for: configuration.model) else {
+            return nil
+        }
+
+        return (expectedPath, detectDownloadSource(forPath: expectedPath, model: configuration.model))
+    }
+
+    private func modelExists(at path: String, for model: LocalSTTModel) -> Bool {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+            return false
+        }
+
+        switch model {
+        case .whisperLocal:
+            return !isDirectory.boolValue
+        case .senseVoiceSmall, .qwen3ASR:
+            guard isDirectory.boolValue else {
+                return false
+            }
+
+            let children = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+            return !children.isEmpty
+        }
+    }
+
+    private func detectDownloadSource(forPath path: String, model: LocalSTTModel) -> ModelDownloadSource {
+        switch model {
+        case .whisperLocal:
+            return .huggingFace
+        case .senseVoiceSmall, .qwen3ASR:
+            let huggingFaceMarker = URL(fileURLWithPath: path)
+                .appendingPathComponent(".cache/huggingface", isDirectory: true)
+                .path
+            return FileManager.default.fileExists(atPath: huggingFaceMarker) ? .huggingFace : .modelScope
         }
     }
 

@@ -6,14 +6,21 @@ final class StatusBarController: NSObject {
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
     private let historyStore: HistoryStore
+    private let onRetryHistory: (HistoryRecord) -> Void
 
     private var statusItem: NSStatusItem?
     private var cancellables = Set<AnyCancellable>()
 
-    init(appState: AppStateStore, settingsStore: SettingsStore, historyStore: HistoryStore) {
+    init(
+        appState: AppStateStore,
+        settingsStore: SettingsStore,
+        historyStore: HistoryStore,
+        onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in }
+    ) {
         self.appState = appState
         self.settingsStore = settingsStore
         self.historyStore = historyStore
+        self.onRetryHistory = onRetryHistory
     }
 
     func start() {
@@ -70,7 +77,8 @@ final class StatusBarController: NSObject {
         SettingsWindowController.shared.show(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .settings
+            initialSection: .settings,
+            onRetryHistory: onRetryHistory
         )
     }
 
@@ -79,7 +87,8 @@ final class StatusBarController: NSObject {
         SettingsWindowController.shared.show(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .history
+            initialSection: .history,
+            onRetryHistory: onRetryHistory
         )
     }
 
