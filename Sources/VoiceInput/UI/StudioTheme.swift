@@ -73,19 +73,19 @@ enum StudioTheme {
     enum CornerRadius {
         static let small: CGFloat = 10
         static let medium: CGFloat = 12
-        static let large: CGFloat = 16
-        static let xLarge: CGFloat = 16
-        static let xxLarge: CGFloat = 18
-        static let hero: CGFloat = 22
+        static let large: CGFloat = 12
+        static let xLarge: CGFloat = 12
+        static let xxLarge: CGFloat = 12
+        static let hero: CGFloat = 12
         static let capsule: CGFloat = 999
         static let overlay: CGFloat = 12
         static let historyBadge: CGFloat = 8
         static let meter: CGFloat = 6
         static let miniMetricIcon: CGFloat = 10
-        static let promoIllustration: CGFloat = 18
-        static let architectureOption: CGFloat = 18
-        static let segmentedControl: CGFloat = 20
-        static let segmentedItem: CGFloat = 14
+        static let promoIllustration: CGFloat = 12
+        static let architectureOption: CGFloat = 12
+        static let segmentedControl: CGFloat = 12
+        static let segmentedItem: CGFloat = 12
     }
 
     enum BorderWidth {

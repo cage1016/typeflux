@@ -111,6 +111,24 @@ enum StudioModelDomain: String, CaseIterable, Identifiable {
     }
 }
 
+enum StudioModelProviderID: String, CaseIterable, Identifiable {
+    case appleSpeech
+    case whisperAPI
+    case ollama
+    case openAICompatible
+
+    var id: String { rawValue }
+
+    var domain: StudioModelDomain {
+        switch self {
+        case .appleSpeech, .whisperAPI:
+            return .stt
+        case .ollama, .openAICompatible:
+            return .llm
+        }
+    }
+}
+
 struct StudioModelCard: Identifiable {
     let id: String
     let name: String

@@ -7,6 +7,7 @@ final class StudioViewModel: ObservableObject {
     @Published var currentSection: StudioSection
     @Published var searchQuery = ""
     @Published var modelDomain: StudioModelDomain = .stt
+    @Published var focusedModelProvider: StudioModelProviderID
 
     @Published var sttProvider: STTProvider
     @Published var llmProvider: LLMProvider
@@ -59,6 +60,7 @@ final class StudioViewModel: ObservableObject {
         currentSection = initialSection
         sttProvider = settingsStore.sttProvider
         llmProvider = settingsStore.llmProvider
+        focusedModelProvider = settingsStore.sttProvider == .appleSpeech ? .appleSpeech : .whisperAPI
         appearanceMode = settingsStore.appearanceMode
         llmBaseURL = settingsStore.llmBaseURL
         llmModel = settingsStore.llmModel
@@ -217,11 +219,13 @@ final class StudioViewModel: ObservableObject {
     func setSTTProvider(_ provider: STTProvider) {
         sttProvider = provider
         settingsStore.sttProvider = provider
+        focusedModelProvider = provider == .appleSpeech ? .appleSpeech : .whisperAPI
     }
 
     func setLLMProvider(_ provider: LLMProvider) {
         llmProvider = provider
         settingsStore.llmProvider = provider
+        focusedModelProvider = provider == .ollama ? .ollama : .openAICompatible
     }
 
     func setSTTModelSelection(_ provider: STTProvider, suggestedModel: String) {
@@ -246,6 +250,12 @@ final class StudioViewModel: ObservableObject {
 
     func setModelDomain(_ domain: StudioModelDomain) {
         modelDomain = domain
+        focusedModelProvider = activeProvider(for: domain)
+    }
+
+    func focusModelProvider(_ provider: StudioModelProviderID) {
+        guard provider.domain == modelDomain else { return }
+        focusedModelProvider = provider
     }
 
     func setLLMBaseURL(_ value: String) { llmBaseURL = value; settingsStore.llmBaseURL = value }
@@ -379,6 +389,15 @@ final class StudioViewModel: ObservableObject {
 
     private func persistPersonas() {
         settingsStore.personas = personas
+    }
+
+    private func activeProvider(for domain: StudioModelDomain) -> StudioModelProviderID {
+        switch domain {
+        case .stt:
+            return sttProvider == .appleSpeech ? .appleSpeech : .whisperAPI
+        case .llm:
+            return llmProvider == .ollama ? .ollama : .openAICompatible
+        }
     }
 
     private func showToast(_ text: String) {

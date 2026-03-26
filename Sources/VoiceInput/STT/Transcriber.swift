@@ -19,14 +19,13 @@ final class STTRouter {
         switch settingsStore.sttProvider {
         case .whisperAPI:
             if !settingsStore.whisperBaseURL.isEmpty {
-                return try await whisper.transcribe(audioFile: audioFile)
+                do {
+                    return try await whisper.transcribe(audioFile: audioFile)
+                } catch {
+                    return try await appleSpeech.transcribe(audioFile: audioFile)
+                }
             }
-
-            if settingsStore.useAppleSpeechFallback {
-                return try await appleSpeech.transcribe(audioFile: audioFile)
-            }
-
-            throw NSError(domain: "STTRouter", code: 1, userInfo: [NSLocalizedDescriptionKey: "Whisper API is not configured."])
+            return try await appleSpeech.transcribe(audioFile: audioFile)
 
         case .appleSpeech:
             return try await appleSpeech.transcribe(audioFile: audioFile)

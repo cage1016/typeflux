@@ -143,44 +143,24 @@ struct StudioView: View {
             .frame(minHeight: StudioTheme.Layout.modelTabsMinHeight, alignment: .leading)
 
             HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
-                StudioCard {
-                    StudioSectionTitle(title: "Architecture Mode")
-                    Text(viewModel.currentArchitectureTitle)
-                        .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .semibold))
-                        .foregroundStyle(StudioTheme.textPrimary)
-                    Text(viewModel.currentArchitectureDescription)
-                        .font(.studioBody(StudioTheme.Typography.bodySmall))
-                        .foregroundStyle(StudioTheme.textSecondary)
-
-                    VStack(spacing: StudioTheme.Spacing.medium) {
-                        architectureModeButton(title: "Local Processing", subtitle: "On-device privacy", isActive: isLocalArchitecture)
-                        architectureModeButton(title: "Remote API", subtitle: "High-performance cloud", isActive: !isLocalArchitecture)
-                    }
-                }
-                .frame(width: StudioTheme.Layout.modelsArchitectureCardWidth)
-
-                VStack(spacing: StudioTheme.Spacing.xxLarge) {
-                    HStack(spacing: StudioTheme.Spacing.xxLarge) {
-                        ForEach(viewModel.architectureCards) { card in
-                            modelCard(card)
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: StudioTheme.Spacing.large),
+                            GridItem(.flexible(), spacing: StudioTheme.Spacing.large)
+                        ],
+                        alignment: .leading,
+                        spacing: StudioTheme.Spacing.large
+                    ) {
+                        ForEach(modelProviderCards) { card in
+                            modelProviderSelectionCard(card)
                         }
                     }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                    HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
-                        parameterCard
-                        actionCard
-                    }
-                }
-            }
-
-            HStack {
-                Spacer()
-                StudioButton(title: "Reset Changes", systemImage: nil, variant: .secondary) {
-                    viewModel.navigate(to: .models)
-                }
-                StudioButton(title: "Apply Configuration", systemImage: "bolt.fill", variant: .primary) {
-                    viewModel.applyModelConfiguration()
-                }
+                focusedProviderConfigurationPanel
+                    .frame(width: 320)
             }
         }
     }
@@ -188,9 +168,9 @@ struct StudioView: View {
     private func modelDomainTabTitle(for domain: StudioModelDomain) -> String {
         switch domain {
         case .stt:
-            return "听写"
+            return "Speech Provider"
         case .llm:
-            return "问任何问题"
+            return "LLM Providers"
         }
     }
 
@@ -441,16 +421,6 @@ struct StudioView: View {
                     subtitle: "Keep the recorder ready from the menu bar with your debug override hotkey."
                 ) {
                     Toggle("", isOn: Binding(get: { viewModel.enableFn }, set: viewModel.setEnableFn))
-                        .toggleStyle(.switch)
-                }
-
-                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                StudioSettingRow(
-                    title: "Use Apple Speech as Fallback",
-                    subtitle: "Drop back to the local system recognizer when Whisper is unavailable."
-                ) {
-                    Toggle("", isOn: Binding(get: { viewModel.appleSpeechFallback }, set: viewModel.setAppleSpeechFallback))
                         .toggleStyle(.switch)
                 }
             }
@@ -956,6 +926,523 @@ struct StudioView: View {
         default:
             break
         }
+    }
+
+    private var activeModelProviderID: StudioModelProviderID {
+        switch viewModel.modelDomain {
+        case .stt:
+            return viewModel.sttProvider == .appleSpeech ? .appleSpeech : .whisperAPI
+        case .llm:
+            return viewModel.llmProvider == .ollama ? .ollama : .openAICompatible
+        }
+    }
+
+    private var modelProviderCards: [StudioModelCard] {
+        switch viewModel.modelDomain {
+        case .stt:
+            return [
+                StudioModelCard(
+                    id: StudioModelProviderID.appleSpeech.rawValue,
+                    name: "Apple Speech",
+                    summary: "On-device speech recognition with the lowest setup cost and stable local performance.",
+                    badge: "Local",
+                    metadata: "Built into macOS",
+                    isSelected: viewModel.sttProvider == .appleSpeech,
+                    isMuted: false,
+                    actionTitle: "Use Local"
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.whisperAPI.rawValue,
+                    name: "Whisper API",
+                    summary: "Remote transcription through OpenAI-compatible endpoints with better model flexibility.",
+                    badge: "API",
+                    metadata: viewModel.whisperModel.isEmpty ? "Model not configured" : viewModel.whisperModel,
+                    isSelected: viewModel.sttProvider == .whisperAPI,
+                    isMuted: false,
+                    actionTitle: "Use Remote"
+                )
+            ]
+        case .llm:
+            return [
+                StudioModelCard(
+                    id: StudioModelProviderID.ollama.rawValue,
+                    name: "Local Ollama",
+                    summary: "Runs rewrite and edit commands locally, with optional automatic model preparation.",
+                    badge: "Local",
+                    metadata: viewModel.ollamaModel.isEmpty ? "Model not configured" : viewModel.ollamaModel,
+                    isSelected: viewModel.llmProvider == .ollama,
+                    isMuted: false,
+                    actionTitle: "Use Local"
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.openAICompatible.rawValue,
+                    name: "OpenAI-Compatible",
+                    summary: "Connect remote chat-completions providers for persona rewriting and editing workflows.",
+                    badge: "API",
+                    metadata: viewModel.llmModel.isEmpty ? "Model not configured" : viewModel.llmModel,
+                    isSelected: viewModel.llmProvider == .openAICompatible,
+                    isMuted: false,
+                    actionTitle: "Use Remote"
+                )
+            ]
+        }
+    }
+
+    private var modelOverviewPanel: some View {
+        StudioCard {
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    HStack(spacing: StudioTheme.Spacing.small) {
+                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                            .fill(StudioTheme.accentSoft)
+                            .frame(width: 46, height: 46)
+                            .overlay(
+                                Image(systemName: viewModel.modelDomain == .stt ? "waveform.and.mic" : "sparkles.rectangle.stack")
+                                    .foregroundStyle(StudioTheme.accent)
+                            )
+
+                        VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
+                            Text(modelOverviewTitle)
+                                .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            Text(modelOverviewSubtitle)
+                                .font(.studioBody(StudioTheme.Typography.body))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                        }
+                    }
+
+                    HStack(spacing: StudioTheme.Spacing.xSmall) {
+                        StudioPill(title: modelOverviewModePill, tone: modelOverviewModeTone, fill: modelOverviewModeFill)
+                        StudioPill(title: modelOverviewProviderPill)
+                        if let extraPill = modelOverviewExtraPill {
+                            StudioPill(title: extraPill)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: StudioTheme.Spacing.small) {
+                    Text(modelOverviewModelName)
+                        .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                    Text(modelOverviewModelHint)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                    StudioButton(title: "Edit current provider", systemImage: nil, variant: .secondary) {
+                        viewModel.focusModelProvider(activeModelProviderID)
+                    }
+                }
+            }
+        }
+    }
+
+    private var focusedProviderConfigurationPanel: some View {
+        StudioCard {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    StudioSectionTitle(title: "Provider configuration")
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                            Text(focusedProviderTitle)
+                                .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            Text(focusedProviderSubtitle)
+                                .font(.studioBody(StudioTheme.Typography.bodySmall))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                        }
+
+                        Spacer()
+
+                        StudioPill(
+                            title: viewModel.focusedModelProvider == activeModelProviderID ? "Current default" : "Available",
+                            tone: viewModel.focusedModelProvider == activeModelProviderID ? StudioTheme.success : StudioTheme.textSecondary,
+                            fill: viewModel.focusedModelProvider == activeModelProviderID ? StudioTheme.success.opacity(0.12) : StudioTheme.surfaceMuted
+                        )
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+                    switch viewModel.focusedModelProvider {
+                    case .appleSpeech:
+                        providerFactRow(title: "Processing", value: "Runs entirely on-device")
+                        providerFactRow(title: "Best for", value: "Fast dictation with no credentials")
+                    case .whisperAPI:
+                        providerFactRow(title: "Endpoint", value: viewModel.whisperBaseURL.isEmpty ? "Not configured yet" : viewModel.whisperBaseURL)
+                        providerFactRow(title: "Model", value: viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel)
+                    case .ollama:
+                        providerFactRow(title: "Endpoint", value: viewModel.ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : viewModel.ollamaBaseURL)
+                        providerFactRow(title: "Model", value: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
+                    case .openAICompatible:
+                        providerFactRow(title: "Endpoint", value: viewModel.llmBaseURL.isEmpty ? "Not configured yet" : viewModel.llmBaseURL)
+                        providerFactRow(title: "Model", value: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
+                    }
+                }
+                .padding(StudioTheme.Insets.cardCompact)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                        .fill(StudioTheme.surfaceMuted.opacity(0.72))
+                )
+
+                focusedProviderForm
+
+                if viewModel.focusedModelProvider == .ollama {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                        StudioButton(
+                            title: viewModel.isPreparingOllama ? "Preparing..." : "Prepare Local Model",
+                            systemImage: viewModel.isPreparingOllama ? nil : "arrow.down.circle",
+                            variant: .primary
+                        ) {
+                            viewModel.prepareOllamaModel()
+                        }
+
+                        Text(viewModel.ollamaStatus)
+                            .font(.studioBody(StudioTheme.Typography.caption))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                }
+
+                if viewModel.focusedModelProvider != activeModelProviderID {
+                    StudioButton(title: "Use as Default", systemImage: "checkmark.circle.fill", variant: .primary) {
+                        applyFocusedProviderAsDefault()
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var focusedProviderForm: some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+            switch viewModel.focusedModelProvider {
+            case .appleSpeech:
+                Text("Apple Speech is the quickest local option and requires no additional setup or downloads.")
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
+
+            case .whisperAPI:
+                StudioTextInputCard(label: "Transcription Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL))
+                StudioTextInputCard(label: "Model", placeholder: "whisper-1", text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel))
+                StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.whisperAPIKey }, set: viewModel.setWhisperAPIKey), secure: true)
+
+            case .ollama:
+                StudioTextInputCard(label: "Ollama Base URL", placeholder: "http://127.0.0.1:11434", text: Binding(get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL))
+                StudioTextInputCard(label: "Local Model", placeholder: "qwen2.5:7b", text: Binding(get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel))
+                Toggle("Automatically install or pull the model when missing", isOn: Binding(get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup))
+                    .toggleStyle(.switch)
+
+            case .openAICompatible:
+                StudioTextInputCard(label: "Chat Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL))
+                StudioTextInputCard(label: "Model", placeholder: "gpt-4o-mini", text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel))
+                StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey), secure: true)
+            }
+        }
+    }
+
+    private var modelRoutingPanel: some View {
+        StudioCard {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+                StudioSectionTitle(title: "Routing behaviour")
+                providerFactRow(title: modelRoutingPrimaryTitle, value: modelRoutingPrimaryValue)
+                if let title = modelRoutingSecondaryTitle, let value = modelRoutingSecondaryValue {
+                    providerFactRow(title: title, value: value)
+                }
+
+                HStack {
+                    StudioButton(title: "Apply Configuration", systemImage: "bolt.fill", variant: .primary) {
+                        viewModel.applyModelConfiguration()
+                    }
+                    if viewModel.modelDomain == .llm && viewModel.llmProvider == .ollama {
+                        StudioButton(title: "Prepare Ollama", systemImage: nil, variant: .secondary) {
+                            viewModel.prepareOllamaModel()
+                        }
+                    }
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    private func modelProviderSelectionCard(_ card: StudioModelCard) -> some View {
+        let providerID = StudioModelProviderID(rawValue: card.id) ?? activeModelProviderID
+        let isFocused = viewModel.focusedModelProvider == providerID
+
+        return Button {
+            viewModel.focusModelProvider(providerID)
+        } label: {
+            StudioCard {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+                    HStack(alignment: .top) {
+                        HStack(spacing: StudioTheme.Spacing.small) {
+                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                                .fill(isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
+                                .frame(width: 42, height: 42)
+                                .overlay(
+                                    Image(systemName: iconName(for: providerID))
+                                        .foregroundStyle(isFocused ? StudioTheme.accent : StudioTheme.textSecondary)
+                                )
+
+                            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
+                                Text(card.name)
+                                    .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.textPrimary)
+                                Text(card.badge)
+                                    .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.textSecondary)
+                            }
+                        }
+
+                        Spacer()
+
+                        Circle()
+                            .fill(card.isSelected ? StudioTheme.success : (providerIsConfigured(providerID) ? StudioTheme.warning : StudioTheme.border))
+                            .frame(width: 10, height: 10)
+                    }
+
+                    Text(card.summary)
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(card.metadata)
+                        .font(.studioBody(StudioTheme.Typography.body))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                        .lineLimit(1)
+
+                    HStack {
+                        if card.isSelected {
+                            StudioPill(title: "Current default", tone: StudioTheme.success, fill: StudioTheme.success.opacity(0.12))
+                        } else if providerIsConfigured(providerID) {
+                            StudioPill(title: "Configured", tone: StudioTheme.warning, fill: StudioTheme.warning.opacity(0.12))
+                        } else {
+                            StudioPill(title: "Needs setup")
+                        }
+                    }
+                }
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .stroke(isFocused ? StudioTheme.accent.opacity(0.62) : Color.clear, lineWidth: StudioTheme.BorderWidth.emphasis)
+            )
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+    }
+
+    private func providerFactRow(title: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
+            Text(title)
+                .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                .foregroundStyle(StudioTheme.textTertiary)
+                .frame(width: 86, alignment: .leading)
+
+            Text(value)
+                .font(.studioBody(StudioTheme.Typography.bodySmall))
+                .foregroundStyle(StudioTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func providerIsConfigured(_ provider: StudioModelProviderID) -> Bool {
+        switch provider {
+        case .appleSpeech:
+            return true
+        case .whisperAPI:
+            return !viewModel.whisperBaseURL.isEmpty && !viewModel.whisperModel.isEmpty
+        case .ollama:
+            return !viewModel.ollamaModel.isEmpty
+        case .openAICompatible:
+            return !viewModel.llmBaseURL.isEmpty && !viewModel.llmModel.isEmpty
+        }
+    }
+
+    private func applyFocusedProviderAsDefault() {
+        switch viewModel.focusedModelProvider {
+        case .appleSpeech:
+            viewModel.setSTTModelSelection(.appleSpeech, suggestedModel: viewModel.whisperModel)
+        case .whisperAPI:
+            viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel)
+        case .ollama:
+            viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
+            viewModel.prepareOllamaModel()
+        case .openAICompatible:
+            viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
+        }
+    }
+
+    private func iconName(for provider: StudioModelProviderID) -> String {
+        switch provider {
+        case .appleSpeech:
+            return "waveform"
+        case .whisperAPI:
+            return "dot.radiowaves.left.and.right"
+        case .ollama:
+            return "cpu"
+        case .openAICompatible:
+            return "sparkles"
+        }
+    }
+
+    private var modelProviderSectionTitle: String {
+        viewModel.modelDomain == .stt ? "Speech providers" : "LLM providers"
+    }
+
+    private var modelProviderSectionSubtitle: String {
+        viewModel.modelDomain == .stt
+            ? "Choose the recognizer you want to default to, then configure credentials and fallback without leaving this page."
+            : "Choose the runtime for rewrite and edit flows, then tune local or remote settings on the right."
+    }
+
+    private var modelOverviewTitle: String {
+        viewModel.modelDomain == .stt ? "Default transcription stack" : "Default rewrite stack"
+    }
+
+    private var modelOverviewSubtitle: String {
+        switch activeModelProviderID {
+        case .appleSpeech:
+            return "Voice input stays on-device for predictable startup and lower friction."
+        case .whisperAPI:
+            return "Speech recognition is routed to your configured remote transcription endpoint."
+        case .ollama:
+            return "Rewrite requests stay local and run through your Ollama runtime."
+        case .openAICompatible:
+            return "Rewrite requests are sent to your selected remote chat-completions provider."
+        }
+    }
+
+    private var modelOverviewProviderPill: String {
+        switch activeModelProviderID {
+        case .appleSpeech:
+            return "Apple Speech"
+        case .whisperAPI:
+            return "Whisper API"
+        case .ollama:
+            return "Ollama"
+        case .openAICompatible:
+            return "OpenAI-Compatible"
+        }
+    }
+
+    private var modelOverviewModePill: String {
+        switch activeModelProviderID {
+        case .appleSpeech, .ollama:
+            return "Local"
+        case .whisperAPI, .openAICompatible:
+            return "Remote"
+        }
+    }
+
+    private var modelOverviewModeTone: Color {
+        switch activeModelProviderID {
+        case .appleSpeech, .ollama:
+            return StudioTheme.success
+        case .whisperAPI, .openAICompatible:
+            return StudioTheme.accent
+        }
+    }
+
+    private var modelOverviewModeFill: Color {
+        switch activeModelProviderID {
+        case .appleSpeech, .ollama:
+            return StudioTheme.success.opacity(0.12)
+        case .whisperAPI, .openAICompatible:
+            return StudioTheme.accentSoft
+        }
+    }
+
+    private var modelOverviewExtraPill: String? {
+        if viewModel.modelDomain == .stt {
+            return viewModel.appleSpeechFallback ? "Fallback enabled" : "Fallback off"
+        }
+
+        return providerIsConfigured(activeModelProviderID) ? "Configured" : "Needs setup"
+    }
+
+    private var modelOverviewModelName: String {
+        switch activeModelProviderID {
+        case .appleSpeech:
+            return "Apple Speech"
+        case .whisperAPI:
+            return viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel
+        case .ollama:
+            return viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
+        case .openAICompatible:
+            return viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel
+        }
+    }
+
+    private var modelOverviewModelHint: String {
+        providerIsConfigured(activeModelProviderID) ? "Ready for use" : "Configuration still needed"
+    }
+
+    private var focusedProviderTitle: String {
+        switch viewModel.focusedModelProvider {
+        case .appleSpeech:
+            return "Apple Speech"
+        case .whisperAPI:
+            return "Whisper API"
+        case .ollama:
+            return "Local Ollama"
+        case .openAICompatible:
+            return "OpenAI-Compatible"
+        }
+    }
+
+    private var focusedProviderSubtitle: String {
+        switch viewModel.focusedModelProvider {
+        case .appleSpeech:
+            return "Use this when you want offline-first dictation with almost no setup."
+        case .whisperAPI:
+            return "Use this when you want better model control or your own speech gateway."
+        case .ollama:
+            return "Use this when local privacy matters for rewrite and editing flows."
+        case .openAICompatible:
+            return "Use this when you want flexible remote LLM access for rewriting and assistant actions."
+        }
+    }
+
+    private var modelRoutingPrimaryTitle: String {
+        viewModel.modelDomain == .stt ? "Primary recognizer" : "Primary runtime"
+    }
+
+    private var modelRoutingPrimaryValue: String {
+        switch activeModelProviderID {
+        case .appleSpeech:
+            return "Apple Speech handles dictation directly on your Mac."
+        case .whisperAPI:
+            return "Whisper API handles dictation through the configured transcription endpoint."
+        case .ollama:
+            return "Ollama handles rewrite and edit requests locally."
+        case .openAICompatible:
+            return "The remote chat-completions endpoint handles rewrite and edit requests."
+        }
+    }
+
+    private var modelRoutingSecondaryTitle: String? {
+        if viewModel.modelDomain == .stt {
+            return "Fallback"
+        }
+
+        return activeModelProviderID == .ollama ? "Local setup" : "Readiness"
+    }
+
+    private var modelRoutingSecondaryValue: String? {
+        if viewModel.modelDomain == .stt {
+            return viewModel.appleSpeechFallback
+                ? "If remote transcription fails, the app can fall back to Apple Speech automatically."
+                : "Automatic fallback is currently disabled."
+        }
+
+        if activeModelProviderID == .ollama {
+            return viewModel.ollamaAutoSetup
+                ? "Missing local models can be prepared automatically when needed."
+                : "Local model setup is manual until you enable auto preparation."
+        }
+
+        return providerIsConfigured(.openAICompatible)
+            ? "Remote endpoint and model are set. API key is optional in the current implementation."
+            : "Add a remote endpoint and model before using cloud rewrite."
     }
 
     private func debugLine(title: String, value: String) -> some View {
