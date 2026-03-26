@@ -42,6 +42,7 @@ enum StudioTheme {
         static let historyTimestampColumnWidth: CGFloat = 170
         static let historySourceColumnWidth: CGFloat = 280
         static let modelTabsMinHeight: CGFloat = 44
+        static let modelProviderListWidth: CGFloat = 264
     }
 
     enum Spacing {
@@ -182,6 +183,9 @@ enum StudioTheme {
         static let overviewBadgeSymbol: CGFloat = 14
         static let promoIllustration: CGFloat = 92
         static let architectureBadge: CGFloat = 52
+        static let modelProviderBadge: CGFloat = 36
+        static let modelProviderBadgeSymbol: CGFloat = 13
+        static let modelProviderStatusDot: CGFloat = 8
         static let selectionIndicator: CGFloat = 22
         static let selectionIndicatorInner: CGFloat = 10
         static let historyBadge: CGFloat = 26

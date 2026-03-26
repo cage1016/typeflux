@@ -142,25 +142,18 @@ struct StudioView: View {
             )
             .frame(minHeight: StudioTheme.Layout.modelTabsMinHeight, alignment: .leading)
 
-            HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
-                VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: StudioTheme.Spacing.large),
-                            GridItem(.flexible(), spacing: StudioTheme.Spacing.large)
-                        ],
-                        alignment: .leading,
-                        spacing: StudioTheme.Spacing.large
-                    ) {
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+                    LazyVStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
                         ForEach(modelProviderCards) { card in
                             modelProviderSelectionCard(card)
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(width: StudioTheme.Layout.modelProviderListWidth, alignment: .leading)
 
                 focusedProviderConfigurationPanel
-                    .frame(width: 320)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -439,10 +432,11 @@ struct StudioView: View {
                     Picker(
                         "",
                         selection: Binding(
-                            get: { viewModel.selectedPersonaID },
-                            set: viewModel.selectPersona
+                            get: { viewModel.defaultPersonaSelectionID },
+                            set: viewModel.setDefaultPersonaSelection
                         )
                     ) {
+                        Text("Do Not Use Persona").tag(UUID?.none)
                         ForEach(viewModel.personas) { persona in
                             Text(persona.name).tag(Optional(persona.id))
                         }
@@ -450,6 +444,14 @@ struct StudioView: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(
+                        viewModel.personaRewriteEnabled
+                            ? "Persona rewriting is enabled for new dictation sessions."
+                            : "Persona is off. Dictation will use the plain rewrite flow."
+                    )
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
 
                     StudioButton(title: "Open Personas", systemImage: nil, variant: .ghost) {
                         viewModel.navigate(to: .personas)
@@ -872,7 +874,7 @@ struct StudioView: View {
     private var isLocalArchitecture: Bool {
         switch viewModel.modelDomain {
         case .stt:
-            return viewModel.sttProvider == .appleSpeech
+            return viewModel.sttProvider == .appleSpeech || viewModel.sttProvider == .localModel
         case .llm:
             return viewModel.llmProvider == .ollama
         }
@@ -917,6 +919,8 @@ struct StudioView: View {
         switch card.id {
         case "apple-speech":
             viewModel.setSTTModelSelection(.appleSpeech, suggestedModel: viewModel.whisperModel)
+        case "local-stt":
+            viewModel.setSTTProvider(.localModel)
         case "whisper-api":
             viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel)
         case "ollama-local":
@@ -931,7 +935,14 @@ struct StudioView: View {
     private var activeModelProviderID: StudioModelProviderID {
         switch viewModel.modelDomain {
         case .stt:
-            return viewModel.sttProvider == .appleSpeech ? .appleSpeech : .whisperAPI
+            switch viewModel.sttProvider {
+            case .appleSpeech:
+                return .appleSpeech
+            case .localModel:
+                return .localSTT
+            case .whisperAPI:
+                return .whisperAPI
+            }
         case .llm:
             return viewModel.llmProvider == .ollama ? .ollama : .openAICompatible
         }
@@ -948,6 +959,16 @@ struct StudioView: View {
                     badge: "Local",
                     metadata: "Built into macOS",
                     isSelected: viewModel.sttProvider == .appleSpeech,
+                    isMuted: false,
+                    actionTitle: "Use Local"
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.localSTT.rawValue,
+                    name: "Local Models",
+                    summary: "Run Whisper, SenseVoice Small, or Qwen3-ASR locally through an embedded service runtime.",
+                    badge: "Local",
+                    metadata: viewModel.localSTTModelIdentifier.isEmpty ? viewModel.localSTTModel.defaultModelIdentifier : viewModel.localSTTModelIdentifier,
+                    isSelected: viewModel.sttProvider == .localModel,
                     isMuted: false,
                     actionTitle: "Use Local"
                 ),
@@ -1041,7 +1062,6 @@ struct StudioView: View {
         StudioCard {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    StudioSectionTitle(title: "Provider configuration")
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
                             Text(focusedProviderTitle)
@@ -1054,35 +1074,15 @@ struct StudioView: View {
 
                         Spacer()
 
-                        StudioPill(
-                            title: viewModel.focusedModelProvider == activeModelProviderID ? "Current default" : "Available",
-                            tone: viewModel.focusedModelProvider == activeModelProviderID ? StudioTheme.success : StudioTheme.textSecondary,
-                            fill: viewModel.focusedModelProvider == activeModelProviderID ? StudioTheme.success.opacity(0.12) : StudioTheme.surfaceMuted
-                        )
+                        if viewModel.focusedModelProvider == activeModelProviderID {
+                            StudioPill(
+                                title: "Active",
+                                tone: StudioTheme.success,
+                                fill: StudioTheme.success.opacity(0.12)
+                            )
+                        }
                     }
                 }
-
-                VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
-                    switch viewModel.focusedModelProvider {
-                    case .appleSpeech:
-                        providerFactRow(title: "Processing", value: "Runs entirely on-device")
-                        providerFactRow(title: "Best for", value: "Fast dictation with no credentials")
-                    case .whisperAPI:
-                        providerFactRow(title: "Endpoint", value: viewModel.whisperBaseURL.isEmpty ? "Not configured yet" : viewModel.whisperBaseURL)
-                        providerFactRow(title: "Model", value: viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel)
-                    case .ollama:
-                        providerFactRow(title: "Endpoint", value: viewModel.ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : viewModel.ollamaBaseURL)
-                        providerFactRow(title: "Model", value: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
-                    case .openAICompatible:
-                        providerFactRow(title: "Endpoint", value: viewModel.llmBaseURL.isEmpty ? "Not configured yet" : viewModel.llmBaseURL)
-                        providerFactRow(title: "Model", value: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
-                    }
-                }
-                .padding(StudioTheme.Insets.cardCompact)
-                .background(
-                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                        .fill(StudioTheme.surfaceMuted.opacity(0.72))
-                )
 
                 focusedProviderForm
 
@@ -1097,6 +1097,83 @@ struct StudioView: View {
                         }
 
                         Text(viewModel.ollamaStatus)
+                            .font(.studioBody(StudioTheme.Typography.caption))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                }
+
+                if viewModel.focusedModelProvider == .localSTT {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                        if !viewModel.isLocalSTTPrepared {
+                            StudioButton(
+                                title: viewModel.isPreparingLocalSTT ? "Preparing..." : "Prepare Local Speech Model",
+                                systemImage: viewModel.isPreparingLocalSTT ? nil : "arrow.down.circle",
+                                variant: .primary
+                            ) {
+                                viewModel.prepareLocalSTTModel()
+                            }
+                        }
+
+                        HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
+                            ProgressView(value: viewModel.localSTTPreparationProgress, total: 1)
+                                .progressViewStyle(.linear)
+                                .tint(viewModel.localSTTPreparationTint)
+
+                            Text(viewModel.localSTTPreparationPercentText)
+                                .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .frame(width: 40, alignment: .trailing)
+                        }
+
+                        Text(viewModel.localSTTPreparationDetail)
+                            .font(.studioBody(StudioTheme.Typography.caption))
+                            .foregroundStyle(StudioTheme.textSecondary)
+
+                        VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
+                            HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
+                                Text("Storage Path")
+                                    .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.textSecondary)
+
+                                Spacer(minLength: 0)
+
+                                Button {
+                                    viewModel.copyLocalSTTStoragePath()
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                        .frame(width: 28, height: 28)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                                                .fill(StudioTheme.surfaceMuted)
+                                        )
+                                }
+                                .buttonStyle(StudioInteractiveButtonStyle())
+
+                                Button {
+                                    viewModel.openLocalSTTStorageFolder()
+                                } label: {
+                                    Image(systemName: "folder")
+                                        .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                        .frame(width: 28, height: 28)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                                                .fill(StudioTheme.surfaceMuted)
+                                        )
+                                }
+                                .buttonStyle(StudioInteractiveButtonStyle())
+                            }
+
+                            Text(viewModel.localSTTStoragePath)
+                                .font(.studioMono(StudioTheme.Typography.caption))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Text(viewModel.localSTTStatus)
                             .font(.studioBody(StudioTheme.Typography.caption))
                             .foregroundStyle(StudioTheme.textSecondary)
                     }
@@ -1119,6 +1196,30 @@ struct StudioView: View {
                 Text("Apple Speech is the quickest local option and requires no additional setup or downloads.")
                     .font(.studioBody(StudioTheme.Typography.caption))
                     .foregroundStyle(StudioTheme.textSecondary)
+
+            case .localSTT:
+                Picker(
+                    "Local Model",
+                    selection: Binding(get: { viewModel.localSTTModel }, set: viewModel.setLocalSTTModel)
+                ) {
+                    ForEach(LocalSTTModel.allCases, id: \.self) { model in
+                        Text(model.displayName).tag(model)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                StudioTextInputCard(
+                    label: "Model Identifier",
+                    placeholder: viewModel.localSTTModel.defaultModelIdentifier,
+                    text: Binding(get: { viewModel.localSTTModelIdentifier }, set: viewModel.setLocalSTTModelIdentifier)
+                )
+
+                Text("Downloads use automatic fallback: ModelScope first, then Hugging Face if needed.")
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
+
+                Toggle("Automatically install runtime and download model when missing", isOn: Binding(get: { viewModel.localSTTAutoSetup }, set: viewModel.setLocalSTTAutoSetup))
+                    .toggleStyle(.switch)
 
             case .whisperAPI:
                 StudioTextInputCard(label: "Transcription Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL))
@@ -1170,52 +1271,52 @@ struct StudioView: View {
         return Button {
             viewModel.focusModelProvider(providerID)
         } label: {
-            StudioCard {
-                VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
-                    HStack(alignment: .top) {
-                        HStack(spacing: StudioTheme.Spacing.small) {
-                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                                .fill(isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
-                                .frame(width: 42, height: 42)
-                                .overlay(
-                                    Image(systemName: iconName(for: providerID))
-                                        .foregroundStyle(isFocused ? StudioTheme.accent : StudioTheme.textSecondary)
-                                )
+            StudioCard(padding: StudioTheme.Insets.cardCompact) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                    HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
+                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                            .fill(isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
+                            .frame(width: StudioTheme.ControlSize.modelProviderBadge, height: StudioTheme.ControlSize.modelProviderBadge)
+                            .overlay(
+                                Image(systemName: iconName(for: providerID))
+                                    .font(.system(size: StudioTheme.ControlSize.modelProviderBadgeSymbol, weight: .semibold))
+                                    .foregroundStyle(isFocused ? StudioTheme.accent : StudioTheme.textSecondary)
+                            )
 
-                            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
-                                Text(card.name)
-                                    .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
-                                    .foregroundStyle(StudioTheme.textPrimary)
-                                Text(card.badge)
-                                    .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
-                                    .foregroundStyle(StudioTheme.textSecondary)
-                            }
-                        }
+                        Text(card.name)
+                            .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                            .lineLimit(1)
 
-                        Spacer()
+                        StudioPill(title: card.badge)
+
+                        Spacer(minLength: 0)
 
                         Circle()
-                            .fill(card.isSelected ? StudioTheme.success : (providerIsConfigured(providerID) ? StudioTheme.warning : StudioTheme.border))
-                            .frame(width: 10, height: 10)
+                            .fill(card.isSelected ? StudioTheme.success : StudioTheme.border)
+                            .frame(width: StudioTheme.ControlSize.modelProviderStatusDot, height: StudioTheme.ControlSize.modelProviderStatusDot)
                     }
 
                     Text(card.summary)
-                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .font(.studioBody(StudioTheme.Typography.caption))
                         .foregroundStyle(StudioTheme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(2)
 
-                    Text(card.metadata)
-                        .font(.studioBody(StudioTheme.Typography.body))
-                        .foregroundStyle(StudioTheme.textPrimary)
-                        .lineLimit(1)
+                    HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
+                        Text(card.metadata)
+                            .font(.studioBody(StudioTheme.Typography.bodySmall))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                            .lineLimit(1)
 
-                    HStack {
+                        Spacer(minLength: 0)
+
                         if card.isSelected {
-                            StudioPill(title: "Current default", tone: StudioTheme.success, fill: StudioTheme.success.opacity(0.12))
-                        } else if providerIsConfigured(providerID) {
-                            StudioPill(title: "Configured", tone: StudioTheme.warning, fill: StudioTheme.warning.opacity(0.12))
-                        } else {
-                            StudioPill(title: "Needs setup")
+                            StudioPill(
+                                title: "Active",
+                                tone: StudioTheme.success,
+                                fill: StudioTheme.success.opacity(0.12)
+                            )
                         }
                     }
                 }
@@ -1248,6 +1349,8 @@ struct StudioView: View {
         switch provider {
         case .appleSpeech:
             return true
+        case .localSTT:
+            return !viewModel.localSTTModelIdentifier.isEmpty
         case .whisperAPI:
             return !viewModel.whisperBaseURL.isEmpty && !viewModel.whisperModel.isEmpty
         case .ollama:
@@ -1261,6 +1364,11 @@ struct StudioView: View {
         switch viewModel.focusedModelProvider {
         case .appleSpeech:
             viewModel.setSTTModelSelection(.appleSpeech, suggestedModel: viewModel.whisperModel)
+        case .localSTT:
+            viewModel.setSTTProvider(.localModel)
+            if viewModel.localSTTAutoSetup {
+                viewModel.prepareLocalSTTModel()
+            }
         case .whisperAPI:
             viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel)
         case .ollama:
@@ -1275,6 +1383,8 @@ struct StudioView: View {
         switch provider {
         case .appleSpeech:
             return "waveform"
+        case .localSTT:
+            return "waveform.circle"
         case .whisperAPI:
             return "dot.radiowaves.left.and.right"
         case .ollama:
@@ -1302,6 +1412,8 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech:
             return "Voice input stays on-device for predictable startup and lower friction."
+        case .localSTT:
+            return "Speech recognition is handled by a local runtime with curated downloadable models."
         case .whisperAPI:
             return "Speech recognition is routed to your configured remote transcription endpoint."
         case .ollama:
@@ -1315,6 +1427,8 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech:
             return "Apple Speech"
+        case .localSTT:
+            return "Local Model"
         case .whisperAPI:
             return "Whisper API"
         case .ollama:
@@ -1326,7 +1440,7 @@ struct StudioView: View {
 
     private var modelOverviewModePill: String {
         switch activeModelProviderID {
-        case .appleSpeech, .ollama:
+        case .appleSpeech, .localSTT, .ollama:
             return "Local"
         case .whisperAPI, .openAICompatible:
             return "Remote"
@@ -1335,7 +1449,7 @@ struct StudioView: View {
 
     private var modelOverviewModeTone: Color {
         switch activeModelProviderID {
-        case .appleSpeech, .ollama:
+        case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success
         case .whisperAPI, .openAICompatible:
             return StudioTheme.accent
@@ -1344,7 +1458,7 @@ struct StudioView: View {
 
     private var modelOverviewModeFill: Color {
         switch activeModelProviderID {
-        case .appleSpeech, .ollama:
+        case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success.opacity(0.12)
         case .whisperAPI, .openAICompatible:
             return StudioTheme.accentSoft
@@ -1363,6 +1477,8 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech:
             return "Apple Speech"
+        case .localSTT:
+            return viewModel.localSTTModelIdentifier.isEmpty ? viewModel.localSTTModel.defaultModelIdentifier : viewModel.localSTTModelIdentifier
         case .whisperAPI:
             return viewModel.whisperModel.isEmpty ? "whisper-1" : viewModel.whisperModel
         case .ollama:
@@ -1380,6 +1496,8 @@ struct StudioView: View {
         switch viewModel.focusedModelProvider {
         case .appleSpeech:
             return "Apple Speech"
+        case .localSTT:
+            return "Local Speech Models"
         case .whisperAPI:
             return "Whisper API"
         case .ollama:
@@ -1393,6 +1511,8 @@ struct StudioView: View {
         switch viewModel.focusedModelProvider {
         case .appleSpeech:
             return "Use this when you want offline-first dictation with almost no setup."
+        case .localSTT:
+            return "Use this when you want downloadable local ASR models with better multilingual coverage than the system recognizer."
         case .whisperAPI:
             return "Use this when you want better model control or your own speech gateway."
         case .ollama:
@@ -1410,6 +1530,8 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech:
             return "Apple Speech handles dictation directly on your Mac."
+        case .localSTT:
+            return "The embedded local STT service handles dictation with your selected downloadable model."
         case .whisperAPI:
             return "Whisper API handles dictation through the configured transcription endpoint."
         case .ollama:

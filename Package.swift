@@ -15,6 +15,9 @@ let package = Package(
             path: "Sources/VoiceInput",
             exclude: [
                 "Resources/Info.plist"
+            ],
+            resources: [
+                .process("Resources")
             ]
         )
     ]

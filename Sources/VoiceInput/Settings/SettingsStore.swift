@@ -72,6 +72,35 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "stt.whisper.apiKey") }
     }
 
+    var localSTTModel: LocalSTTModel {
+        get {
+            let raw = defaults.string(forKey: "stt.local.model") ?? LocalSTTModel.whisperLocal.rawValue
+            return LocalSTTModel(rawValue: raw) ?? .whisperLocal
+        }
+        set { defaults.set(newValue.rawValue, forKey: "stt.local.model") }
+    }
+
+    var localSTTModelIdentifier: String {
+        get {
+            let fallback = localSTTModel.defaultModelIdentifier
+            return defaults.string(forKey: "stt.local.modelIdentifier") ?? fallback
+        }
+        set { defaults.set(newValue, forKey: "stt.local.modelIdentifier") }
+    }
+
+    var localSTTDownloadSource: ModelDownloadSource {
+        get {
+            let raw = defaults.string(forKey: "stt.local.downloadSource") ?? localSTTModel.recommendedDownloadSource.rawValue
+            return ModelDownloadSource(rawValue: raw) ?? localSTTModel.recommendedDownloadSource
+        }
+        set { defaults.set(newValue.rawValue, forKey: "stt.local.downloadSource") }
+    }
+
+    var localSTTAutoSetup: Bool {
+        get { defaults.object(forKey: "stt.local.autoSetup") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "stt.local.autoSetup") }
+    }
+
     var personaRewriteEnabled: Bool {
         get { defaults.object(forKey: "persona.enabled") as? Bool ?? false }
         set { defaults.set(newValue, forKey: "persona.enabled") }

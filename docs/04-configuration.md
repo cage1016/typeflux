@@ -8,13 +8,18 @@
 - 立即生效：设置页写入后触发 `HotkeyService.updateBindings(...)`
 
 ### STT
-- `stt.provider: enum`：`whisperAPI` / `appleSpeech`
+- `stt.provider: enum`：`whisperAPI` / `appleSpeech` / `localModel`
 - Whisper（OpenAI-compatible transcriptions）
   - `stt.whisper.baseURL`
   - `stt.whisper.apiKey`
   - `stt.whisper.model`
 - Apple Speech
   - `stt.appleSpeech.enabled`
+- Local STT
+  - `stt.local.model`
+  - `stt.local.modelIdentifier`
+  - `stt.local.downloadSource`
+  - `stt.local.autoSetup`
 
 ### LLM
 - `llm.provider: enum`：`openAICompatible` / `ollama`
@@ -36,6 +41,7 @@
 - 当 `stt.provider == whisperAPI` 且 Whisper 配置完整：使用 Whisper API
 - 当 `stt.provider == whisperAPI` 但配置不完整且允许 fallback：使用 Apple Speech
 - 当 `stt.provider == appleSpeech`：直接使用 Apple Speech
+- 当 `stt.provider == localModel`：按需准备本地 Python 运行时、下载模型并启动本地转写服务
 - 当 `llm.provider == openAICompatible`：使用远程或自建 OpenAI-compatible Chat API
 - 当 `llm.provider == ollama`：自动检查本地 Ollama 服务、按需拉起服务并拉取模型
 

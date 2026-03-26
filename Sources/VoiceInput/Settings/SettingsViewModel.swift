@@ -26,6 +26,17 @@ final class StudioViewModel: ObservableObject {
     @Published var whisperBaseURL: String
     @Published var whisperModel: String
     @Published var whisperAPIKey: String
+    @Published var localSTTModel: LocalSTTModel
+    @Published var localSTTModelIdentifier: String
+    @Published var localSTTDownloadSource: ModelDownloadSource
+    @Published var localSTTAutoSetup: Bool
+    @Published var localSTTStatus = "Local speech model has not been prepared yet."
+    @Published var localSTTPreparationProgress: Double = 0
+    @Published var localSTTPreparationDetail = "Waiting to prepare local speech model."
+    @Published var localSTTStoragePath: String
+    @Published var localSTTPreparedSource = "Automatic"
+    @Published var isLocalSTTPrepared = false
+    @Published var isPreparingLocalSTT = false
 
     @Published var enableFn: Bool
     @Published var appleSpeechFallback: Bool
@@ -44,23 +55,33 @@ final class StudioViewModel: ObservableObject {
     private let settingsStore: SettingsStore
     private let historyStore: HistoryStore
     private let modelManager: OllamaLocalModelManager
+    private let localSTTServiceManager: LocalSTTServiceManager
 
     init(
         settingsStore: SettingsStore,
         historyStore: HistoryStore,
         initialSection: StudioSection,
-        modelManager: OllamaLocalModelManager = OllamaLocalModelManager()
+        modelManager: OllamaLocalModelManager = OllamaLocalModelManager(),
+        localSTTServiceManager: LocalSTTServiceManager = LocalSTTServiceManager()
     ) {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
         self.modelManager = modelManager
+        self.localSTTServiceManager = localSTTServiceManager
 
         let currentPersonas = settingsStore.personas
 
         currentSection = initialSection
         sttProvider = settingsStore.sttProvider
         llmProvider = settingsStore.llmProvider
-        focusedModelProvider = settingsStore.sttProvider == .appleSpeech ? .appleSpeech : .whisperAPI
+        switch settingsStore.sttProvider {
+        case .appleSpeech:
+            focusedModelProvider = .appleSpeech
+        case .localModel:
+            focusedModelProvider = .localSTT
+        case .whisperAPI:
+            focusedModelProvider = .whisperAPI
+        }
         appearanceMode = settingsStore.appearanceMode
         llmBaseURL = settingsStore.llmBaseURL
         llmModel = settingsStore.llmModel
@@ -71,6 +92,11 @@ final class StudioViewModel: ObservableObject {
         whisperBaseURL = settingsStore.whisperBaseURL
         whisperModel = settingsStore.whisperModel
         whisperAPIKey = settingsStore.whisperAPIKey
+        localSTTModel = settingsStore.localSTTModel
+        localSTTModelIdentifier = settingsStore.localSTTModelIdentifier
+        localSTTDownloadSource = settingsStore.localSTTDownloadSource
+        localSTTAutoSetup = settingsStore.localSTTAutoSetup
+        localSTTStoragePath = ""
         enableFn = settingsStore.enableFnHotkey
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
@@ -79,6 +105,8 @@ final class StudioViewModel: ObservableObject {
         activePersonaID = settingsStore.activePersonaID
         customHotkeys = settingsStore.customHotkeys
         historyRecords = historyStore.list()
+        refreshLocalSTTStoragePath()
+        refreshLocalSTTPreparedState()
     }
 
     var preferredColorScheme: ColorScheme? {
@@ -87,6 +115,22 @@ final class StudioViewModel: ObservableObject {
         case .light: return .light
         case .dark: return .dark
         }
+    }
+
+    var localSTTPreparationPercentText: String {
+        "\(Int((localSTTPreparationProgress * 100).rounded()))%"
+    }
+
+    var localSTTPreparationTint: Color {
+        if isLocalSTTPrepared {
+            return StudioTheme.success
+        }
+
+        if localSTTStatus.hasPrefix("Failed:") {
+            return StudioTheme.danger
+        }
+
+        return StudioTheme.accent
     }
 
     var displayedHistory: [HistoryPresentationRecord] {
@@ -146,6 +190,16 @@ final class StudioViewModel: ObservableObject {
                     actionTitle: sttProvider == .appleSpeech ? "Selected" : "Use Local"
                 ),
                 StudioModelCard(
+                    id: "local-stt",
+                    name: "Local Models",
+                    summary: "Run curated local speech models such as Whisper, SenseVoice, or Qwen3-ASR through an embedded service.",
+                    badge: "Local",
+                    metadata: localSTTModelIdentifier.isEmpty ? localSTTModel.defaultModelIdentifier : localSTTModelIdentifier,
+                    isSelected: sttProvider == .localModel,
+                    isMuted: false,
+                    actionTitle: sttProvider == .localModel ? "Selected" : "Use Local"
+                ),
+                StudioModelCard(
                     id: "whisper-api",
                     name: "Whisper API",
                     summary: "Cloud or gateway-backed transcription using OpenAI-compatible APIs.",
@@ -186,7 +240,12 @@ final class StudioViewModel: ObservableObject {
     var currentArchitectureTitle: String {
         switch modelDomain {
         case .stt:
-            return sttProvider == .appleSpeech ? "Local Processing" : "Remote API"
+            switch sttProvider {
+            case .appleSpeech, .localModel:
+                return "Local Processing"
+            case .whisperAPI:
+                return "Remote API"
+            }
         case .llm:
             return llmProvider == .ollama ? "Local Processing" : "Remote API"
         }
@@ -195,7 +254,14 @@ final class StudioViewModel: ObservableObject {
     var currentArchitectureDescription: String {
         switch modelDomain {
         case .stt:
-            return sttProvider == .appleSpeech ? "Using on-device speech recognition." : "Using OpenAI-compatible transcription services."
+            switch sttProvider {
+            case .appleSpeech:
+                return "Using on-device speech recognition."
+            case .localModel:
+                return "Using a local Python-backed speech model."
+            case .whisperAPI:
+                return "Using OpenAI-compatible transcription services."
+            }
         case .llm:
             return llmProvider == .ollama ? "Using local Ollama generation." : "Using remote chat-completion endpoints."
         }
@@ -219,7 +285,14 @@ final class StudioViewModel: ObservableObject {
     func setSTTProvider(_ provider: STTProvider) {
         sttProvider = provider
         settingsStore.sttProvider = provider
-        focusedModelProvider = provider == .appleSpeech ? .appleSpeech : .whisperAPI
+        switch provider {
+        case .appleSpeech:
+            focusedModelProvider = .appleSpeech
+        case .localModel:
+            focusedModelProvider = .localSTT
+        case .whisperAPI:
+            focusedModelProvider = .whisperAPI
+        }
     }
 
     func setLLMProvider(_ provider: LLMProvider) {
@@ -234,6 +307,21 @@ final class StudioViewModel: ObservableObject {
             whisperModel = suggestedModel
             settingsStore.whisperModel = suggestedModel
         }
+    }
+
+    func setLocalSTTModel(_ value: LocalSTTModel) {
+        localSTTModel = value
+        settingsStore.localSTTModel = value
+
+        let recommendedIdentifier = value.defaultModelIdentifier
+        localSTTModelIdentifier = recommendedIdentifier
+        settingsStore.localSTTModelIdentifier = recommendedIdentifier
+
+        let recommendedSource = value.recommendedDownloadSource
+        localSTTDownloadSource = recommendedSource
+        settingsStore.localSTTDownloadSource = recommendedSource
+        refreshLocalSTTStoragePath()
+        refreshLocalSTTPreparedState()
     }
 
     func setLLMModelSelection(_ provider: LLMProvider, suggestedModel: String) {
@@ -267,9 +355,37 @@ final class StudioViewModel: ObservableObject {
     func setWhisperBaseURL(_ value: String) { whisperBaseURL = value; settingsStore.whisperBaseURL = value }
     func setWhisperModel(_ value: String) { whisperModel = value; settingsStore.whisperModel = value }
     func setWhisperAPIKey(_ value: String) { whisperAPIKey = value; settingsStore.whisperAPIKey = value }
+    func setLocalSTTModelIdentifier(_ value: String) {
+        localSTTModelIdentifier = value
+        settingsStore.localSTTModelIdentifier = value
+        refreshLocalSTTStoragePath()
+        refreshLocalSTTPreparedState()
+    }
+    func setLocalSTTDownloadSource(_ value: ModelDownloadSource) { localSTTDownloadSource = value; settingsStore.localSTTDownloadSource = value }
+    func setLocalSTTAutoSetup(_ value: Bool) { localSTTAutoSetup = value; settingsStore.localSTTAutoSetup = value }
     func setEnableFn(_ value: Bool) { enableFn = value; settingsStore.enableFnHotkey = value }
     func setAppleSpeechFallback(_ value: Bool) { appleSpeechFallback = value; settingsStore.useAppleSpeechFallback = value }
     func setPersonaRewriteEnabled(_ value: Bool) { personaRewriteEnabled = value; settingsStore.personaRewriteEnabled = value }
+
+    var defaultPersonaSelectionID: UUID? {
+        guard personaRewriteEnabled else { return nil }
+        return UUID(uuidString: activePersonaID) ?? selectedPersonaID
+    }
+
+    func setDefaultPersonaSelection(_ id: UUID?) {
+        guard let id else {
+            setPersonaRewriteEnabled(false)
+            return
+        }
+
+        settingsStore.activePersonaID = id.uuidString
+        activePersonaID = id.uuidString
+        selectedPersonaID = id
+
+        if !personaRewriteEnabled {
+            setPersonaRewriteEnabled(true)
+        }
+    }
 
     func selectPersona(_ id: UUID?) {
         selectedPersonaID = id
@@ -355,6 +471,50 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    func prepareLocalSTTModel() {
+        guard !isPreparingLocalSTT else { return }
+
+        isPreparingLocalSTT = true
+        localSTTStatus = "Preparing local speech model..."
+        localSTTPreparationProgress = 0.02
+        localSTTPreparationDetail = "Preparing local speech model..."
+        isLocalSTTPrepared = false
+        localSTTPreparedSource = "Automatic"
+        refreshLocalSTTStoragePath()
+
+        settingsStore.localSTTModel = localSTTModel
+        settingsStore.localSTTModelIdentifier = localSTTModelIdentifier
+        settingsStore.localSTTDownloadSource = localSTTDownloadSource
+        settingsStore.localSTTAutoSetup = localSTTAutoSetup
+
+        Task {
+            do {
+                try await localSTTServiceManager.prepareModel(settingsStore: settingsStore) { [weak self] update in
+                    Task { @MainActor in
+                        self?.localSTTPreparationProgress = update.progress
+                        self?.localSTTPreparationDetail = update.message
+                        self?.localSTTStoragePath = update.storagePath
+                        if let source = update.source {
+                            self?.localSTTPreparedSource = source
+                        }
+                    }
+                }
+                localSTTStatus = "\(localSTTModel.displayName) is ready."
+                localSTTPreparationProgress = 1
+                localSTTPreparationDetail = "Download complete. Local speech model is ready."
+                isLocalSTTPrepared = true
+                refreshLocalSTTPreparedState()
+                showToast("Local speech model is ready.")
+            } catch {
+                localSTTStatus = "Failed: \(error.localizedDescription)"
+                localSTTPreparationDetail = "Preparation failed."
+                isLocalSTTPrepared = false
+                showToast("Local speech model preparation failed.")
+            }
+            isPreparingLocalSTT = false
+        }
+    }
+
     func exportHistory() {
         do {
             let url = try historyStore.exportMarkdown()
@@ -373,6 +533,18 @@ final class StudioViewModel: ObservableObject {
 
     func applyModelConfiguration() {
         showToast("Configuration saved.")
+    }
+
+    func copyLocalSTTStoragePath() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(localSTTStoragePath, forType: .string)
+        showToast("Storage path copied.")
+    }
+
+    func openLocalSTTStorageFolder() {
+        let storageURL = URL(fileURLWithPath: localSTTStoragePath)
+        let targetURL = storageURL.hasDirectoryPath ? storageURL : storageURL.deletingLastPathComponent()
+        NSWorkspace.shared.open(targetURL)
     }
 
     func dismissToast() {
@@ -394,7 +566,14 @@ final class StudioViewModel: ObservableObject {
     private func activeProvider(for domain: StudioModelDomain) -> StudioModelProviderID {
         switch domain {
         case .stt:
-            return sttProvider == .appleSpeech ? .appleSpeech : .whisperAPI
+            switch sttProvider {
+            case .appleSpeech:
+                return .appleSpeech
+            case .localModel:
+                return .localSTT
+            case .whisperAPI:
+                return .whisperAPI
+            }
         case .llm:
             return llmProvider == .ollama ? .ollama : .openAICompatible
         }
@@ -407,6 +586,40 @@ final class StudioViewModel: ObservableObject {
             if toastMessage == text {
                 toastMessage = nil
             }
+        }
+    }
+
+    private func refreshLocalSTTStoragePath() {
+        let identifier = localSTTModelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? localSTTModel.defaultModelIdentifier
+            : localSTTModelIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch localSTTModel {
+        case .whisperLocal:
+            localSTTStoragePath = URL(fileURLWithPath: localSTTServiceManager.modelsRootPath)
+                .appendingPathComponent("\(identifier).pt", isDirectory: false)
+                .path
+        case .senseVoiceSmall, .qwen3ASR:
+            localSTTStoragePath = URL(fileURLWithPath: localSTTServiceManager.modelsRootPath)
+                .appendingPathComponent(identifier.replacingOccurrences(of: "/", with: "--"), isDirectory: true)
+                .path
+        }
+    }
+
+    private func refreshLocalSTTPreparedState() {
+        if let prepared = localSTTServiceManager.preparedModelInfo(settingsStore: settingsStore) {
+            isLocalSTTPrepared = true
+            localSTTPreparedSource = prepared.sourceDisplayName
+            localSTTStoragePath = prepared.storagePath
+            localSTTStatus = "\(localSTTModel.displayName) is ready."
+            localSTTPreparationDetail = "Download complete. Local speech model is ready."
+            localSTTPreparationProgress = 1
+        } else {
+            isLocalSTTPrepared = false
+            localSTTPreparedSource = "Automatic"
+            localSTTStatus = "Local speech model has not been prepared yet."
+            localSTTPreparationDetail = "The selected local speech model still needs to be downloaded."
+            localSTTPreparationProgress = 0
         }
     }
 
