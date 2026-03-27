@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 final class AppCoordinator {
     private let di = DIContainer()
 
@@ -25,16 +26,33 @@ final class AppCoordinator {
             appState: di.appState,
             settingsStore: di.settingsStore,
             historyStore: di.historyStore,
-            onRetryHistory: { [weak workflowController] record in
-                workflowController?.retry(record: record)
+            onRetryHistory: { [weak self] record in
+                self?.workflowController?.retry(record: record)
             }
         )
         statusBarController?.start()
         self.workflowController?.start()
+        presentPermissionGuidanceIfNeeded()
     }
 
     func stop() {
         workflowController?.stop()
         statusBarController?.stop()
+    }
+
+    private func presentPermissionGuidanceIfNeeded() {
+        let missingSnapshots = PrivacyGuard.missingRequiredSnapshots(settingsStore: di.settingsStore)
+        guard !missingSnapshots.isEmpty else {
+            return
+        }
+
+        SettingsWindowController.shared.show(
+            settingsStore: di.settingsStore,
+            historyStore: di.historyStore,
+            initialSection: .settings,
+            onRetryHistory: { [weak self] record in
+                self?.workflowController?.retry(record: record)
+            }
+        )
     }
 }

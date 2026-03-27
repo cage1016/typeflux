@@ -184,6 +184,41 @@ enum PrivacyGuard {
         }
     }
 
+    @MainActor
+    static func requiredPermissionIDs(settingsStore: SettingsStore) -> [PermissionID] {
+        var required: [PermissionID] = [
+            .microphone,
+            .accessibility
+        ]
+
+        if settingsStore.sttProvider == .appleSpeech || settingsStore.useAppleSpeechFallback {
+            required.append(.speechRecognition)
+        }
+
+        return required
+    }
+
+    @MainActor
+    static func requiredSnapshots(settingsStore: SettingsStore) -> [PermissionSnapshot] {
+        requiredPermissionIDs(settingsStore: settingsStore).map(snapshot(for:))
+    }
+
+    @MainActor
+    static func missingRequiredSnapshots(settingsStore: SettingsStore) -> [PermissionSnapshot] {
+        requiredSnapshots(settingsStore: settingsStore).filter { !$0.isGranted }
+    }
+
+    @MainActor
+    static func openSettingsForPermissions(_ ids: [PermissionID]) {
+        let urls = ids.compactMap(permissionSettingsURL(for:))
+        for (index, url) in urls.enumerated() {
+            let delay = DispatchTime.now() + .milliseconds(index * 250)
+            DispatchQueue.main.asyncAfter(deadline: delay) {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
     private static func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
         await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in

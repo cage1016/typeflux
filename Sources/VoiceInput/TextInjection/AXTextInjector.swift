@@ -10,8 +10,6 @@ final class AXTextInjector: TextInjector {
         guard AXIsProcessTrusted() else {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
-                let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-                AXIsProcessTrustedWithOptions(options)
                 if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
                     NSWorkspace.shared.open(url)
                 }
@@ -81,8 +79,6 @@ final class AXTextInjector: TextInjector {
         if !AXIsProcessTrusted() {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
-                let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-                AXIsProcessTrustedWithOptions(options)
                 if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
                     NSWorkspace.shared.open(url)
                 }

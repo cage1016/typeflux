@@ -3,8 +3,7 @@ import Speech
 
 final class AppleSpeechTranscriber: Transcriber {
     func transcribe(audioFile: AudioFile) async throws -> String {
-        // Must request authorization on main thread to avoid TCC crash
-        let auth = await requestAuthorizationOnMainThread()
+        let auth = await MainActor.run { SFSpeechRecognizer.authorizationStatus() }
         guard auth == .authorized else {
             throw NSError(domain: "AppleSpeechTranscriber", code: 2, userInfo: [NSLocalizedDescriptionKey: "Speech recognition not authorized"])
         }
@@ -32,16 +31,6 @@ final class AppleSpeechTranscriber: Transcriber {
                 if let result, result.isFinal {
                     hasResumed = true
                     continuation.resume(returning: result.bestTranscription.formattedString)
-                }
-            }
-        }
-    }
-
-    private func requestAuthorizationOnMainThread() async -> SFSpeechRecognizerAuthorizationStatus {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async {
-                SFSpeechRecognizer.requestAuthorization { status in
-                    continuation.resume(returning: status)
                 }
             }
         }
