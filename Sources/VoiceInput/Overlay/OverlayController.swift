@@ -124,35 +124,35 @@ private struct OverlayView: View {
                     Spacer()
                     recordingCapsule
                 }
-                .padding(.bottom, 42)
+                .padding(.bottom, 38)
 
             case .processing:
                 VStack {
                     Spacer()
                     processingCapsule
                 }
-                .padding(.bottom, 42)
+                .padding(.bottom, 38)
 
             case .transcriptPreview:
                 VStack {
                     previewCard
                     Spacer()
                 }
-                .padding(.top, 118)
+                .padding(.top, 106)
 
             case .notice:
                 VStack {
                     Spacer()
                     noticeToast
                 }
-                .padding(.bottom, 108)
+                .padding(.bottom, 98)
 
             case .failure:
                 VStack {
                     failureCard
                     Spacer()
                 }
-                .padding(.top, 88)
+                .padding(.top, 80)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -162,25 +162,25 @@ private struct OverlayView: View {
     private var recordingCapsule: some View {
         OverlayCapsule {
             LevelWaveform(level: model.level, activeColor: Color.white.opacity(0.95))
-                .frame(width: 42, height: 16)
+                .frame(width: 38, height: 14)
         }
     }
 
     private var processingCapsule: some View {
-        OverlayCapsule(horizontalPadding: 22) {
+        OverlayCapsule(horizontalPadding: 20) {
             Text(model.statusText.isEmpty ? "Thinking" : model.statusText)
-                .font(.system(size: 17, weight: .medium))
+                .font(.system(size: 15.5, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.92))
         }
     }
 
     private var previewCard: some View {
-        OverlayCard(width: 512) {
-            VStack(alignment: .leading, spacing: 14) {
+        OverlayCard(width: 460) {
+            VStack(alignment: .leading, spacing: 12) {
                 cardHeader(icon: "info.circle", accent: Color(red: 0.43, green: 0.56, blue: 1.0), title: "最新转写")
 
                 Text("“\(model.detailText)”")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 13.5, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.78))
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -195,12 +195,12 @@ private struct OverlayView: View {
     }
 
     private var failureCard: some View {
-        OverlayCard(width: 464) {
-            VStack(alignment: .leading, spacing: 18) {
+        OverlayCard(width: 418) {
+            VStack(alignment: .leading, spacing: 16) {
                 cardHeader(icon: "exclamationmark.circle", accent: Color(red: 1.0, green: 0.42, blue: 0.08), title: model.statusText)
 
                 Text(model.detailText)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 13.5, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.72))
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -215,14 +215,14 @@ private struct OverlayView: View {
     }
 
     private var noticeToast: some View {
-        OverlayCard(width: 420, compact: true) {
-            HStack(spacing: 14) {
+        OverlayCard(width: 378, compact: true) {
+            HStack(spacing: 12) {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color(red: 0.43, green: 0.56, blue: 1.0))
 
                 Text(model.detailText)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(Color.white.opacity(0.92))
                     .lineLimit(2)
 
@@ -234,19 +234,19 @@ private struct OverlayView: View {
     }
 
     private func cardHeader(icon: String, accent: Color, title: String) -> some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 19, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(accent)
 
             Text(title)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 16.5, weight: .semibold))
                 .foregroundStyle(Color.white.opacity(0.96))
 
             Spacer(minLength: 0)
 
             Image(systemName: "xmark")
-                .font(.system(size: 17, weight: .medium))
+                .font(.system(size: 15.5, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.4))
         }
     }
@@ -264,7 +264,7 @@ private struct OverlayCapsule<Content: View>: View {
     var body: some View {
         content
             .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10.5)
             .background(
                 Capsule()
                     .fill(Color.black.opacity(0.88))
@@ -290,14 +290,14 @@ private struct OverlayCard<Content: View>: View {
 
     var body: some View {
         content
-            .padding(.horizontal, compact ? 18 : 26)
-            .padding(.vertical, compact ? 14 : 24)
+            .padding(.horizontal, compact ? 16 : 23)
+            .padding(.vertical, compact ? 12 : 21)
             .frame(width: width, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: compact ? 16 : 18, style: .continuous)
+                RoundedRectangle(cornerRadius: compact ? 14 : 16, style: .continuous)
                     .fill(Color(red: 0.13, green: 0.11, blue: 0.11).opacity(0.96))
                     .overlay(
-                        RoundedRectangle(cornerRadius: compact ? 16 : 18, style: .continuous)
+                        RoundedRectangle(cornerRadius: compact ? 14 : 16, style: .continuous)
                             .stroke(Color.white.opacity(0.12), lineWidth: 1)
                     )
             )
@@ -316,10 +316,10 @@ private struct OverlayButton: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: compact ? 14 : 15, weight: .semibold))
+            .font(.system(size: compact ? 12.5 : 13.5, weight: .semibold))
             .foregroundStyle(Color.white.opacity(0.96))
-            .padding(.horizontal, compact ? 16 : 22)
-            .padding(.vertical, compact ? 10 : 12)
+            .padding(.horizontal, compact ? 14 : 20)
+            .padding(.vertical, compact ? 8.5 : 10.5)
             .background(
                 Capsule()
                     .fill(Color.white.opacity(0.14))
@@ -332,11 +332,11 @@ private struct LevelWaveform: View {
     let activeColor: Color
 
     var body: some View {
-        HStack(alignment: .center, spacing: 2.5) {
+        HStack(alignment: .center, spacing: 2.2) {
             ForEach(0..<9, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(activeColor)
-                    .frame(width: 2.6, height: barHeight(for: index))
+                    .frame(width: 2.3, height: barHeight(for: index))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -345,6 +345,6 @@ private struct LevelWaveform: View {
     private func barHeight(for index: Int) -> CGFloat {
         let normalizedLevel = CGFloat(max(0.08, min(1.0, level)))
         let profile: [CGFloat] = [0.34, 0.52, 0.72, 0.9, 1.0, 0.86, 0.7, 0.5, 0.32]
-        return 5 + (12 * normalizedLevel * profile[index])
+        return 4.5 + (10.8 * normalizedLevel * profile[index])
     }
 }
