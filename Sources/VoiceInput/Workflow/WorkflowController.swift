@@ -237,8 +237,7 @@ final class WorkflowController {
         } catch {
             // Text is already in clipboard, just show a brief info (not an error)
             Task { @MainActor in
-                overlayController.updateStreamingText("已复制到剪贴板 (⌘V 粘贴)")
-                overlayController.dismiss(after: 2.0)
+                overlayController.showNotice(message: "已复制到剪贴板 (⌘V 粘贴)")
             }
             return .copiedToClipboard
         }
