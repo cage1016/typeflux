@@ -7,12 +7,23 @@ final class OverlayController {
 
     private let model = OverlayViewModel()
     private var dismissWorkItem: DispatchWorkItem?
+    private var globalKeyMonitor: Any?
+    private var localKeyMonitor: Any?
 
     init(appState: AppStateStore) {
         self.appState = appState
         model.onDismissRequested = { [weak self] in
             self?.dismiss(after: 0)
         }
+    }
+
+    deinit {
+        removeKeyMonitoring()
+    }
+
+    func setRecordingActionHandlers(onCancel: (() -> Void)?, onConfirm: (() -> Void)?) {
+        model.onCancelRequested = onCancel
+        model.onConfirmRequested = onConfirm
     }
 
     func show() {
@@ -23,7 +34,7 @@ final class OverlayController {
         if window == nil {
             let view = OverlayView(model: model)
             let hosting = NSHostingView(rootView: view)
-            let metrics = Self.metrics(for: .recording)
+            let metrics = Self.metrics(for: .recordingHold)
             let panel = NSPanel(contentRect: NSRect(origin: .zero, size: metrics.size), styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
             panel.isFloatingPanel = true
             panel.level = .statusBar
@@ -37,10 +48,20 @@ final class OverlayController {
             window = panel
         }
 
-        model.presentation = .recording
+        model.presentation = .recordingHold
         model.statusText = "正在聆听"
         model.detailText = ""
         model.processingProgress = 0
+        refreshWindow()
+    }
+
+    func showLockedRecording() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.showLockedRecording() }
+            return
+        }
+        show()
+        model.presentation = .recordingLocked
         refreshWindow()
     }
 
@@ -126,6 +147,7 @@ final class OverlayController {
             self?.model.detailText = ""
             self?.model.level = 0
             self?.model.processingProgress = 0
+            self?.removeKeyMonitoring()
         }
         dismissWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
@@ -134,6 +156,7 @@ final class OverlayController {
     private func refreshWindow() {
         positionWindow()
         window?.orderFrontRegardless()
+        updateKeyMonitoring()
     }
 
     private func positionWindow() {
@@ -157,8 +180,10 @@ final class OverlayController {
 
     private static func metrics(for presentation: OverlayViewModel.Presentation) -> OverlayMetrics {
         switch presentation {
-        case .recording:
+        case .recordingHold:
             return OverlayMetrics(size: NSSize(width: 118, height: 72), anchor: .bottom, offset: 24, interactive: false)
+        case .recordingLocked:
+            return OverlayMetrics(size: NSSize(width: 158, height: 66), anchor: .bottom, offset: 26, interactive: true)
         case .processing:
             return OverlayMetrics(size: NSSize(width: 118, height: 72), anchor: .bottom, offset: 24, interactive: false)
         case .transcriptPreview:
@@ -167,6 +192,43 @@ final class OverlayController {
             return OverlayMetrics(size: NSSize(width: 344, height: 108), anchor: .bottom, offset: 80, interactive: true)
         case .failure:
             return OverlayMetrics(size: NSSize(width: 352, height: 132), anchor: .top, offset: 78, interactive: true)
+        }
+    }
+
+    private func updateKeyMonitoring() {
+        if model.presentation == .recordingLocked {
+            installKeyMonitoringIfNeeded()
+        } else {
+            removeKeyMonitoring()
+        }
+    }
+
+    private func installKeyMonitoringIfNeeded() {
+        guard globalKeyMonitor == nil, localKeyMonitor == nil else { return }
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleKeyEvent(event)
+        }
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleKeyEvent(event)
+            return event
+        }
+    }
+
+    private func removeKeyMonitoring() {
+        if let globalKeyMonitor {
+            NSEvent.removeMonitor(globalKeyMonitor)
+            self.globalKeyMonitor = nil
+        }
+        if let localKeyMonitor {
+            NSEvent.removeMonitor(localKeyMonitor)
+            self.localKeyMonitor = nil
+        }
+    }
+
+    private func handleKeyEvent(_ event: NSEvent) {
+        guard model.presentation == .recordingLocked else { return }
+        if Int(event.keyCode) == 53 {
+            model.requestCancel()
         }
     }
 }
@@ -185,22 +247,33 @@ private struct OverlayMetrics {
 
 final class OverlayViewModel: ObservableObject {
     enum Presentation {
-        case recording
+        case recordingHold
+        case recordingLocked
         case processing
         case transcriptPreview
         case notice
         case failure
     }
 
-    @Published var presentation: Presentation = .recording
+    @Published var presentation: Presentation = .recordingHold
     @Published var statusText: String = ""
     @Published var detailText: String = ""
     @Published var level: Float = 0
     @Published var processingProgress: CGFloat = 0
     var onDismissRequested: (() -> Void)?
+    var onCancelRequested: (() -> Void)?
+    var onConfirmRequested: (() -> Void)?
 
     func requestDismiss() {
         onDismissRequested?()
+    }
+
+    func requestCancel() {
+        onCancelRequested?()
+    }
+
+    func requestConfirm() {
+        onConfirmRequested?()
     }
 }
 
@@ -210,8 +283,10 @@ private struct OverlayView: View {
     var body: some View {
         Group {
             switch model.presentation {
-            case .recording:
+            case .recordingHold:
                 recordingCapsule
+            case .recordingLocked:
+                lockedRecordingCapsule
             case .processing:
                 processingCapsule
             case .transcriptPreview:
@@ -228,7 +303,7 @@ private struct OverlayView: View {
 
     private var contentAlignment: Alignment {
         switch model.presentation {
-        case .recording, .processing, .notice:
+        case .recordingHold, .recordingLocked, .processing, .notice:
             return .bottom
         case .transcriptPreview, .failure:
             return .top
@@ -237,8 +312,10 @@ private struct OverlayView: View {
 
     private var containerPadding: EdgeInsets {
         switch model.presentation {
-        case .recording, .processing:
+        case .recordingHold, .processing:
             return EdgeInsets(top: 16, leading: 18, bottom: 16, trailing: 18)
+        case .recordingLocked:
+            return EdgeInsets(top: 15, leading: 14, bottom: 15, trailing: 14)
         case .transcriptPreview, .notice, .failure:
             return EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
         }
@@ -255,6 +332,14 @@ private struct OverlayView: View {
         ThinkingProgressCapsule(
             title: model.statusText.isEmpty ? "Thinking" : model.statusText,
             progress: model.processingProgress
+        )
+    }
+
+    private var lockedRecordingCapsule: some View {
+        LockedRecordingCapsule(
+            level: model.level,
+            onCancel: model.requestCancel,
+            onConfirm: model.requestConfirm
         )
     }
 
@@ -344,6 +429,48 @@ private struct OverlayView: View {
                     .foregroundStyle(Color.white.opacity(0.4))
             }
         }
+    }
+}
+
+private struct LockedRecordingCapsule: View {
+    let level: Float
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        HStack(spacing: 7) {
+            roundIconButton(systemName: "xmark", action: onCancel)
+
+            LevelWaveform(level: level, activeColor: Color.white.opacity(0.95))
+                .frame(width: 38, height: 14)
+
+            roundIconButton(systemName: "checkmark", action: onConfirm, inverted: true)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5.5)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.black.opacity(0.9))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.white.opacity(0.22), lineWidth: 1.2)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.28), radius: 16, x: 0, y: 12)
+    }
+
+    private func roundIconButton(systemName: String, action: @escaping () -> Void, inverted: Bool = false) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(inverted ? Color.black.opacity(0.9) : Color.white.opacity(0.96))
+                .frame(width: 24, height: 24)
+                .background(
+                    Circle()
+                        .fill(inverted ? Color.white.opacity(0.98) : Color.white.opacity(0.22))
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 

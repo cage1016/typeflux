@@ -2,6 +2,12 @@ import Foundation
 
 final class WorkflowController {
     private static let recordingTimeoutNanoseconds: UInt64 = 600_000_000_000 // 10 minutes
+    private static let tapToLockThreshold: TimeInterval = 0.22
+
+    private enum RecordingMode {
+        case holdToTalk
+        case locked
+    }
 
     private enum ApplyOutcome {
         case inserted
@@ -30,8 +36,13 @@ final class WorkflowController {
 
     private var currentSelectedText: String?
     private var isRecording = false
+    private var recordingMode: RecordingMode = .holdToTalk
+    private var hotkeyPressedAt: Date?
     private var recordingTimeoutTask: Task<Void, Never>?
     private var selectionTask: Task<String?, Never>?
+    private var processingTask: Task<Void, Never>?
+    private var processingSessionID = UUID()
+    private var activeProcessingRecordID: UUID?
 
     init(
         appState: AppStateStore,
@@ -55,6 +66,10 @@ final class WorkflowController {
         self.clipboard = clipboard
         self.historyStore = historyStore
         self.overlayController = overlayController
+        self.overlayController.setRecordingActionHandlers(
+            onCancel: { [weak self] in self?.cancelRecording() },
+            onConfirm: { [weak self] in self?.confirmLockedRecording() }
+        )
     }
 
     func start() {
@@ -80,18 +95,27 @@ final class WorkflowController {
     func stop() {
         hotkeyService.stop()
         cancelRecording()
+        cancelCurrentProcessing(resetUI: true, reason: "Cancelled while stopping.")
     }
 
     func retry(record: HistoryRecord) {
         guard !isRecording else { return }
+        cancelCurrentProcessing(resetUI: false, reason: "Cancelled due to retry.")
 
-        Task.detached { [weak self] in
+        let sessionID = beginProcessingSession()
+        processingTask = Task { [weak self] in
             guard let self else { return }
             await MainActor.run {
                 self.appState.setStatus(.processing)
                 self.overlayController.showProcessing()
             }
-            await self.reprocess(record: record)
+            await self.reprocess(record: record, sessionID: sessionID)
+            await MainActor.run {
+                if self.processingSessionID == sessionID {
+                    self.processingTask = nil
+                    self.activeProcessingRecordID = nil
+                }
+            }
         }
     }
     
@@ -99,9 +123,13 @@ final class WorkflowController {
     func cancelRecording() {
         guard isRecording else { return }
         isRecording = false
+        recordingMode = .holdToTalk
+        hotkeyPressedAt = nil
         recordingTimeoutTask?.cancel()
         recordingTimeoutTask = nil
         _ = try? audioRecorder.stop()
+        selectionTask?.cancel()
+        selectionTask = nil
         Task { @MainActor in
             appState.setStatus(.idle)
             overlayController.dismiss(after: 0.3)
@@ -110,12 +138,6 @@ final class WorkflowController {
     }
 
     private func handlePressBegan() {
-        // Prevent double-start
-        guard !isRecording else {
-            NSLog("[Workflow] Already recording, ignoring press")
-            return
-        }
-        
         if !PrivacyGuard.isRunningInAppBundle {
             Task { @MainActor in
                 let msg = "Please run via scripts/run_dev_app.sh (app bundle required for privacy permissions)"
@@ -127,9 +149,27 @@ final class WorkflowController {
             return
         }
 
+        hotkeyPressedAt = Date()
+
+        if isRecording {
+            guard recordingMode == .locked else {
+                NSLog("[Workflow] Already recording, ignoring press")
+                return
+            }
+
+            confirmLockedRecording()
+            return
+        }
+
+        cancelCurrentProcessing(resetUI: false, reason: "Cancelled by new recording.")
+        beginRecording()
+    }
+
+    private func beginRecording() {
         isRecording = true
+        recordingMode = .holdToTalk
         NSLog("[Workflow] Recording started")
-        
+
         Task { @MainActor in
             appState.setStatus(.recording)
             overlayController.show()
@@ -151,17 +191,18 @@ final class WorkflowController {
             try audioRecorder.start(levelHandler: { [weak self] level in
                 self?.overlayController.updateLevel(level)
             })
-            
+
             // Set a timeout to auto-stop recording after 10 minutes
             recordingTimeoutTask?.cancel()
             recordingTimeoutTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: Self.recordingTimeoutNanoseconds)
                 guard !Task.isCancelled else { return }
                 NSLog("[Workflow] Recording timeout - auto stopping")
-                self?.handlePressEnded()
+                self?.finishRecordingFromCurrentMode()
             }
         } catch {
             isRecording = false
+            recordingMode = .holdToTalk
             var record = HistoryRecord(
                 date: Date(),
                 recordingStatus: .failed,
@@ -187,36 +228,65 @@ final class WorkflowController {
             NSLog("[Workflow] Not recording, ignoring release")
             return
         }
-        
+
+        guard recordingMode == .holdToTalk else { return }
+
+        let pressDuration = Date().timeIntervalSince(hotkeyPressedAt ?? Date.distantPast)
+        hotkeyPressedAt = nil
+
+        if pressDuration < Self.tapToLockThreshold {
+            recordingMode = .locked
+            Task { @MainActor in
+                overlayController.showLockedRecording()
+            }
+            return
+        }
+
+        finishRecordingFromCurrentMode()
+    }
+
+    private func confirmLockedRecording() {
+        guard isRecording, recordingMode == .locked else { return }
+        finishRecordingFromCurrentMode()
+    }
+
+    private func finishRecordingFromCurrentMode() {
+        guard isRecording else { return }
+
         isRecording = false
+        recordingMode = .holdToTalk
+        hotkeyPressedAt = nil
         recordingTimeoutTask?.cancel()
         recordingTimeoutTask = nil
         NSLog("[Workflow] Recording stopped")
-        
+
         Task { @MainActor in
             appState.setStatus(.processing)
             overlayController.showProcessing()
         }
 
-        Task.detached { [weak self] in
+        Task { [weak self] in
             guard let self else { return }
             await self.finishRecordingAndProcess()
         }
     }
 
-    private func generateRewrite(request: LLMRewriteRequest) async throws -> String {
+    private func generateRewrite(request: LLMRewriteRequest, sessionID: UUID) async throws -> String {
         var buffer = ""
         var lastChunkAt = Date()
 
         let stream = llmService.streamRewrite(request: request)
         for try await chunk in stream {
+            try ensureProcessingIsActive(sessionID)
             buffer += chunk
             let now = Date()
             if now.timeIntervalSince(lastChunkAt) > 0.15 {
                 lastChunkAt = now
                 let snapshot = buffer
                 await MainActor.run {
-                    overlayController.updateStreamingText(snapshot)
+                    if self.processingSessionID == sessionID {
+                        overlayController.updateStreamingText(snapshot)
+                    }
                 }
             }
         }
@@ -247,6 +317,7 @@ final class WorkflowController {
         do {
             let audioFile = try audioRecorder.stop()
             let selectedText = await selectionTask?.value?.trimmingCharacters(in: .whitespacesAndNewlines)
+            selectionTask = nil
             currentSelectedText = selectedText
             let personaPrompt = settingsStore.activePersona?.prompt
 
@@ -262,8 +333,19 @@ final class WorkflowController {
                 applyStatus: .pending
             )
             historyStore.save(record: record)
+            activeProcessingRecordID = record.id
+            let sessionID = beginProcessingSession()
 
-            await process(audioFile: audioFile, record: record, selectedText: selectedText, personaPrompt: personaPrompt)
+            processingTask = Task { [weak self] in
+                guard let self else { return }
+                await self.process(audioFile: audioFile, record: record, selectedText: selectedText, personaPrompt: personaPrompt, sessionID: sessionID)
+                await MainActor.run {
+                    if self.processingSessionID == sessionID {
+                        self.processingTask = nil
+                        self.activeProcessingRecordID = nil
+                    }
+                }
+            }
         } catch {
             let msg = "Processing failed: \(error.localizedDescription)"
             ErrorLogStore.shared.log(msg)
@@ -286,7 +368,7 @@ final class WorkflowController {
         }
     }
 
-    private func reprocess(record: HistoryRecord) async {
+    private func reprocess(record: HistoryRecord, sessionID: UUID) async {
         guard let audioFilePath = record.audioFilePath, !audioFilePath.isEmpty else {
             await failRetry(record: record, message: "Retry failed: audio file is missing.")
             return
@@ -310,22 +392,26 @@ final class WorkflowController {
         mutableRecord.processingStatus = .pending
         mutableRecord.applyStatus = .pending
         historyStore.save(record: mutableRecord)
+        activeProcessingRecordID = mutableRecord.id
 
         let audioFile = AudioFile(fileURL: audioURL, duration: 0)
         let selectedText = mutableRecord.selectionOriginalText?.trimmingCharacters(in: .whitespacesAndNewlines)
         let personaPrompt = personaPrompt(for: mutableRecord)
-        await process(audioFile: audioFile, record: mutableRecord, selectedText: selectedText, personaPrompt: personaPrompt)
+        await process(audioFile: audioFile, record: mutableRecord, selectedText: selectedText, personaPrompt: personaPrompt, sessionID: sessionID)
     }
 
     private func process(
         audioFile: AudioFile,
         record: HistoryRecord,
         selectedText: String?,
-        personaPrompt: String?
+        personaPrompt: String?,
+        sessionID: UUID
     ) async {
         var record = record
         do {
+            try ensureProcessingIsActive(sessionID)
             let transcribedText = try await sttRouter.transcribe(audioFile: audioFile)
+            try ensureProcessingIsActive(sessionID)
             record.transcriptText = transcribedText
             record.transcriptionStatus = .succeeded
             historyStore.save(record: record)
@@ -341,14 +427,17 @@ final class WorkflowController {
                         sourceText: selectedText,
                         spokenInstruction: transcribedText,
                         personaPrompt: personaPrompt
-                    )
+                    ),
+                    sessionID: sessionID
                 )
 
+                try ensureProcessingIsActive(sessionID)
                 record.selectionEditedText = finalText
                 record.processingStatus = .succeeded
                 record.applyStatus = .running
                 historyStore.save(record: record)
 
+                try ensureProcessingIsActive(sessionID)
                 let outcome = applyText(finalText, replace: true)
                 record.applyStatus = .succeeded
                 record.applyMessage = outcome.message
@@ -363,14 +452,17 @@ final class WorkflowController {
                         sourceText: transcribedText,
                         spokenInstruction: nil,
                         personaPrompt: personaPrompt
-                    )
+                    ),
+                    sessionID: sessionID
                 )
 
+                try ensureProcessingIsActive(sessionID)
                 record.personaResultText = finalText
                 record.processingStatus = .succeeded
                 record.applyStatus = .running
                 historyStore.save(record: record)
 
+                try ensureProcessingIsActive(sessionID)
                 let outcome = applyText(finalText, replace: false)
                 record.applyStatus = .succeeded
                 record.applyMessage = outcome.message
@@ -380,18 +472,25 @@ final class WorkflowController {
                 record.applyStatus = .running
                 historyStore.save(record: record)
 
+                try ensureProcessingIsActive(sessionID)
                 let outcome = applyText(transcribedText, replace: false)
                 record.applyStatus = .succeeded
                 record.applyMessage = outcome.message
             }
 
+            try ensureProcessingIsActive(sessionID)
             historyStore.save(record: record)
             historyStore.purge(olderThanDays: 7)
 
             await MainActor.run {
-                self.appState.setStatus(.idle)
-                self.overlayController.dismissSoon()
+                if self.processingSessionID == sessionID {
+                    self.appState.setStatus(.idle)
+                    self.overlayController.dismissSoon()
+                }
             }
+        } catch is CancellationError {
+            markCancelled(&record)
+            historyStore.save(record: record)
         } catch {
             let msg = "Processing failed: \(error.localizedDescription)"
             ErrorLogStore.shared.log(msg)
@@ -399,9 +498,11 @@ final class WorkflowController {
             historyStore.save(record: record)
 
             await MainActor.run {
-                self.appState.setStatus(.failed(message: "Processing failed"))
-                self.overlayController.showFailure(message: msg)
-                self.overlayController.dismiss(after: 3.0)
+                if self.processingSessionID == sessionID {
+                    self.appState.setStatus(.failed(message: "Processing failed"))
+                    self.overlayController.showFailure(message: msg)
+                    self.overlayController.dismiss(after: 3.0)
+                }
             }
         }
     }
@@ -447,6 +548,68 @@ final class WorkflowController {
         }
 
         record.processingStatus = .failed
+    }
+
+    private func markCancelled(_ record: inout HistoryRecord) {
+        record.errorMessage = "Cancelled by a new recording."
+        if record.transcriptionStatus == .running {
+            record.transcriptionStatus = .failed
+            record.processingStatus = .skipped
+            record.applyStatus = .skipped
+            return
+        }
+
+        if record.processingStatus == .running {
+            record.processingStatus = .failed
+            record.applyStatus = .skipped
+            return
+        }
+
+        if record.applyStatus == .running {
+            record.applyStatus = .failed
+        }
+    }
+
+    private func beginProcessingSession() -> UUID {
+        let sessionID = UUID()
+        processingSessionID = sessionID
+        return sessionID
+    }
+
+    private func ensureProcessingIsActive(_ sessionID: UUID) throws {
+        try Task.checkCancellation()
+        guard processingSessionID == sessionID else {
+            throw CancellationError()
+        }
+    }
+
+    private func cancelCurrentProcessing(resetUI: Bool, reason: String) {
+        processingSessionID = UUID()
+        processingTask?.cancel()
+        processingTask = nil
+
+        if let activeProcessingRecordID,
+           var record = historyStore.list().first(where: { $0.id == activeProcessingRecordID }) {
+            record.errorMessage = reason
+            if record.transcriptionStatus == .running {
+                record.transcriptionStatus = .failed
+                record.processingStatus = .skipped
+                record.applyStatus = .skipped
+            } else if record.processingStatus == .running {
+                record.processingStatus = .failed
+                record.applyStatus = .skipped
+            } else if record.applyStatus == .running {
+                record.applyStatus = .failed
+            }
+            historyStore.save(record: record)
+        }
+        activeProcessingRecordID = nil
+
+        guard resetUI else { return }
+        Task { @MainActor in
+            self.appState.setStatus(.idle)
+            self.overlayController.dismiss(after: 0.1)
+        }
     }
 
     private func inferredMode(selectedText: String?, personaPrompt: String?) -> HistoryRecord.Mode {
