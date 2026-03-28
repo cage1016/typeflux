@@ -510,6 +510,25 @@ struct StudioView: View {
 
     private var settingsPage: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
+            StudioSectionTitle(title: "General")
+
+            StudioCard {
+                StudioSettingRow(
+                    title: "开机自动启动",
+                    subtitle: "登录 Mac 后自动启动 VoiceInput，无需手动打开。"
+                ) {
+                    Toggle(
+                        "",
+                        isOn: Binding(
+                            get: { viewModel.launchAtLogin },
+                            set: viewModel.setLaunchAtLogin
+                        )
+                    )
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+            }
+
             StudioSectionTitle(title: "Activation Hotkey")
 
             StudioCard {

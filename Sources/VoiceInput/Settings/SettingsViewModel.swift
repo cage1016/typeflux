@@ -69,6 +69,7 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var isCreatingPersonaDraft: Bool
     @Published var vocabularyEntries: [VocabularyEntry]
 
+    @Published var launchAtLogin: Bool
     @Published var activationHotkey: HotkeyBinding
     @Published var personaHotkey: HotkeyBinding
     @Published private(set) var historyRecords: [HistoryRecord]
@@ -152,6 +153,7 @@ final class StudioViewModel: ObservableObject {
         personaDraftPrompt = initialPersona?.prompt ?? ""
         isCreatingPersonaDraft = false
         vocabularyEntries = VocabularyStore.load()
+        launchAtLogin = LaunchAtLoginManager.isEnabled
         activationHotkey = settingsStore.activationHotkey
         personaHotkey = settingsStore.personaHotkey
         historyRecords = historyStore.list()
@@ -569,6 +571,7 @@ final class StudioViewModel: ObservableObject {
     func setLocalSTTDownloadSource(_ value: ModelDownloadSource) { localSTTDownloadSource = value; settingsStore.localSTTDownloadSource = value }
     func setLocalSTTAutoSetup(_ value: Bool) { localSTTAutoSetup = value; settingsStore.localSTTAutoSetup = value }
     func setAppleSpeechFallback(_ value: Bool) { appleSpeechFallback = value; settingsStore.useAppleSpeechFallback = value }
+    func setLaunchAtLogin(_ value: Bool) { launchAtLogin = value; LaunchAtLoginManager.setEnabled(value) }
     func setPersonaRewriteEnabled(_ value: Bool) {
         personaRewriteEnabled = value
         settingsStore.personaRewriteEnabled = value
