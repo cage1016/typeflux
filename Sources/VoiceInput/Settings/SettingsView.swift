@@ -1639,6 +1639,30 @@ struct StudioView: View {
 
                 focusedProviderForm
 
+                if [StudioModelProviderID.whisperAPI, .multimodalLLM, .openAICompatible, .ollama].contains(viewModel.focusedModelProvider) {
+                    HStack(spacing: StudioTheme.Spacing.small) {
+                        StudioButton(title: "Save", systemImage: "checkmark", variant: .primary) {
+                            viewModel.applyModelConfiguration()
+                        }
+                        if viewModel.focusedModelProvider == .openAICompatible || viewModel.focusedModelProvider == .ollama {
+                            StudioButton(
+                                title: viewModel.llmConnectionTestState == .testing ? "Testing..." : "Test Connection",
+                                systemImage: viewModel.llmConnectionTestState == .testing ? nil : "network",
+                                variant: .secondary,
+                                isLoading: viewModel.llmConnectionTestState == .testing,
+                                isDisabled: viewModel.llmConnectionTestState == .testing
+                            ) {
+                                viewModel.testLLMConnection()
+                            }
+                        }
+                        Spacer()
+                    }
+
+                    if viewModel.focusedModelProvider == .openAICompatible || viewModel.focusedModelProvider == .ollama {
+                        llmTestResultView
+                    }
+                }
+
                 if viewModel.focusedModelProvider == .ollama {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                         StudioButton(
@@ -1776,6 +1800,55 @@ struct StudioView: View {
                         .font(.studioBody(StudioTheme.Typography.caption))
                         .foregroundStyle(StudioTheme.textSecondary)
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var llmTestResultView: some View {
+        switch viewModel.llmConnectionTestState {
+        case .idle:
+            EmptyView()
+        case .testing:
+            HStack(spacing: StudioTheme.Spacing.xSmall) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Testing connection...")
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
+            }
+        case .success(let firstMs, let totalMs, let preview):
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                HStack(spacing: StudioTheme.Spacing.xSmall) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(StudioTheme.success)
+                    Text("Connected · First token: \(firstMs)ms · Total: \(totalMs)ms")
+                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                }
+                if !preview.isEmpty {
+                    Text(preview)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(StudioTheme.Spacing.small)
+                        .background(
+                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                                .fill(StudioTheme.surfaceMuted)
+                        )
+                }
+            }
+        case .failure(let message):
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.xSmall) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(StudioTheme.danger)
+                Text(message)
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

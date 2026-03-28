@@ -2,6 +2,13 @@ import AppKit
 import Foundation
 import SwiftUI
 
+enum LLMConnectionTestState: Equatable {
+    case idle
+    case testing
+    case success(firstTokenMs: Int, totalMs: Int, preview: String)
+    case failure(message: String)
+}
+
 @MainActor
 final class StudioViewModel: ObservableObject {
     @Published var currentSection: StudioSection
@@ -63,6 +70,7 @@ final class StudioViewModel: ObservableObject {
     @Published var personaHotkey: HotkeyBinding
     @Published private(set) var historyRecords: [HistoryRecord]
     @Published var toastMessage: String?
+    @Published var llmConnectionTestState: LLMConnectionTestState = .idle
     @Published private(set) var permissionRows: [StudioPermissionRowModel] = []
     @Published private(set) var isRefreshingPermissions = false
     @Published private(set) var isRefreshingHistory = false
@@ -76,6 +84,7 @@ final class StudioViewModel: ObservableObject {
     private let onRetryHistory: (HistoryRecord) -> Void
     private var historyObserver: NSObjectProtocol?
     private var personaSelectionObserver: NSObjectProtocol?
+    private var llmTestTask: Task<Void, Never>?
 
     init(
         settingsStore: SettingsStore,
@@ -501,20 +510,22 @@ final class StudioViewModel: ObservableObject {
     func focusModelProvider(_ provider: StudioModelProviderID) {
         guard provider.domain == modelDomain else { return }
         focusedModelProvider = provider
+        llmTestTask?.cancel()
+        llmConnectionTestState = .idle
     }
 
-    func setLLMBaseURL(_ value: String) { llmBaseURL = value; settingsStore.llmBaseURL = value }
-    func setLLMModel(_ value: String) { llmModel = value; settingsStore.llmModel = value }
-    func setLLMAPIKey(_ value: String) { llmAPIKey = value; settingsStore.llmAPIKey = value }
-    func setOllamaBaseURL(_ value: String) { ollamaBaseURL = value; settingsStore.ollamaBaseURL = value }
-    func setOllamaModel(_ value: String) { ollamaModel = value; settingsStore.ollamaModel = value }
+    func setLLMBaseURL(_ value: String) { llmBaseURL = value; llmConnectionTestState = .idle }
+    func setLLMModel(_ value: String) { llmModel = value; llmConnectionTestState = .idle }
+    func setLLMAPIKey(_ value: String) { llmAPIKey = value; llmConnectionTestState = .idle }
+    func setOllamaBaseURL(_ value: String) { ollamaBaseURL = value; llmConnectionTestState = .idle }
+    func setOllamaModel(_ value: String) { ollamaModel = value; llmConnectionTestState = .idle }
     func setOllamaAutoSetup(_ value: Bool) { ollamaAutoSetup = value; settingsStore.ollamaAutoSetup = value }
-    func setWhisperBaseURL(_ value: String) { whisperBaseURL = value; settingsStore.whisperBaseURL = value }
-    func setWhisperModel(_ value: String) { whisperModel = value; settingsStore.whisperModel = value }
-    func setWhisperAPIKey(_ value: String) { whisperAPIKey = value; settingsStore.whisperAPIKey = value }
-    func setMultimodalLLMBaseURL(_ value: String) { multimodalLLMBaseURL = value; settingsStore.multimodalLLMBaseURL = value }
-    func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value; settingsStore.multimodalLLMModel = value }
-    func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value; settingsStore.multimodalLLMAPIKey = value }
+    func setWhisperBaseURL(_ value: String) { whisperBaseURL = value }
+    func setWhisperModel(_ value: String) { whisperModel = value }
+    func setWhisperAPIKey(_ value: String) { whisperAPIKey = value }
+    func setMultimodalLLMBaseURL(_ value: String) { multimodalLLMBaseURL = value }
+    func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value }
+    func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value }
     func setLocalSTTModelIdentifier(_ value: String) {
         let identifier = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? localSTTModel.defaultModelIdentifier
@@ -835,7 +846,149 @@ final class StudioViewModel: ObservableObject {
     }
 
     func applyModelConfiguration() {
+        switch focusedModelProvider {
+        case .openAICompatible:
+            settingsStore.llmBaseURL = llmBaseURL
+            settingsStore.llmModel = llmModel
+            settingsStore.llmAPIKey = llmAPIKey
+        case .ollama:
+            settingsStore.ollamaBaseURL = ollamaBaseURL
+            settingsStore.ollamaModel = ollamaModel
+        case .whisperAPI:
+            settingsStore.whisperBaseURL = whisperBaseURL
+            settingsStore.whisperModel = whisperModel
+            settingsStore.whisperAPIKey = whisperAPIKey
+        case .multimodalLLM:
+            settingsStore.multimodalLLMBaseURL = multimodalLLMBaseURL
+            settingsStore.multimodalLLMModel = multimodalLLMModel
+            settingsStore.multimodalLLMAPIKey = multimodalLLMAPIKey
+        case .appleSpeech, .localSTT:
+            break
+        }
         showToast("Configuration saved.")
+    }
+
+    func testLLMConnection() {
+        llmTestTask?.cancel()
+        llmConnectionTestState = .testing
+
+        let capturedProvider = focusedModelProvider
+        let capturedBaseURL = llmBaseURL
+        let capturedModel = llmModel.isEmpty ? "gpt-4o-mini" : llmModel
+        let capturedAPIKey = llmAPIKey
+        let capturedOllamaURL = ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : ollamaBaseURL
+        let capturedOllamaModel = ollamaModel
+
+        llmTestTask = Task {
+            let startDate = Date()
+            var firstTokenDate: Date? = nil
+            var collected = ""
+
+            do {
+                switch capturedProvider {
+                case .openAICompatible:
+                    guard !capturedBaseURL.isEmpty, let baseURL = URL(string: capturedBaseURL) else {
+                        throw NSError(domain: "LLMTest", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid base URL. Please enter a valid endpoint."])
+                    }
+                    let url = baseURL.appendingPathComponent("chat/completions")
+                    var urlRequest = URLRequest(url: url)
+                    urlRequest.httpMethod = "POST"
+                    if !capturedAPIKey.isEmpty {
+                        urlRequest.setValue("Bearer \(capturedAPIKey)", forHTTPHeaderField: "Authorization")
+                    }
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    let body: [String: Any] = [
+                        "model": capturedModel,
+                        "stream": true,
+                        "max_tokens": 50,
+                        "messages": [["role": "user", "content": "Hello"]]
+                    ]
+                    urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+                    for try await chunk in try await SSEClient.lines(for: urlRequest) {
+                        if Task.isCancelled { return }
+                        if chunk == "[DONE]" { break }
+                        guard let data = chunk.data(using: .utf8),
+                              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              let choices = obj["choices"] as? [[String: Any]],
+                              let delta = choices.first?["delta"] as? [String: Any],
+                              let content = delta["content"] as? String,
+                              !content.isEmpty
+                        else { continue }
+                        if firstTokenDate == nil { firstTokenDate = Date() }
+                        collected += content
+                        if collected.count >= 60 { break }
+                    }
+
+                case .ollama:
+                    guard let baseURL = URL(string: capturedOllamaURL) else {
+                        throw NSError(domain: "LLMTest", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."])
+                    }
+                    let url = baseURL.appendingPathComponent("api/chat")
+                    var urlRequest = URLRequest(url: url)
+                    urlRequest.httpMethod = "POST"
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    let body: [String: Any] = [
+                        "model": capturedOllamaModel,
+                        "stream": true,
+                        "messages": [["role": "user", "content": "Hello"]],
+                        "options": ["num_predict": 50]
+                    ]
+                    urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                    guard let http = response as? HTTPURLResponse else {
+                        throw NSError(domain: "LLMTest", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response."])
+                    }
+                    guard (200..<300).contains(http.statusCode) else {
+                        var errorData = Data()
+                        for try await byte in bytes { errorData.append(byte) }
+                        let message = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                        throw NSError(domain: "LLMTest", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(message)"])
+                    }
+
+                    struct OllamaTestResponse: Decodable {
+                        struct Message: Decodable { let content: String? }
+                        let message: Message?
+                        let done: Bool
+                    }
+
+                    var lineBuffer = Data()
+                    for try await byte in bytes {
+                        if Task.isCancelled { return }
+                        lineBuffer.append(byte)
+                        guard byte == 0x0A else { continue }
+                        let lineStr = String(data: lineBuffer, encoding: .utf8)?.trimmingCharacters(in: .newlines) ?? ""
+                        lineBuffer = Data()
+                        guard !lineStr.isEmpty,
+                              let lineData = lineStr.data(using: .utf8),
+                              let payload = try? JSONDecoder().decode(OllamaTestResponse.self, from: lineData)
+                        else { continue }
+                        if let content = payload.message?.content, !content.isEmpty {
+                            if firstTokenDate == nil { firstTokenDate = Date() }
+                            collected += content
+                        }
+                        if payload.done || collected.count >= 60 { break }
+                    }
+
+                default:
+                    return
+                }
+
+                if Task.isCancelled { return }
+                let totalMs = Int(Date().timeIntervalSince(startDate) * 1000)
+                let firstMs = firstTokenDate.map { Int($0.timeIntervalSince(startDate) * 1000) } ?? totalMs
+                llmConnectionTestState = .success(
+                    firstTokenMs: firstMs,
+                    totalMs: totalMs,
+                    preview: String(collected.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+                )
+            } catch {
+                if !Task.isCancelled {
+                    llmConnectionTestState = .failure(message: error.localizedDescription)
+                }
+            }
+        }
     }
 
     func copyLocalSTTStoragePath() {
