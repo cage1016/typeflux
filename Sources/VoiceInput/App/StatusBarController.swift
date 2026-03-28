@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import SwiftUI
 
+@MainActor
 final class StatusBarController: NSObject {
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
@@ -9,6 +10,8 @@ final class StatusBarController: NSObject {
     private let onRetryHistory: (HistoryRecord) -> Void
 
     private var statusItem: NSStatusItem?
+    private var popover: NSPopover?
+    private var menuViewModel: StatusBarMenuViewModel?
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -27,32 +30,52 @@ final class StatusBarController: NSObject {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateTitle()
 
-        let menu = NSMenu()
-        menu.autoenablesItems = false
+        if let button = statusItem?.button {
+            button.target = self
+            button.action = #selector(togglePopover(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
 
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        let menuViewModel = StatusBarMenuViewModel(
+            status: appState.status,
+            appearanceMode: settingsStore.appearanceMode,
+            settingsStore: settingsStore,
+            openSection: { [weak self] section in
+                self?.openStudio(section)
+            },
+            quitAction: { [weak self] in
+                self?.quit()
+            }
+        )
+        self.menuViewModel = menuViewModel
 
-        let historyItem = NSMenuItem(title: "History…", action: #selector(openHistory), keyEquivalent: "h")
-        historyItem.target = self
-        menu.addItem(historyItem)
-        menu.addItem(NSMenuItem.separator())
-
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-        statusItem?.menu = menu
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = NSSize(width: 550, height: 340)
+        popover.contentViewController = NSHostingController(
+            rootView: StatusBarMenuPopoverView(
+                viewModel: menuViewModel,
+                dismiss: { [weak self] in
+                    self?.popover?.performClose(nil)
+                }
+            )
+        )
+        self.popover = popover
 
         appState.$status
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateTitle()
+                self?.menuViewModel?.status = self?.appState.status ?? .idle
             }
             .store(in: &cancellables)
     }
 
     func stop() {
+        popover?.performClose(nil)
+        popover = nil
+        menuViewModel = nil
         if let statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
@@ -72,8 +95,37 @@ final class StatusBarController: NSObject {
         button.title = title
     }
 
-    @MainActor
-    @objc private func openSettings() {
+    @objc private func togglePopover(_ sender: Any?) {
+        guard let button = statusItem?.button, let popover else { return }
+
+        if popover.isShown {
+            popover.performClose(sender)
+            return
+        }
+
+        menuViewModel?.appearanceMode = settingsStore.appearanceMode
+        menuViewModel?.status = appState.status
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    private func openStudio(_ section: StudioSection) {
+        switch section {
+        case .history:
+            openHistory()
+        case .settings:
+            openSettings()
+        default:
+            SettingsWindowController.shared.show(
+                settingsStore: settingsStore,
+                historyStore: historyStore,
+                initialSection: section,
+                onRetryHistory: onRetryHistory
+            )
+        }
+    }
+
+    private func openSettings() {
         SettingsWindowController.shared.show(
             settingsStore: settingsStore,
             historyStore: historyStore,
@@ -82,8 +134,7 @@ final class StatusBarController: NSObject {
         )
     }
 
-    @MainActor
-    @objc private func openHistory() {
+    private func openHistory() {
         SettingsWindowController.shared.show(
             settingsStore: settingsStore,
             historyStore: historyStore,
