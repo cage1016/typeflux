@@ -63,9 +63,9 @@ final class StatusBarController: NSObject {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let statusItem = NSMenuItem(title: statusMenuTitle, action: nil, keyEquivalent: "")
-        statusItem.isEnabled = false
-        menu.addItem(statusItem)
+        let statusMenuItem = NSMenuItem(title: statusMenuTitle, action: nil, keyEquivalent: "")
+        statusMenuItem.isEnabled = false
+        menu.addItem(statusMenuItem)
         menu.addItem(NSMenuItem.separator())
 
         menu.addItem(makeItem(title: "Open Voice Studio", action: #selector(openHome)))
@@ -89,7 +89,7 @@ final class StatusBarController: NSObject {
         menu.addItem(makeItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q"))
 
         self.menu = menu
-        statusItem?.menu = menu
+        self.statusItem?.menu = menu
     }
 
     private func buildAppearanceMenu() -> NSMenu {
