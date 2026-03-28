@@ -84,6 +84,8 @@ final class StatusBarController: NSObject {
         let versionItem = NSMenuItem(title: versionMenuTitle, action: nil, keyEquivalent: "")
         versionItem.isEnabled = false
         menu.addItem(versionItem)
+        
+        menu.addItem(makeItem(title: "Check for Updates…", action: #selector(checkUpdates)))
         menu.addItem(NSMenuItem.separator())
 
         menu.addItem(makeItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q"))
@@ -196,6 +198,10 @@ final class StatusBarController: NSObject {
 
         settingsStore.appearanceMode = mode
         rebuildMenu()
+    }
+
+    @objc private func checkUpdates() {
+        AutoUpdater.checkForUpdates()
     }
 
     @objc private func quit() {
