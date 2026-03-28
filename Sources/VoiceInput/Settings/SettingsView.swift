@@ -712,6 +712,7 @@ struct StudioView: View {
                                 viewModel.refreshAvailableMicrophones()
                             }
                         }
+                        .fixedSize(horizontal: true, vertical: false)
                     }
 
                     Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))

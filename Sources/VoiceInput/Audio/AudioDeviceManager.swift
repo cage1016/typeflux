@@ -14,12 +14,16 @@ final class AudioDeviceManager {
         let devices: [AVCaptureDevice]
         if #available(macOS 14.0, *) {
             devices = AVCaptureDevice.DiscoverySession(
-                deviceTypes: [.microphone],
+                deviceTypes: [.microphone, .external],
                 mediaType: .audio,
                 position: .unspecified
             ).devices
         } else {
-            devices = AVCaptureDevice.devices(for: .audio)
+            devices = AVCaptureDevice.DiscoverySession(
+                deviceTypes: [.builtInMicrophone, .externalUnknown],
+                mediaType: .audio,
+                position: .unspecified
+            ).devices
         }
 
         return devices
@@ -98,8 +102,11 @@ final class AudioDeviceManager {
             mElement: kAudioObjectPropertyElementMain
         )
         var value: Unmanaged<CFString>?
-        let size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        guard getPropertyData(objectID: deviceID, address: &address, value: &value, dataSize: size) == noErr else {
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let status = withUnsafeMutablePointer(to: &value) { pointer in
+            AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, pointer)
+        }
+        guard status == noErr else {
             return nil
         }
 
@@ -114,15 +121,5 @@ final class AudioDeviceManager {
         let status = AudioObjectGetPropertyDataSize(objectID, &address, 0, nil, &size)
         guard status == noErr else { return nil }
         return size
-    }
-
-    private func getPropertyData<T>(
-        objectID: AudioObjectID,
-        address: inout AudioObjectPropertyAddress,
-        value: inout T,
-        dataSize: UInt32
-    ) -> OSStatus {
-        var size = dataSize
-        return AudioObjectGetPropertyData(objectID, &address, 0, nil, &size, &value)
     }
 }
