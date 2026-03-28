@@ -773,7 +773,7 @@ final class WorkflowController {
         processingTask = nil
 
         if let activeProcessingRecordID,
-           var record = historyStore.list().first(where: { $0.id == activeProcessingRecordID }) {
+           var record = historyStore.record(id: activeProcessingRecordID) {
             record.errorMessage = reason
             if record.transcriptionStatus == .running {
                 record.transcriptionStatus = .failed

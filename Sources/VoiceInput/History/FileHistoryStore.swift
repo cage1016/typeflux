@@ -32,6 +32,12 @@ final class FileHistoryStore: HistoryStore {
         }
     }
 
+    func record(id: UUID) -> HistoryRecord? {
+        queue.sync {
+            readIndex().first(where: { $0.id == id })
+        }
+    }
+
     func delete(id: UUID) {
         queue.async {
             var list = self.readIndex()

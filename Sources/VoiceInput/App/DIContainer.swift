@@ -26,7 +26,7 @@ final class DIContainer {
         overlayController = OverlayController(appState: appState)
         clipboard = SystemClipboardService()
         textInjector = AXTextInjector()
-        historyStore = FileHistoryStore()
+        historyStore = SQLiteHistoryStore()
         ollamaModelManager = OllamaLocalModelManager()
         localSTTServiceManager = LocalSTTServiceManager()
         llmService = LLMRouter(

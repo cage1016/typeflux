@@ -160,6 +160,7 @@ struct HistoryRecord: Codable, Identifiable {
 protocol HistoryStore {
     func save(record: HistoryRecord)
     func list() -> [HistoryRecord]
+    func record(id: UUID) -> HistoryRecord?
     func delete(id: UUID)
     func purge(olderThanDays days: Int)
     func clear()
