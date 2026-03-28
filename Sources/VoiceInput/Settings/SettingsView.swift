@@ -1328,6 +1328,8 @@ struct StudioView: View {
                 return .localSTT
             case .whisperAPI:
                 return .whisperAPI
+            case .multimodalLLM:
+                return .multimodalLLM
             }
         case .llm:
             return viewModel.llmProvider == .ollama ? .ollama : .openAICompatible
@@ -1367,6 +1369,16 @@ struct StudioView: View {
                     isSelected: viewModel.sttProvider == .whisperAPI,
                     isMuted: false,
                     actionTitle: "Use Remote"
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.multimodalLLM.rawValue,
+                    name: "Multimodal LLM",
+                    summary: "Send audio directly to a multimodal model. Transcription and persona rewriting happen in a single API call — faster end-to-end.",
+                    badge: "API",
+                    metadata: viewModel.multimodalLLMModel.isEmpty ? "Model not configured" : viewModel.multimodalLLMModel,
+                    isSelected: viewModel.sttProvider == .multimodalLLM,
+                    isMuted: false,
+                    actionTitle: "Use Multimodal"
                 )
             ]
         case .llm:
@@ -1599,6 +1611,16 @@ struct StudioView: View {
                 StudioTextInputCard(label: "Chat Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL))
                 StudioTextInputCard(label: "Model", placeholder: "gpt-4o-mini", text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel))
                 StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey), secure: true)
+
+            case .multimodalLLM:
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    StudioTextInputCard(label: "API Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.multimodalLLMBaseURL }, set: viewModel.setMultimodalLLMBaseURL))
+                    StudioTextInputCard(label: "Model", placeholder: "gpt-4o-audio-preview", text: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel))
+                    StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.multimodalLLMAPIKey }, set: viewModel.setMultimodalLLMAPIKey), secure: true)
+                    Text("Audio is base64-encoded and sent as input_audio in a chat/completions request. When a persona is active, transcription and rewriting happen in a single call.")
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
             }
         }
     }
@@ -1781,6 +1803,8 @@ struct StudioView: View {
             return !viewModel.ollamaModel.isEmpty
         case .openAICompatible:
             return !viewModel.llmBaseURL.isEmpty && !viewModel.llmModel.isEmpty
+        case .multimodalLLM:
+            return !viewModel.multimodalLLMBaseURL.isEmpty && !viewModel.multimodalLLMModel.isEmpty
         }
     }
 
@@ -1797,6 +1821,8 @@ struct StudioView: View {
             viewModel.prepareOllamaModel()
         case .openAICompatible:
             viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
+        case .multimodalLLM:
+            viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel)
         }
     }
 
@@ -1812,6 +1838,8 @@ struct StudioView: View {
             return "cpu"
         case .openAICompatible:
             return "sparkles"
+        case .multimodalLLM:
+            return "brain.filled.head.profile"
         }
     }
 
@@ -1841,6 +1869,8 @@ struct StudioView: View {
             return "Rewrite requests stay local and run through your Ollama runtime."
         case .openAICompatible:
             return "Rewrite requests are sent to your selected remote chat-completions provider."
+        case .multimodalLLM:
+            return "Audio is sent directly to a multimodal model — transcription and persona rewriting in one call."
         }
     }
 
@@ -1856,6 +1886,8 @@ struct StudioView: View {
             return "Ollama"
         case .openAICompatible:
             return "OpenAI-Compatible"
+        case .multimodalLLM:
+            return "Multimodal LLM"
         }
     }
 
@@ -1863,7 +1895,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return "Local"
-        case .whisperAPI, .openAICompatible:
+        case .whisperAPI, .openAICompatible, .multimodalLLM:
             return "Remote"
         }
     }
@@ -1872,7 +1904,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success
-        case .whisperAPI, .openAICompatible:
+        case .whisperAPI, .openAICompatible, .multimodalLLM:
             return StudioTheme.accent
         }
     }
@@ -1881,7 +1913,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success.opacity(0.12)
-        case .whisperAPI, .openAICompatible:
+        case .whisperAPI, .openAICompatible, .multimodalLLM:
             return StudioTheme.accentSoft
         }
     }
@@ -1906,6 +1938,8 @@ struct StudioView: View {
             return viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
         case .openAICompatible:
             return viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel
+        case .multimodalLLM:
+            return viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel
         }
     }
 
@@ -1925,6 +1959,8 @@ struct StudioView: View {
             return "Local Ollama"
         case .openAICompatible:
             return "OpenAI-Compatible"
+        case .multimodalLLM:
+            return "Multimodal LLM"
         }
     }
 
@@ -1940,6 +1976,8 @@ struct StudioView: View {
             return "Use this when local privacy matters for rewrite and editing flows."
         case .openAICompatible:
             return "Use this when you want flexible remote LLM access for rewriting and assistant actions."
+        case .multimodalLLM:
+            return "Use this when you want the fastest end-to-end path — audio goes directly to a multimodal model that transcribes and rewrites in one shot."
         }
     }
 
@@ -1959,6 +1997,8 @@ struct StudioView: View {
             return "Ollama handles rewrite and edit requests locally."
         case .openAICompatible:
             return "The remote chat-completions endpoint handles rewrite and edit requests."
+        case .multimodalLLM:
+            return "A multimodal LLM handles the full transcription pipeline. When a persona is active, rewriting is folded into the same call."
         }
     }
 

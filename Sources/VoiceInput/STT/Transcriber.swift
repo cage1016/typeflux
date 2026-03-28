@@ -29,12 +29,20 @@ final class STTRouter {
     private let whisper: Transcriber
     private let appleSpeech: Transcriber
     private let localModel: Transcriber
+    private let multimodal: Transcriber
 
-    init(settingsStore: SettingsStore, whisper: Transcriber, appleSpeech: Transcriber, localModel: Transcriber) {
+    init(
+        settingsStore: SettingsStore,
+        whisper: Transcriber,
+        appleSpeech: Transcriber,
+        localModel: Transcriber,
+        multimodal: Transcriber
+    ) {
         self.settingsStore = settingsStore
         self.whisper = whisper
         self.appleSpeech = appleSpeech
         self.localModel = localModel
+        self.multimodal = multimodal
     }
 
     func transcribe(audioFile: AudioFile) async throws -> String {
@@ -83,6 +91,9 @@ final class STTRouter {
                 }
                 throw error
             }
+
+        case .multimodalLLM:
+            return try await multimodal.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
         }
     }
 }

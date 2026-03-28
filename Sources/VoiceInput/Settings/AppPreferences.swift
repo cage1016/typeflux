@@ -4,6 +4,7 @@ enum STTProvider: String, CaseIterable, Codable {
     case whisperAPI
     case appleSpeech
     case localModel
+    case multimodalLLM
 
     var displayName: String {
         switch self {
@@ -13,7 +14,14 @@ enum STTProvider: String, CaseIterable, Codable {
             return "Apple Speech"
         case .localModel:
             return "Local Model"
+        case .multimodalLLM:
+            return "Multimodal LLM"
         }
+    }
+
+    /// Whether this provider handles persona rewriting internally (no separate LLM rewrite step needed).
+    var handlesPersonaInternally: Bool {
+        return self == .multimodalLLM
     }
 }
 

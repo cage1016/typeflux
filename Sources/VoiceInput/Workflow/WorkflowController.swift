@@ -440,7 +440,18 @@ final class WorkflowController {
         var record = record
         do {
             try ensureProcessingIsActive(sessionID)
+
+            // When using multimodal and there is no selected text to edit, the transcriber applies
+            // persona internally in one shot — no separate LLM rewrite is needed afterwards.
+            let multimodalHandlesPersona = settingsStore.sttProvider.handlesPersonaInternally
+                && (selectedText == nil || selectedText!.isEmpty)
+
+            // Only keep the overlay in "processing" capsule (hiding streaming text) if an LLM
+            // rewrite will follow. For multimodal+persona this is not the case, so let streaming
+            // through so the user sees text appearing immediately.
             let shouldKeepProcessingCapsule = requiresRewrite(selectedText: selectedText, personaPrompt: personaPrompt)
+                && !multimodalHandlesPersona
+
             let transcribedText = try await sttRouter.transcribeStream(audioFile: audioFile) { [weak self] snapshot in
                 guard let self, !snapshot.text.isEmpty else { return }
                 guard !shouldKeepProcessingCapsule else { return }
@@ -482,29 +493,43 @@ final class WorkflowController {
                 record.applyMessage = outcome.message
             } else if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 record.mode = .personaRewrite
-                record.processingStatus = .running
-                historyStore.save(record: record)
 
-                let finalText = try await generateRewrite(
-                    request: LLMRewriteRequest(
-                        mode: .rewriteTranscript,
-                        sourceText: transcribedText,
-                        spokenInstruction: nil,
-                        personaPrompt: personaPrompt
-                    ),
-                    sessionID: sessionID
-                )
+                if multimodalHandlesPersona {
+                    // Persona was already applied by the multimodal transcriber — use result directly.
+                    record.personaResultText = transcribedText
+                    record.processingStatus = .succeeded
+                    record.applyStatus = .running
+                    historyStore.save(record: record)
 
-                try ensureProcessingIsActive(sessionID)
-                record.personaResultText = finalText
-                record.processingStatus = .succeeded
-                record.applyStatus = .running
-                historyStore.save(record: record)
+                    try ensureProcessingIsActive(sessionID)
+                    let outcome = applyText(transcribedText, replace: false)
+                    record.applyStatus = .succeeded
+                    record.applyMessage = outcome.message
+                } else {
+                    record.processingStatus = .running
+                    historyStore.save(record: record)
 
-                try ensureProcessingIsActive(sessionID)
-                let outcome = applyText(finalText, replace: false)
-                record.applyStatus = .succeeded
-                record.applyMessage = outcome.message
+                    let finalText = try await generateRewrite(
+                        request: LLMRewriteRequest(
+                            mode: .rewriteTranscript,
+                            sourceText: transcribedText,
+                            spokenInstruction: nil,
+                            personaPrompt: personaPrompt
+                        ),
+                        sessionID: sessionID
+                    )
+
+                    try ensureProcessingIsActive(sessionID)
+                    record.personaResultText = finalText
+                    record.processingStatus = .succeeded
+                    record.applyStatus = .running
+                    historyStore.save(record: record)
+
+                    try ensureProcessingIsActive(sessionID)
+                    let outcome = applyText(finalText, replace: false)
+                    record.applyStatus = .succeeded
+                    record.applyMessage = outcome.message
+                }
             } else {
                 record.mode = .dictation
                 record.processingStatus = .skipped

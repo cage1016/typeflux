@@ -101,6 +101,21 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "stt.local.autoSetup") }
     }
 
+    var multimodalLLMBaseURL: String {
+        get { defaults.string(forKey: "stt.multimodal.baseURL") ?? "" }
+        set { defaults.set(newValue, forKey: "stt.multimodal.baseURL") }
+    }
+
+    var multimodalLLMModel: String {
+        get { defaults.string(forKey: "stt.multimodal.model") ?? "" }
+        set { defaults.set(newValue, forKey: "stt.multimodal.model") }
+    }
+
+    var multimodalLLMAPIKey: String {
+        get { defaults.string(forKey: "stt.multimodal.apiKey") ?? "" }
+        set { defaults.set(newValue, forKey: "stt.multimodal.apiKey") }
+    }
+
     var personaRewriteEnabled: Bool {
         get { defaults.object(forKey: "persona.enabled") as? Bool ?? false }
         set { defaults.set(newValue, forKey: "persona.enabled") }

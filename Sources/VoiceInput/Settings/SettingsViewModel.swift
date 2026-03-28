@@ -26,6 +26,10 @@ final class StudioViewModel: ObservableObject {
     @Published var whisperBaseURL: String
     @Published var whisperModel: String
     @Published var whisperAPIKey: String
+
+    @Published var multimodalLLMBaseURL: String
+    @Published var multimodalLLMModel: String
+    @Published var multimodalLLMAPIKey: String
     @Published var localSTTModel: LocalSTTModel
     @Published var localSTTModelIdentifier: String
     @Published var localSTTDownloadSource: ModelDownloadSource
@@ -89,6 +93,8 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .localSTT
         case .whisperAPI:
             focusedModelProvider = .whisperAPI
+        case .multimodalLLM:
+            focusedModelProvider = .multimodalLLM
         }
         appearanceMode = settingsStore.appearanceMode
         llmBaseURL = settingsStore.llmBaseURL
@@ -100,6 +106,9 @@ final class StudioViewModel: ObservableObject {
         whisperBaseURL = settingsStore.whisperBaseURL
         whisperModel = settingsStore.whisperModel
         whisperAPIKey = settingsStore.whisperAPIKey
+        multimodalLLMBaseURL = settingsStore.multimodalLLMBaseURL
+        multimodalLLMModel = settingsStore.multimodalLLMModel
+        multimodalLLMAPIKey = settingsStore.multimodalLLMAPIKey
         localSTTModel = settingsStore.localSTTModel
         localSTTModelIdentifier = settingsStore.localSTTModel.defaultModelIdentifier
         localSTTDownloadSource = settingsStore.localSTTDownloadSource
@@ -240,6 +249,16 @@ final class StudioViewModel: ObservableObject {
                     isSelected: sttProvider == .whisperAPI,
                     isMuted: false,
                     actionTitle: sttProvider == .whisperAPI ? "Selected" : "Use Remote"
+                ),
+                StudioModelCard(
+                    id: "multimodal-llm",
+                    name: "Multimodal LLM",
+                    summary: "Send audio directly to a multimodal LLM. Transcription and persona rewriting happen in a single API call.",
+                    badge: "Remote",
+                    metadata: multimodalLLMModel.isEmpty ? "Model not configured" : multimodalLLMModel,
+                    isSelected: sttProvider == .multimodalLLM,
+                    isMuted: false,
+                    actionTitle: sttProvider == .multimodalLLM ? "Selected" : "Use Multimodal"
                 )
             ]
 
@@ -275,7 +294,7 @@ final class StudioViewModel: ObservableObject {
             switch sttProvider {
             case .appleSpeech, .localModel:
                 return "Local Processing"
-            case .whisperAPI:
+            case .whisperAPI, .multimodalLLM:
                 return "Remote API"
             }
         case .llm:
@@ -293,6 +312,8 @@ final class StudioViewModel: ObservableObject {
                 return "Using a local Python-backed speech model."
             case .whisperAPI:
                 return "Using OpenAI-compatible transcription services."
+            case .multimodalLLM:
+                return "Using a multimodal LLM for transcription and persona rewriting in one call."
             }
         case .llm:
             return llmProvider == .ollama ? "Using local Ollama generation." : "Using remote chat-completion endpoints."
@@ -349,6 +370,8 @@ final class StudioViewModel: ObservableObject {
             }
         case .whisperAPI:
             focusedModelProvider = .whisperAPI
+        case .multimodalLLM:
+            focusedModelProvider = .multimodalLLM
         }
     }
 
@@ -363,6 +386,9 @@ final class StudioViewModel: ObservableObject {
         if provider == .whisperAPI {
             whisperModel = suggestedModel
             settingsStore.whisperModel = suggestedModel
+        } else if provider == .multimodalLLM {
+            multimodalLLMModel = suggestedModel
+            settingsStore.multimodalLLMModel = suggestedModel
         }
     }
 
@@ -414,6 +440,9 @@ final class StudioViewModel: ObservableObject {
     func setWhisperBaseURL(_ value: String) { whisperBaseURL = value; settingsStore.whisperBaseURL = value }
     func setWhisperModel(_ value: String) { whisperModel = value; settingsStore.whisperModel = value }
     func setWhisperAPIKey(_ value: String) { whisperAPIKey = value; settingsStore.whisperAPIKey = value }
+    func setMultimodalLLMBaseURL(_ value: String) { multimodalLLMBaseURL = value; settingsStore.multimodalLLMBaseURL = value }
+    func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value; settingsStore.multimodalLLMModel = value }
+    func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value; settingsStore.multimodalLLMAPIKey = value }
     func setLocalSTTModelIdentifier(_ value: String) {
         let identifier = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? localSTTModel.defaultModelIdentifier
@@ -763,6 +792,8 @@ final class StudioViewModel: ObservableObject {
                 return .localSTT
             case .whisperAPI:
                 return .whisperAPI
+            case .multimodalLLM:
+                return .multimodalLLM
             }
         case .llm:
             return llmProvider == .ollama ? .ollama : .openAICompatible

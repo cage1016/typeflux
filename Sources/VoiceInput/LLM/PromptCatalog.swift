@@ -1,6 +1,36 @@
 import Foundation
 
 enum PromptCatalog {
+    /// Builds the system prompt for a multimodal LLM transcription call.
+    /// When a persona is provided, the model transcribes AND rewrites in one shot.
+    /// Otherwise, it acts as a high-quality transcription engine with vocabulary hints.
+    static func multimodalTranscriptionSystemPrompt(personaPrompt: String?, vocabularyTerms: [String]) -> String {
+        var parts: [String] = []
+
+        if let persona = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !persona.isEmpty {
+            parts.append("""
+            You are a transcription and text-rewriting assistant.
+            Transcribe the audio accurately, then immediately rewrite the result according to the persona requirements below.
+            Return only the final rewritten text — no explanations, no quotation marks, no meta-commentary.
+
+            Persona requirements:
+            \(persona)
+            """)
+        } else {
+            parts.append("""
+            You are a precise transcription assistant.
+            Transcribe the audio accurately. Preserve the speaker's intent and natural phrasing.
+            Return only the transcribed text — no explanations, no meta-commentary.
+            """)
+        }
+
+        if let hint = transcriptionVocabularyHint(terms: vocabularyTerms) {
+            parts.append(hint)
+        }
+
+        return parts.joined(separator: "\n\n")
+    }
+
     static func transcriptionVocabularyHint(terms: [String]) -> String? {
         let normalizedTerms = terms
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
