@@ -243,18 +243,10 @@ struct StudioSidebar: View {
                         .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
                     Spacer()
                 }
-                .foregroundStyle(StudioTheme.textSecondary.opacity(0.72))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                        .fill(StudioTheme.surface.opacity(0.42))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                        .stroke(StudioTheme.border.opacity(0.35), lineWidth: StudioTheme.BorderWidth.thin)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous))
+                .foregroundStyle(StudioTheme.textSecondary.opacity(0.58))
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
             }
             .buttonStyle(StudioInteractiveButtonStyle())
             .accessibilityLabel("About VoiceInput")

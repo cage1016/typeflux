@@ -1,10 +1,12 @@
 import AppKit
 
 enum AppMenuController {
+    @MainActor
     static func install() {
         NSApp.mainMenu = buildMainMenu()
     }
 
+    @MainActor
     private static func buildMainMenu() -> NSMenu {
         let mainMenu = NSMenu()
 
@@ -19,6 +21,7 @@ enum AppMenuController {
         return mainMenu
     }
 
+    @MainActor
     private static func buildApplicationMenu() -> NSMenu {
         let menu = NSMenu(title: "VoiceInput")
 
@@ -52,6 +55,7 @@ enum AppMenuController {
         return menu
     }
 
+    @MainActor
     private static func buildEditMenu() -> NSMenu {
         let menu = NSMenu(title: "Edit")
 
