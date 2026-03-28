@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appCoordinator: AppCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppMenuController.install()
         appCoordinator = AppCoordinator()
         appCoordinator?.start()
     }
