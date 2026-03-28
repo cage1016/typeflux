@@ -31,6 +31,16 @@ final class SettingsStore {
         set { defaults.set(newValue.rawValue, forKey: "ui.appearance") }
     }
 
+    var preferredMicrophoneID: String {
+        get { defaults.string(forKey: "audio.input.preferredMicrophoneID") ?? AudioDeviceManager.automaticDeviceID }
+        set { defaults.set(newValue, forKey: "audio.input.preferredMicrophoneID") }
+    }
+
+    var muteSystemOutputDuringRecording: Bool {
+        get { defaults.object(forKey: "audio.recording.muteSystemOutput") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "audio.recording.muteSystemOutput") }
+    }
+
     var llmBaseURL: String {
         get { defaults.string(forKey: "llm.baseURL") ?? "" }
         set { defaults.set(newValue, forKey: "llm.baseURL") }

@@ -3,6 +3,7 @@ import Foundation
 final class DIContainer {
     let appState = AppStateStore()
     let settingsStore = SettingsStore()
+    let audioDeviceManager = AudioDeviceManager()
 
     // These must be initialized immediately, not lazily
     let hotkeyService: HotkeyService
@@ -18,7 +19,10 @@ final class DIContainer {
 
     init() {
         hotkeyService = EventTapHotkeyService(settingsStore: settingsStore)
-        audioRecorder = AVFoundationAudioRecorder()
+        audioRecorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: audioDeviceManager
+        )
         overlayController = OverlayController(appState: appState)
         clipboard = SystemClipboardService()
         textInjector = AXTextInjector()

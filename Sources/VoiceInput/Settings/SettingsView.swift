@@ -684,6 +684,55 @@ struct StudioView: View {
                 }
             }
 
+            StudioSectionTitle(title: "Audio")
+
+            StudioCard {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                    StudioSettingRow(
+                        title: "Microphone",
+                        subtitle: "Pick the device used for dictation. Automatic follows the current macOS default input."
+                    ) {
+                        HStack(spacing: StudioTheme.Spacing.small) {
+                            Picker(
+                                "",
+                                selection: Binding(
+                                    get: { viewModel.preferredMicrophoneID },
+                                    set: viewModel.setPreferredMicrophoneID
+                                )
+                            ) {
+                                Text("Automatic").tag(AudioDeviceManager.automaticDeviceID)
+                                ForEach(viewModel.availableMicrophones) { device in
+                                    Text(device.name).tag(device.id)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 260)
+
+                            StudioButton(title: "Refresh", systemImage: "arrow.clockwise", variant: .secondary) {
+                                viewModel.refreshAvailableMicrophones()
+                            }
+                        }
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    StudioSettingRow(
+                        title: "Mute During Recording",
+                        subtitle: "Temporarily mute the system output while recording to reduce feedback or system sounds leaking into the microphone."
+                    ) {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { viewModel.muteSystemOutputDuringRecording },
+                                set: viewModel.setMuteSystemOutputDuringRecording
+                            )
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+                }
+            }
+
             StudioSectionTitle(title: "Permissions")
 
             StudioCard {

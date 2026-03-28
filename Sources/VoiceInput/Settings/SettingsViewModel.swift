@@ -25,6 +25,9 @@ final class StudioViewModel: ObservableObject {
     @Published var sttProvider: STTProvider
     @Published var llmProvider: LLMProvider
     @Published var appearanceMode: AppearanceMode
+    @Published var availableMicrophones: [AudioInputDevice] = []
+    @Published var preferredMicrophoneID: String
+    @Published var muteSystemOutputDuringRecording: Bool
 
     @Published var llmBaseURL: String
     @Published var llmModel: String
@@ -81,6 +84,7 @@ final class StudioViewModel: ObservableObject {
     private let historyStore: HistoryStore
     private let modelManager: OllamaLocalModelManager
     private let localSTTServiceManager: LocalSTTServiceManager
+    private let audioDeviceManager: AudioDeviceManager
     private let onRetryHistory: (HistoryRecord) -> Void
     private var historyObserver: NSObjectProtocol?
     private var personaSelectionObserver: NSObjectProtocol?
@@ -92,12 +96,14 @@ final class StudioViewModel: ObservableObject {
         initialSection: StudioSection,
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         modelManager: OllamaLocalModelManager = OllamaLocalModelManager(),
-        localSTTServiceManager: LocalSTTServiceManager = LocalSTTServiceManager()
+        localSTTServiceManager: LocalSTTServiceManager = LocalSTTServiceManager(),
+        audioDeviceManager: AudioDeviceManager = AudioDeviceManager()
     ) {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
         self.modelManager = modelManager
         self.localSTTServiceManager = localSTTServiceManager
+        self.audioDeviceManager = audioDeviceManager
         self.onRetryHistory = onRetryHistory
 
         let currentPersonas = settingsStore.personas
@@ -116,6 +122,8 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .multimodalLLM
         }
         appearanceMode = settingsStore.appearanceMode
+        preferredMicrophoneID = settingsStore.preferredMicrophoneID
+        muteSystemOutputDuringRecording = settingsStore.muteSystemOutputDuringRecording
         llmBaseURL = settingsStore.llmBaseURL
         llmModel = settingsStore.llmModel
         llmAPIKey = settingsStore.llmAPIKey
@@ -151,6 +159,7 @@ final class StudioViewModel: ObservableObject {
         settingsStore.localSTTModelIdentifier = localSTTModelIdentifier
         settingsStore.localSTTDownloadSource = localSTTModel.recommendedDownloadSource
         settingsStore.localSTTAutoSetup = true
+        refreshAvailableMicrophones()
         refreshLocalSTTStoragePath()
         refreshLocalSTTPreparedState()
         historyObserver = NotificationCenter.default.addObserver(
@@ -434,6 +443,28 @@ final class StudioViewModel: ObservableObject {
     func setAppearanceMode(_ mode: AppearanceMode) {
         appearanceMode = mode
         settingsStore.appearanceMode = mode
+    }
+
+    func refreshAvailableMicrophones() {
+        let devices = audioDeviceManager.availableInputDevices()
+        availableMicrophones = devices
+
+        if !preferredMicrophoneID.isEmpty,
+           devices.contains(where: { $0.id == preferredMicrophoneID }) == false {
+            preferredMicrophoneID = AudioDeviceManager.automaticDeviceID
+            settingsStore.preferredMicrophoneID = AudioDeviceManager.automaticDeviceID
+            showToast("Selected microphone is unavailable. Switched to automatic.")
+        }
+    }
+
+    func setPreferredMicrophoneID(_ id: String) {
+        preferredMicrophoneID = id
+        settingsStore.preferredMicrophoneID = id
+    }
+
+    func setMuteSystemOutputDuringRecording(_ value: Bool) {
+        muteSystemOutputDuringRecording = value
+        settingsStore.muteSystemOutputDuringRecording = value
     }
 
     func setSTTProvider(_ provider: STTProvider) {

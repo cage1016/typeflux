@@ -3,11 +3,24 @@ import Foundation
 
 final class AVFoundationAudioRecorder: AudioRecorder {
     private let engine = AVAudioEngine()
+    private let settingsStore: SettingsStore
+    private let audioDeviceManager: AudioDeviceManager
+    private let outputMuter: SystemAudioOutputMuter
     private var audioFile: AVAudioFile?
     private var startedAt: Date?
     private var levelHandler: ((Float) -> Void)?
     private var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
     private var isRecording = false
+
+    init(
+        settingsStore: SettingsStore,
+        audioDeviceManager: AudioDeviceManager = AudioDeviceManager(),
+        outputMuter: SystemAudioOutputMuter = SystemAudioOutputMuter()
+    ) {
+        self.settingsStore = settingsStore
+        self.audioDeviceManager = audioDeviceManager
+        self.outputMuter = outputMuter
+    }
 
     func start(
         levelHandler: @escaping (Float) -> Void,
@@ -23,6 +36,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
         let url = dir.appendingPathComponent(UUID().uuidString).appendingPathExtension("wav")
         let inputNode = engine.inputNode
+        try configureInputDeviceIfNeeded(for: inputNode)
         let inputFormat = inputNode.inputFormat(forBus: 0)
         let outputSettings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
@@ -44,6 +58,9 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
         engine.prepare()
         try engine.start()
+        if settingsStore.muteSystemOutputDuringRecording {
+            outputMuter.beginMutedSession()
+        }
         isRecording = true
     }
 
@@ -63,6 +80,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         self.levelHandler = nil
         self.audioBufferHandler = nil
         self.isRecording = false
+        outputMuter.endMutedSession()
 
         return AudioFile(fileURL: fileURL, duration: duration)
     }
@@ -77,6 +95,15 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         levelHandler = nil
         audioBufferHandler = nil
         isRecording = false
+        outputMuter.endMutedSession()
+    }
+
+    private func configureInputDeviceIfNeeded(for inputNode: AVAudioInputNode) throws {
+        let preferredID = settingsStore.preferredMicrophoneID
+        guard !preferredID.isEmpty else { return }
+        guard let deviceID = audioDeviceManager.resolveInputDeviceID(for: preferredID) else { return }
+
+        inputNode.auAudioUnit.setValue(Int(deviceID), forKey: "deviceID")
     }
 
     private func handleInputBuffer(_ buffer: AVAudioPCMBuffer) {
