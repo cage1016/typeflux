@@ -236,9 +236,8 @@ struct StudioSidebar: View {
             Spacer()
 
             Button(action: onOpenAbout) {
-                HStack(spacing: StudioTheme.Spacing.small) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 12, weight: .medium))
+                HStack {
+                    Spacer()
                     Text("About")
                         .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
                     Spacer()
