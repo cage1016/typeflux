@@ -900,7 +900,7 @@ final class StudioViewModel: ObservableObject {
                     let body: [String: Any] = [
                         "model": capturedModel,
                         "stream": true,
-                        "max_tokens": 50,
+                        "max_completion_tokens": 50,
                         "messages": [["role": "user", "content": "Hello"]]
                     ]
                     urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
