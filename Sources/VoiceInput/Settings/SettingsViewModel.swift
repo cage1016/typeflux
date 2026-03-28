@@ -231,13 +231,30 @@ final class StudioViewModel: ObservableObject {
         return vocabularyEntries.filter { $0.term.localizedCaseInsensitiveContains(searchQuery) }
     }
 
+    private let statsStore = UsageStatsStore.shared
+
     var transcriptionMinutesText: String {
-        let minutes = historyRecords.count * 3 + historyRecords.reduce(0) { $0 + min($1.text.count / 80, 12) }
-        return NumberFormatter.localizedString(from: NSNumber(value: minutes), number: .decimal)
+        statsStore.totalDictationMinutesText
     }
 
     var completedTranscriptionsText: String {
-        NumberFormatter.localizedString(from: NSNumber(value: historyRecords.count), number: .decimal)
+        NumberFormatter.localizedString(from: NSNumber(value: statsStore.totalSessions), number: .decimal)
+    }
+
+    var statsCompletionRate: Int {
+        statsStore.completionRate
+    }
+
+    var statsTotalCharacters: Int {
+        statsStore.totalCharacterCount
+    }
+
+    var statsSavedMinutes: Int {
+        statsStore.savedMinutes
+    }
+
+    var statsAveragePaceWPM: Int {
+        statsStore.averagePaceWPM
     }
 
     var architectureCards: [StudioModelCard] {

@@ -420,6 +420,7 @@ final class WorkflowController {
                 transcriptText: nil,
                 personaPrompt: personaPrompt,
                 selectionOriginalText: selectedText,
+                recordingDurationSeconds: audioFile.duration,
                 recordingStatus: .succeeded,
                 transcriptionStatus: .running,
                 processingStatus: .pending,
@@ -661,6 +662,7 @@ final class WorkflowController {
 
             try ensureProcessingIsActive(sessionID)
             historyStore.save(record: record)
+            UsageStatsStore.shared.recordSession(record: record)
             historyStore.purge(olderThanDays: 7)
 
             await MainActor.run {
@@ -677,6 +679,7 @@ final class WorkflowController {
             ErrorLogStore.shared.log(msg)
             markFailure(&record, message: msg)
             historyStore.save(record: record)
+            UsageStatsStore.shared.recordSession(record: record)
 
             await MainActor.run {
                 if self.processingSessionID == sessionID {

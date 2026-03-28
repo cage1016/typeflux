@@ -24,6 +24,7 @@ struct HistoryRecord: Codable, Identifiable {
     var personaResultText: String?
     var selectionOriginalText: String?
     var selectionEditedText: String?
+    var recordingDurationSeconds: TimeInterval?
     var errorMessage: String?
     var applyMessage: String?
     var recordingStatus: StepStatus
@@ -41,6 +42,7 @@ struct HistoryRecord: Codable, Identifiable {
         personaResultText: String? = nil,
         selectionOriginalText: String? = nil,
         selectionEditedText: String? = nil,
+        recordingDurationSeconds: TimeInterval? = nil,
         errorMessage: String? = nil,
         applyMessage: String? = nil,
         recordingStatus: StepStatus = .pending,
@@ -57,6 +59,7 @@ struct HistoryRecord: Codable, Identifiable {
         self.personaResultText = personaResultText
         self.selectionOriginalText = selectionOriginalText
         self.selectionEditedText = selectionEditedText
+        self.recordingDurationSeconds = recordingDurationSeconds
         self.errorMessage = errorMessage
         self.applyMessage = applyMessage
         self.recordingStatus = recordingStatus
@@ -100,6 +103,7 @@ struct HistoryRecord: Codable, Identifiable {
         case personaResultText
         case selectionOriginalText
         case selectionEditedText
+        case recordingDurationSeconds
         case errorMessage
         case applyMessage
         case recordingStatus
@@ -123,6 +127,7 @@ struct HistoryRecord: Codable, Identifiable {
         personaResultText = try container.decodeIfPresent(String.self, forKey: .personaResultText)
         selectionOriginalText = try container.decodeIfPresent(String.self, forKey: .selectionOriginalText)
         selectionEditedText = try container.decodeIfPresent(String.self, forKey: .selectionEditedText)
+        recordingDurationSeconds = try container.decodeIfPresent(TimeInterval.self, forKey: .recordingDurationSeconds)
         errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
         applyMessage = try container.decodeIfPresent(String.self, forKey: .applyMessage)
         recordingStatus = try container.decodeIfPresent(StepStatus.self, forKey: .recordingStatus) ?? .succeeded
@@ -142,6 +147,7 @@ struct HistoryRecord: Codable, Identifiable {
         try container.encodeIfPresent(personaResultText, forKey: .personaResultText)
         try container.encodeIfPresent(selectionOriginalText, forKey: .selectionOriginalText)
         try container.encodeIfPresent(selectionEditedText, forKey: .selectionEditedText)
+        try container.encodeIfPresent(recordingDurationSeconds, forKey: .recordingDurationSeconds)
         try container.encodeIfPresent(errorMessage, forKey: .errorMessage)
         try container.encodeIfPresent(applyMessage, forKey: .applyMessage)
         try container.encode(recordingStatus, forKey: .recordingStatus)

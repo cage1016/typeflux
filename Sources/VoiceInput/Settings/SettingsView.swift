@@ -1199,7 +1199,7 @@ struct StudioView: View {
                                     .foregroundStyle(StudioTheme.textSecondary)
                             }
 
-                            Text("\(completionRate)%")
+                            Text("\(viewModel.statsCompletionRate)%")
                                 .font(.studioDisplay(StudioTheme.Typography.displayLarge, weight: .bold))
                                 .foregroundStyle(StudioTheme.textPrimary)
 
@@ -1222,7 +1222,7 @@ struct StudioView: View {
                             .frame(width: StudioTheme.Layout.overviewDonutSize, height: StudioTheme.Layout.overviewDonutSize)
                             .overlay(
                                 Circle()
-                                    .trim(from: 0, to: CGFloat(completionRate) / 100)
+                                    .trim(from: 0, to: CGFloat(viewModel.statsCompletionRate) / 100)
                                     .stroke(StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress), style: StrokeStyle(lineWidth: StudioTheme.BorderWidth.overviewDonut, lineCap: .round))
                                     .rotationEffect(.degrees(StudioTheme.Angles.overviewProgressStart))
                             )
@@ -1241,9 +1241,9 @@ struct StudioView: View {
                     spacing: StudioTheme.Spacing.medium
                 ) {
                     homeMiniMetric(icon: "clock", value: "\(viewModel.transcriptionMinutesText) min", title: "Total dictation time")
-                    homeMiniMetric(icon: "mic", value: "\(characterCount)", title: "Characters dictated")
-                    homeMiniMetric(icon: "hourglass", value: "\(savedMinutes) min", title: "Time saved")
-                    homeMiniMetric(icon: "bolt", value: "\(wordsPerMinute)", title: "Average pace")
+                    homeMiniMetric(icon: "mic", value: "\(viewModel.statsTotalCharacters)", title: "Characters dictated")
+                    homeMiniMetric(icon: "hourglass", value: "\(viewModel.statsSavedMinutes) min", title: "Time saved")
+                    homeMiniMetric(icon: "bolt", value: viewModel.statsAveragePaceWPM > 0 ? "\(viewModel.statsAveragePaceWPM) wpm" : "--", title: "Average pace")
                 }
                 .frame(width: StudioTheme.Layout.overviewSideMetricsWidth)
             }
@@ -1326,28 +1326,6 @@ struct StudioView: View {
                 }
             }
         }
-    }
-
-    private var characterCount: Int {
-        viewModel.historyRecords.reduce(0) { $0 + $1.text.count }
-    }
-
-    private var savedMinutes: Int {
-        max(1, Int(round(Double(characterCount) / 160.0)))
-    }
-
-    private var wordsPerMinute: String {
-        let minutes = max(1, totalProcessedMinutes)
-        return "\(max(80, characterCount / minutes)) wpm"
-    }
-
-    private var completionRate: Int {
-        let count = max(viewModel.historyRecords.count, 1)
-        return min(98, max(12, 42 + count * 3))
-    }
-
-    private var totalProcessedMinutes: Int {
-        viewModel.historyRecords.count * 3 + viewModel.historyRecords.reduce(0) { $0 + min($1.text.count / 80, 12) }
     }
 
     private func modelCard(_ card: StudioModelCard) -> some View {

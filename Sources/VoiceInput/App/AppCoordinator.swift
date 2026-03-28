@@ -32,6 +32,7 @@ final class AppCoordinator {
         )
         statusBarController?.start()
         self.workflowController?.start()
+        UsageStatsStore.shared.backfillIfNeeded(from: di.historyStore)
         presentPermissionGuidanceIfNeeded()
     }
 
