@@ -39,11 +39,13 @@ final class OverlayController {
     func setPersonaPickerHandlers(
         onMoveUp: (() -> Void)?,
         onMoveDown: (() -> Void)?,
+        onSelect: ((Int) -> Void)?,
         onConfirm: (() -> Void)?,
         onCancel: (() -> Void)?
     ) {
         model.onPersonaMoveUpRequested = onMoveUp
         model.onPersonaMoveDownRequested = onMoveDown
+        model.onPersonaSelectRequested = onSelect
         model.onPersonaConfirmRequested = onConfirm
         model.onPersonaCancelRequested = onCancel
     }
@@ -456,6 +458,7 @@ final class OverlayViewModel: ObservableObject {
     var onConfirmRequested: (() -> Void)?
     var onPersonaMoveUpRequested: (() -> Void)?
     var onPersonaMoveDownRequested: (() -> Void)?
+    var onPersonaSelectRequested: ((Int) -> Void)?
     var onPersonaConfirmRequested: (() -> Void)?
     var onPersonaCancelRequested: (() -> Void)?
     var onResultCopyRequested: (() -> Void)?
@@ -478,6 +481,10 @@ final class OverlayViewModel: ObservableObject {
 
     func requestPersonaMoveDown() {
         onPersonaMoveDownRequested?()
+    }
+
+    func requestPersonaSelection(at index: Int) {
+        onPersonaSelectRequested?(index)
     }
 
     func requestPersonaConfirm() {
@@ -728,15 +735,24 @@ private struct OverlayView: View {
                     .buttonStyle(.plain)
                 }
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 10) {
-                        ForEach(Array(model.personaItems.enumerated()), id: \.element.id) { index, item in
-                            personaPickerRow(item: item, isSelected: index == model.personaSelectedIndex)
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 10) {
+                            ForEach(Array(model.personaItems.enumerated()), id: \.element.id) { index, item in
+                                personaPickerRow(item: item, index: index, isSelected: index == model.personaSelectedIndex)
+                                    .id(index)
+                            }
                         }
+                        .padding(2)
                     }
-                    .padding(2)
+                    .frame(height: model.personaViewportHeight)
+                    .onAppear {
+                        scrollPersonaSelection(with: proxy)
+                    }
+                    .onChange(of: model.personaSelectedIndex) { _ in
+                        scrollPersonaSelection(with: proxy)
+                    }
                 }
-                .frame(height: model.personaViewportHeight)
             }
         }
     }
@@ -790,7 +806,7 @@ private struct OverlayView: View {
         .fixedSize()
     }
 
-    private func personaPickerRow(item: OverlayController.PersonaPickerItem, isSelected: Bool) -> some View {
+    private func personaPickerRow(item: OverlayController.PersonaPickerItem, index: Int, isSelected: Bool) -> some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(isSelected ? Color(red: 0.43, green: 0.56, blue: 1.0).opacity(0.24) : Color.white.opacity(0.06))
@@ -829,6 +845,17 @@ private struct OverlayView: View {
                         .stroke(isSelected ? Color(red: 0.43, green: 0.56, blue: 1.0).opacity(0.72) : Color.white.opacity(0.08), lineWidth: 1)
                 )
         )
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture {
+            model.requestPersonaSelection(at: index)
+        }
+    }
+
+    private func scrollPersonaSelection(with proxy: ScrollViewProxy) {
+        guard model.personaItems.indices.contains(model.personaSelectedIndex) else { return }
+        withAnimation(.easeInOut(duration: 0.12)) {
+            proxy.scrollTo(model.personaSelectedIndex, anchor: .center)
+        }
     }
 
     private func cardHeader(

@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let personaSelectionDidChange = Notification.Name("SettingsStore.personaSelectionDidChange")
+}
+
 final class SettingsStore {
     private let defaults = UserDefaults.standard
 
@@ -146,6 +150,18 @@ final class SettingsStore {
     var activePersona: PersonaProfile? {
         guard personaRewriteEnabled else { return nil }
         return personas.first { $0.id.uuidString == activePersonaID }
+    }
+
+    func applyPersonaSelection(_ personaID: UUID?) {
+        if let personaID {
+            activePersonaID = personaID.uuidString
+            personaRewriteEnabled = true
+        } else {
+            activePersonaID = ""
+            personaRewriteEnabled = false
+        }
+
+        NotificationCenter.default.post(name: .personaSelectionDidChange, object: self)
     }
 
     var useAppleSpeechFallback: Bool {

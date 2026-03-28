@@ -69,6 +69,7 @@ final class StudioViewModel: ObservableObject {
     private let localSTTServiceManager: LocalSTTServiceManager
     private let onRetryHistory: (HistoryRecord) -> Void
     private var historyObserver: NSObjectProtocol?
+    private var personaSelectionObserver: NSObjectProtocol?
 
     init(
         settingsStore: SettingsStore,
@@ -145,11 +146,23 @@ final class StudioViewModel: ObservableObject {
                 self?.refreshHistory()
             }
         }
+        personaSelectionObserver = NotificationCenter.default.addObserver(
+            forName: .personaSelectionDidChange,
+            object: settingsStore,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.syncPersonaSelectionFromStore()
+            }
+        }
     }
 
     deinit {
         if let historyObserver {
             NotificationCenter.default.removeObserver(historyObserver)
+        }
+        if let personaSelectionObserver {
+            NotificationCenter.default.removeObserver(personaSelectionObserver)
         }
     }
 
@@ -461,7 +474,10 @@ final class StudioViewModel: ObservableObject {
     func setLocalSTTDownloadSource(_ value: ModelDownloadSource) { localSTTDownloadSource = value; settingsStore.localSTTDownloadSource = value }
     func setLocalSTTAutoSetup(_ value: Bool) { localSTTAutoSetup = value; settingsStore.localSTTAutoSetup = value }
     func setAppleSpeechFallback(_ value: Bool) { appleSpeechFallback = value; settingsStore.useAppleSpeechFallback = value }
-    func setPersonaRewriteEnabled(_ value: Bool) { personaRewriteEnabled = value; settingsStore.personaRewriteEnabled = value }
+    func setPersonaRewriteEnabled(_ value: Bool) {
+        personaRewriteEnabled = value
+        settingsStore.personaRewriteEnabled = value
+    }
 
     var defaultPersonaSelectionID: UUID? {
         guard personaRewriteEnabled else { return nil }
@@ -523,7 +539,8 @@ final class StudioViewModel: ObservableObject {
     }
 
     func applyPersonaSelection(_ id: UUID?) {
-        setDefaultPersonaSelection(id)
+        settingsStore.applyPersonaSelection(id)
+        syncPersonaSelectionFromStore()
 
         if let id, let persona = personas.first(where: { $0.id == id }) {
             showToast("Switched to \(persona.name).")
@@ -563,15 +580,13 @@ final class StudioViewModel: ObservableObject {
 
     func activateSelectedPersona() {
         guard let selectedPersona else { return }
-        settingsStore.activePersonaID = selectedPersona.id.uuidString
-        activePersonaID = selectedPersona.id.uuidString
-        if !personaRewriteEnabled {
-            setPersonaRewriteEnabled(true)
-        }
+        settingsStore.applyPersonaSelection(selectedPersona.id)
+        syncPersonaSelectionFromStore()
     }
 
     func deactivatePersonaRewrite() {
-        setPersonaRewriteEnabled(false)
+        settingsStore.applyPersonaSelection(nil)
+        syncPersonaSelectionFromStore()
     }
 
     func savePersonaDraft() {
@@ -600,6 +615,15 @@ final class StudioViewModel: ObservableObject {
         persistPersonas()
         loadPersonaDraft()
         showToast("Persona saved.")
+    }
+
+    private func syncPersonaSelectionFromStore() {
+        personaRewriteEnabled = settingsStore.personaRewriteEnabled
+        activePersonaID = settingsStore.activePersonaID
+        selectedPersonaID = settingsStore.activePersona.map(\.id) ?? selectedPersonaID
+        if !isCreatingPersonaDraft {
+            loadPersonaDraft()
+        }
     }
 
     func cancelPersonaEditing() {

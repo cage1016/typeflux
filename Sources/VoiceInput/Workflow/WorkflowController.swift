@@ -86,6 +86,7 @@ final class WorkflowController {
         self.overlayController.setPersonaPickerHandlers(
             onMoveUp: { [weak self] in self?.movePersonaSelection(delta: -1) },
             onMoveDown: { [weak self] in self?.movePersonaSelection(delta: 1) },
+            onSelect: { [weak self] index in self?.selectPersonaSelection(at: index) },
             onConfirm: { [weak self] in self?.confirmPersonaSelection() },
             onCancel: { [weak self] in self?.dismissPersonaPicker() }
         )
@@ -887,20 +888,24 @@ final class WorkflowController {
         guard isPersonaPickerPresented, personaPickerItems.indices.contains(personaPickerSelectedIndex) else { return }
 
         let selected = personaPickerItems[personaPickerSelectedIndex]
-        if let id = selected.id {
-            settingsStore.activePersonaID = id.uuidString
-            settingsStore.personaRewriteEnabled = true
+        settingsStore.applyPersonaSelection(selected.id)
+        if selected.id != nil {
             Task { @MainActor in
                 self.overlayController.showNotice(message: "Persona switched to \(selected.title).")
             }
         } else {
-            settingsStore.personaRewriteEnabled = false
             Task { @MainActor in
                 self.overlayController.showNotice(message: "Persona switched off.")
             }
         }
 
         dismissPersonaPicker(closeOverlay: false)
+    }
+
+    private func selectPersonaSelection(at index: Int) {
+        guard isPersonaPickerPresented, personaPickerItems.indices.contains(index) else { return }
+        personaPickerSelectedIndex = index
+        confirmPersonaSelection()
     }
 
     private func dismissPersonaPicker(closeOverlay: Bool = true) {
