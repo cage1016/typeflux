@@ -59,6 +59,7 @@ struct StudioView: View {
         StudioShell(
             currentSection: viewModel.currentSection,
             onSelect: viewModel.navigate,
+            onOpenAbout: { AboutWindowController.shared.show() },
             searchText: $viewModel.searchQuery,
             searchPlaceholder: viewModel.currentSection.searchPlaceholder
         ) {

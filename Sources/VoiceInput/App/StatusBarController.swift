@@ -84,7 +84,7 @@ final class StatusBarController: NSObject {
         let versionItem = NSMenuItem(title: versionMenuTitle, action: nil, keyEquivalent: "")
         versionItem.isEnabled = false
         menu.addItem(versionItem)
-        
+        menu.addItem(makeItem(title: "About VoiceInput", action: #selector(openAbout)))
         menu.addItem(makeItem(title: "Check for Updates…", action: #selector(checkUpdates)))
         menu.addItem(NSMenuItem.separator())
 
@@ -202,6 +202,10 @@ final class StatusBarController: NSObject {
 
     @objc private func checkUpdates() {
         AutoUpdater.checkForUpdates()
+    }
+
+    @objc private func openAbout() {
+        AboutWindowController.shared.show()
     }
 
     @objc private func quit() {

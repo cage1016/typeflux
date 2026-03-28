@@ -125,6 +125,7 @@ private struct StudioButtonChrome<Label: View>: View {
 struct StudioShell<Content: View>: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
+    let onOpenAbout: () -> Void
     let searchText: Binding<String>
     let searchPlaceholder: String
     let content: Content
@@ -132,12 +133,14 @@ struct StudioShell<Content: View>: View {
     init(
         currentSection: StudioSection,
         onSelect: @escaping (StudioSection) -> Void,
+        onOpenAbout: @escaping () -> Void,
         searchText: Binding<String>,
         searchPlaceholder: String,
         @ViewBuilder content: () -> Content
     ) {
         self.currentSection = currentSection
         self.onSelect = onSelect
+        self.onOpenAbout = onOpenAbout
         self.searchText = searchText
         self.searchPlaceholder = searchPlaceholder
         self.content = content()
@@ -149,7 +152,7 @@ struct StudioShell<Content: View>: View {
                 .ignoresSafeArea()
 
             HStack(spacing: StudioTheme.Spacing.none) {
-                StudioSidebar(currentSection: currentSection, onSelect: onSelect)
+                StudioSidebar(currentSection: currentSection, onSelect: onSelect, onOpenAbout: onOpenAbout)
                     .frame(width: StudioTheme.sidebarWidth)
 
                 ScrollView {
@@ -182,6 +185,7 @@ struct StudioShell<Content: View>: View {
 struct StudioSidebar: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
+    let onOpenAbout: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
@@ -230,6 +234,30 @@ struct StudioSidebar: View {
             }
 
             Spacer()
+
+            Button(action: onOpenAbout) {
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("About")
+                        .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
+                    Spacer()
+                }
+                .foregroundStyle(StudioTheme.textSecondary.opacity(0.72))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                        .fill(StudioTheme.surface.opacity(0.42))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                        .stroke(StudioTheme.border.opacity(0.35), lineWidth: StudioTheme.BorderWidth.thin)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous))
+            }
+            .buttonStyle(StudioInteractiveButtonStyle())
+            .accessibilityLabel("About VoiceInput")
         }
         .padding(.horizontal, StudioTheme.Insets.sidebarOuterHorizontal)
         .padding(.vertical, StudioTheme.Insets.sidebarOuterVertical)

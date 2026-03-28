@@ -23,11 +23,9 @@ enum AppMenuController {
         let menu = NSMenu(title: "VoiceInput")
 
         let appName = ProcessInfo.processInfo.processName
-        menu.addItem(
-            withTitle: "About \(appName)",
-            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-            keyEquivalent: ""
-        )
+        let aboutItem = NSMenuItem(title: "About \(appName)", action: #selector(AppMenuActionRouter.openAbout(_:)), keyEquivalent: "")
+        aboutItem.target = AppMenuActionRouter.shared
+        menu.addItem(aboutItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
             withTitle: "Hide \(appName)",
@@ -66,5 +64,14 @@ enum AppMenuController {
         menu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
         return menu
+    }
+}
+
+@MainActor
+private final class AppMenuActionRouter: NSObject {
+    static let shared = AppMenuActionRouter()
+
+    @objc func openAbout(_ sender: Any?) {
+        AboutWindowController.shared.show()
     }
 }
