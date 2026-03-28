@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import SwiftUI
 
 @MainActor
 final class StatusBarController: NSObject {
@@ -10,8 +9,7 @@ final class StatusBarController: NSObject {
     private let onRetryHistory: (HistoryRecord) -> Void
 
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover?
-    private var menuViewModel: StatusBarMenuViewModel?
+    private var menu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -29,53 +27,19 @@ final class StatusBarController: NSObject {
     func start() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateTitle()
-
-        if let button = statusItem?.button {
-            button.target = self
-            button.action = #selector(togglePopover(_:))
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        }
-
-        let menuViewModel = StatusBarMenuViewModel(
-            status: appState.status,
-            appearanceMode: settingsStore.appearanceMode,
-            settingsStore: settingsStore,
-            openSection: { [weak self] section in
-                self?.openStudio(section)
-            },
-            quitAction: { [weak self] in
-                self?.quit()
-            }
-        )
-        self.menuViewModel = menuViewModel
-
-        let popover = NSPopover()
-        popover.behavior = .transient
-        popover.animates = true
-        popover.contentSize = NSSize(width: 550, height: 340)
-        popover.contentViewController = NSHostingController(
-            rootView: StatusBarMenuPopoverView(
-                viewModel: menuViewModel,
-                dismiss: { [weak self] in
-                    self?.popover?.performClose(nil)
-                }
-            )
-        )
-        self.popover = popover
+        rebuildMenu()
 
         appState.$status
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateTitle()
-                self?.menuViewModel?.status = self?.appState.status ?? .idle
+                self?.rebuildMenu()
             }
             .store(in: &cancellables)
     }
 
     func stop() {
-        popover?.performClose(nil)
-        popover = nil
-        menuViewModel = nil
+        menu = nil
         if let statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
@@ -95,18 +59,89 @@ final class StatusBarController: NSObject {
         button.title = title
     }
 
-    @objc private func togglePopover(_ sender: Any?) {
-        guard let button = statusItem?.button, let popover else { return }
+    private func rebuildMenu() {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
 
-        if popover.isShown {
-            popover.performClose(sender)
-            return
+        let statusItem = NSMenuItem(title: statusMenuTitle, action: nil, keyEquivalent: "")
+        statusItem.isEnabled = false
+        menu.addItem(statusItem)
+        menu.addItem(NSMenuItem.separator())
+
+        menu.addItem(makeItem(title: "Open Voice Studio", action: #selector(openHome)))
+        menu.addItem(makeItem(title: "History…", action: #selector(openHistory)))
+        menu.addItem(makeItem(title: "Personas", action: #selector(openPersonas)))
+        menu.addItem(NSMenuItem.separator())
+
+        let appearanceItem = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
+        appearanceItem.submenu = buildAppearanceMenu()
+        menu.addItem(appearanceItem)
+
+        let settingsItem = makeItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        menu.addItem(settingsItem)
+        menu.addItem(NSMenuItem.separator())
+
+        let versionItem = NSMenuItem(title: versionMenuTitle, action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+        menu.addItem(NSMenuItem.separator())
+
+        menu.addItem(makeItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q"))
+
+        self.menu = menu
+        statusItem?.menu = menu
+    }
+
+    private func buildAppearanceMenu() -> NSMenu {
+        let menu = NSMenu(title: "Appearance")
+
+        menu.addItem(makeAppearanceItem(mode: .system))
+        menu.addItem(makeAppearanceItem(mode: .light))
+        menu.addItem(makeAppearanceItem(mode: .dark))
+
+        return menu
+    }
+
+    private func makeAppearanceItem(mode: AppearanceMode) -> NSMenuItem {
+        let item = NSMenuItem(title: mode.displayName, action: #selector(selectAppearanceMode(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = mode.rawValue
+        item.state = settingsStore.appearanceMode == mode ? .on : .off
+        return item
+    }
+
+    private func makeItem(title: String, action: Selector, keyEquivalent: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        return item
+    }
+
+    private var statusMenuTitle: String {
+        switch appState.status {
+        case .idle:
+            return "Ready"
+        case .recording:
+            return "Recording in progress…"
+        case .processing:
+            return "Processing latest capture…"
+        case .failed(let message):
+            return "Failed: \(message)"
         }
+    }
 
-        menuViewModel?.appearanceMode = settingsStore.appearanceMode
-        menuViewModel?.status = appState.status
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
+    private var versionMenuTitle: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let bundleVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        switch (version, bundleVersion) {
+        case let (version?, bundleVersion?) where version != bundleVersion:
+            return "Version \(version) (\(bundleVersion))"
+        case let (version?, _):
+            return "Version \(version)"
+        case let (_, bundleVersion?):
+            return "Build \(bundleVersion)"
+        default:
+            return "VoiceInput"
+        }
     }
 
     private func openStudio(_ section: StudioSection) {
@@ -125,7 +160,15 @@ final class StatusBarController: NSObject {
         }
     }
 
-    private func openSettings() {
+    @objc private func openHome() {
+        openStudio(.home)
+    }
+
+    @objc private func openPersonas() {
+        openStudio(.personas)
+    }
+
+    @objc private func openSettings() {
         SettingsWindowController.shared.show(
             settingsStore: settingsStore,
             historyStore: historyStore,
@@ -134,13 +177,25 @@ final class StatusBarController: NSObject {
         )
     }
 
-    private func openHistory() {
+    @objc private func openHistory() {
         SettingsWindowController.shared.show(
             settingsStore: settingsStore,
             historyStore: historyStore,
             initialSection: .history,
             onRetryHistory: onRetryHistory
         )
+    }
+
+    @objc private func selectAppearanceMode(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let mode = AppearanceMode(rawValue: rawValue)
+        else {
+            return
+        }
+
+        settingsStore.appearanceMode = mode
+        rebuildMenu()
     }
 
     @objc private func quit() {
