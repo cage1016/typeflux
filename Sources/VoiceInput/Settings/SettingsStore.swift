@@ -120,6 +120,16 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "stt.multimodal.baseURL") }
     }
 
+    var aliCloudAPIKey: String {
+        get { defaults.string(forKey: "stt.alicloud.apiKey") ?? "" }
+        set { defaults.set(newValue, forKey: "stt.alicloud.apiKey") }
+    }
+
+    var aliCloudModel: String {
+        get { defaults.string(forKey: "stt.alicloud.model") ?? "fun-asr-realtime" }
+        set { defaults.set(newValue, forKey: "stt.alicloud.model") }
+    }
+
     var multimodalLLMModel: String {
         get { defaults.string(forKey: "stt.multimodal.model") ?? "" }
         set { defaults.set(newValue, forKey: "stt.multimodal.model") }

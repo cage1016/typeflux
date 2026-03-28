@@ -116,6 +116,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
     case localSTT
     case whisperAPI
     case multimodalLLM
+    case aliCloud
     case ollama
     case openAICompatible
 
@@ -123,7 +124,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
 
     var domain: StudioModelDomain {
         switch self {
-        case .appleSpeech, .localSTT, .whisperAPI, .multimodalLLM:
+        case .appleSpeech, .localSTT, .whisperAPI, .multimodalLLM, .aliCloud:
             return .stt
         case .ollama, .openAICompatible:
             return .llm

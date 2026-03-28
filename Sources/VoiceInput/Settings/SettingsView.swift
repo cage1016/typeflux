@@ -1545,6 +1545,8 @@ struct StudioView: View {
                 return .whisperAPI
             case .multimodalLLM:
                 return .multimodalLLM
+            case .aliCloud:
+                return .aliCloud
             }
         case .llm:
             return viewModel.llmProvider == .ollama ? .ollama : .openAICompatible
@@ -1594,6 +1596,16 @@ struct StudioView: View {
                     isSelected: viewModel.sttProvider == .multimodalLLM,
                     isMuted: false,
                     actionTitle: "Use Multimodal"
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.aliCloud.rawValue,
+                    name: "Alibaba Cloud ASR",
+                    summary: "Real-time streaming recognition via DashScope. Supports FunASR and Qwen3-ASR models with low-latency WebSocket streaming.",
+                    badge: "API",
+                    metadata: viewModel.aliCloudModel.isEmpty ? "Model not configured" : viewModel.aliCloudModel,
+                    isSelected: viewModel.sttProvider == .aliCloud,
+                    isMuted: false,
+                    actionTitle: "Use Alibaba Cloud"
                 )
             ]
         case .llm:
@@ -1699,7 +1711,7 @@ struct StudioView: View {
 
                 focusedProviderForm
 
-                if [StudioModelProviderID.whisperAPI, .multimodalLLM, .openAICompatible, .ollama].contains(viewModel.focusedModelProvider) {
+                if [StudioModelProviderID.whisperAPI, .multimodalLLM, .openAICompatible, .ollama, .aliCloud].contains(viewModel.focusedModelProvider) {
                     HStack(spacing: StudioTheme.Spacing.small) {
                         StudioButton(title: "Save", systemImage: "checkmark", variant: .primary) {
                             viewModel.applyModelConfiguration()
@@ -1857,6 +1869,15 @@ struct StudioView: View {
                     StudioTextInputCard(label: "Model", placeholder: "gpt-4o-audio-preview", text: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel))
                     StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.multimodalLLMAPIKey }, set: viewModel.setMultimodalLLMAPIKey), secure: true)
                     Text("Audio is base64-encoded and sent as input_audio in a chat/completions request. When a persona is active, transcription and rewriting happen in a single call.")
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+
+            case .aliCloud:
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    StudioTextInputCard(label: "Model", placeholder: "fun-asr-realtime", text: Binding(get: { viewModel.aliCloudModel }, set: viewModel.setAliCloudModel))
+                    StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.aliCloudAPIKey }, set: viewModel.setAliCloudAPIKey), secure: true)
+                    Text("Streams audio to DashScope via WebSocket. Use fun-asr-realtime or fun-asr-realtime-2026-02-28 for FunASR, or qwen3-asr-flash-realtime for the Qwen3 ASR model.")
                         .font(.studioBody(StudioTheme.Typography.caption))
                         .foregroundStyle(StudioTheme.textSecondary)
                 }
@@ -2093,6 +2114,8 @@ struct StudioView: View {
             return !viewModel.llmBaseURL.isEmpty && !viewModel.llmModel.isEmpty
         case .multimodalLLM:
             return !viewModel.multimodalLLMBaseURL.isEmpty && !viewModel.multimodalLLMModel.isEmpty
+        case .aliCloud:
+            return !viewModel.aliCloudAPIKey.isEmpty
         }
     }
 
@@ -2111,6 +2134,8 @@ struct StudioView: View {
             viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
         case .multimodalLLM:
             viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel)
+        case .aliCloud:
+            viewModel.setSTTModelSelection(.aliCloud, suggestedModel: viewModel.aliCloudModel.isEmpty ? "fun-asr-realtime" : viewModel.aliCloudModel)
         }
     }
 
@@ -2128,6 +2153,8 @@ struct StudioView: View {
             return "sparkles"
         case .multimodalLLM:
             return "brain.filled.head.profile"
+        case .aliCloud:
+            return "antenna.radiowaves.left.and.right"
         }
     }
 
@@ -2159,6 +2186,8 @@ struct StudioView: View {
             return "Rewrite requests are sent to your selected remote chat-completions provider."
         case .multimodalLLM:
             return "Audio is sent directly to a multimodal model — transcription and persona rewriting in one call."
+        case .aliCloud:
+            return "Speech recognition is streamed in real-time to Alibaba Cloud DashScope via WebSocket."
         }
     }
 
@@ -2176,6 +2205,8 @@ struct StudioView: View {
             return "OpenAI-Compatible"
         case .multimodalLLM:
             return "Multimodal LLM"
+        case .aliCloud:
+            return "Alibaba Cloud ASR"
         }
     }
 
@@ -2183,7 +2214,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return "Local"
-        case .whisperAPI, .openAICompatible, .multimodalLLM:
+        case .whisperAPI, .openAICompatible, .multimodalLLM, .aliCloud:
             return "Remote"
         }
     }
@@ -2192,7 +2223,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success
-        case .whisperAPI, .openAICompatible, .multimodalLLM:
+        case .whisperAPI, .openAICompatible, .multimodalLLM, .aliCloud:
             return StudioTheme.accent
         }
     }
@@ -2201,7 +2232,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success.opacity(0.12)
-        case .whisperAPI, .openAICompatible, .multimodalLLM:
+        case .whisperAPI, .openAICompatible, .multimodalLLM, .aliCloud:
             return StudioTheme.accentSoft
         }
     }
@@ -2228,6 +2259,8 @@ struct StudioView: View {
             return viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel
         case .multimodalLLM:
             return viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel
+        case .aliCloud:
+            return viewModel.aliCloudModel.isEmpty ? "fun-asr-realtime" : viewModel.aliCloudModel
         }
     }
 
@@ -2249,6 +2282,8 @@ struct StudioView: View {
             return "OpenAI-Compatible"
         case .multimodalLLM:
             return "Multimodal LLM"
+        case .aliCloud:
+            return "Alibaba Cloud ASR"
         }
     }
 
@@ -2266,6 +2301,8 @@ struct StudioView: View {
             return "Use this when you want flexible remote LLM access for rewriting and assistant actions."
         case .multimodalLLM:
             return "Use this when you want the fastest end-to-end path — audio goes directly to a multimodal model that transcribes and rewrites in one shot."
+        case .aliCloud:
+            return "Use this when you want low-latency real-time streaming recognition via Alibaba Cloud DashScope with FunASR or Qwen3 ASR models."
         }
     }
 
@@ -2287,6 +2324,8 @@ struct StudioView: View {
             return "The remote chat-completions endpoint handles rewrite and edit requests."
         case .multimodalLLM:
             return "A multimodal LLM handles the full transcription pipeline. When a persona is active, rewriting is folded into the same call."
+        case .aliCloud:
+            return "Alibaba Cloud DashScope handles real-time streaming ASR via WebSocket."
         }
     }
 

@@ -46,6 +46,10 @@ final class StudioViewModel: ObservableObject {
     @Published var multimodalLLMBaseURL: String
     @Published var multimodalLLMModel: String
     @Published var multimodalLLMAPIKey: String
+
+    @Published var aliCloudAPIKey: String
+    @Published var aliCloudModel: String
+
     @Published var localSTTModel: LocalSTTModel
     @Published var localSTTModelIdentifier: String
     @Published var localSTTDownloadSource: ModelDownloadSource
@@ -121,6 +125,8 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .whisperAPI
         case .multimodalLLM:
             focusedModelProvider = .multimodalLLM
+        case .aliCloud:
+            focusedModelProvider = .aliCloud
         }
         appearanceMode = settingsStore.appearanceMode
         preferredMicrophoneID = settingsStore.preferredMicrophoneID
@@ -137,6 +143,8 @@ final class StudioViewModel: ObservableObject {
         multimodalLLMBaseURL = settingsStore.multimodalLLMBaseURL
         multimodalLLMModel = settingsStore.multimodalLLMModel
         multimodalLLMAPIKey = settingsStore.multimodalLLMAPIKey
+        aliCloudAPIKey = settingsStore.aliCloudAPIKey
+        aliCloudModel = settingsStore.aliCloudModel
         localSTTModel = settingsStore.localSTTModel
         localSTTModelIdentifier = settingsStore.localSTTModel.defaultModelIdentifier
         localSTTDownloadSource = settingsStore.localSTTDownloadSource
@@ -379,7 +387,7 @@ final class StudioViewModel: ObservableObject {
             switch sttProvider {
             case .appleSpeech, .localModel:
                 return "Local Processing"
-            case .whisperAPI, .multimodalLLM:
+            case .whisperAPI, .multimodalLLM, .aliCloud:
                 return "Remote API"
             }
         case .llm:
@@ -399,6 +407,8 @@ final class StudioViewModel: ObservableObject {
                 return "Using OpenAI-compatible transcription services."
             case .multimodalLLM:
                 return "Using a multimodal LLM for transcription and persona rewriting in one call."
+            case .aliCloud:
+                return "Streaming audio to Alibaba Cloud DashScope for real-time speech recognition."
             }
         case .llm:
             return llmProvider == .ollama ? "Using local Ollama generation." : "Using remote chat-completion endpoints."
@@ -486,6 +496,8 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .whisperAPI
         case .multimodalLLM:
             focusedModelProvider = .multimodalLLM
+        case .aliCloud:
+            focusedModelProvider = .aliCloud
         }
     }
 
@@ -503,6 +515,9 @@ final class StudioViewModel: ObservableObject {
         } else if provider == .multimodalLLM {
             multimodalLLMModel = suggestedModel
             settingsStore.multimodalLLMModel = suggestedModel
+        } else if provider == .aliCloud {
+            aliCloudModel = suggestedModel
+            settingsStore.aliCloudModel = suggestedModel
         }
     }
 
@@ -559,6 +574,8 @@ final class StudioViewModel: ObservableObject {
     func setMultimodalLLMBaseURL(_ value: String) { multimodalLLMBaseURL = value }
     func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value }
     func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value }
+    func setAliCloudAPIKey(_ value: String) { aliCloudAPIKey = value }
+    func setAliCloudModel(_ value: String) { aliCloudModel = value }
     func setLocalSTTModelIdentifier(_ value: String) {
         let identifier = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? localSTTModel.defaultModelIdentifier
@@ -896,6 +913,9 @@ final class StudioViewModel: ObservableObject {
             settingsStore.multimodalLLMBaseURL = multimodalLLMBaseURL
             settingsStore.multimodalLLMModel = multimodalLLMModel
             settingsStore.multimodalLLMAPIKey = multimodalLLMAPIKey
+        case .aliCloud:
+            settingsStore.aliCloudAPIKey = aliCloudAPIKey
+            settingsStore.aliCloudModel = aliCloudModel
         case .appleSpeech, .localSTT:
             break
         }
@@ -1131,6 +1151,8 @@ final class StudioViewModel: ObservableObject {
                 return .whisperAPI
             case .multimodalLLM:
                 return .multimodalLLM
+            case .aliCloud:
+                return .aliCloud
             }
         case .llm:
             return llmProvider == .ollama ? .ollama : .openAICompatible

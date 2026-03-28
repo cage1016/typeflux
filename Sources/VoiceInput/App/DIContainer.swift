@@ -39,7 +39,8 @@ final class DIContainer {
             whisper: WhisperAPITranscriber(settingsStore: settingsStore),
             appleSpeech: AppleSpeechTranscriber(),
             localModel: LocalModelTranscriber(settingsStore: settingsStore, serviceManager: localSTTServiceManager),
-            multimodal: MultimodalLLMTranscriber(settingsStore: settingsStore)
+            multimodal: MultimodalLLMTranscriber(settingsStore: settingsStore),
+            aliCloud: AliCloudRealtimeTranscriber(settingsStore: settingsStore)
         )
     }
 }

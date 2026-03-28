@@ -5,6 +5,7 @@ enum STTProvider: String, CaseIterable, Codable {
     case appleSpeech
     case localModel
     case multimodalLLM
+    case aliCloud
 
     var displayName: String {
         switch self {
@@ -16,6 +17,8 @@ enum STTProvider: String, CaseIterable, Codable {
             return "Local Model"
         case .multimodalLLM:
             return "Multimodal LLM"
+        case .aliCloud:
+            return "Alibaba Cloud ASR"
         }
     }
 

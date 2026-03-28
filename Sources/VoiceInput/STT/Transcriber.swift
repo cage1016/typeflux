@@ -30,19 +30,22 @@ final class STTRouter {
     private let appleSpeech: Transcriber
     private let localModel: Transcriber
     private let multimodal: Transcriber
+    private let aliCloud: Transcriber
 
     init(
         settingsStore: SettingsStore,
         whisper: Transcriber,
         appleSpeech: Transcriber,
         localModel: Transcriber,
-        multimodal: Transcriber
+        multimodal: Transcriber,
+        aliCloud: Transcriber
     ) {
         self.settingsStore = settingsStore
         self.whisper = whisper
         self.appleSpeech = appleSpeech
         self.localModel = localModel
         self.multimodal = multimodal
+        self.aliCloud = aliCloud
     }
 
     func transcribe(audioFile: AudioFile) async throws -> String {
@@ -94,6 +97,18 @@ final class STTRouter {
 
         case .multimodalLLM:
             return try await multimodal.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+
+        case .aliCloud:
+            do {
+                return try await aliCloud.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+            } catch {
+                NetworkDebugLogger.logError(context: "Alibaba Cloud ASR failed", error: error)
+                if settingsStore.useAppleSpeechFallback {
+                    NetworkDebugLogger.logMessage("Falling back to Apple Speech after Alibaba Cloud ASR failure")
+                    return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+                }
+                throw error
+            }
         }
     }
 }
