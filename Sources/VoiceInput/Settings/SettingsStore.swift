@@ -126,8 +126,8 @@ final class SettingsStore {
     }
 
     var aliCloudModel: String {
-        get { defaults.string(forKey: "stt.alicloud.model") ?? "fun-asr-realtime" }
-        set { defaults.set(newValue, forKey: "stt.alicloud.model") }
+        get { AliCloudASRDefaults.model }
+        set { defaults.removeObject(forKey: "stt.alicloud.model") }
     }
 
     var doubaoAppID: String {

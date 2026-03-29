@@ -48,7 +48,6 @@ final class StudioViewModel: ObservableObject {
     @Published var multimodalLLMAPIKey: String
 
     @Published var aliCloudAPIKey: String
-    @Published var aliCloudModel: String
     @Published var doubaoAppID: String
     @Published var doubaoAccessToken: String
     @Published var doubaoResourceID: String
@@ -149,7 +148,6 @@ final class StudioViewModel: ObservableObject {
         multimodalLLMModel = settingsStore.multimodalLLMModel
         multimodalLLMAPIKey = settingsStore.multimodalLLMAPIKey
         aliCloudAPIKey = settingsStore.aliCloudAPIKey
-        aliCloudModel = settingsStore.aliCloudModel
         doubaoAppID = settingsStore.doubaoAppID
         doubaoAccessToken = settingsStore.doubaoAccessToken
         doubaoResourceID = settingsStore.doubaoResourceID
@@ -527,9 +525,6 @@ final class StudioViewModel: ObservableObject {
         } else if provider == .multimodalLLM {
             multimodalLLMModel = suggestedModel
             settingsStore.multimodalLLMModel = suggestedModel
-        } else if provider == .aliCloud {
-            aliCloudModel = suggestedModel
-            settingsStore.aliCloudModel = suggestedModel
         }
     }
 
@@ -587,7 +582,6 @@ final class StudioViewModel: ObservableObject {
     func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value }
     func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value }
     func setAliCloudAPIKey(_ value: String) { aliCloudAPIKey = value }
-    func setAliCloudModel(_ value: String) { aliCloudModel = value }
     func setDoubaoAppID(_ value: String) { doubaoAppID = value }
     func setDoubaoAccessToken(_ value: String) { doubaoAccessToken = value }
     func setDoubaoResourceID(_ value: String) { doubaoResourceID = value }
@@ -930,7 +924,6 @@ final class StudioViewModel: ObservableObject {
             settingsStore.multimodalLLMAPIKey = multimodalLLMAPIKey
         case .aliCloud:
             settingsStore.aliCloudAPIKey = aliCloudAPIKey
-            settingsStore.aliCloudModel = aliCloudModel
         case .doubaoRealtime:
             settingsStore.doubaoAppID = doubaoAppID
             settingsStore.doubaoAccessToken = doubaoAccessToken

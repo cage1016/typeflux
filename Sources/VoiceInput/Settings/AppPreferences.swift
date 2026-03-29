@@ -1,5 +1,9 @@
 import Foundation
 
+enum AliCloudASRDefaults {
+    static let model = "fun-asr-realtime"
+}
+
 enum STTProvider: String, CaseIterable, Codable {
     case whisperAPI
     case appleSpeech

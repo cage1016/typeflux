@@ -1716,7 +1716,7 @@ struct StudioView: View {
                     name: "Alibaba Cloud ASR",
                     summary: "Real-time streaming recognition via DashScope. Supports FunASR and Qwen3-ASR models with low-latency WebSocket streaming.",
                     badge: "API",
-                    metadata: viewModel.aliCloudModel.isEmpty ? "Model not configured" : viewModel.aliCloudModel,
+                    metadata: "Built-in default model",
                     isSelected: viewModel.sttProvider == .aliCloud,
                     isMuted: false,
                     actionTitle: "Use Alibaba Cloud"
@@ -2039,7 +2039,6 @@ struct StudioView: View {
 
             case .aliCloud:
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    StudioTextInputCard(label: "Model", placeholder: "fun-asr-realtime", text: Binding(get: { viewModel.aliCloudModel }, set: viewModel.setAliCloudModel))
                     StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.aliCloudAPIKey }, set: viewModel.setAliCloudAPIKey), secure: true) {
                         Button {
                             NSWorkspace.shared.open(URL(string: "https://bailian.console.aliyun.com?tab=model#/api-key")!)
@@ -2322,7 +2321,7 @@ struct StudioView: View {
         case .multimodalLLM:
             viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel)
         case .aliCloud:
-            viewModel.setSTTModelSelection(.aliCloud, suggestedModel: viewModel.aliCloudModel.isEmpty ? "fun-asr-realtime" : viewModel.aliCloudModel)
+            viewModel.setSTTProvider(.aliCloud)
         case .doubaoRealtime:
             viewModel.setSTTProvider(.doubaoRealtime)
         }
@@ -2455,7 +2454,7 @@ struct StudioView: View {
         case .multimodalLLM:
             return viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel
         case .aliCloud:
-            return viewModel.aliCloudModel.isEmpty ? "fun-asr-realtime" : viewModel.aliCloudModel
+            return AliCloudASRDefaults.model
         case .doubaoRealtime:
             return "Doubao Speech Recognition 2.0"
         }
