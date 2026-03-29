@@ -2,10 +2,10 @@ import Foundation
 
 enum StudioSection: String, CaseIterable, Identifiable {
     case home
-    case models
-    case personas
-    case vocabulary
     case history
+    case vocabulary
+    case personas
+    case models
     case settings
 
     var id: String { rawValue }

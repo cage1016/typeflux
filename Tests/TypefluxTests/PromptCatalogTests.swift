@@ -1,5 +1,5 @@
 import XCTest
-@testable import VoiceInput
+@testable import Typeflux
 
 final class PromptCatalogTests: XCTestCase {
     func testTranscriptionVocabularyHintFiltersBlanks() {

@@ -451,7 +451,7 @@ final class LocalSTTServiceManager {
     private var appSupportRootURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let newRootURL = base.appendingPathComponent("Typeflux/STT", isDirectory: true)
-        let legacyRootURL = base.appendingPathComponent("VoiceInput/STT", isDirectory: true)
+        let legacyRootURL = base.appendingPathComponent("Typeflux/STT", isDirectory: true)
         if !FileManager.default.fileExists(atPath: newRootURL.path),
            FileManager.default.fileExists(atPath: legacyRootURL.path) {
             let parentURL = newRootURL.deletingLastPathComponent()

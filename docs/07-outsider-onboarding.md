@@ -294,7 +294,7 @@ macOS 应用通常是一个目录结构（bundle），里面包含：
 
 ### 4.2 `NSApplication` / `AppDelegate`（应用入口）
 
-`Sources/VoiceInput/main.swift` 做了：
+`Sources/Typeflux/main.swift` 做了：
 
 - 创建 `NSApplication.shared`
 - 设置 `AppDelegate`
@@ -419,14 +419,14 @@ SwiftUI View 通过 `NSHostingView(rootView:)` 放进 AppKit window。
 ### 练习 1：改 Overlay 的文案（最简单）
 
 - **目标**：把录音开始时的文案从 `正在输入中` 改成你喜欢的提示
-- **改动文件**：`Sources/VoiceInput/Overlay/OverlayController.swift`
+- **改动文件**：`Sources/Typeflux/Overlay/OverlayController.swift`
 - **你会学到**：SwiftUI 文本渲染 + MVC/VM（`OverlayViewModel`）的最小用法
 
 提示：`show()` 里有 `model.statusText = "正在输入中"`。
 
 建议你按以下步骤做（给你一个明确的操作路径）：
 
-- **步骤 1**：打开 `Sources/VoiceInput/Overlay/OverlayController.swift`
+- **步骤 1**：打开 `Sources/Typeflux/Overlay/OverlayController.swift`
 - **步骤 2**：找到 `func show()` 里设置 `model.statusText` 的那一行
 - **步骤 3**：改成你自己的文案（例如：`"Listening..."` 或 `"正在聆听"`）
 - **步骤 4**：运行 `scripts/run_dev_app.sh` 重新启动 app
@@ -440,12 +440,12 @@ SwiftUI View 通过 `NSHostingView(rootView:)` 放进 AppKit window。
 ### 练习 2：把录音超时时间从 60s 改成 15s
 
 - **目标**：更快自动停止
-- **改动文件**：`Sources/VoiceInput/Workflow/WorkflowController.swift`
+- **改动文件**：`Sources/Typeflux/Workflow/WorkflowController.swift`
 - **你会学到**：`Task.sleep`、异步任务取消
 
 建议步骤：
 
-- **步骤 1**：打开 `Sources/VoiceInput/Workflow/WorkflowController.swift`
+- **步骤 1**：打开 `Sources/Typeflux/Workflow/WorkflowController.swift`
 - **步骤 2**：搜索 `60_000_000_000`（60 秒的纳秒数）
 - **步骤 3**：改成 `15_000_000_000`
 - **验收**：按住不放超过 15 秒会自动触发停止并进入处理
@@ -454,9 +454,9 @@ SwiftUI View 通过 `NSHostingView(rootView:)` 放进 AppKit window。
 
 - **目标**：把“超时时间”做成可配置
 - **改动文件**：
-  - `Sources/VoiceInput/Settings/SettingsStore.swift`
-  - `Sources/VoiceInput/Settings/SettingsWindowController.swift`
-  - `Sources/VoiceInput/Workflow/WorkflowController.swift`
+  - `Sources/Typeflux/Settings/SettingsStore.swift`
+  - `Sources/Typeflux/Settings/SettingsWindowController.swift`
+  - `Sources/Typeflux/Workflow/WorkflowController.swift`
 - **你会学到**：UserDefaults、SwiftUI 双向绑定（`@State` + `.onChange`）
 
 建议做法：
@@ -489,7 +489,7 @@ SwiftUI View 通过 `NSHostingView(rootView:)` 放进 AppKit window。
 
 - **目标**：让你熟悉 `protocol` 与路由
 - **改动文件**：
-  - 新建 `Sources/VoiceInput/STT/MyTranscriber.swift`（实现 `Transcriber`）
+  - 新建 `Sources/Typeflux/STT/MyTranscriber.swift`（实现 `Transcriber`）
   - 改 `STTRouter`：在某个配置开关下走你的实现
   - 改 `DIContainer` 注入
 - **你会学到**：接口（protocol）+ 依赖注入 + 路由
@@ -510,7 +510,7 @@ SwiftUI View 通过 `NSHostingView(rootView:)` 放进 AppKit window。
 ### 练习 6：不覆盖用户剪贴板（进阶）
 
 - **目标**：粘贴完成后恢复剪贴板
-- **改动文件**：`Sources/VoiceInput/TextInjection/AXTextInjector.swift`
+- **改动文件**：`Sources/Typeflux/TextInjection/AXTextInjector.swift`
 - **你会学到**：系统 API（NSPasteboard）、边界情况处理
 
 注意：恢复剪贴板会遇到“用户在你粘贴期间也修改了剪贴板”的竞态问题，你需要先定义策略。

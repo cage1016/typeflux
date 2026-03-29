@@ -80,7 +80,7 @@
 "menu.settings" = "设置…";
 "menu.about" = "关于 Typeflux";
 "menu.checkForUpdates" = "检查更新…";
-"menu.quit" = "退出 Typeflux";
+"menu.quit" = "退出";
 "menu.status.ready" = "已就绪";
 "menu.status.recording" = "录音中…";
 "menu.status.processing" = "处理中…";

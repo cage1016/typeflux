@@ -9,7 +9,7 @@ final class FileHistoryStore: HistoryStore {
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let newBaseDir = appSupport.appendingPathComponent("Typeflux", isDirectory: true)
-        let legacyBaseDir = appSupport.appendingPathComponent("VoiceInput", isDirectory: true)
+        let legacyBaseDir = appSupport.appendingPathComponent("Typeflux", isDirectory: true)
         if !FileManager.default.fileExists(atPath: newBaseDir.path),
            FileManager.default.fileExists(atPath: legacyBaseDir.path) {
             try? FileManager.default.moveItem(at: legacyBaseDir, to: newBaseDir)

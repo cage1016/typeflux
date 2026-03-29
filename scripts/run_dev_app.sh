@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_DIR="${TYPEFLUX_DEV_APP_DIR:-${VOICEINPUT_DEV_APP_DIR:-$HOME/Applications/Typeflux Dev.app}}"
+APP_DIR="${TYPEFLUX_DEV_APP_DIR:-${TYPEFLUX_DEV_APP_DIR:-$HOME/Applications/Typeflux Dev.app}}"
 
 swift build --package-path "$ROOT_DIR" -c debug
 

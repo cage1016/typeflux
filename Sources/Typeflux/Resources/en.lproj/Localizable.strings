@@ -80,7 +80,7 @@
 "menu.settings" = "Settings…";
 "menu.about" = "About Typeflux";
 "menu.checkForUpdates" = "Check for Updates…";
-"menu.quit" = "Quit Typeflux";
+"menu.quit" = "Quit";
 "menu.status.ready" = "Ready";
 "menu.status.recording" = "Recording in progress…";
 "menu.status.processing" = "Processing latest capture…";

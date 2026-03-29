@@ -1,5 +1,5 @@
 import XCTest
-@testable import VoiceInput
+@testable import Typeflux
 
 final class OpenAIRealtimeTranscriptAccumulatorTests: XCTestCase {
     func testAccumulatorBuildsTranscriptAcrossDeltaAndCompletedEvents() throws {

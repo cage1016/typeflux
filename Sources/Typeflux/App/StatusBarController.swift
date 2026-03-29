@@ -93,11 +93,6 @@ final class StatusBarController: NSObject {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let statusMenuItem = NSMenuItem(title: statusMenuTitle, action: nil, keyEquivalent: "")
-        statusMenuItem.isEnabled = false
-        menu.addItem(statusMenuItem)
-        menu.addItem(NSMenuItem.separator())
-
         menu.addItem(makeItem(title: L("menu.openVoiceStudio"), action: #selector(openHome)))
         menu.addItem(makeItem(title: L("menu.history"), action: #selector(openHistory)))
         menu.addItem(makeItem(title: L("menu.personas"), action: #selector(openPersonas)))
@@ -106,16 +101,9 @@ final class StatusBarController: NSObject {
         let appearanceItem = NSMenuItem(title: L("menu.appearance"), action: nil, keyEquivalent: "")
         appearanceItem.submenu = buildAppearanceMenu()
         menu.addItem(appearanceItem)
-
-        let settingsItem = makeItem(title: L("menu.settings"), action: #selector(openSettings), keyEquivalent: ",")
-        menu.addItem(settingsItem)
-        menu.addItem(NSMenuItem.separator())
-
-        let versionItem = NSMenuItem(title: versionMenuTitle, action: nil, keyEquivalent: "")
-        versionItem.isEnabled = false
-        menu.addItem(versionItem)
-        menu.addItem(makeItem(title: L("menu.about"), action: #selector(openAbout)))
         menu.addItem(makeItem(title: L("menu.checkForUpdates"), action: #selector(checkUpdates)))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(makeItem(title: L("menu.about"), action: #selector(openAbout)))
         menu.addItem(NSMenuItem.separator())
 
         menu.addItem(makeItem(title: L("menu.quit"), action: #selector(quit), keyEquivalent: "q"))
@@ -148,40 +136,10 @@ final class StatusBarController: NSObject {
         return item
     }
 
-    private var statusMenuTitle: String {
-        switch appState.status {
-        case .idle:
-            return L("menu.status.ready")
-        case .recording:
-            return L("menu.status.recording")
-        case .processing:
-            return L("menu.status.processing")
-        case .failed(let message):
-            return L("menu.status.failed", message)
-        }
-    }
-
-    private var versionMenuTitle: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        let bundleVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
-        switch (version, bundleVersion) {
-        case let (version?, bundleVersion?) where version != bundleVersion:
-            return "Version \(version) (\(bundleVersion))"
-        case let (version?, _):
-            return "Version \(version)"
-        case let (_, bundleVersion?):
-            return "Build \(bundleVersion)"
-        default:
-            return L("about.appName")
-        }
-    }
-
     private func openStudio(_ section: StudioSection) {
         switch section {
         case .history:
             openHistory()
-        case .settings:
-            openSettings()
         default:
             SettingsWindowController.shared.show(
                 settingsStore: settingsStore,
@@ -198,15 +156,6 @@ final class StatusBarController: NSObject {
 
     @objc private func openPersonas() {
         openStudio(.personas)
-    }
-
-    @objc private func openSettings() {
-        SettingsWindowController.shared.show(
-            settingsStore: settingsStore,
-            historyStore: historyStore,
-            initialSection: .settings,
-            onRetryHistory: onRetryHistory
-        )
     }
 
     @objc private func openHistory() {

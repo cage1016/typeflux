@@ -25,12 +25,12 @@
 仓库根目录：
 
 - **`Package.swift`**：SwiftPM 配置，生成可执行程序 `Typeflux`。
-- **`Sources/VoiceInput/`**：主 Target 源码（按领域目录拆分）。
+- **`Sources/Typeflux/`**：主 Target 源码（按领域目录拆分）。
 - **`scripts/run_dev_app.sh`**：开发态启动脚本（构建 + 生成 `.build/Typeflux.app` + `open` 启动）。
 - **`app/Info.plist`**：`.app` 的 Info.plist（包含隐私权限 key，且 `LSUIElement = true` 作为菜单栏常驻应用）。
 - **`docs/`**：设计文档与本入门文档。
 
-`Sources/VoiceInput/` 内部结构：
+`Sources/Typeflux/` 内部结构：
 
 - **`main.swift`**：应用入口（`NSApplication` + `AppDelegate`）。
 - **`App/`**：组装与生命周期（`DIContainer`、`AppCoordinator`、菜单栏控制器、状态与错误日志）。
@@ -87,13 +87,13 @@
 这些 key 目前在：
 
 - `app/Info.plist`
-- `Sources/VoiceInput/Resources/Info.plist`（注意：当前 SwiftPM target exclude 了该文件，运行时主要以 `.app` 的 Info.plist 为准）
+- `Sources/Typeflux/Resources/Info.plist`（注意：当前 SwiftPM target exclude 了该文件，运行时主要以 `.app` 的 Info.plist 为准）
 
 ## 5. 核心架构与数据流（从入口开始）
 
 ### 5.1 入口与生命周期
 
-- **入口**：`Sources/VoiceInput/main.swift`
+- **入口**：`Sources/Typeflux/main.swift`
   - 创建 `NSApplication.shared`
   - 设置 `AppDelegate`
   - `app.setActivationPolicy(.accessory)`（不显示 Dock 图标，菜单栏应用）
@@ -373,9 +373,9 @@
 ## 10. 下一步阅读建议
 
 - **核心必读**：
-  - `Sources/VoiceInput/main.swift`
-  - `Sources/VoiceInput/App/DIContainer.swift`
-  - `Sources/VoiceInput/Workflow/WorkflowController.swift`
+  - `Sources/Typeflux/main.swift`
+  - `Sources/Typeflux/App/DIContainer.swift`
+  - `Sources/Typeflux/Workflow/WorkflowController.swift`
 
 - **按功能选读**：
   - Hotkey：`Hotkey/EventTapHotkeyService.swift`

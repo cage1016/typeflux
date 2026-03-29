@@ -1,5 +1,5 @@
 import XCTest
-@testable import VoiceInput
+@testable import Typeflux
 
 final class NetworkDebugLoggerTests: XCTestCase {
     func testDescribeErrorIncludesNSErrorMetadata() {

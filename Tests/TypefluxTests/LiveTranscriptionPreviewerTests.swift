@@ -1,6 +1,6 @@
 import AVFoundation
 import XCTest
-@testable import VoiceInput
+@testable import Typeflux
 
 final class LiveTranscriptionPreviewerTests: XCTestCase {
     func testPrepareForStartPreservesPendingBuffersUntilBackendStarts() async throws {

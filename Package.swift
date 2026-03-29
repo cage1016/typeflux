@@ -8,12 +8,12 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "Typeflux", targets: ["VoiceInput"])
+        .executable(name: "Typeflux", targets: ["Typeflux"])
     ],
     targets: [
         .executableTarget(
-            name: "VoiceInput",
-            path: "Sources/VoiceInput",
+            name: "Typeflux",
+            path: "Sources/Typeflux",
             exclude: [
                 "Resources/Info.plist"
             ],
@@ -25,9 +25,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "VoiceInputTests",
-            dependencies: ["VoiceInput"],
-            path: "Tests/VoiceInputTests"
+            name: "TypefluxTests",
+            dependencies: ["Typeflux"],
+            path: "Tests/TypefluxTests"
         )
     ]
 )
