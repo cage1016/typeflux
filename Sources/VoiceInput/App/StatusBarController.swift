@@ -11,6 +11,7 @@ final class StatusBarController: NSObject {
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
+    private var languageObserver: NSObjectProtocol?
 
     init(
         appState: AppStateStore,
@@ -22,12 +23,22 @@ final class StatusBarController: NSObject {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
         self.onRetryHistory = onRetryHistory
+        AppLocalization.shared.setLanguage(settingsStore.appLanguage)
     }
 
     func start() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateTitle()
         rebuildMenu()
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.rebuildMenu()
+            }
+        }
 
         appState.$status
             .receive(on: DispatchQueue.main)
@@ -44,6 +55,10 @@ final class StatusBarController: NSObject {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
         statusItem = nil
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+        }
+        languageObserver = nil
         cancellables.removeAll()
     }
 
@@ -68,34 +83,34 @@ final class StatusBarController: NSObject {
         menu.addItem(statusMenuItem)
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(makeItem(title: "Open Voice Studio", action: #selector(openHome)))
-        menu.addItem(makeItem(title: "History…", action: #selector(openHistory)))
-        menu.addItem(makeItem(title: "Personas", action: #selector(openPersonas)))
+        menu.addItem(makeItem(title: L("menu.openVoiceStudio"), action: #selector(openHome)))
+        menu.addItem(makeItem(title: L("menu.history"), action: #selector(openHistory)))
+        menu.addItem(makeItem(title: L("menu.personas"), action: #selector(openPersonas)))
         menu.addItem(NSMenuItem.separator())
 
-        let appearanceItem = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
+        let appearanceItem = NSMenuItem(title: L("menu.appearance"), action: nil, keyEquivalent: "")
         appearanceItem.submenu = buildAppearanceMenu()
         menu.addItem(appearanceItem)
 
-        let settingsItem = makeItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = makeItem(title: L("menu.settings"), action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(settingsItem)
         menu.addItem(NSMenuItem.separator())
 
         let versionItem = NSMenuItem(title: versionMenuTitle, action: nil, keyEquivalent: "")
         versionItem.isEnabled = false
         menu.addItem(versionItem)
-        menu.addItem(makeItem(title: "About VoiceInput", action: #selector(openAbout)))
-        menu.addItem(makeItem(title: "Check for Updates…", action: #selector(checkUpdates)))
+        menu.addItem(makeItem(title: L("menu.about"), action: #selector(openAbout)))
+        menu.addItem(makeItem(title: L("menu.checkForUpdates"), action: #selector(checkUpdates)))
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(makeItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(makeItem(title: L("menu.quit"), action: #selector(quit), keyEquivalent: "q"))
 
         self.menu = menu
         self.statusItem?.menu = menu
     }
 
     private func buildAppearanceMenu() -> NSMenu {
-        let menu = NSMenu(title: "Appearance")
+        let menu = NSMenu(title: L("menu.appearance"))
 
         menu.addItem(makeAppearanceItem(mode: .system))
         menu.addItem(makeAppearanceItem(mode: .light))
@@ -121,13 +136,13 @@ final class StatusBarController: NSObject {
     private var statusMenuTitle: String {
         switch appState.status {
         case .idle:
-            return "Ready"
+            return L("menu.status.ready")
         case .recording:
-            return "Recording in progress…"
+            return L("menu.status.recording")
         case .processing:
-            return "Processing latest capture…"
+            return L("menu.status.processing")
         case .failed(let message):
-            return "Failed: \(message)"
+            return L("menu.status.failed", message)
         }
     }
 
@@ -142,7 +157,7 @@ final class StatusBarController: NSObject {
         case let (_, bundleVersion?):
             return "Build \(bundleVersion)"
         default:
-            return "VoiceInput"
+            return L("about.appName")
         }
     }
 

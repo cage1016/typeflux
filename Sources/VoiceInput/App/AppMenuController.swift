@@ -23,31 +23,31 @@ enum AppMenuController {
 
     @MainActor
     private static func buildApplicationMenu() -> NSMenu {
-        let menu = NSMenu(title: "VoiceInput")
+        let menu = NSMenu(title: L("about.appName"))
 
         let appName = ProcessInfo.processInfo.processName
-        let aboutItem = NSMenuItem(title: "About \(appName)", action: #selector(AppMenuActionRouter.openAbout(_:)), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: L("appMenu.about", appName), action: #selector(AppMenuActionRouter.openAbout(_:)), keyEquivalent: "")
         aboutItem.target = AppMenuActionRouter.shared
         menu.addItem(aboutItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
-            withTitle: "Hide \(appName)",
+            withTitle: L("appMenu.hide", appName),
             action: #selector(NSApplication.hide(_:)),
             keyEquivalent: "h"
         )
         menu.addItem(
-            withTitle: "Hide Others",
+            withTitle: L("appMenu.hideOthers"),
             action: #selector(NSApplication.hideOtherApplications(_:)),
             keyEquivalent: "h"
         ).keyEquivalentModifierMask = [.command, .option]
         menu.addItem(
-            withTitle: "Show All",
+            withTitle: L("appMenu.showAll"),
             action: #selector(NSApplication.unhideAllApplications(_:)),
             keyEquivalent: ""
         )
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
-            withTitle: "Quit \(appName)",
+            withTitle: L("appMenu.quit", appName),
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )
@@ -57,15 +57,15 @@ enum AppMenuController {
 
     @MainActor
     private static func buildEditMenu() -> NSMenu {
-        let menu = NSMenu(title: "Edit")
+        let menu = NSMenu(title: L("appMenu.edit"))
 
-        menu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        menu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        menu.addItem(withTitle: L("appMenu.undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        menu.addItem(withTitle: L("appMenu.redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        menu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        menu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        menu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        menu.addItem(withTitle: L("appMenu.cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        menu.addItem(withTitle: L("appMenu.copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        menu.addItem(withTitle: L("appMenu.paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        menu.addItem(withTitle: L("appMenu.selectAll"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
         return menu
     }

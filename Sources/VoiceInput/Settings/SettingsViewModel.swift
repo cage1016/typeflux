@@ -27,6 +27,7 @@ final class StudioViewModel: ObservableObject {
     @Published var sttProvider: STTProvider
     @Published var llmProvider: LLMProvider
     @Published var appearanceMode: AppearanceMode
+    @Published var appLanguage: AppLanguage
     @Published var availableMicrophones: [AudioInputDevice] = []
     @Published var preferredMicrophoneID: String
     @Published var muteSystemOutputDuringRecording: Bool
@@ -142,6 +143,7 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .doubaoRealtime
         }
         appearanceMode = settingsStore.appearanceMode
+        appLanguage = settingsStore.appLanguage
         preferredMicrophoneID = settingsStore.preferredMicrophoneID
         muteSystemOutputDuringRecording = settingsStore.muteSystemOutputDuringRecording
         llmBaseURL = settingsStore.llmBaseURL
@@ -225,6 +227,10 @@ final class StudioViewModel: ObservableObject {
         case .light: return .light
         case .dark: return .dark
         }
+    }
+
+    var locale: Locale {
+        Locale(identifier: appLanguage.localeIdentifier)
     }
 
     var localSTTPreparationPercentText: String {
@@ -506,6 +512,12 @@ final class StudioViewModel: ObservableObject {
     func setAppearanceMode(_ mode: AppearanceMode) {
         appearanceMode = mode
         settingsStore.appearanceMode = mode
+    }
+
+    func setAppLanguage(_ language: AppLanguage) {
+        appLanguage = language
+        settingsStore.appLanguage = language
+        AppLocalization.shared.setLanguage(language)
     }
 
     func refreshAvailableMicrophones() {

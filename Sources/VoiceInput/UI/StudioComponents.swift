@@ -186,6 +186,7 @@ struct StudioSidebar: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
     let onOpenAbout: () -> Void
+    @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
@@ -195,10 +196,10 @@ struct StudioSidebar: View {
                     .foregroundStyle(StudioTheme.textPrimary)
 
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.sidebarHeaderText) {
-                    Text("VoiceInput")
+                    Text(L("sidebar.appName"))
                         .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
                         .foregroundStyle(StudioTheme.textPrimary)
-                    Text("Desktop")
+                    Text(L("sidebar.platform"))
                         .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
                         .foregroundStyle(StudioTheme.textSecondary)
                 }
@@ -238,7 +239,7 @@ struct StudioSidebar: View {
             Button(action: onOpenAbout) {
                 HStack {
                     Spacer()
-                    Text("About")
+                    Text(L("sidebar.about"))
                         .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
                     Spacer()
                 }
@@ -248,10 +249,11 @@ struct StudioSidebar: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(StudioInteractiveButtonStyle())
-            .accessibilityLabel("About VoiceInput")
+            .accessibilityLabel(L("sidebar.aboutAccessibility"))
         }
         .padding(.horizontal, StudioTheme.Insets.sidebarOuterHorizontal)
         .padding(.vertical, StudioTheme.Insets.sidebarOuterVertical)
+        .environment(\.locale, localization.locale)
     }
 }
 

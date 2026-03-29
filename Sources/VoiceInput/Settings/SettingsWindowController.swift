@@ -7,6 +7,20 @@ final class SettingsWindowController: NSObject {
 
     private var window: NSWindow?
     private var viewModel: StudioViewModel?
+    private var languageObserver: NSObjectProtocol?
+
+    override init() {
+        super.init()
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.window?.title = L("window.voiceStudio")
+            }
+        }
+    }
 
     func show(
         settingsStore: SettingsStore,
@@ -27,6 +41,7 @@ final class SettingsWindowController: NSObject {
             initialSection: initialSection,
             onRetryHistory: onRetryHistory
         )
+        AppLocalization.shared.setLanguage(viewModel.appLanguage)
         let view = StudioView(viewModel: viewModel)
         let hosting = NSHostingView(rootView: view)
 
@@ -41,7 +56,7 @@ final class SettingsWindowController: NSObject {
             backing: .buffered,
             defer: false
         )
-        window.title = "Voice Studio"
+        window.title = L("window.voiceStudio")
         window.center()
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden

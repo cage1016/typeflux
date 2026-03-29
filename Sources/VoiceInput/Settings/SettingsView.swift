@@ -54,6 +54,7 @@ struct StudioView: View {
     @State private var isAddingVocabulary = false
     @State private var newVocabularyTerm = ""
     @State private var personaPendingDeletion: PersonaProfile?
+    @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
         StudioShell(
@@ -73,9 +74,11 @@ struct StudioView: View {
             .animation(.easeInOut(duration: 0.15), value: viewModel.currentSection)
         }
         .onAppear {
+            AppLocalization.shared.setLanguage(viewModel.appLanguage)
             viewModel.schedulePermissionRefresh()
         }
         .preferredColorScheme(viewModel.preferredColorScheme)
+        .environment(\.locale, viewModel.locale)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             viewModel.schedulePermissionRefresh()
         }
@@ -133,7 +136,7 @@ struct StudioView: View {
                 Spacer()
 
                 StudioButton(
-                    title: viewModel.isRefreshingHistory ? "Refreshing..." : "Refresh",
+                    title: viewModel.isRefreshingHistory ? L("common.refreshing") : L("common.refresh"),
                     systemImage: "arrow.clockwise",
                     variant: .secondary,
                     isLoading: viewModel.isRefreshingHistory
@@ -167,10 +170,10 @@ struct StudioView: View {
             overviewPanel
 
             sectionHeader(
-                title: "Recent Transcriptions",
-                secondaryButtonTitle: "Export All",
+                title: L("home.recentTranscriptions"),
+                secondaryButtonTitle: L("home.exportAll"),
                 secondaryAction: { viewModel.exportHistory() },
-                primaryButtonTitle: "Open History",
+                primaryButtonTitle: L("home.openHistory"),
                 primaryAction: { viewModel.navigate(to: .history) }
             )
 
@@ -554,12 +557,12 @@ struct StudioView: View {
 
     private var settingsPage: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
-            StudioSectionTitle(title: "General")
+            StudioSectionTitle(title: L("settings.general"))
 
             StudioCard {
                 StudioSettingRow(
-                    title: "开机自动启动",
-                    subtitle: "登录 Mac 后自动启动 VoiceInput，无需手动打开。"
+                    title: L("settings.launchAtLogin.title"),
+                    subtitle: L("settings.launchAtLogin.subtitle")
                 ) {
                     Toggle(
                         "",
@@ -573,7 +576,7 @@ struct StudioView: View {
                 }
             }
 
-            StudioSectionTitle(title: "Activation Hotkey")
+            StudioSectionTitle(title: L("settings.activationHotkey"))
 
             StudioCard {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
@@ -627,7 +630,7 @@ struct StudioView: View {
                 }
             }
 
-            StudioSectionTitle(title: "Identity & Interaction")
+            StudioSectionTitle(title: L("settings.identity"))
 
             HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
                 StudioCard {
@@ -723,10 +726,10 @@ struct StudioView: View {
                         )
 
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
-                        Text("Appearance")
+                        Text(L("settings.appearance.title"))
                             .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
                             .foregroundStyle(StudioTheme.textPrimary)
-                        Text("Switch the component system between light, dark, or system-following themes.")
+                        Text(L("settings.appearance.subtitle"))
                             .font(.studioBody(StudioTheme.Typography.bodySmall))
                             .foregroundStyle(StudioTheme.textSecondary)
                     }
@@ -744,17 +747,49 @@ struct StudioView: View {
                 }
             }
 
-            StudioSectionTitle(title: "Audio")
+            StudioCard {
+                HStack {
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                        .fill(StudioTheme.accentSoft)
+                        .frame(width: StudioTheme.ControlSize.appearanceBadge, height: StudioTheme.ControlSize.appearanceBadge)
+                        .overlay(
+                            Image(systemName: "globe")
+                                .foregroundStyle(StudioTheme.accent)
+                        )
+
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                        Text(L("settings.language.title"))
+                            .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                        Text(L("settings.language.subtitle"))
+                            .font(.studioBody(StudioTheme.Typography.bodySmall))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                    }
+
+                    Spacer()
+
+                    StudioMenuPicker(
+                        options: AppLanguage.allCases.map { (label: $0.displayName, value: $0) },
+                        selection: Binding(
+                            get: { viewModel.appLanguage },
+                            set: viewModel.setAppLanguage
+                        ),
+                        width: StudioTheme.Layout.appearancePickerWidth
+                    )
+                }
+            }
+
+            StudioSectionTitle(title: L("settings.audio"))
 
             StudioCard {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
-                        title: "Microphone",
-                        subtitle: "Pick the device used for dictation. Automatic follows the current macOS default input."
+                        title: L("settings.microphone.title"),
+                        subtitle: L("settings.microphone.subtitle")
                     ) {
                         HStack(spacing: StudioTheme.Spacing.small) {
                             StudioMenuPicker(
-                                options: [(label: "Automatic", value: AudioDeviceManager.automaticDeviceID)] +
+                                options: [(label: L("settings.microphone.automatic"), value: AudioDeviceManager.automaticDeviceID)] +
                                          viewModel.availableMicrophones.map { (label: $0.name, value: $0.id) },
                                 selection: Binding(
                                     get: { viewModel.preferredMicrophoneID },
@@ -763,7 +798,7 @@ struct StudioView: View {
                                 width: 260
                             )
 
-                            StudioButton(title: "Refresh", systemImage: "arrow.clockwise", variant: .secondary) {
+                            StudioButton(title: L("common.refresh"), systemImage: "arrow.clockwise", variant: .secondary) {
                                 viewModel.refreshAvailableMicrophones()
                             }
                         }
@@ -773,8 +808,8 @@ struct StudioView: View {
                     Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                     StudioSettingRow(
-                        title: "Mute During Recording",
-                        subtitle: "Temporarily mute the system output while recording to reduce feedback or system sounds leaking into the microphone."
+                        title: L("settings.mute.title"),
+                        subtitle: L("settings.mute.subtitle")
                     ) {
                         Toggle(
                             "",
@@ -789,16 +824,16 @@ struct StudioView: View {
                 }
             }
 
-            StudioSectionTitle(title: "Permissions")
+            StudioSectionTitle(title: L("settings.permissions"))
 
             StudioCard {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
-                        title: "Permission Status",
-                        subtitle: "Review the macOS permissions VoiceInput depends on, then grant access where needed."
+                        title: L("settings.permissionStatus.title"),
+                        subtitle: L("settings.permissionStatus.subtitle")
                     ) {
                         StudioButton(
-                            title: viewModel.isRefreshingPermissions ? "Refreshing..." : "Refresh",
+                            title: viewModel.isRefreshingPermissions ? L("common.refreshing") : L("common.refresh"),
                             systemImage: "arrow.clockwise",
                             variant: .secondary,
                             isLoading: viewModel.isRefreshingPermissions

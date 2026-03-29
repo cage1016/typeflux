@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AboutView: View {
     let appearanceMode: AppearanceMode
+    @ObservedObject private var localization = AppLocalization.shared
 
     private let websiteURL = URL(string: "https://github.com/mylxsw")!
     private let projectURL = URL(string: "https://github.com/mylxsw/voice-input")!
@@ -23,6 +24,7 @@ struct AboutView: View {
             }
         }
         .preferredColorScheme(preferredColorScheme)
+        .environment(\.locale, localization.locale)
     }
 
     private var headerCard: some View {
@@ -48,11 +50,11 @@ struct AboutView: View {
                 }
 
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    Text("VoiceInput")
+                    Text(L("about.appName"))
                         .font(.studioDisplay(StudioTheme.Typography.heroTitle, weight: .semibold))
                         .foregroundStyle(StudioTheme.textPrimary)
 
-                    Text("A personal macOS menu bar voice input app by @mylxsw.")
+                    Text(L("about.subtitle"))
                         .font(.studioBody(StudioTheme.Typography.bodyLarge))
                         .foregroundStyle(StudioTheme.textSecondary)
                 }
@@ -64,20 +66,20 @@ struct AboutView: View {
 
     private var detailsCard: some View {
         StudioCard {
-            StudioSectionTitle(title: "DETAILS")
+            StudioSectionTitle(title: L("about.details"))
 
             detailRow(
                 icon: "person.crop.circle",
-                title: "Developer",
+                title: L("about.developer"),
                 value: "@mylxsw",
-                subtitle: "Independent developer"
+                subtitle: L("about.developer.subtitle")
             )
 
             divider
 
             detailLinkRow(
                 icon: "globe",
-                title: "Website",
+                title: L("about.website"),
                 value: "github.com/mylxsw",
                 subtitle: websiteURL.absoluteString,
                 url: websiteURL
@@ -87,9 +89,9 @@ struct AboutView: View {
 
             detailLinkRow(
                 icon: "shippingbox",
-                title: "Project",
+                title: L("about.project"),
                 value: "voice-input",
-                subtitle: "Source code, issues, and release history",
+                subtitle: L("about.project.subtitle"),
                 url: projectURL
             )
 
@@ -97,9 +99,9 @@ struct AboutView: View {
 
             detailRow(
                 icon: "number",
-                title: "Build",
+                title: L("about.build"),
                 value: versionDescription,
-                subtitle: "Read from the app bundle"
+                subtitle: L("about.build.subtitle")
             )
         }
     }

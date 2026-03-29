@@ -19,22 +19,22 @@ enum PrivacyGuard {
         var title: String {
             switch self {
             case .microphone:
-                return "Microphone"
+                return L("permission.microphone.title")
             case .speechRecognition:
-                return "Speech Recognition"
+                return L("permission.speechRecognition.title")
             case .accessibility:
-                return "Accessibility"
+                return L("permission.accessibility.title")
             }
         }
 
         var summary: String {
             switch self {
             case .microphone:
-                return "Required to capture audio from the system microphone."
+                return L("permission.microphone.summary")
             case .speechRecognition:
-                return "Required when using Apple Speech for on-device transcription or fallback."
+                return L("permission.speechRecognition.summary")
             case .accessibility:
-                return "Required to insert or replace text in other apps."
+                return L("permission.accessibility.summary")
             }
         }
     }
@@ -52,8 +52,8 @@ enum PrivacyGuard {
         var title: String { id.title }
         var summary: String { id.summary }
         var isGranted: Bool { state == .granted }
-        var badgeText: String { isGranted ? "Granted" : "Required" }
-        var actionTitle: String { isGranted ? "Open Settings" : "Grant Access" }
+        var badgeText: String { isGranted ? L("permission.badge.granted") : L("permission.badge.required") }
+        var actionTitle: String { isGranted ? L("permission.action.openSettings") : L("permission.action.grantAccess") }
     }
 
     @MainActor
@@ -81,8 +81,8 @@ enum PrivacyGuard {
                 id: id,
                 state: trusted ? .granted : .needsAttention,
                 detail: trusted
-                    ? "VoiceInput can control text fields in other apps."
-                    : "Enable Accessibility so VoiceInput can type into the focused app."
+                    ? L("permission.accessibility.detail.granted")
+                    : L("permission.accessibility.detail.required")
             )
         }
     }
@@ -157,30 +157,30 @@ enum PrivacyGuard {
     private static func microphoneDetail(for status: AVAuthorizationStatus) -> String {
         switch status {
         case .authorized:
-            return "VoiceInput can access the system microphone."
+            return L("permission.microphone.detail.authorized")
         case .notDetermined:
-            return "Grant microphone access to allow recording from the menu bar."
+            return L("permission.microphone.detail.notDetermined")
         case .denied:
-            return "Microphone access was denied. Re-enable it in System Settings."
+            return L("permission.microphone.detail.denied")
         case .restricted:
-            return "Microphone access is restricted by the system."
+            return L("permission.microphone.detail.restricted")
         @unknown default:
-            return "Microphone access needs attention."
+            return L("permission.microphone.detail.unknown")
         }
     }
 
     private static func speechRecognitionDetail(for status: SFSpeechRecognizerAuthorizationStatus) -> String {
         switch status {
         case .authorized:
-            return "Apple Speech can transcribe recordings on this Mac."
+            return L("permission.speechRecognition.detail.authorized")
         case .notDetermined:
-            return "Grant speech recognition to use Apple Speech transcription."
+            return L("permission.speechRecognition.detail.notDetermined")
         case .denied:
-            return "Speech recognition was denied. Re-enable it in System Settings."
+            return L("permission.speechRecognition.detail.denied")
         case .restricted:
-            return "Speech recognition is restricted by the system."
+            return L("permission.speechRecognition.detail.restricted")
         @unknown default:
-            return "Speech recognition needs attention."
+            return L("permission.speechRecognition.detail.unknown")
         }
     }
 

@@ -8,8 +8,25 @@ final class AboutWindowController: NSObject {
     private let settingsStore = SettingsStore()
     private var window: NSWindow?
     private var hostingView: NSHostingView<AboutView>?
+    private var languageObserver: NSObjectProtocol?
+
+    override init() {
+        super.init()
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let window = self.window else { return }
+                self.hostingView?.rootView = AboutView(appearanceMode: self.settingsStore.appearanceMode)
+                window.title = L("window.about")
+            }
+        }
+    }
 
     func show() {
+        AppLocalization.shared.setLanguage(settingsStore.appLanguage)
         let rootView = AboutView(appearanceMode: settingsStore.appearanceMode)
 
         if let window {
@@ -27,7 +44,7 @@ final class AboutWindowController: NSObject {
             backing: .buffered,
             defer: false
         )
-        window.title = "About VoiceInput"
+        window.title = L("window.about")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true

@@ -16,30 +16,30 @@ enum HistoryRetentionPolicy: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .never:
-            return "Never"
+            return L("history.retention.never.title")
         case .oneDay:
-            return "24 hours"
+            return L("history.retention.oneDay.title")
         case .oneWeek:
-            return "1 week"
+            return L("history.retention.oneWeek.title")
         case .oneMonth:
-            return "1 month"
+            return L("history.retention.oneMonth.title")
         case .forever:
-            return "Forever"
+            return L("history.retention.forever.title")
         }
     }
 
     var detail: String {
         switch self {
         case .never:
-            return "Do not retain local history after each session."
+            return L("history.retention.never.detail")
         case .oneDay:
-            return "Automatically remove entries older than one day."
+            return L("history.retention.oneDay.detail")
         case .oneWeek:
-            return "Keep the latest seven days of dictation history."
+            return L("history.retention.oneWeek.detail")
         case .oneMonth:
-            return "Keep the latest thirty days of dictation history."
+            return L("history.retention.oneMonth.detail")
         case .forever:
-            return "Keep all local history until you remove it manually."
+            return L("history.retention.forever.detail")
         }
     }
 
@@ -61,6 +61,20 @@ enum HistoryRetentionPolicy: String, CaseIterable, Identifiable {
 
 final class SettingsStore {
     private let defaults = UserDefaults.standard
+
+    var appLanguage: AppLanguage {
+        get {
+            guard
+                let raw = defaults.string(forKey: "ui.language"),
+                let language = AppLanguage(rawValue: raw)
+            else {
+                return AppLanguage.defaultLanguage()
+            }
+
+            return language
+        }
+        set { defaults.set(newValue.rawValue, forKey: "ui.language") }
+    }
 
     var sttProvider: STTProvider {
         get {

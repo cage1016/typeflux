@@ -12,12 +12,12 @@ enum StudioSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .home: return "Overview"
-        case .models: return "Models"
-        case .personas: return "Personas"
-        case .vocabulary: return "Vocabulary"
-        case .history: return "History"
-        case .settings: return "Settings"
+        case .home: return L("studio.section.home")
+        case .models: return L("studio.section.models")
+        case .personas: return L("studio.section.personas")
+        case .vocabulary: return L("studio.section.vocabulary")
+        case .history: return L("studio.section.history")
+        case .settings: return L("studio.section.settings")
         }
     }
 
@@ -34,51 +34,51 @@ enum StudioSection: String, CaseIterable, Identifiable {
 
     var eyebrow: String {
         switch self {
-        case .home: return "VoiceInput"
-        case .models: return "Configuration"
-        case .personas: return "Voice Personas"
-        case .vocabulary: return "Custom Terms"
-        case .history: return "Session History"
-        case .settings: return "Settings"
+        case .home: return L("studio.eyebrow.home")
+        case .models: return L("studio.eyebrow.models")
+        case .personas: return L("studio.eyebrow.personas")
+        case .vocabulary: return L("studio.eyebrow.vocabulary")
+        case .history: return L("studio.eyebrow.history")
+        case .settings: return L("studio.eyebrow.settings")
         }
     }
 
     var heading: String {
         switch self {
-        case .home: return "Speak naturally, write anywhere."
-        case .models: return "Model configuration"
-        case .personas: return "Persona library"
-        case .vocabulary: return "Vocabulary"
-        case .history: return "History"
-        case .settings: return "Settings"
+        case .home: return L("studio.heading.home")
+        case .models: return L("studio.heading.models")
+        case .personas: return L("studio.heading.personas")
+        case .vocabulary: return L("studio.heading.vocabulary")
+        case .history: return L("studio.heading.history")
+        case .settings: return L("studio.heading.settings")
         }
     }
 
     var subheading: String {
         switch self {
         case .home:
-            return "Keep the whole desktop experience consistent with a calmer, cleaner control surface."
+            return L("studio.subheading.home")
         case .models:
-            return "Choose the local and remote engines used for transcription and rewrite flows."
+            return L("studio.subheading.models")
         case .personas:
-            return "Create reusable writing styles and keep every prompt ready for daily use."
+            return L("studio.subheading.personas")
         case .vocabulary:
-            return "Manage the words and names that should be recognized more reliably during dictation."
+            return L("studio.subheading.vocabulary")
         case .history:
-            return "Review recent sessions, inspect the recognized text, and export your archive."
+            return L("studio.subheading.history")
         case .settings:
-            return "Adjust shortcuts, appearance, and behavior from one unified interface."
+            return L("studio.subheading.settings")
         }
     }
 
     var searchPlaceholder: String {
         switch self {
-        case .home: return "Search activity..."
-        case .models: return "Search models..."
-        case .personas: return "Search personas..."
-        case .vocabulary: return "Search vocabulary..."
-        case .history: return "Search history..."
-        case .settings: return "Search settings..."
+        case .home: return L("studio.search.home")
+        case .models: return L("studio.search.models")
+        case .personas: return L("studio.search.personas")
+        case .vocabulary: return L("studio.search.vocabulary")
+        case .history: return L("studio.search.history")
+        case .settings: return L("studio.search.settings")
         }
     }
 }

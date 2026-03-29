@@ -137,11 +137,11 @@ enum AppearanceMode: String, CaseIterable, Codable {
     var displayName: String {
         switch self {
         case .system:
-            return "System"
+            return L("appearance.system")
         case .light:
-            return "Light"
+            return L("appearance.light")
         case .dark:
-            return "Dark"
+            return L("appearance.dark")
         }
     }
 }
