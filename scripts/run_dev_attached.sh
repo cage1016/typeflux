@@ -22,7 +22,7 @@ trap 'cleanup 143' TERM
 
 swift build --package-path "$ROOT_DIR" -c debug
 
-BIN="$ROOT_DIR/.build/debug/VoiceInput"
+BIN="$ROOT_DIR/.build/debug/Typeflux"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 

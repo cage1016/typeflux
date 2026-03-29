@@ -6,7 +6,7 @@
 "appearance.light" = "浅色";
 "appearance.dark" = "深色";
 
-"window.voiceStudio" = "语音工作台";
+"window.voiceStudio" = "Typeflux";
 "window.about" = "关于 Typeflux";
 
 "common.refresh" = "刷新";

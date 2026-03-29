@@ -6,7 +6,7 @@ APP_DIR="${TYPEFLUX_DEV_APP_DIR:-${VOICEINPUT_DEV_APP_DIR:-$HOME/Applications/Ty
 
 swift build --package-path "$ROOT_DIR" -c debug
 
-BIN="$ROOT_DIR/.build/debug/VoiceInput"
+BIN="$ROOT_DIR/.build/debug/Typeflux"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
