@@ -102,7 +102,7 @@ final class MultimodalLLMTranscriber: Transcriber {
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "stream": true,
             "messages": [
@@ -124,6 +124,7 @@ final class MultimodalLLMTranscriber: Transcriber {
                 ]
             ]
         ]
+        OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
@@ -140,7 +141,12 @@ final class MultimodalLLMTranscriber: Transcriber {
                 if chunk == "[DONE]" { break }
                 guard let data = chunk.data(using: .utf8) else { continue }
 
-                guard let delta = Self.extractDelta(from: data) else { continue }
+                guard let delta = Self.extractDelta(from: data), !delta.isEmpty else {
+                    if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
+                        continue
+                    }
+                    continue
+                }
                 buffer += delta
 
                 await onUpdate(TranscriptionSnapshot(text: buffer, isFinal: false))
@@ -157,10 +163,7 @@ final class MultimodalLLMTranscriber: Transcriber {
     }
 
     private static func extractDelta(from data: Data) -> String? {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        let choices = obj["choices"] as? [[String: Any]]
-        let delta = choices?.first?["delta"] as? [String: Any]
-        return delta?["content"] as? String
+        OpenAICompatibleResponseSupport.extractTextDelta(from: data)
     }
 
     /// Maps a file extension to the format string expected by the OpenAI input_audio API.

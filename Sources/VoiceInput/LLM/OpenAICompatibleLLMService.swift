@@ -41,7 +41,7 @@ final class OpenAICompatibleLLMService: LLMService {
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "stream": true,
             "messages": [
@@ -49,6 +49,7 @@ final class OpenAICompatibleLLMService: LLMService {
                 ["role": "user", "content": prompts.user]
             ]
         ]
+        OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
 
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
         NetworkDebugLogger.logRequest(urlRequest)
@@ -60,14 +61,12 @@ final class OpenAICompatibleLLMService: LLMService {
                 if line == "[DONE]" { break }
 
                 guard let data = line.data(using: .utf8) else { continue }
-                let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-
-                let choices = obj?["choices"] as? [[String: Any]]
-                let delta = choices?.first?["delta"] as? [String: Any]
-                let content = delta?["content"] as? String
-                if let content {
+                let content = OpenAICompatibleResponseSupport.extractTextDelta(from: data)
+                if let content, !content.isEmpty {
                     final += content
                     continuation.yield(content)
+                } else if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
+                    continue
                 }
             }
         } catch {
