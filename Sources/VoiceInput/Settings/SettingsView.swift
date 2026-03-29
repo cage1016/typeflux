@@ -1193,7 +1193,7 @@ struct StudioView: View {
             viewModel.whisperBaseURL,
             viewModel.llmBaseURL,
             viewModel.multimodalLLMBaseURL,
-            "https://api.openai.com/v1",
+            "https://api.openai.com/v1/audio/transcriptions",
             "http://127.0.0.1:11434/v1"
         ])
     }
@@ -1202,7 +1202,8 @@ struct StudioView: View {
         uniqueSuggestions([
             viewModel.whisperModel,
             "whisper-1",
-            "gpt-4o-mini-transcribe"
+            "gpt-4o-mini-transcribe",
+            "gpt-4o-transcribe"
         ])
     }
 
@@ -1247,15 +1248,17 @@ struct StudioView: View {
         uniqueSuggestions([
             viewModel.multimodalLLMBaseURL,
             viewModel.llmBaseURL,
-            "https://api.openai.com/v1",
-            "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            "https://api.openai.com/v1/chat/completions",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
         ])
     }
 
     private var multimodalModelSuggestions: [String] {
         uniqueSuggestions([
             viewModel.multimodalLLMModel,
-            "gpt-4o-audio-preview"
+            "gpt-4o-mini-audio-preview",
+            "gpt-4o-audio-preview",
+            "gpt-audio-mini"
         ])
     }
 
@@ -1264,8 +1267,8 @@ struct StudioView: View {
             StudioSectionTitle(title: "Configuration")
             if viewModel.modelDomain == .stt {
                 StudioSuggestedTextInputCard(
-                    label: "Whisper Base URL",
-                    placeholder: "https://api.openai.com/v1",
+                    label: "Whisper Endpoint",
+                    placeholder: "https://api.openai.com/v1/audio/transcriptions",
                     text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
                     suggestions: whisperEndpointSuggestions
                 )
@@ -1962,7 +1965,7 @@ struct StudioView: View {
             case .whisperAPI:
                 StudioSuggestedTextInputCard(
                     label: "Transcription Endpoint",
-                    placeholder: "https://api.openai.com/v1",
+                    placeholder: "https://api.openai.com/v1/audio/transcriptions",
                     text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
                     suggestions: whisperEndpointSuggestions
                 )
@@ -2009,18 +2012,18 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                     StudioSuggestedTextInputCard(
                         label: "API Endpoint",
-                        placeholder: "https://api.openai.com/v1",
+                        placeholder: "https://api.openai.com/v1/chat/completions",
                         text: Binding(get: { viewModel.multimodalLLMBaseURL }, set: viewModel.setMultimodalLLMBaseURL),
                         suggestions: multimodalEndpointSuggestions
                     )
                     StudioSuggestedTextInputCard(
                         label: "Model",
-                        placeholder: "gpt-4o-audio-preview",
+                        placeholder: "gpt-4o-mini-audio-preview",
                         text: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel),
                         suggestions: multimodalModelSuggestions
                     )
                     StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.multimodalLLMAPIKey }, set: viewModel.setMultimodalLLMAPIKey), secure: true)
-                    Text("Audio is base64-encoded and sent as input_audio in a chat/completions request. When a persona is active, transcription and rewriting happen in a single call.")
+                    Text("Audio is base64-encoded and sent as input_audio to the configured chat/completions endpoint. When a persona is active, transcription and rewriting happen in a single call.")
                         .font(.studioBody(StudioTheme.Typography.caption))
                         .foregroundStyle(StudioTheme.textSecondary)
                 }
@@ -2305,7 +2308,7 @@ struct StudioView: View {
         case .openAICompatible:
             viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
         case .multimodalLLM:
-            viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel)
+            viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-mini-audio-preview" : viewModel.multimodalLLMModel)
         case .aliCloud:
             viewModel.setSTTProvider(.aliCloud)
         case .doubaoRealtime:
@@ -2438,7 +2441,7 @@ struct StudioView: View {
         case .openAICompatible:
             return viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel
         case .multimodalLLM:
-            return viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : viewModel.multimodalLLMModel
+            return viewModel.multimodalLLMModel.isEmpty ? "gpt-4o-mini-audio-preview" : viewModel.multimodalLLMModel
         case .aliCloud:
             return AliCloudASRDefaults.model
         case .doubaoRealtime:

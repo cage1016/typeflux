@@ -224,7 +224,7 @@ final class WhisperAPITranscriber: Transcriber {
         uploadURL: URL,
         stream: Bool
     ) throws -> URLRequest {
-        let url = baseURL.appendingPathComponent("audio/transcriptions")
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "audio/transcriptions")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         if !settingsStore.whisperAPIKey.isEmpty {

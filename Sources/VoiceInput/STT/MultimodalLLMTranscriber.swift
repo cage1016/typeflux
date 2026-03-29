@@ -36,7 +36,7 @@ final class MultimodalLLMTranscriber: Transcriber {
             )
         }
 
-        let model = settingsStore.multimodalLLMModel.isEmpty ? "gpt-4o-audio-preview" : settingsStore.multimodalLLMModel
+        let model = settingsStore.multimodalLLMModel.isEmpty ? "gpt-4o-mini-audio-preview" : settingsStore.multimodalLLMModel
 
         // Build system prompt: persona + vocabulary in one shot
         let personaPrompt = settingsStore.activePersona?.prompt
@@ -94,7 +94,7 @@ final class MultimodalLLMTranscriber: Transcriber {
         base64Audio: String,
         audioFormat: String
     ) throws -> URLRequest {
-        let url = baseURL.appendingPathComponent("chat/completions")
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "chat/completions")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         if !settingsStore.multimodalLLMAPIKey.isEmpty {
