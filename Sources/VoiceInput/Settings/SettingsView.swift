@@ -1614,7 +1614,7 @@ struct StudioView: View {
                     name: "Doubao Realtime ASR",
                     summary: "Low-latency streaming recognition through Doubao Speech Recognition 2.0 with ByteDance's native binary WebSocket protocol.",
                     badge: "API",
-                    metadata: viewModel.doubaoResourceID.isEmpty ? "volc.bigasr.sauc.duration" : viewModel.doubaoResourceID,
+                    metadata: "Built-in default profile",
                     isSelected: viewModel.sttProvider == .doubaoRealtime,
                     isMuted: false,
                     actionTitle: "Use Doubao"
@@ -1913,10 +1913,6 @@ struct StudioView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    StudioTextInputCard(label: "Resource ID", placeholder: "volc.bigasr.sauc.duration", text: Binding(get: { viewModel.doubaoResourceID }, set: viewModel.setDoubaoResourceID))
-                    Text("Audio is transcoded to 16 kHz mono PCM16 and streamed over ByteDance's binary WebSocket protocol for lower latency. Vocabulary terms are passed as hotwords automatically.")
-                        .font(.studioBody(StudioTheme.Typography.caption))
-                        .foregroundStyle(StudioTheme.textSecondary)
                 }
             }
         }
@@ -2309,7 +2305,7 @@ struct StudioView: View {
         case .aliCloud:
             return viewModel.aliCloudModel.isEmpty ? "fun-asr-realtime" : viewModel.aliCloudModel
         case .doubaoRealtime:
-            return viewModel.doubaoResourceID.isEmpty ? "volc.bigasr.sauc.duration" : viewModel.doubaoResourceID
+            return "Doubao Speech Recognition 2.0"
         }
     }
 

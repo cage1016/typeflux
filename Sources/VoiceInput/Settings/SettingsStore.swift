@@ -141,7 +141,13 @@ final class SettingsStore {
     }
 
     var doubaoResourceID: String {
-        get { defaults.string(forKey: "stt.doubao.resourceID") ?? "volc.bigasr.sauc.duration" }
+        get {
+            let stored = defaults.string(forKey: "stt.doubao.resourceID")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if stored.isEmpty || stored == "volc.bigasr.sauc.duration" {
+                return "volc.seedasr.sauc.duration"
+            }
+            return stored
+        }
         set { defaults.set(newValue, forKey: "stt.doubao.resourceID") }
     }
 

@@ -44,7 +44,7 @@ final class DoubaoRealtimeTranscriber: Transcriber {
             pcmData: pcmData,
             appID: appID,
             accessToken: accessToken,
-            resourceID: resourceID.isEmpty ? "volc.bigasr.sauc.duration" : resourceID,
+            resourceID: resourceID.isEmpty ? "volc.seedasr.sauc.duration" : resourceID,
             hotwords: hotwords,
             onUpdate: onUpdate
         )
