@@ -910,8 +910,8 @@ final class WorkflowController {
         var items = [
             PersonaPickerEntry(
                 id: nil,
-                title: "Plain Dictation",
-                subtitle: "Write directly without persona rewriting."
+                title: "No Persona",
+                subtitle: "Dictate without any persona styling."
             )
         ]
         items.append(

@@ -559,7 +559,7 @@ struct StudioView: View {
                         shortcutConfigurationRow(
                             title: "Persona switcher",
                             subtitle: "Open a centered picker, move with Up and Down, then press Return to switch the active persona instantly.",
-                            footnote: "The picker includes Plain Dictation and every saved persona, so you can switch styles without opening Settings.",
+                            footnote: "The picker includes No Persona and every saved persona, so you can switch styles without opening Settings.",
                             icon: "person.crop.rectangle.stack.fill",
                             badgeSymbol: "person.crop.circle.badge.checkmark",
                             binding: viewModel.personaHotkey,
@@ -612,7 +612,7 @@ struct StudioView: View {
                                let persona = viewModel.personas.first(where: { $0.id == selectedID }) {
                                 StudioPill(title: persona.name)
                             } else {
-                                StudioPill(title: "Plain Dictation")
+                                StudioPill(title: "No Persona", systemImage: "person.slash")
                             }
                         }
 
@@ -627,9 +627,10 @@ struct StudioView: View {
                             spacing: StudioTheme.Spacing.medium
                         ) {
                             personaSelectionCard(
-                                title: "Plain Dictation",
-                                subtitle: "Use the direct rewrite flow without any persona styling.",
-                                initials: "OFF",
+                                title: "No Persona",
+                                subtitle: "Dictate without any persona styling.",
+                                initials: "",
+                                systemImage: "person.slash.fill",
                                 isSelected: viewModel.defaultPersonaSelectionID == nil
                             ) {
                                 viewModel.setDefaultPersonaSelection(nil)
@@ -952,6 +953,7 @@ struct StudioView: View {
         title: String,
         subtitle: String,
         initials: String,
+        systemImage: String? = nil,
         isSelected: Bool,
         action: @escaping () -> Void
     ) -> some View {
@@ -962,9 +964,17 @@ struct StudioView: View {
                         .fill(isSelected ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
                         .frame(width: 42, height: 42)
                         .overlay(
-                            Text(initials)
-                                .font(.studioBody(StudioTheme.Typography.caption, weight: .bold))
-                                .foregroundStyle(isSelected ? StudioTheme.accent : StudioTheme.textSecondary)
+                            Group {
+                                if let systemImage {
+                                    Image(systemName: systemImage)
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundStyle(isSelected ? StudioTheme.accent : StudioTheme.textSecondary)
+                                } else {
+                                    Text(initials)
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .bold))
+                                        .foregroundStyle(isSelected ? StudioTheme.accent : StudioTheme.textSecondary)
+                                }
+                            }
                         )
 
                     Spacer()

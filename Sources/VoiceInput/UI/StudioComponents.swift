@@ -385,14 +385,21 @@ struct StudioPill: View {
     let title: String
     var tone: Color = StudioTheme.textSecondary
     var fill: Color = StudioTheme.surfaceMuted
+    var systemImage: String? = nil
 
     var body: some View {
-        Text(title)
-            .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
-            .foregroundStyle(tone)
-            .padding(.horizontal, StudioTheme.Insets.pillHorizontal)
-            .padding(.vertical, StudioTheme.Insets.pillVertical)
-            .background(Capsule().fill(fill))
+        HStack(spacing: 4) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: StudioTheme.Typography.caption - 1, weight: .semibold))
+            }
+            Text(title)
+                .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+        }
+        .foregroundStyle(tone)
+        .padding(.horizontal, StudioTheme.Insets.pillHorizontal)
+        .padding(.vertical, StudioTheme.Insets.pillVertical)
+        .background(Capsule().fill(fill))
     }
 }
 
