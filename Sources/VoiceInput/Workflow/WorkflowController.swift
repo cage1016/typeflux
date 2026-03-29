@@ -2,6 +2,7 @@ import Foundation
 
 final class WorkflowController {
     private static let recordingTimeoutNanoseconds: UInt64 = 600_000_000_000 // 10 minutes
+    private static let processingTimeoutNanoseconds: UInt64 = 120_000_000_000 // 2 minutes
     private static let tapToLockThreshold: TimeInterval = 0.22
 
     private enum RecordingMode {
@@ -39,10 +40,12 @@ final class WorkflowController {
     private var recordingMode: RecordingMode = .holdToTalk
     private var hotkeyPressedAt: Date?
     private var recordingTimeoutTask: Task<Void, Never>?
+    private var processingTimeoutTask: Task<Void, Never>?
     private var selectionTask: Task<TextSelectionSnapshot, Never>?
     private var processingTask: Task<Void, Never>?
     private var processingSessionID = UUID()
     private var activeProcessingRecordID: UUID?
+    private var lastTimeoutRecord: HistoryRecord?
     private var lastDialogResultText: String?
     private var isPersonaPickerPresented = false
     private var personaPickerItems: [PersonaPickerEntry] = []
@@ -82,6 +85,12 @@ final class WorkflowController {
         )
         self.overlayController.setResultDialogHandler(
             onCopy: { [weak self] in self?.copyLastResultFromDialog() }
+        )
+        self.overlayController.setFailureRetryHandler(
+            onRetry: { [weak self] in
+                guard let self, let record = self.lastTimeoutRecord else { return }
+                self.retry(record: record)
+            }
         )
         self.overlayController.setPersonaPickerHandlers(
             onMoveUp: { [weak self] in self?.movePersonaSelection(delta: -1) },
@@ -127,6 +136,7 @@ final class WorkflowController {
         cancelCurrentProcessing(resetUI: false, reason: "Cancelled due to retry.")
 
         let sessionID = beginProcessingSession()
+        startProcessingTimeout(sessionID: sessionID)
         processingTask = Task { [weak self] in
             guard let self else { return }
             await MainActor.run {
@@ -134,6 +144,7 @@ final class WorkflowController {
                 self.overlayController.showProcessing()
             }
             await self.reprocess(record: record, sessionID: sessionID)
+            self.cancelProcessingTimeout()
             await MainActor.run {
                 if self.processingSessionID == sessionID {
                     self.processingTask = nil
@@ -159,6 +170,36 @@ final class WorkflowController {
             overlayController.dismiss(after: 0.3)
         }
         NSLog("[Workflow] Recording cancelled")
+    }
+
+    private func startProcessingTimeout(sessionID: UUID) {
+        processingTimeoutTask?.cancel()
+        processingTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.processingTimeoutNanoseconds)
+            guard !Task.isCancelled else { return }
+            NSLog("[Workflow] Processing timeout after 120 seconds")
+            self?.handleProcessingTimeout(sessionID: sessionID)
+        }
+    }
+
+    private func cancelProcessingTimeout() {
+        processingTimeoutTask?.cancel()
+        processingTimeoutTask = nil
+    }
+
+    private func handleProcessingTimeout(sessionID: UUID) {
+        guard processingSessionID == sessionID else { return }
+        let recordID = activeProcessingRecordID
+        cancelCurrentProcessing(resetUI: false, reason: "处理超时（超过120秒）。")
+        var timeoutRecord: HistoryRecord? = nil
+        if let recordID {
+            timeoutRecord = historyStore.record(id: recordID)
+        }
+        Task { @MainActor in
+            self.lastTimeoutRecord = timeoutRecord
+            self.appState.setStatus(.failed(message: "处理超时"))
+            self.overlayController.showTimeoutFailure()
+        }
     }
 
     private func handlePressBegan() {
@@ -430,6 +471,7 @@ final class WorkflowController {
             activeProcessingRecordID = record.id
             let sessionID = beginProcessingSession()
 
+            startProcessingTimeout(sessionID: sessionID)
             processingTask = Task { [weak self] in
                 guard let self else { return }
                 await self.process(
@@ -440,6 +482,7 @@ final class WorkflowController {
                     personaPrompt: personaPrompt,
                     sessionID: sessionID
                 )
+                self.cancelProcessingTimeout()
                 await MainActor.run {
                     if self.processingSessionID == sessionID {
                         self.processingTask = nil
@@ -771,6 +814,7 @@ final class WorkflowController {
         processingSessionID = UUID()
         processingTask?.cancel()
         processingTask = nil
+        cancelProcessingTimeout()
 
         if let activeProcessingRecordID,
            var record = historyStore.record(id: activeProcessingRecordID) {

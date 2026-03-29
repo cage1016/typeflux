@@ -54,6 +54,10 @@ final class OverlayController {
         model.onResultCopyRequested = onCopy
     }
 
+    func setFailureRetryHandler(onRetry: (() -> Void)?) {
+        model.onFailureRetryRequested = onRetry
+    }
+
     func show() {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in self?.show() }
@@ -142,6 +146,21 @@ final class OverlayController {
         model.presentation = .failure
         model.statusText = "处理失败"
         model.detailText = message
+        model.failureRetryable = false
+        refreshWindow()
+    }
+
+    func showTimeoutFailure() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.showTimeoutFailure() }
+            return
+        }
+        dismissWorkItem?.cancel()
+        ensureWindow()
+        model.presentation = .failure
+        model.statusText = "处理超时"
+        model.detailText = "处理时间超过120秒，请重试。"
+        model.failureRetryable = true
         refreshWindow()
     }
 
@@ -339,7 +358,8 @@ final class OverlayController {
         case .notice:
             return OverlayMetrics(size: NSSize(width: 344, height: 108), anchor: .bottom, offset: 80, interactive: true)
         case .failure:
-            return OverlayMetrics(size: NSSize(width: 352, height: 132), anchor: .top, offset: 78, interactive: true)
+            let failureHeight: CGFloat = model.failureRetryable ? 172 : 132
+            return OverlayMetrics(size: NSSize(width: 352, height: failureHeight), anchor: .top, offset: 78, interactive: true)
         case .personaPicker:
             let viewportHeight = max(180, model.personaViewportHeight)
             return OverlayMetrics(size: NSSize(width: 456, height: viewportHeight + 132), anchor: .center, offset: 0, interactive: true)
@@ -453,6 +473,7 @@ final class OverlayViewModel: ObservableObject {
     @Published var personaItems: [OverlayController.PersonaPickerItem] = []
     @Published var personaSelectedIndex: Int = 0
     @Published var personaViewportHeight: CGFloat = 240
+    @Published var failureRetryable: Bool = false
     var onDismissRequested: (() -> Void)?
     var onCancelRequested: (() -> Void)?
     var onConfirmRequested: (() -> Void)?
@@ -462,6 +483,7 @@ final class OverlayViewModel: ObservableObject {
     var onPersonaConfirmRequested: (() -> Void)?
     var onPersonaCancelRequested: (() -> Void)?
     var onResultCopyRequested: (() -> Void)?
+    var onFailureRetryRequested: (() -> Void)?
 
     func requestDismiss() {
         onDismissRequested?()
@@ -497,6 +519,10 @@ final class OverlayViewModel: ObservableObject {
 
     func requestResultCopy() {
         onResultCopyRequested?()
+    }
+
+    func requestFailureRetry() {
+        onFailureRetryRequested?()
     }
 }
 
@@ -686,6 +712,18 @@ private struct OverlayView: View {
                     .foregroundStyle(Color.white.opacity(0.72))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if model.failureRetryable {
+                    Button(action: model.requestFailureRetry) {
+                        Text("重试")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 7)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(Color(red: 1.0, green: 0.42, blue: 0.08).opacity(0.55)))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
