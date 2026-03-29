@@ -20,6 +20,8 @@
 "sidebar.platform" = "Desktop";
 "sidebar.about" = "About";
 "sidebar.aboutAccessibility" = "About Typeflux";
+"sidebar.feedbackAccessibility" = "Send feedback email";
+"sidebar.settingsAccessibility" = "Open settings";
 
 "studio.section.home" = "Overview";
 "studio.section.models" = "Models";

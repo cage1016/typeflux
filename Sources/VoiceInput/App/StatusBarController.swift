@@ -64,7 +64,7 @@ final class StatusBarController: NSObject {
 
     private func updateTitle() {
         guard let button = statusItem?.button else { return }
-        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 3, weight: .medium)
         let accessibilityTitle: String
 
         switch appState.status {
@@ -80,11 +80,12 @@ final class StatusBarController: NSObject {
 
         button.title = ""
         let image = NSImage(
-            systemSymbolName: "infinity.circle.fill",
+            systemSymbolName: StudioTheme.Symbol.brand,
             accessibilityDescription: accessibilityTitle
         )?.withSymbolConfiguration(symbolConfig)
         image?.isTemplate = true
         button.image = image
+        button.imageScaling = .scaleProportionallyUpOrDown
         button.contentTintColor = nil
     }
 

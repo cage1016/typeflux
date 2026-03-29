@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 private enum VocabularyFilter: String, CaseIterable, Identifiable {
@@ -61,6 +62,7 @@ struct StudioView: View {
             currentSection: viewModel.currentSection,
             onSelect: viewModel.navigate,
             onOpenAbout: { AboutWindowController.shared.show() },
+            onSendFeedback: sendFeedbackEmail,
             searchText: $viewModel.searchQuery,
             searchPlaceholder: viewModel.currentSection.searchPlaceholder
         ) {
@@ -121,6 +123,19 @@ struct StudioView: View {
                 Text(L("settings.personas.deleteDialog.message", personaPendingDeletion.name))
             }
         }
+    }
+
+    private func sendFeedbackEmail() {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "mylxsw@aicode.cc"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "Typeflux Feedback"),
+            URLQueryItem(name: "body", value: "Hi,\n\nI want to share some feedback about Typeflux:\n")
+        ]
+
+        guard let url = components.url else { return }
+        NSWorkspace.shared.open(url)
     }
 
     @ViewBuilder

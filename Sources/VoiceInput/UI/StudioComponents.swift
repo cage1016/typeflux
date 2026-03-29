@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct StudioInteractiveButtonStyle: ButtonStyle {
@@ -126,6 +127,7 @@ struct StudioShell<Content: View>: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
     let onOpenAbout: () -> Void
+    let onSendFeedback: () -> Void
     let searchText: Binding<String>
     let searchPlaceholder: String
     let content: Content
@@ -134,6 +136,7 @@ struct StudioShell<Content: View>: View {
         currentSection: StudioSection,
         onSelect: @escaping (StudioSection) -> Void,
         onOpenAbout: @escaping () -> Void,
+        onSendFeedback: @escaping () -> Void,
         searchText: Binding<String>,
         searchPlaceholder: String,
         @ViewBuilder content: () -> Content
@@ -141,6 +144,7 @@ struct StudioShell<Content: View>: View {
         self.currentSection = currentSection
         self.onSelect = onSelect
         self.onOpenAbout = onOpenAbout
+        self.onSendFeedback = onSendFeedback
         self.searchText = searchText
         self.searchPlaceholder = searchPlaceholder
         self.content = content()
@@ -152,7 +156,12 @@ struct StudioShell<Content: View>: View {
                 .ignoresSafeArea()
 
             HStack(spacing: StudioTheme.Spacing.none) {
-                StudioSidebar(currentSection: currentSection, onSelect: onSelect, onOpenAbout: onOpenAbout)
+                StudioSidebar(
+                    currentSection: currentSection,
+                    onSelect: onSelect,
+                    onSendFeedback: onSendFeedback,
+                    onOpenAbout: onOpenAbout
+                )
                     .frame(width: StudioTheme.sidebarWidth)
 
                 ScrollView {
@@ -185,23 +194,31 @@ struct StudioShell<Content: View>: View {
 struct StudioSidebar: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
+    let onSendFeedback: () -> Void
     let onOpenAbout: () -> Void
     @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
-            HStack(spacing: StudioTheme.Spacing.smallMedium) {
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: StudioTheme.Typography.iconMediumLarge, weight: .semibold))
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.smallMedium) {
+                Image(systemName: StudioTheme.Symbol.brand)
+                    .font(.system(size: StudioTheme.Typography.iconLarge, weight: .semibold))
                     .foregroundStyle(StudioTheme.textPrimary)
 
-                VStack(alignment: .leading, spacing: StudioTheme.Spacing.sidebarHeaderText) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(L("sidebar.appName"))
                         .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
                         .foregroundStyle(StudioTheme.textPrimary)
-                    Text(L("sidebar.platform"))
-                        .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
-                        .foregroundStyle(StudioTheme.textSecondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+
+                    Text("Beta")
+                        .font(.studioBody(7, weight: .semibold))
+                        .textCase(.uppercase)
+                        .foregroundStyle(StudioTheme.textSecondary.opacity(0.55))
+                        .baselineOffset(6)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
 
                 Spacer()
@@ -209,7 +226,7 @@ struct StudioSidebar: View {
             .padding(.top, StudioTheme.Insets.sidebarHeaderTop)
 
             VStack(spacing: StudioTheme.Spacing.xxSmall) {
-                ForEach(StudioSection.allCases) { section in
+                ForEach(StudioSection.allCases.filter { $0 != .settings }) { section in
                     Button(action: { onSelect(section) }) {
                         HStack(spacing: StudioTheme.Spacing.medium) {
                             Image(systemName: section.iconName)
@@ -236,24 +253,59 @@ struct StudioSidebar: View {
 
             Spacer()
 
-            Button(action: onOpenAbout) {
-                HStack {
-                    Spacer()
-                    Text(L("sidebar.about"))
-                        .font(.studioBody(StudioTheme.Typography.caption, weight: .medium))
-                    Spacer()
-                }
-                .foregroundStyle(StudioTheme.textSecondary.opacity(0.58))
-                .padding(.horizontal, 4)
-                .padding(.vertical, 6)
-                .contentShape(Rectangle())
+            Rectangle()
+                .fill(StudioTheme.border.opacity(0.5))
+                .frame(height: 1)
+
+            HStack(spacing: StudioTheme.Spacing.smallMedium) {
+                // StudioSidebarAvatarButton()
+
+                StudioSidebarIconButton(
+                    systemImage: "envelope",
+                    accessibilityLabel: L("sidebar.feedbackAccessibility"),
+                    action: onSendFeedback
+                )
+
+                StudioSidebarIconButton(
+                    systemImage: "gearshape",
+                    accessibilityLabel: L("sidebar.settingsAccessibility"),
+                    action: { onSelect(.settings) }
+                )
+
+                StudioSidebarIconButton(
+                    systemImage: "questionmark.circle",
+                    accessibilityLabel: L("sidebar.aboutAccessibility"),
+                    action: onOpenAbout
+                )
             }
-            .buttonStyle(StudioInteractiveButtonStyle())
-            .accessibilityLabel(L("sidebar.aboutAccessibility"))
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(.horizontal, StudioTheme.Insets.sidebarOuterHorizontal)
         .padding(.vertical, StudioTheme.Insets.sidebarOuterVertical)
         .environment(\.locale, localization.locale)
+    }
+}
+
+private struct StudioSidebarIconButton: View {
+    let systemImage: String
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: StudioTheme.Typography.iconMedium, weight: .medium))
+                .foregroundStyle(StudioTheme.textTertiary.opacity(0.9))
+                .frame(width: StudioTheme.ControlSize.sidebarUtilityButton, height: StudioTheme.ControlSize.sidebarUtilityButton)
+                .background(
+                    Circle()
+                        .fill(Color.clear)
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+        .accessibilityLabel(accessibilityLabel)
+        .help(accessibilityLabel)
     }
 }
 

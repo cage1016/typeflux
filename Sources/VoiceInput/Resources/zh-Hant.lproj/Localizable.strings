@@ -20,6 +20,8 @@
 "sidebar.platform" = "桌面版";
 "sidebar.about" = "關於";
 "sidebar.aboutAccessibility" = "關於 Typeflux";
+"sidebar.feedbackAccessibility" = "傳送郵件回饋";
+"sidebar.settingsAccessibility" = "打開設定";
 
 "studio.section.home" = "總覽";
 "studio.section.models" = "模型";

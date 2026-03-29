@@ -2,6 +2,10 @@ import AppKit
 import SwiftUI
 
 enum StudioTheme {
+    enum Symbol {
+        static let brand = "infinity.circle.fill"
+    }
+
     enum Layout {
         static let shellInset: CGFloat = 6
         static let contentCardInset: CGFloat = 6
@@ -173,6 +177,7 @@ enum StudioTheme {
         static let sidebarNavigationSymbol: CGFloat = 15
         static let buttonMinWidth: CGFloat = 84
         static let buttonHeight: CGFloat = 34
+        static let sidebarUtilityButton: CGFloat = 28
         static let personaAddButton: CGFloat = 36
         static let personaAvatar: CGFloat = 52
         static let personaStatusDot: CGFloat = 10
