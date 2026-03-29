@@ -36,7 +36,7 @@ final class MultimodalLLMTranscriber: Transcriber {
             )
         }
 
-        let model = OpenAIAudioModelCatalog.normalizeMultimodalModel(settingsStore.multimodalLLMModel)
+        let model = settingsStore.multimodalLLMModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : settingsStore.multimodalLLMModel
 
         // Build system prompt: persona + vocabulary in one shot
         let personaPrompt = settingsStore.activePersona?.prompt

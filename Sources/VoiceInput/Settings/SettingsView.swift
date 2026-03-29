@@ -1255,15 +1255,17 @@ struct StudioView: View {
         StudioCard {
             StudioSectionTitle(title: "Configuration")
             if viewModel.modelDomain == .stt {
-                StudioSelectionCard(
+                StudioSuggestedTextInputCard(
                     label: "Whisper Endpoint",
-                    selection: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
-                    options: whisperEndpointSuggestions
+                    placeholder: OpenAIAudioModelCatalog.whisperEndpoints[0],
+                    text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
+                    suggestions: whisperEndpointSuggestions
                 )
-                StudioSelectionCard(
+                StudioSuggestedTextInputCard(
                     label: "Whisper Model",
-                    selection: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
-                    options: whisperModelSuggestions
+                    placeholder: OpenAIAudioModelCatalog.whisperModels[0],
+                    text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
+                    suggestions: whisperModelSuggestions
                 )
                 Toggle("Enable Apple fallback", isOn: Binding(get: { viewModel.appleSpeechFallback }, set: viewModel.setAppleSpeechFallback))
                     .toggleStyle(.switch)
@@ -1624,7 +1626,7 @@ struct StudioView: View {
         case "local-stt":
             viewModel.setSTTProvider(.localModel)
         case "whisper-api":
-            viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: OpenAIAudioModelCatalog.normalizeWhisperModel(viewModel.whisperModel))
+            viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel)
         case "ollama-local":
             viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
         case "openai-compatible":
@@ -1950,15 +1952,17 @@ struct StudioView: View {
                 }
 
             case .whisperAPI:
-                StudioSelectionCard(
+                StudioSuggestedTextInputCard(
                     label: "Transcription Endpoint",
-                    selection: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
-                    options: whisperEndpointSuggestions
+                    placeholder: OpenAIAudioModelCatalog.whisperEndpoints[0],
+                    text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
+                    suggestions: whisperEndpointSuggestions
                 )
-                StudioSelectionCard(
+                StudioSuggestedTextInputCard(
                     label: "Model",
-                    selection: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
-                    options: whisperModelSuggestions
+                    placeholder: OpenAIAudioModelCatalog.whisperModels[0],
+                    text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
+                    suggestions: whisperModelSuggestions
                 )
                 StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.whisperAPIKey }, set: viewModel.setWhisperAPIKey), secure: true)
 
@@ -1995,15 +1999,17 @@ struct StudioView: View {
 
             case .multimodalLLM:
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    StudioSelectionCard(
+                    StudioSuggestedTextInputCard(
                         label: "API Endpoint",
-                        selection: Binding(get: { viewModel.multimodalLLMBaseURL }, set: viewModel.setMultimodalLLMBaseURL),
-                        options: multimodalEndpointSuggestions
+                        placeholder: OpenAIAudioModelCatalog.multimodalEndpoints[0],
+                        text: Binding(get: { viewModel.multimodalLLMBaseURL }, set: viewModel.setMultimodalLLMBaseURL),
+                        suggestions: multimodalEndpointSuggestions
                     )
-                    StudioSelectionCard(
+                    StudioSuggestedTextInputCard(
                         label: "Model",
-                        selection: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel),
-                        options: multimodalModelSuggestions
+                        placeholder: OpenAIAudioModelCatalog.multimodalModels[0],
+                        text: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel),
+                        suggestions: multimodalModelSuggestions
                     )
                     StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.multimodalLLMAPIKey }, set: viewModel.setMultimodalLLMAPIKey), secure: true)
                     Text("Audio is base64-encoded and sent as input_audio to the configured chat/completions endpoint. When a persona is active, transcription and rewriting happen in a single call.")
@@ -2284,14 +2290,14 @@ struct StudioView: View {
         case .localSTT:
             viewModel.setSTTProvider(.localModel)
         case .whisperAPI:
-            viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: OpenAIAudioModelCatalog.normalizeWhisperModel(viewModel.whisperModel))
+            viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel)
         case .ollama:
             viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
             viewModel.prepareOllamaModel()
         case .openAICompatible:
             viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
         case .multimodalLLM:
-            viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: OpenAIAudioModelCatalog.normalizeMultimodalModel(viewModel.multimodalLLMModel))
+            viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel)
         case .aliCloud:
             viewModel.setSTTProvider(.aliCloud)
         case .doubaoRealtime:
@@ -2418,13 +2424,13 @@ struct StudioView: View {
         case .localSTT:
             return viewModel.localSTTModel.displayName
         case .whisperAPI:
-            return OpenAIAudioModelCatalog.normalizeWhisperModel(viewModel.whisperModel)
+            return viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel
         case .ollama:
             return viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
         case .openAICompatible:
             return viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel
         case .multimodalLLM:
-            return OpenAIAudioModelCatalog.normalizeMultimodalModel(viewModel.multimodalLLMModel)
+            return viewModel.multimodalLLMModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel
         case .aliCloud:
             return AliCloudASRDefaults.model
         case .doubaoRealtime:

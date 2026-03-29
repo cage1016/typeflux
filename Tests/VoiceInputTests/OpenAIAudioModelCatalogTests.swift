@@ -2,24 +2,28 @@ import XCTest
 @testable import VoiceInput
 
 final class OpenAIAudioModelCatalogTests: XCTestCase {
-    func testNormalizeWhisperModelFallsBackToWhitelistDefault() {
+    func testWhisperBuiltInOptionsMatchSupportedValues() {
         XCTAssertEqual(
-            OpenAIAudioModelCatalog.normalizeWhisperModel("legacy-model"),
-            OpenAIAudioModelCatalog.whisperModels[0]
+            OpenAIAudioModelCatalog.whisperModels,
+            ["gpt-4o-mini-transcribe", "whisper-1", "gpt-4o-transcribe"]
         )
     }
 
-    func testNormalizeMultimodalEndpointFallsBackToWhitelistDefault() {
+    func testMultimodalBuiltInModelsMatchSupportedValues() {
         XCTAssertEqual(
-            OpenAIAudioModelCatalog.normalizeMultimodalEndpoint("https://example.com/v1/chat/completions"),
-            OpenAIAudioModelCatalog.multimodalEndpoints[0]
+            OpenAIAudioModelCatalog.multimodalModels,
+            ["gpt-4o-mini-audio-preview", "gpt-4o-audio-preview", "gpt-audio-mini"]
         )
     }
 
-    func testNormalizeWhisperEndpointAcceptsWhitelistedValueCaseInsensitively() {
+    func testBuiltInEndpointsMatchConfiguredDefaults() {
         XCTAssertEqual(
-            OpenAIAudioModelCatalog.normalizeWhisperEndpoint("HTTPS://API.OPENAI.COM/V1/AUDIO/TRANSCRIPTIONS"),
-            OpenAIAudioModelCatalog.whisperEndpoints[0]
+            OpenAIAudioModelCatalog.whisperEndpoints,
+            ["https://api.openai.com/v1/audio/transcriptions"]
+        )
+        XCTAssertEqual(
+            OpenAIAudioModelCatalog.multimodalEndpoints,
+            ["https://api.openai.com/v1/chat/completions"]
         )
     }
 }
