@@ -116,9 +116,13 @@ final class StudioViewModel: ObservableObject {
         let currentPersonas = settingsStore.personas
 
         currentSection = initialSection
-        sttProvider = settingsStore.sttProvider
+        let initialSTTProvider = Self.visibleSTTProvider(from: settingsStore.sttProvider)
+        if initialSTTProvider != settingsStore.sttProvider {
+            settingsStore.sttProvider = initialSTTProvider
+        }
+        sttProvider = initialSTTProvider
         llmProvider = settingsStore.llmProvider
-        switch settingsStore.sttProvider {
+        switch initialSTTProvider {
         case .appleSpeech:
             focusedModelProvider = .appleSpeech
         case .localModel:
@@ -1171,6 +1175,10 @@ final class StudioViewModel: ObservableObject {
         case .llm:
             return llmProvider == .ollama ? .ollama : .openAICompatible
         }
+    }
+
+    private static func visibleSTTProvider(from provider: STTProvider) -> STTProvider {
+        provider == .appleSpeech ? .whisperAPI : provider
     }
 
     private func showToast(_ text: String) {

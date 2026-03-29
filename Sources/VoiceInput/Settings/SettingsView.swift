@@ -1551,7 +1551,6 @@ struct StudioView: View {
     private func modelCard(_ card: StudioModelCard) -> some View {
         StudioCard {
             HStack {
-                StudioPill(title: card.badge)
                 Spacer()
                 if card.isSelected {
                     Image(systemName: "checkmark")
@@ -1672,14 +1671,14 @@ struct StudioView: View {
         case .stt:
             return [
                 StudioModelCard(
-                    id: StudioModelProviderID.appleSpeech.rawValue,
-                    name: "Apple Speech",
-                    summary: "On-device speech recognition with the lowest setup cost and stable local performance.",
-                    badge: "Local",
-                    metadata: "Built into macOS",
-                    isSelected: viewModel.sttProvider == .appleSpeech,
+                    id: StudioModelProviderID.whisperAPI.rawValue,
+                    name: "Whisper API",
+                    summary: "Remote transcription through OpenAI-compatible endpoints with better model flexibility.",
+                    badge: "API",
+                    metadata: viewModel.whisperModel.isEmpty ? "Model not configured" : viewModel.whisperModel,
+                    isSelected: viewModel.sttProvider == .whisperAPI,
                     isMuted: false,
-                    actionTitle: "Use Local"
+                    actionTitle: "Use Remote"
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.localSTT.rawValue,
@@ -1690,16 +1689,6 @@ struct StudioView: View {
                     isSelected: viewModel.sttProvider == .localModel,
                     isMuted: false,
                     actionTitle: "Use Local"
-                ),
-                StudioModelCard(
-                    id: StudioModelProviderID.whisperAPI.rawValue,
-                    name: "Whisper API",
-                    summary: "Remote transcription through OpenAI-compatible endpoints with better model flexibility.",
-                    badge: "API",
-                    metadata: viewModel.whisperModel.isEmpty ? "Model not configured" : viewModel.whisperModel,
-                    isSelected: viewModel.sttProvider == .whisperAPI,
-                    isMuted: false,
-                    actionTitle: "Use Remote"
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.multimodalLLM.rawValue,
@@ -2164,8 +2153,6 @@ struct StudioView: View {
                             .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
                             .foregroundStyle(StudioTheme.textPrimary)
                             .lineLimit(1)
-
-                        StudioPill(title: card.badge)
 
                         Spacer(minLength: 0)
 
