@@ -1177,23 +1177,135 @@ struct StudioView: View {
         return viewModel.vocabularyEntries.filter { $0.source == source }.count
     }
 
+    private func uniqueSuggestions(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        return values.compactMap { raw in
+            let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return nil }
+            let key = value.lowercased()
+            guard seen.insert(key).inserted else { return nil }
+            return value
+        }
+    }
+
+    private var whisperEndpointSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.whisperBaseURL,
+            viewModel.llmBaseURL,
+            viewModel.multimodalLLMBaseURL,
+            "https://api.openai.com/v1",
+            "http://127.0.0.1:11434/v1"
+        ])
+    }
+
+    private var whisperModelSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.whisperModel,
+            "whisper-1",
+            "gpt-4o-mini-transcribe"
+        ])
+    }
+
+    private var llmEndpointSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.llmBaseURL,
+            viewModel.whisperBaseURL,
+            viewModel.multimodalLLMBaseURL,
+            "https://api.openai.com/v1",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "http://127.0.0.1:11434/v1"
+        ])
+    }
+
+    private var llmModelSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.llmModel,
+            "gpt-4o-mini",
+            "gpt-4.1-mini",
+            "gpt-4.1"
+        ])
+    }
+
+    private var ollamaEndpointSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.ollamaBaseURL,
+            "http://127.0.0.1:11434",
+            "http://localhost:11434"
+        ])
+    }
+
+    private var ollamaModelSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.ollamaModel,
+            "qwen2.5:7b",
+            "llama3.2:3b",
+            "gemma3:4b"
+        ])
+    }
+
+    private var multimodalEndpointSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.multimodalLLMBaseURL,
+            viewModel.llmBaseURL,
+            "https://api.openai.com/v1",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        ])
+    }
+
+    private var multimodalModelSuggestions: [String] {
+        uniqueSuggestions([
+            viewModel.multimodalLLMModel,
+            "gpt-4o-audio-preview"
+        ])
+    }
+
     private var parameterCard: some View {
         StudioCard {
             StudioSectionTitle(title: "Configuration")
             if viewModel.modelDomain == .stt {
-                StudioTextInputCard(label: "Whisper Base URL", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL))
-                StudioTextInputCard(label: "Whisper Model", placeholder: "whisper-1", text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel))
+                StudioSuggestedTextInputCard(
+                    label: "Whisper Base URL",
+                    placeholder: "https://api.openai.com/v1",
+                    text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
+                    suggestions: whisperEndpointSuggestions
+                )
+                StudioSuggestedTextInputCard(
+                    label: "Whisper Model",
+                    placeholder: "whisper-1",
+                    text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
+                    suggestions: whisperModelSuggestions
+                )
                 Toggle("Enable Apple fallback", isOn: Binding(get: { viewModel.appleSpeechFallback }, set: viewModel.setAppleSpeechFallback))
                     .toggleStyle(.switch)
             } else {
                 if viewModel.llmProvider == .ollama {
-                    StudioTextInputCard(label: "Ollama Base URL", placeholder: "http://127.0.0.1:11434", text: Binding(get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL))
-                    StudioTextInputCard(label: "Local Model", placeholder: "qwen2.5:7b", text: Binding(get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel))
+                    StudioSuggestedTextInputCard(
+                        label: "Ollama Base URL",
+                        placeholder: "http://127.0.0.1:11434",
+                        text: Binding(get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL),
+                        suggestions: ollamaEndpointSuggestions
+                    )
+                    StudioSuggestedTextInputCard(
+                        label: "Local Model",
+                        placeholder: "qwen2.5:7b",
+                        text: Binding(get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel),
+                        suggestions: ollamaModelSuggestions
+                    )
                     Toggle("Automatic local setup", isOn: Binding(get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup))
                         .toggleStyle(.switch)
                 } else {
-                    StudioTextInputCard(label: "Remote Base URL", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL))
-                    StudioTextInputCard(label: "Model", placeholder: "gpt-4o-mini", text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel))
+                    StudioSuggestedTextInputCard(
+                        label: "Remote Base URL",
+                        placeholder: "https://api.openai.com/v1",
+                        text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
+                        suggestions: llmEndpointSuggestions
+                    )
+                    StudioSuggestedTextInputCard(
+                        label: "Model",
+                        placeholder: "gpt-4o-mini",
+                        text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
+                        suggestions: llmModelSuggestions
+                    )
                     StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey), secure: true)
                 }
             }
@@ -1860,25 +1972,65 @@ struct StudioView: View {
                 }
 
             case .whisperAPI:
-                StudioTextInputCard(label: "Transcription Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL))
-                StudioTextInputCard(label: "Model", placeholder: "whisper-1", text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel))
+                StudioSuggestedTextInputCard(
+                    label: "Transcription Endpoint",
+                    placeholder: "https://api.openai.com/v1",
+                    text: Binding(get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL),
+                    suggestions: whisperEndpointSuggestions
+                )
+                StudioSuggestedTextInputCard(
+                    label: "Model",
+                    placeholder: "whisper-1",
+                    text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
+                    suggestions: whisperModelSuggestions
+                )
                 StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.whisperAPIKey }, set: viewModel.setWhisperAPIKey), secure: true)
 
             case .ollama:
-                StudioTextInputCard(label: "Ollama Base URL", placeholder: "http://127.0.0.1:11434", text: Binding(get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL))
-                StudioTextInputCard(label: "Local Model", placeholder: "qwen2.5:7b", text: Binding(get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel))
+                StudioSuggestedTextInputCard(
+                    label: "Ollama Base URL",
+                    placeholder: "http://127.0.0.1:11434",
+                    text: Binding(get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL),
+                    suggestions: ollamaEndpointSuggestions
+                )
+                StudioSuggestedTextInputCard(
+                    label: "Local Model",
+                    placeholder: "qwen2.5:7b",
+                    text: Binding(get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel),
+                    suggestions: ollamaModelSuggestions
+                )
                 Toggle("Automatically install or pull the model when missing", isOn: Binding(get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup))
                     .toggleStyle(.switch)
 
             case .openAICompatible:
-                StudioTextInputCard(label: "Chat Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL))
-                StudioTextInputCard(label: "Model", placeholder: "gpt-4o-mini", text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel))
+                StudioSuggestedTextInputCard(
+                    label: "Chat Endpoint",
+                    placeholder: "https://api.openai.com/v1",
+                    text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
+                    suggestions: llmEndpointSuggestions
+                )
+                StudioSuggestedTextInputCard(
+                    label: "Model",
+                    placeholder: "gpt-4o-mini",
+                    text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
+                    suggestions: llmModelSuggestions
+                )
                 StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey), secure: true)
 
             case .multimodalLLM:
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    StudioTextInputCard(label: "API Endpoint", placeholder: "https://api.openai.com/v1", text: Binding(get: { viewModel.multimodalLLMBaseURL }, set: viewModel.setMultimodalLLMBaseURL))
-                    StudioTextInputCard(label: "Model", placeholder: "gpt-4o-audio-preview", text: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel))
+                    StudioSuggestedTextInputCard(
+                        label: "API Endpoint",
+                        placeholder: "https://api.openai.com/v1",
+                        text: Binding(get: { viewModel.multimodalLLMBaseURL }, set: viewModel.setMultimodalLLMBaseURL),
+                        suggestions: multimodalEndpointSuggestions
+                    )
+                    StudioSuggestedTextInputCard(
+                        label: "Model",
+                        placeholder: "gpt-4o-audio-preview",
+                        text: Binding(get: { viewModel.multimodalLLMModel }, set: viewModel.setMultimodalLLMModel),
+                        suggestions: multimodalModelSuggestions
+                    )
                     StudioTextInputCard(label: "API Key", placeholder: "sk-...", text: Binding(get: { viewModel.multimodalLLMAPIKey }, set: viewModel.setMultimodalLLMAPIKey), secure: true)
                     Text("Audio is base64-encoded and sent as input_audio in a chat/completions request. When a persona is active, transcription and rewriting happen in a single call.")
                         .font(.studioBody(StudioTheme.Typography.caption))

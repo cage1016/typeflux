@@ -511,6 +511,99 @@ struct StudioTextInputCard<LabelTrailing: View>: View {
     }
 }
 
+struct StudioSuggestedTextInputCard<LabelTrailing: View>: View {
+    let label: String
+    let placeholder: String
+    let suggestions: [String]
+    let suggestionTitle: String
+    @Binding var text: String
+    @ViewBuilder var labelTrailing: () -> LabelTrailing
+
+    init(
+        label: String,
+        placeholder: String,
+        text: Binding<String>,
+        suggestions: [String],
+        suggestionTitle: String = "Quick fill",
+        @ViewBuilder labelTrailing: @escaping () -> LabelTrailing = { EmptyView() }
+    ) {
+        self.label = label
+        self.placeholder = placeholder
+        self._text = text
+        self.suggestions = suggestions
+        self.suggestionTitle = suggestionTitle
+        self.labelTrailing = labelTrailing
+    }
+
+    private var normalizedSuggestions: [String] {
+        var seen = Set<String>()
+        return suggestions.compactMap { raw in
+            let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return nil }
+            let key = value.lowercased()
+            guard seen.insert(key).inserted else { return nil }
+            return value
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+            HStack(alignment: .center) {
+                Text(label)
+                    .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                Spacer()
+                labelTrailing()
+            }
+
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                .foregroundStyle(StudioTheme.textPrimary)
+                .padding(.horizontal, StudioTheme.Insets.textFieldHorizontal)
+                .padding(.vertical, StudioTheme.Insets.textFieldVertical)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                        .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                        .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin)
+                )
+
+            if !normalizedSuggestions.isEmpty {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                    Text(suggestionTitle)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textTertiary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: StudioTheme.Spacing.xSmall) {
+                            ForEach(normalizedSuggestions, id: \.self) { suggestion in
+                                Button {
+                                    text = suggestion
+                                } label: {
+                                    Text(suggestion)
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                        .foregroundStyle(text == suggestion ? StudioTheme.accent : StudioTheme.textSecondary)
+                                        .lineLimit(1)
+                                        .padding(.horizontal, StudioTheme.Insets.pillHorizontal)
+                                        .padding(.vertical, StudioTheme.Insets.pillVertical)
+                                        .background(
+                                            Capsule()
+                                                .fill(text == suggestion ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
+                                        )
+                                }
+                                .buttonStyle(StudioInteractiveButtonStyle())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct StudioHistoryRow: View {
     let record: HistoryPresentationRecord
     let onCopyTranscript: (() -> Void)?
