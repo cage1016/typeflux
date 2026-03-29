@@ -413,7 +413,7 @@ final class OverlayController {
         case .personaPicker:
             switch Int(event.keyCode) {
             case 53:
-                model.requestCancel()
+                model.requestPersonaCancel()
             case 125:
                 model.requestPersonaMoveDown()
             case 126:
@@ -756,7 +756,7 @@ private struct OverlayView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color.white.opacity(0.96))
 
-                        Text("Use Up and Down to choose, then press Return to confirm.")
+                        Text("Use Up and Down to choose, Return to confirm, or Esc to close.")
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundStyle(Color.white.opacity(0.7))
                     }
