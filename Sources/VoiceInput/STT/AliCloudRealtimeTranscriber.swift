@@ -141,9 +141,13 @@ private actor AliCloudFunASRSession {
     private let apiKey: String
     private let onUpdate: @Sendable (TranscriptionSnapshot) async -> Void
 
-    // Sentence accumulation: keyed by begin_time
-    private var sentenceTexts: [Int: String] = [:]
-    private var sentenceOrder: [Int] = []
+    // Confirmed segments are finalized sentences (sentence_end=true).
+    // partialText is the current in-progress sentence being streamed.
+    // This prevents redundant/repeated text when partial updates arrive with
+    // different begin_time values for the same in-progress sentence.
+    private var confirmedSegments: [String] = []
+    private var partialText: String = ""
+    private var lastEmitted: String = ""
 
     private var taskStarted = false
     private var taskFinished = false
@@ -195,7 +199,10 @@ private actor AliCloudFunASRSession {
                 "model": model,
                 "parameters": [
                     "format": "pcm",
-                    "sample_rate": 16000
+                    "sample_rate": 16000,
+                    "semantic_punctuation_enabled": false,
+                    "max_sentence_silence": 800,
+                    "heartbeat": false
                 ],
                 "input": [String: Any]()
             ]
@@ -270,13 +277,27 @@ private actor AliCloudFunASRSession {
             guard let payload = json["payload"] as? [String: Any],
                   let output = payload["output"] as? [String: Any],
                   let sentence = output["sentence"] as? [String: Any],
-                  let text = sentence["text"] as? String, !text.isEmpty else { return }
-            let beginTime = sentence["begin_time"] as? Int ?? 0
-            if sentenceTexts[beginTime] == nil {
-                sentenceOrder.append(beginTime)
+                  let text = sentence["text"] as? String else { return }
+
+            // Heartbeat events carry empty text; skip them.
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+
+            let isFinal = sentence["sentence_end"] as? Bool ?? false
+
+            if isFinal {
+                // Move this finalized sentence into confirmed segments and clear the partial.
+                let normalized = AliCloudTextNormalizer.normalize(segment: trimmed, after: confirmedSegments.joined())
+                confirmedSegments.append(normalized)
+                partialText = ""
+            } else {
+                // Replace (not append) the partial — only the latest interim result matters.
+                partialText = AliCloudTextNormalizer.normalize(segment: trimmed, after: confirmedSegments.joined())
             }
-            sentenceTexts[beginTime] = text
+
             let preview = composedText()
+            guard preview != lastEmitted else { return }
+            lastEmitted = preview
             Task { [weak self] in
                 guard let self else { return }
                 await onUpdate(TranscriptionSnapshot(text: preview, isFinal: false))
@@ -302,12 +323,11 @@ private actor AliCloudFunASRSession {
     }
 
     private func composedText() -> String {
-        sentenceOrder
-            .compactMap { sentenceTexts[$0] }
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        var pieces = confirmedSegments
+        if !partialText.isEmpty {
+            pieces.append(partialText)
+        }
+        return pieces.joined().trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func signalError(_ error: Error) {
@@ -344,6 +364,41 @@ private actor AliCloudFunASRSession {
             )
         }
         try await socketTask.send(.string(text))
+    }
+}
+
+// MARK: - Text Normalizer
+
+private enum AliCloudTextNormalizer {
+    /// Joins a new segment to existing text with smart spacing:
+    /// no space between CJK characters, space between latin words.
+    static func normalize(segment: String, after existingText: String) -> String {
+        guard !segment.isEmpty else { return "" }
+        guard let lastChar = existingText.last else { return segment }
+        guard let firstChar = segment.first else { return segment }
+
+        // No extra space needed when adjacent to whitespace or punctuation boundaries
+        if lastChar.isWhitespace || firstChar.isWhitespace { return segment }
+        if firstChar.isClosingPunctuation || lastChar.isOpeningPunctuation { return segment }
+
+        // No space between CJK ideographs (Chinese/Japanese/Korean)
+        if lastChar.isCJKIdeograph || firstChar.isCJKIdeograph { return segment }
+
+        // Default: separate with a space (e.g. English words)
+        return " " + segment
+    }
+}
+
+private extension Character {
+    var isClosingPunctuation: Bool { ",.!?;:)]}\"'".contains(self) }
+    var isOpeningPunctuation: Bool { "([{/\"'".contains(self) }
+    var isCJKIdeograph: Bool {
+        unicodeScalars.contains {
+            switch $0.value {
+            case 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF: return true
+            default: return false
+            }
+        }
     }
 }
 
