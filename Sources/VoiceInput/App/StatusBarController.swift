@@ -64,14 +64,28 @@ final class StatusBarController: NSObject {
 
     private func updateTitle() {
         guard let button = statusItem?.button else { return }
-        let title: String
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        let accessibilityTitle: String
+
         switch appState.status {
-        case .idle: title = "VI"
-        case .recording: title = "VI●"
-        case .processing: title = "VI…"
-        case .failed: title = "VI!"
+        case .idle:
+            accessibilityTitle = L("menu.status.ready")
+        case .recording:
+            accessibilityTitle = L("menu.status.recording")
+        case .processing:
+            accessibilityTitle = L("menu.status.processing")
+        case .failed(let message):
+            accessibilityTitle = L("menu.status.failed", message)
         }
-        button.title = title
+
+        button.title = ""
+        let image = NSImage(
+            systemSymbolName: "infinity.circle.fill",
+            accessibilityDescription: accessibilityTitle
+        )?.withSymbolConfiguration(symbolConfig)
+        image?.isTemplate = true
+        button.image = image
+        button.contentTintColor = nil
     }
 
     private func rebuildMenu() {
