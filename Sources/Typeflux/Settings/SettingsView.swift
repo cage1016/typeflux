@@ -681,8 +681,6 @@ struct StudioView: View {
                         LazyVGrid(
                             columns: [
                                 GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
                                 GridItem(.flexible(), spacing: StudioTheme.Spacing.medium)
                             ],
                             alignment: .leading,
