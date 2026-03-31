@@ -176,6 +176,7 @@
 "provider.stt.doubaoRealtime" = "Doubao Realtime ASR";
 "provider.llm.openAICompatible" = "OpenAI-Compatible";
 "provider.llm.custom" = "Custom";
+"provider.llm.openRouter" = "OpenRouter";
 "provider.llm.ollama" = "Local Ollama";
 
 "downloadSource.modelScope" = "ModelScope";
@@ -388,6 +389,7 @@
 "settings.models.card.ollama.summary" = "Runs rewrite and edit commands locally, with optional automatic model preparation.";
 "settings.models.card.openAICompatible.summary" = "Connect remote chat-completions providers for persona rewriting and editing workflows.";
 "settings.models.card.custom.summary" = "Configure any compatible endpoint manually with your own base URL, model, and API key.";
+"settings.models.card.openRouter.summary" = "OpenRouter's unified OpenAI-compatible API with a prefilled official endpoint and flexible model routing.";
 "settings.models.card.openAI.summary" = "OpenAI-hosted models with a fixed endpoint and built-in model suggestions.";
 "settings.models.card.anthropic.summary" = "Claude models through Anthropic's native Messages API with a simplified API key setup.";
 "settings.models.card.gemini.summary" = "Gemini models through Google's native Generative Language API.";
@@ -443,13 +445,13 @@
 "settings.models.routing.fallback" = "Fallback";
 "settings.models.routing.localSetup" = "Local setup";
 "settings.models.routing.readiness" = "Readiness";
-"settings.models.llm.providerEndpointHint" = "%@ uses a built-in endpoint. You only need to provide an API key and choose a model.";
+"settings.models.llm.providerEndpointHint" = "%@ is prefilled with its official API endpoint. API key is required, while endpoint and model can be overridden if needed.";
 "settings.models.routing.fallbackEnabled" = "If remote transcription fails, the app can fall back to Apple Speech automatically.";
 "settings.models.routing.fallbackDisabled" = "Automatic fallback is currently disabled.";
 "settings.models.routing.localSetupAutomatic" = "Missing local models can be prepared automatically when needed.";
 "settings.models.routing.localSetupManual" = "Local model setup is manual until you enable auto preparation.";
-"settings.models.routing.readinessConfigured" = "Remote endpoint and model are set. API key is optional in the current implementation.";
-"settings.models.routing.readinessNeedsSetup" = "Add a remote endpoint and model before using cloud rewrite.";
+"settings.models.routing.readinessConfigured" = "API key, endpoint, and model are ready for cloud rewrite.";
+"settings.models.routing.readinessNeedsSetup" = "Add an API key first. Endpoint and model can use the prefilled defaults or your overrides.";
 "settings.models.ollama.notPrepared" = "Local model has not been prepared yet.";
 "settings.models.ollama.preparing" = "Preparing local model...";
 "settings.models.ollama.ready" = "Local model is ready.";

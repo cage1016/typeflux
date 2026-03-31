@@ -297,19 +297,17 @@ final class SettingsStore {
     }
 
     func llmBaseURL(for provider: LLMRemoteProvider) -> String {
-        if provider.usesFixedBaseURL {
-            return provider.defaultBaseURL
-        }
-
         let key = llmRemoteKey(provider, suffix: "baseURL")
-        if let stored = defaults.string(forKey: key) {
+        if let stored = defaults.string(forKey: key), !stored.isEmpty {
             return stored
         }
-        return defaults.string(forKey: "llm.baseURL") ?? ""
+        if provider == .custom {
+            return defaults.string(forKey: "llm.baseURL") ?? ""
+        }
+        return provider.defaultBaseURL
     }
 
     func setLLMBaseURL(_ value: String, for provider: LLMRemoteProvider) {
-        guard !provider.usesFixedBaseURL else { return }
         defaults.set(value, forKey: llmRemoteKey(provider, suffix: "baseURL"))
         if provider == llmRemoteProvider {
             defaults.set(value, forKey: "llm.baseURL")

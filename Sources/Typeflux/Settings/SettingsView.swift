@@ -1296,6 +1296,7 @@ struct StudioView: View {
             viewModel.llmBaseURL,
             viewModel.whisperBaseURL,
             viewModel.multimodalLLMBaseURL,
+            "https://openrouter.ai/api/v1",
             "https://api.openai.com/v1",
             "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "http://127.0.0.1:11434/v1"
@@ -1353,23 +1354,6 @@ struct StudioView: View {
     private var llmRemoteProviderForm: some View {
         if let provider = focusedLLMRemoteProvider {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                if provider == .custom {
-                    StudioSuggestedTextInputCard(
-                        label: L("settings.models.chatEndpoint"),
-                        placeholder: "https://api.openai.com/v1",
-                        text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
-                        suggestions: llmEndpointSuggestions
-                    )
-                } else {
-                    providerFactRow(title: L("settings.models.apiEndpoint"), value: provider.defaultBaseURL)
-                }
-
-                StudioSuggestedTextInputCard(
-                    label: L("common.model"),
-                    placeholder: provider.defaultModel,
-                    text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
-                    suggestions: remoteLLMModelSuggestions
-                )
                 StudioTextInputCard(
                     label: L("common.apiKey"),
                     placeholder: provider == .gemini ? "AIza..." : "sk-...",
@@ -1377,11 +1361,23 @@ struct StudioView: View {
                     secure: true
                 )
 
-                if provider != .custom {
-                    Text(L("settings.models.llm.providerEndpointHint", provider.displayName))
-                        .font(.studioBody(StudioTheme.Typography.caption))
-                        .foregroundStyle(StudioTheme.textSecondary)
-                }
+                StudioSuggestedTextInputCard(
+                    label: L("settings.models.apiEndpoint"),
+                    placeholder: provider.defaultBaseURL.isEmpty ? "https://api.openai.com/v1" : provider.defaultBaseURL,
+                    text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
+                    suggestions: uniqueSuggestions([viewModel.llmBaseURL, provider.defaultBaseURL] + llmEndpointSuggestions)
+                )
+
+                StudioSuggestedTextInputCard(
+                    label: L("common.model"),
+                    placeholder: provider.defaultModel,
+                    text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
+                    suggestions: remoteLLMModelSuggestions
+                )
+
+                Text(L("settings.models.llm.providerEndpointHint", provider.displayName))
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
             }
         }
     }
@@ -2170,7 +2166,7 @@ struct StudioView: View {
                 Toggle(L("settings.models.ollama.autoInstall"), isOn: Binding(get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup))
                     .toggleStyle(.switch)
 
-            case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
                 llmRemoteProviderForm
 
             case .multimodalLLM:
@@ -2422,6 +2418,8 @@ struct StudioView: View {
             return "ollama"
         case .customLLM:
             return "openrouter"
+        case .openRouter:
+            return "openrouter"
         case .openAI:
             return "openai"
         case .anthropic:
@@ -2538,8 +2536,8 @@ struct StudioView: View {
             return !viewModel.whisperBaseURL.isEmpty
         case .ollama:
             return !viewModel.ollamaModel.isEmpty
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
-            return !viewModel.llmBaseURL.isEmpty && !viewModel.llmModel.isEmpty
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return !viewModel.llmAPIKey.isEmpty && !viewModel.llmBaseURL.isEmpty && !viewModel.llmModel.isEmpty
         case .multimodalLLM:
             return !viewModel.multimodalLLMBaseURL.isEmpty && !viewModel.multimodalLLMModel.isEmpty
         case .aliCloud:
@@ -2560,7 +2558,7 @@ struct StudioView: View {
         case .ollama:
             viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
             viewModel.prepareOllamaModel()
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             if let provider = focusedLLMRemoteProvider {
                 viewModel.setLLMRemoteProvider(provider)
                 if viewModel.llmModel.isEmpty {
@@ -2588,6 +2586,8 @@ struct StudioView: View {
             return "cpu"
         case .customLLM:
             return "sparkles"
+        case .openRouter:
+            return "arrow.triangle.branch"
         case .openAI:
             return "circle.hexagongrid"
         case .anthropic:
@@ -2635,7 +2635,7 @@ struct StudioView: View {
             return L("settings.models.overview.whisper")
         case .ollama:
             return L("settings.models.overview.ollama")
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return L("settings.models.overview.remoteProvider", activeLLMRemoteProvider.displayName)
         case .multimodalLLM:
             return L("settings.models.overview.multimodal")
@@ -2656,7 +2656,7 @@ struct StudioView: View {
             return STTProvider.whisperAPI.displayName
         case .ollama:
             return LLMProvider.ollama.displayName
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return activeLLMRemoteProvider.displayName
         case .multimodalLLM:
             return STTProvider.multimodalLLM.displayName
@@ -2671,7 +2671,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return L("settings.models.mode.local")
-        case .whisperAPI, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
+        case .whisperAPI, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return L("settings.models.mode.remote")
         }
     }
@@ -2680,7 +2680,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success
-        case .whisperAPI, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
+        case .whisperAPI, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return StudioTheme.accent
         }
     }
@@ -2689,7 +2689,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success.opacity(0.12)
-        case .whisperAPI, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
+        case .whisperAPI, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return StudioTheme.accentSoft
         }
     }
@@ -2712,7 +2712,7 @@ struct StudioView: View {
             return viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel
         case .ollama:
             return viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return viewModel.llmModel.isEmpty ? activeLLMRemoteProvider.defaultModel : viewModel.llmModel
         case .multimodalLLM:
             return viewModel.multimodalLLMModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel
@@ -2737,7 +2737,7 @@ struct StudioView: View {
             return STTProvider.whisperAPI.displayName
         case .ollama:
             return LLMProvider.ollama.displayName
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName
         case .multimodalLLM:
             return STTProvider.multimodalLLM.displayName
@@ -2758,7 +2758,7 @@ struct StudioView: View {
             return L("settings.models.focused.whisper")
         case .ollama:
             return L("settings.models.focused.ollama")
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return L("settings.models.focused.remoteProvider", focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName)
         case .multimodalLLM:
             return L("settings.models.focused.multimodal")
@@ -2783,7 +2783,7 @@ struct StudioView: View {
             return L("settings.models.routing.whisper")
         case .ollama:
             return L("settings.models.routing.ollama")
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return L("settings.models.routing.remoteProvider", activeLLMRemoteProvider.displayName)
         case .multimodalLLM:
             return L("settings.models.routing.multimodal")

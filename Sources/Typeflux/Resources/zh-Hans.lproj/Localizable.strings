@@ -176,6 +176,7 @@
 "provider.stt.doubaoRealtime" = "豆包实时 ASR";
 "provider.llm.openAICompatible" = "OpenAI 兼容";
 "provider.llm.custom" = "自定义";
+"provider.llm.openRouter" = "OpenRouter";
 "provider.llm.ollama" = "本地 Ollama";
 
 "downloadSource.modelScope" = "ModelScope";
@@ -388,6 +389,7 @@
 "settings.models.card.ollama.summary" = "本地执行改写和编辑任务，并可选自动准备模型。";
 "settings.models.card.openAICompatible.summary" = "接入远程 chat-completions 提供方，完成人设改写和编辑工作流。";
 "settings.models.card.custom.summary" = "手动配置任意兼容端点，自定义 Base URL、模型和 API Key。";
+"settings.models.card.openRouter.summary" = "使用 OpenRouter 统一的 OpenAI 兼容 API，预填官方地址，并支持灵活选择与路由模型。";
 "settings.models.card.openAI.summary" = "使用 OpenAI 官方托管模型，内置固定地址和常用模型建议。";
 "settings.models.card.anthropic.summary" = "通过 Anthropic 原生 Messages API 使用 Claude 模型，只需填写 API Key。";
 "settings.models.card.gemini.summary" = "通过 Google 原生 Generative Language API 使用 Gemini 模型。";
@@ -443,13 +445,13 @@
 "settings.models.routing.fallback" = "回退策略";
 "settings.models.routing.localSetup" = "本地准备";
 "settings.models.routing.readiness" = "就绪状态";
-"settings.models.llm.providerEndpointHint" = "%@ 使用内置固定地址。你只需要填写 API Key 并选择模型。";
+"settings.models.llm.providerEndpointHint" = "%@ 已预填官方 API 地址。API Key 为必填项，Endpoint 和 Model 可按需覆盖。";
 "settings.models.routing.fallbackEnabled" = "远程转写失败时，应用可以自动回退到 Apple Speech。";
 "settings.models.routing.fallbackDisabled" = "当前未启用自动回退。";
 "settings.models.routing.localSetupAutomatic" = "缺失的本地模型会在需要时自动准备。";
 "settings.models.routing.localSetupManual" = "在启用自动准备前，本地模型需要手动准备。";
-"settings.models.routing.readinessConfigured" = "远程地址和模型均已设置。当前实现中 API Key 为可选项。";
-"settings.models.routing.readinessNeedsSetup" = "使用云端改写前，请先补充远程地址和模型。";
+"settings.models.routing.readinessConfigured" = "API Key、Endpoint 和 Model 已就绪，可直接用于云端改写。";
+"settings.models.routing.readinessNeedsSetup" = "请先填写 API Key。Endpoint 和 Model 可以直接使用预填默认值，或由你手动覆盖。";
 "settings.models.ollama.notPrepared" = "本地模型尚未准备。";
 "settings.models.ollama.preparing" = "正在准备本地模型...";
 "settings.models.ollama.ready" = "本地模型已就绪。";

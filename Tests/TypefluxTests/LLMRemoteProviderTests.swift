@@ -27,16 +27,24 @@ final class LLMRemoteProviderTests: XCTestCase {
         XCTAssertEqual(store.llmAPIKey(for: .custom), "sk-custom")
     }
 
-    func testFixedProvidersKeepIndependentModelAndAPIKey() {
+    func testProvidersKeepIndependentEndpointModelAndAPIKey() {
         let store = SettingsStore()
 
+        store.setLLMBaseURL("https://openrouter.ai/api/v1", for: .openRouter)
+        store.setLLMModel("openrouter/auto", for: .openRouter)
+        store.setLLMAPIKey("sk-openrouter", for: .openRouter)
+        store.setLLMBaseURL("https://api.openai.com/v1", for: .openAI)
         store.setLLMModel("gpt-4o", for: .openAI)
         store.setLLMAPIKey("sk-openai", for: .openAI)
+        store.setLLMBaseURL("https://example.com/deepseek/v1", for: .deepSeek)
         store.setLLMModel("deepseek-chat", for: .deepSeek)
         store.setLLMAPIKey("sk-deepseek", for: .deepSeek)
 
+        XCTAssertEqual(store.llmBaseURL(for: .openRouter), "https://openrouter.ai/api/v1")
+        XCTAssertEqual(store.llmModel(for: .openRouter), "openrouter/auto")
+        XCTAssertEqual(store.llmAPIKey(for: .openRouter), "sk-openrouter")
         XCTAssertEqual(store.llmBaseURL(for: .openAI), "https://api.openai.com/v1")
-        XCTAssertEqual(store.llmBaseURL(for: .deepSeek), "https://api.deepseek.com")
+        XCTAssertEqual(store.llmBaseURL(for: .deepSeek), "https://example.com/deepseek/v1")
         XCTAssertEqual(store.llmModel(for: .openAI), "gpt-4o")
         XCTAssertEqual(store.llmModel(for: .deepSeek), "deepseek-chat")
         XCTAssertEqual(store.llmAPIKey(for: .openAI), "sk-openai")

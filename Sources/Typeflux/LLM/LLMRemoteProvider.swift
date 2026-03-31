@@ -8,6 +8,7 @@ enum LLMRemoteAPIStyle {
 
 enum LLMRemoteProvider: String, CaseIterable, Codable {
     case custom
+    case openRouter
     case openAI
     case anthropic
     case gemini
@@ -20,6 +21,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         switch self {
         case .custom:
             return L("provider.llm.custom")
+        case .openRouter:
+            return "OpenRouter"
         case .openAI:
             return "OpenAI"
         case .anthropic:
@@ -43,7 +46,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
             return .anthropic
         case .gemini:
             return .gemini
-        case .custom, .openAI, .deepSeek, .kimi, .qwen, .zhipu:
+        case .custom, .openRouter, .openAI, .deepSeek, .kimi, .qwen, .zhipu:
             return .openAICompatible
         }
     }
@@ -52,6 +55,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         switch self {
         case .custom:
             return ""
+        case .openRouter:
+            return "https://openrouter.ai/api/v1"
         case .openAI:
             return "https://api.openai.com/v1"
         case .anthropic:
@@ -69,14 +74,12 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         }
     }
 
-    var usesFixedBaseURL: Bool {
-        self != .custom
-    }
-
     var suggestedModels: [String] {
         switch self {
         case .custom:
             return ["gpt-4o-mini", "deepseek-chat", "kimi-k2.5", "qwen-plus", "glm-4.7"]
+        case .openRouter:
+            return ["openrouter/auto", "openai/gpt-4o-mini", "anthropic/claude-3.5-haiku", "google/gemini-2.5-flash"]
         case .openAI:
             return ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"]
         case .anthropic:
@@ -102,6 +105,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         switch self {
         case .custom:
             return .customLLM
+        case .openRouter:
+            return .openRouter
         case .openAI:
             return .openAI
         case .anthropic:
@@ -123,6 +128,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         switch providerID {
         case .customLLM:
             return .custom
+        case .openRouter:
+            return .openRouter
         case .openAI:
             return .openAI
         case .anthropic:

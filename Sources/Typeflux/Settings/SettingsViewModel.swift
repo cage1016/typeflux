@@ -1053,7 +1053,7 @@ final class StudioViewModel: ObservableObject {
 
     func applyModelConfiguration() {
         switch focusedModelProvider {
-        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             let remoteProvider = LLMRemoteProvider.from(providerID: focusedModelProvider) ?? llmRemoteProvider
             settingsStore.setLLMBaseURL(llmBaseURL, for: remoteProvider)
             settingsStore.setLLMModel(llmModel, for: remoteProvider)
@@ -1103,7 +1103,7 @@ final class StudioViewModel: ObservableObject {
 
             do {
                 switch capturedProvider {
-                case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+                case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
                     guard !capturedBaseURL.isEmpty, let baseURL = URL(string: capturedBaseURL) else {
                         throw NSError(domain: "LLMTest", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid base URL. Please enter a valid endpoint."])
                     }

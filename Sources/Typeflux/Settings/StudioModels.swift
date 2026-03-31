@@ -120,6 +120,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
     case doubaoRealtime
     case ollama
     case customLLM
+    case openRouter
     case openAI
     case anthropic
     case gemini
@@ -134,7 +135,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
         switch self {
         case .appleSpeech, .localSTT, .whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return .stt
-        case .ollama, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+        case .ollama, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return .llm
         }
     }
