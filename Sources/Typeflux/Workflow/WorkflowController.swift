@@ -1064,16 +1064,14 @@ final class WorkflowController {
         saveHistoryRecord(record)
         activeProcessingRecordID = record.id
 
+        Task { @MainActor in
+            self.appState.setStatus(.processing)
+            self.overlayController.showProcessing()
+        }
+
         let shouldShowResultDialog = shouldPresentResultDialog(for: context.snapshot)
         processingTask = Task { [weak self] in
             guard let self else { return }
-
-            if !shouldShowResultDialog {
-                await MainActor.run {
-                    self.appState.setStatus(.processing)
-                    self.overlayController.showProcessing()
-                }
-            }
 
             do {
                 let finalText = try await self.generateRewrite(
