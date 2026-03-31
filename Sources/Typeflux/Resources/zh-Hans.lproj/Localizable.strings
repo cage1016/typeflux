@@ -206,8 +206,10 @@
 "overlay.timeout.title" = "处理超时";
 "overlay.timeout.message" = "处理时间超过 120 秒，请重试。";
 "overlay.notice.title" = "提示";
-"overlay.personaPicker.title" = "切换人设";
-"overlay.personaPicker.instructions" = "使用上下方向键选择，按回车确认，按 Esc 关闭。";
+"overlay.personaPicker.switchTitle" = "切换人设";
+"overlay.personaPicker.switchInstructions" = "使用上下方向键选择，按回车确认，按 Esc 关闭。";
+"overlay.personaPicker.applyTitle" = "应用人设";
+"overlay.personaPicker.applyInstructions" = "选择一个人设来改写当前选中文本。按回车应用，按 Esc 取消。";
 
 "workflow.apply.inserted" = "已应用到当前活动应用。";
 "workflow.apply.copiedToClipboard" = "由于无法直接插入，结果已复制到剪贴板。";
@@ -313,8 +315,10 @@
 "settings.shortcuts.activation.subtitle" = "使用一个快捷键开始听写。可按住说话，也可快速轻触后锁定录音。";
 "settings.shortcuts.activation.footnote" = "默认是右 Command。你可以改成任何包含修饰键的组合，之后也可以重置。";
 "settings.shortcuts.persona.title" = "人设切换器";
-"settings.shortcuts.persona.subtitle" = "打开居中选择器，用上下键移动，按回车即可快速切换当前人设。";
-"settings.shortcuts.persona.footnote" = "选择器包含“无人设”和所有已保存人设，因此无需打开设置也能切换风格。";
+"settings.shortcuts.persona.subtitle" = "打开居中选择器；如果当前存在选中文本，也可以直接将所选人设应用到这段文本。";
+"settings.shortcuts.persona.footnote" = "开启高级选项后，快捷键会优先检查选中文本并执行人设改写；关闭后则保持为纯粹的人设切换器。";
+"settings.advanced.personaHotkeyApply.title" = "将人设应用到选中文本";
+"settings.advanced.personaHotkeyApply.subtitle" = "开启后，人设快捷键会先检查是否有选中文本；如果有，就用所选人设直接改写该文本，而不只是切换默认人设。";
 "settings.shortcuts.recording" = "正在录制新的快捷键";
 "settings.shortcuts.recordingActivation" = "现在按下新的激活组合键，至少包含一个修饰键。";
 "settings.shortcuts.recordingPersona" = "现在按下用于打开人设选择器的快捷键，至少包含一个修饰键。";

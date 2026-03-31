@@ -50,11 +50,22 @@ final class WorkflowController {
     private var isPersonaPickerPresented = false
     private var personaPickerItems: [PersonaPickerEntry] = []
     private var personaPickerSelectedIndex = 0
+    private var personaPickerMode: PersonaPickerMode = .switchDefault
 
     private struct PersonaPickerEntry {
         let id: UUID?
         let title: String
         let subtitle: String
+    }
+
+    private struct PersonaSelectionContext {
+        let snapshot: TextSelectionSnapshot
+        let selectedText: String
+    }
+
+    private enum PersonaPickerMode {
+        case switchDefault
+        case applySelection(PersonaSelectionContext)
     }
 
     init(
@@ -256,25 +267,52 @@ final class WorkflowController {
             return
         }
 
-        let activeID = settingsStore.personaRewriteEnabled ? UUID(uuidString: settingsStore.activePersonaID) : nil
-        let items = personaPickerEntries()
-        guard !items.isEmpty else { return }
+        Task { [weak self] in
+            guard let self else { return }
 
-        personaPickerItems = items
-        personaPickerSelectedIndex = items.firstIndex(where: { $0.id == activeID }) ?? 0
-        isPersonaPickerPresented = true
+            let selectionSnapshot: TextSelectionSnapshot
+            if self.settingsStore.personaHotkeyAppliesToSelection {
+                selectionSnapshot = await self.textInjector.getSelectionSnapshot()
+            } else {
+                selectionSnapshot = TextSelectionSnapshot()
+            }
 
-        Task { @MainActor in
-            self.overlayController.showPersonaPicker(
-                items: items.map {
-                    OverlayController.PersonaPickerItem(
-                        id: $0.id?.uuidString ?? "plain-dictation",
-                        title: $0.title,
-                        subtitle: $0.subtitle
-                    )
-                },
-                selectedIndex: self.personaPickerSelectedIndex
-            )
+            let selectedText = selectionSnapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let mode: PersonaPickerMode
+            let items: [PersonaPickerEntry]
+
+            if let selectedText, !selectedText.isEmpty, self.settingsStore.personaHotkeyAppliesToSelection {
+                mode = .applySelection(PersonaSelectionContext(snapshot: selectionSnapshot, selectedText: selectedText))
+                items = self.personaPickerEntries(includeNoneOption: false)
+            } else {
+                mode = .switchDefault
+                items = self.personaPickerEntries(includeNoneOption: true)
+            }
+
+            guard !items.isEmpty else { return }
+
+            let activeID = self.settingsStore.personaRewriteEnabled ? UUID(uuidString: self.settingsStore.activePersonaID) : nil
+            let selectedIndex = items.firstIndex(where: { $0.id == activeID }) ?? 0
+
+            await MainActor.run {
+                guard !self.isRecording, self.processingTask == nil else { return }
+                self.personaPickerMode = mode
+                self.personaPickerItems = items
+                self.personaPickerSelectedIndex = selectedIndex
+                self.isPersonaPickerPresented = true
+                self.overlayController.showPersonaPicker(
+                    items: items.map {
+                        OverlayController.PersonaPickerItem(
+                            id: $0.id?.uuidString ?? "plain-dictation",
+                            title: $0.title,
+                            subtitle: $0.subtitle
+                        )
+                    },
+                    selectedIndex: selectedIndex,
+                    title: self.personaPickerTitle(for: mode),
+                    instructions: self.personaPickerInstructions(for: mode)
+                )
+            }
         }
     }
 
@@ -909,20 +947,41 @@ final class WorkflowController {
         snapshot.hasSelection && (!snapshot.isEditable || snapshot.selectedRange == nil)
     }
 
+    private func personaPickerTitle(for mode: PersonaPickerMode) -> String {
+        switch mode {
+        case .switchDefault:
+            return L("overlay.personaPicker.switchTitle")
+        case .applySelection:
+            return L("overlay.personaPicker.applyTitle")
+        }
+    }
+
+    private func personaPickerInstructions(for mode: PersonaPickerMode) -> String {
+        switch mode {
+        case .switchDefault:
+            return L("overlay.personaPicker.switchInstructions")
+        case .applySelection:
+            return L("overlay.personaPicker.applyInstructions")
+        }
+    }
+
     private func copyLastResultFromDialog() {
         guard let lastDialogResultText, !lastDialogResultText.isEmpty else { return }
         clipboard.write(text: lastDialogResultText)
         overlayController.showNotice(message: L("workflow.result.copied"))
     }
 
-    private func personaPickerEntries() -> [PersonaPickerEntry] {
-        var items = [
-            PersonaPickerEntry(
-                id: nil,
-                title: L("persona.none.title"),
-                subtitle: L("persona.none.subtitle")
+    private func personaPickerEntries(includeNoneOption: Bool) -> [PersonaPickerEntry] {
+        var items: [PersonaPickerEntry] = []
+        if includeNoneOption {
+            items.append(
+                PersonaPickerEntry(
+                    id: nil,
+                    title: L("persona.none.title"),
+                    subtitle: L("persona.none.subtitle")
+                )
             )
-        ]
+        }
         items.append(
             contentsOf: settingsStore.personas.map {
                 PersonaPickerEntry(id: $0.id, title: $0.name, subtitle: $0.prompt)
@@ -944,18 +1003,26 @@ final class WorkflowController {
         guard isPersonaPickerPresented, personaPickerItems.indices.contains(personaPickerSelectedIndex) else { return }
 
         let selected = personaPickerItems[personaPickerSelectedIndex]
-        settingsStore.applyPersonaSelection(selected.id)
-        if selected.id != nil {
-            Task { @MainActor in
-                self.overlayController.showNotice(message: L("workflow.persona.switched", selected.title))
-            }
-        } else {
-            Task { @MainActor in
-                self.overlayController.showNotice(message: L("workflow.persona.switchedOff"))
-            }
-        }
-
+        let mode = personaPickerMode
         dismissPersonaPicker(closeOverlay: false)
+
+        switch mode {
+        case .switchDefault:
+            settingsStore.applyPersonaSelection(selected.id)
+            if selected.id != nil {
+                Task { @MainActor in
+                    self.overlayController.showNotice(message: L("workflow.persona.switched", selected.title))
+                }
+            } else {
+                Task { @MainActor in
+                    self.overlayController.showNotice(message: L("workflow.persona.switchedOff"))
+                }
+            }
+        case .applySelection(let context):
+            guard let personaID = selected.id,
+                  let persona = settingsStore.personas.first(where: { $0.id == personaID }) else { return }
+            applyPersonaToSelection(context, persona: persona)
+        }
     }
 
     private func selectPersonaSelection(at index: Int) {
@@ -969,9 +1036,121 @@ final class WorkflowController {
         isPersonaPickerPresented = false
         personaPickerItems = []
         personaPickerSelectedIndex = 0
+        personaPickerMode = .switchDefault
         guard closeOverlay else { return }
         Task { @MainActor in
             self.overlayController.dismiss(after: 0.05)
+        }
+    }
+
+    private func applyPersonaToSelection(_ context: PersonaSelectionContext, persona: PersonaProfile) {
+        let personaPrompt = persona.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !personaPrompt.isEmpty else { return }
+
+        cancelCurrentProcessing(resetUI: false, reason: L("workflow.cancel.newRecording"))
+        let sessionID = beginProcessingSession()
+        startProcessingTimeout(sessionID: sessionID)
+
+        var record = HistoryRecord(
+            date: Date(),
+            mode: .editSelection,
+            personaPrompt: personaPrompt,
+            selectionOriginalText: context.selectedText,
+            recordingStatus: .skipped,
+            transcriptionStatus: .skipped,
+            processingStatus: .running,
+            applyStatus: .pending
+        )
+        saveHistoryRecord(record)
+        activeProcessingRecordID = record.id
+
+        let shouldShowResultDialog = shouldPresentResultDialog(for: context.snapshot)
+        processingTask = Task { [weak self] in
+            guard let self else { return }
+
+            if !shouldShowResultDialog {
+                await MainActor.run {
+                    self.appState.setStatus(.processing)
+                    self.overlayController.showProcessing()
+                }
+            }
+
+            do {
+                let finalText = try await self.generateRewrite(
+                    request: LLMRewriteRequest(
+                        mode: .rewriteTranscript,
+                        sourceText: context.selectedText,
+                        spokenInstruction: nil,
+                        personaPrompt: personaPrompt
+                    ),
+                    sessionID: sessionID,
+                    showsStreamingPreview: !shouldShowResultDialog
+                )
+                try self.ensureProcessingIsActive(sessionID)
+
+                record.selectionEditedText = finalText
+                record.processingStatus = .succeeded
+                record.applyStatus = .running
+                self.saveHistoryRecord(record)
+
+                let outcome: ApplyOutcome
+                if shouldShowResultDialog {
+                    await MainActor.run {
+                        self.lastDialogResultText = finalText
+                        self.overlayController.showResultDialog(title: L("workflow.result.copyTitle"), message: finalText)
+                    }
+                    outcome = .copiedToClipboard
+                } else {
+                    outcome = self.applyText(finalText, replace: true, fallbackTitle: L("workflow.result.copyTitle"))
+                }
+
+                try self.ensureProcessingIsActive(sessionID)
+                record.applyStatus = .succeeded
+                record.applyMessage = outcome.message
+                self.saveHistoryRecord(record)
+                UsageStatsStore.shared.recordSession(record: record)
+                self.enforceHistoryRetentionPolicy()
+
+                await MainActor.run {
+                    if self.processingSessionID == sessionID {
+                        self.appState.setStatus(.idle)
+                        if !shouldShowResultDialog {
+                            self.overlayController.dismissSoon()
+                        }
+                    }
+                    self.processingTask = nil
+                    self.activeProcessingRecordID = nil
+                }
+            } catch is CancellationError {
+                self.markCancelled(&record)
+                self.saveHistoryRecord(record)
+                self.enforceHistoryRetentionPolicy()
+                await MainActor.run {
+                    if self.processingSessionID == sessionID {
+                        self.processingTask = nil
+                        self.activeProcessingRecordID = nil
+                    }
+                }
+            } catch {
+                let msg = "Processing failed: \(error.localizedDescription)"
+                ErrorLogStore.shared.log(msg)
+                self.markFailure(&record, message: msg)
+                self.saveHistoryRecord(record)
+                UsageStatsStore.shared.recordSession(record: record)
+                self.enforceHistoryRetentionPolicy()
+
+                await MainActor.run {
+                    if self.processingSessionID == sessionID {
+                        self.appState.setStatus(.failed(message: L("workflow.processing.failed")))
+                        self.overlayController.showFailure(message: msg)
+                        self.overlayController.dismiss(after: 3.0)
+                    }
+                    self.processingTask = nil
+                    self.activeProcessingRecordID = nil
+                }
+            }
+
+            self.cancelProcessingTimeout()
         }
     }
 

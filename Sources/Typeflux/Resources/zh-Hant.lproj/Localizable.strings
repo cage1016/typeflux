@@ -206,8 +206,10 @@
 "overlay.timeout.title" = "處理逾時";
 "overlay.timeout.message" = "處理時間超過 120 秒，請重試。";
 "overlay.notice.title" = "提示";
-"overlay.personaPicker.title" = "切換人設";
-"overlay.personaPicker.instructions" = "使用上下方向鍵選擇，按 Enter 確認，按 Esc 關閉。";
+"overlay.personaPicker.switchTitle" = "切換人設";
+"overlay.personaPicker.switchInstructions" = "使用上下方向鍵選擇，按 Enter 確認，按 Esc 關閉。";
+"overlay.personaPicker.applyTitle" = "套用人設";
+"overlay.personaPicker.applyInstructions" = "選擇一個人設來改寫目前選取的文字。按 Enter 套用，按 Esc 取消。";
 
 "workflow.apply.inserted" = "已套用到目前活動應用。";
 "workflow.apply.copiedToClipboard" = "因無法直接插入，結果已複製到剪貼簿。";
@@ -313,8 +315,10 @@
 "settings.shortcuts.activation.subtitle" = "使用一組快捷鍵開始聽寫。可按住說話，也可快速輕觸後鎖定錄音。";
 "settings.shortcuts.activation.footnote" = "預設是右 Command。你可以改成任何包含修飾鍵的組合，之後也可以重設。";
 "settings.shortcuts.persona.title" = "人設切換器";
-"settings.shortcuts.persona.subtitle" = "打開置中的選擇器，用上下鍵移動，按 Enter 即可快速切換目前人設。";
-"settings.shortcuts.persona.footnote" = "選擇器包含「無人設」與所有已儲存人設，因此無需打開設定也能切換風格。";
+"settings.shortcuts.persona.subtitle" = "打開置中的選擇器；如果目前有選取文字，也可以直接把所選人設套用到這段文字。";
+"settings.shortcuts.persona.footnote" = "開啟進階選項後，快捷鍵會優先檢查選取文字並執行人設改寫；關閉後則維持為純粹的人設切換器。";
+"settings.advanced.personaHotkeyApply.title" = "將人設套用到選取文字";
+"settings.advanced.personaHotkeyApply.subtitle" = "開啟後，人設快捷鍵會先檢查是否有選取文字；如果有，就用所選人設直接改寫該文字，而不只是切換預設人設。";
 "settings.shortcuts.recording" = "正在錄製新的快捷鍵";
 "settings.shortcuts.recordingActivation" = "現在按下新的啟動組合鍵，至少包含一個修飾鍵。";
 "settings.shortcuts.recordingPersona" = "現在按下用於打開人設選擇器的快捷鍵，至少包含一個修飾鍵。";

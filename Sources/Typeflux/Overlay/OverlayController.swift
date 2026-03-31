@@ -213,9 +213,11 @@ final class OverlayController {
         refreshWindow()
     }
 
-    func showPersonaPicker(items: [PersonaPickerItem], selectedIndex: Int) {
+    func showPersonaPicker(items: [PersonaPickerItem], selectedIndex: Int, title: String, instructions: String) {
         if !Thread.isMainThread {
-            DispatchQueue.main.async { [weak self] in self?.showPersonaPicker(items: items, selectedIndex: selectedIndex) }
+            DispatchQueue.main.async { [weak self] in
+                self?.showPersonaPicker(items: items, selectedIndex: selectedIndex, title: title, instructions: instructions)
+            }
             return
         }
 
@@ -225,8 +227,8 @@ final class OverlayController {
         model.personaItems = items
         model.personaSelectedIndex = max(0, min(selectedIndex, max(0, items.count - 1)))
         model.personaViewportHeight = min(360, CGFloat(max(1, items.count)) * 84)
-        model.statusText = L("overlay.personaPicker.title")
-        model.detailText = ""
+        model.statusText = title
+        model.detailText = instructions
         refreshWindow()
     }
 
@@ -769,7 +771,7 @@ private struct OverlayView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color.white.opacity(0.96))
 
-                        Text(L("overlay.personaPicker.instructions"))
+                        Text(model.detailText)
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundStyle(Color.white.opacity(0.7))
                     }

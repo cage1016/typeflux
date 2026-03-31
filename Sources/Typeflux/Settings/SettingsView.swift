@@ -864,6 +864,23 @@ struct StudioView: View {
             StudioCard {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
+                        title: L("settings.advanced.personaHotkeyApply.title"),
+                        subtitle: L("settings.advanced.personaHotkeyApply.subtitle")
+                    ) {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { viewModel.personaHotkeyAppliesToSelection },
+                                set: viewModel.setPersonaHotkeyAppliesToSelection
+                            )
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    StudioSettingRow(
                         title: L("settings.models.appleFallback"),
                         subtitle: L("settings.models.appleFallback.detail")
                     ) {

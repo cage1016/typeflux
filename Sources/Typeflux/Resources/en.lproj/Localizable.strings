@@ -206,8 +206,10 @@
 "overlay.timeout.title" = "Processing timed out";
 "overlay.timeout.message" = "Processing took longer than 120 seconds. Please try again.";
 "overlay.notice.title" = "Notice";
-"overlay.personaPicker.title" = "Switch Persona";
-"overlay.personaPicker.instructions" = "Use Up and Down to choose, Return to confirm, or Esc to close.";
+"overlay.personaPicker.switchTitle" = "Switch Persona";
+"overlay.personaPicker.switchInstructions" = "Use Up and Down to choose, Return to confirm, or Esc to close.";
+"overlay.personaPicker.applyTitle" = "Apply Persona";
+"overlay.personaPicker.applyInstructions" = "Choose a persona to rewrite the selected text. Press Return to apply or Esc to cancel.";
 
 "workflow.apply.inserted" = "Applied to the active app.";
 "workflow.apply.copiedToClipboard" = "Copied to the clipboard because direct insertion was unavailable.";
@@ -313,8 +315,10 @@
 "settings.shortcuts.activation.subtitle" = "Use one shortcut to start dictation. Hold to talk, or tap quickly to lock the recording session.";
 "settings.shortcuts.activation.footnote" = "Default is Right Command. You can replace it with any modifier-based combination and reset it later.";
 "settings.shortcuts.persona.title" = "Persona switcher";
-"settings.shortcuts.persona.subtitle" = "Open a centered picker, move with Up and Down, then press Return to switch the active persona instantly.";
-"settings.shortcuts.persona.footnote" = "The picker includes No Persona and every saved persona, so you can switch styles without opening Settings.";
+"settings.shortcuts.persona.subtitle" = "Open a centered picker. With selected text, it can also apply a persona directly to that selection.";
+"settings.shortcuts.persona.footnote" = "When the advanced option is on, the shortcut rewrites selected text with the chosen persona. Otherwise it behaves as a pure persona switcher.";
+"settings.advanced.personaHotkeyApply.title" = "Apply persona to selected text";
+"settings.advanced.personaHotkeyApply.subtitle" = "When enabled, the persona shortcut checks for selected text first and uses the picker to rewrite that selection instead of only switching the default persona.";
 "settings.shortcuts.recording" = "Recording a new shortcut";
 "settings.shortcuts.recordingActivation" = "Press the new activation combination now. Include at least one modifier key.";
 "settings.shortcuts.recordingPersona" = "Press the shortcut that should open the persona picker. Include at least one modifier key.";

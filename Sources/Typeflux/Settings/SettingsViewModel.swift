@@ -73,6 +73,7 @@ final class StudioViewModel: ObservableObject {
     @Published var appleSpeechFallback: Bool
 
     @Published var personaRewriteEnabled: Bool
+    @Published var personaHotkeyAppliesToSelection: Bool
     @Published var personas: [PersonaProfile]
     @Published var selectedPersonaID: UUID?
     @Published private(set) var activePersonaID: String
@@ -177,6 +178,7 @@ final class StudioViewModel: ObservableObject {
         localSTTStoragePath = ""
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
+        personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         personas = currentPersonas
         let initialSelectedPersonaID = settingsStore.activePersona.map(\.id) ?? currentPersonas.first?.id
         selectedPersonaID = initialSelectedPersonaID
@@ -715,6 +717,10 @@ final class StudioViewModel: ObservableObject {
         personaRewriteEnabled = value
         settingsStore.personaRewriteEnabled = value
     }
+    func setPersonaHotkeyAppliesToSelection(_ value: Bool) {
+        personaHotkeyAppliesToSelection = value
+        settingsStore.personaHotkeyAppliesToSelection = value
+    }
 
     var defaultPersonaSelectionID: UUID? {
         guard personaRewriteEnabled else { return nil }
@@ -856,6 +862,7 @@ final class StudioViewModel: ObservableObject {
 
     private func syncPersonaSelectionFromStore() {
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
+        personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         activePersonaID = settingsStore.activePersonaID
         selectedPersonaID = settingsStore.activePersona.map(\.id) ?? selectedPersonaID
         if !isCreatingPersonaDraft {

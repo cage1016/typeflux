@@ -257,6 +257,11 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "persona.enabled") }
     }
 
+    var personaHotkeyAppliesToSelection: Bool {
+        get { defaults.object(forKey: "persona.hotkeyAppliesToSelection") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "persona.hotkeyAppliesToSelection") }
+    }
+
     var activePersonaID: String {
         get { defaults.string(forKey: "persona.activeID") ?? "" }
         set { defaults.set(newValue, forKey: "persona.activeID") }
