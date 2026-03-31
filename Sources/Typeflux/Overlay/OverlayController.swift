@@ -6,6 +6,8 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
 }
 
 final class OverlayController {
+    private static let autoDismissDelay: TimeInterval = 10.0
+
     struct PersonaPickerItem: Identifiable, Equatable {
         let id: String
         let title: String
@@ -142,6 +144,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showFailure(message: message) }
             return
         }
+        dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .failure
         model.statusText = L("overlay.failure.title")
@@ -194,7 +197,7 @@ final class OverlayController {
         model.statusText = L("overlay.notice.title")
         model.detailText = message
         refreshWindow()
-        dismiss(after: 5.0)
+        dismiss(after: Self.autoDismissDelay)
     }
 
     func showResultDialog(title: String, message: String) {
@@ -257,6 +260,9 @@ final class OverlayController {
     func dismiss(after delay: TimeInterval) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in self?.dismiss(after: delay) }
+            return
+        }
+        if model.presentation == .failure && delay > 0 {
             return
         }
         dismissWorkItem?.cancel()
@@ -360,7 +366,7 @@ final class OverlayController {
         case .notice:
             return OverlayMetrics(size: NSSize(width: 344, height: 108), anchor: .bottom, offset: 80, interactive: true)
         case .failure:
-            let failureHeight: CGFloat = model.failureRetryable ? 172 : 132
+            let failureHeight: CGFloat = model.failureRetryable ? 248 : 216
             return OverlayMetrics(size: NSSize(width: 352, height: failureHeight), anchor: .bottom, offset: 80, interactive: true)
         case .personaPicker:
             let viewportHeight = min(320, max(180, model.personaViewportHeight))
@@ -373,6 +379,7 @@ final class OverlayController {
     private func updateKeyMonitoring() {
         if model.presentation == .recordingLocked
             || model.presentation == .recordingLockedPreview
+            || model.presentation == .failure
             || model.presentation == .personaPicker
             || model.presentation == .resultDialog {
             installKeyMonitoringIfNeeded()
@@ -412,6 +419,10 @@ final class OverlayController {
         }
 
         switch model.presentation {
+        case .failure:
+            if Int(event.keyCode) == 53 {
+                model.requestDismiss()
+            }
         case .personaPicker:
             switch Int(event.keyCode) {
             case 53:
@@ -705,11 +716,15 @@ private struct OverlayView: View {
             VStack(alignment: .leading, spacing: 12) {
                 cardHeader(icon: "exclamationmark.circle", accent: Color(red: 1.0, green: 0.42, blue: 0.08), title: model.statusText, dismissible: true)
 
-                Text(model.detailText)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.72))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                ScrollView(showsIndicators: false) {
+                    Text(model.detailText)
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+                .frame(maxHeight: model.failureRetryable ? 124 : 92)
 
                 if model.failureRetryable {
                     Button(action: model.requestFailureRetry) {
