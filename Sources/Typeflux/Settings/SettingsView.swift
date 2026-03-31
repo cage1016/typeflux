@@ -1939,8 +1939,8 @@ struct StudioView: View {
                 if viewModel.focusedModelProvider == .ollama {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                         StudioButton(
-                            title: viewModel.isPreparingOllama ? L("settings.models.preparing") : L("settings.models.prepareLocalModel"),
-                            systemImage: viewModel.isPreparingOllama ? nil : "arrow.down.circle",
+                            title: viewModel.isPreparingOllama ? L("settings.models.preparing") : (viewModel.isOllamaFailed ? L("common.retry") : L("settings.models.prepareLocalModel")),
+                            systemImage: viewModel.isPreparingOllama ? nil : (viewModel.isOllamaFailed ? "arrow.clockwise" : "arrow.down.circle"),
                             variant: .primary
                         ) {
                             viewModel.prepareOllamaModel()
@@ -1954,6 +1954,16 @@ struct StudioView: View {
 
                 if viewModel.focusedModelProvider == .localSTT {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                        if viewModel.localSTTNeedsRetry {
+                            StudioButton(
+                                title: viewModel.localSTTPreparationProgress > 0 ? L("common.retry") : L("settings.models.prepareLocalModel"),
+                                systemImage: viewModel.localSTTPreparationProgress > 0 ? "arrow.clockwise" : "arrow.down.circle",
+                                variant: .primary
+                            ) {
+                                viewModel.prepareLocalSTTModel()
+                            }
+                        }
+
                         HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
                             ProgressView(value: viewModel.localSTTPreparationProgress, total: 1)
                                 .progressViewStyle(.linear)

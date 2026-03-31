@@ -249,6 +249,14 @@ final class StudioViewModel: ObservableObject {
         return StudioTheme.accent
     }
 
+    var isOllamaFailed: Bool {
+        !isPreparingOllama && ollamaStatus.hasPrefix(L("common.failedPrefix"))
+    }
+
+    var localSTTNeedsRetry: Bool {
+        !isPreparingLocalSTT && !isLocalSTTPrepared
+    }
+
     @Published private(set) var displayedHistory: [HistoryPresentationRecord] = []
 
     var groupedHistory: [HistorySection] {
