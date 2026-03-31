@@ -177,9 +177,11 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.updateStreamingText(text) }
             return
         }
-        model.presentation = .transcriptPreview
         model.detailText = text
-        refreshWindow()
+        if model.presentation == .transcriptPreview {
+            model.presentation = .processing
+            refreshWindow()
+        }
     }
 
     func showNotice(message: String) {
