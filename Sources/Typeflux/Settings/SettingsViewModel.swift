@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import SwiftUI
 
-enum LLMConnectionTestState: Equatable {
+enum ConnectionTestState: Equatable {
     case idle
     case testing
     case success(firstTokenMs: Int, totalMs: Int, preview: String)
@@ -84,7 +84,8 @@ final class StudioViewModel: ObservableObject {
     @Published var historyRetentionPolicy: HistoryRetentionPolicy
     @Published private(set) var historyRecords: [HistoryRecord]
     @Published var toastMessage: String?
-    @Published var llmConnectionTestState: LLMConnectionTestState = .idle
+    @Published var llmConnectionTestState: ConnectionTestState = .idle
+    @Published var sttConnectionTestState: ConnectionTestState = .idle
     @Published private(set) var permissionRows: [StudioPermissionRowModel] = []
     @Published private(set) var isRefreshingPermissions = false
     @Published private(set) var isRefreshingHistory = false
@@ -102,6 +103,7 @@ final class StudioViewModel: ObservableObject {
     private var historyObserver: NSObjectProtocol?
     private var personaSelectionObserver: NSObjectProtocol?
     private var llmTestTask: Task<Void, Never>?
+    private var sttTestTask: Task<Void, Never>?
 
     init(
         settingsStore: SettingsStore,
@@ -638,7 +640,9 @@ final class StudioViewModel: ObservableObject {
         guard provider.domain == modelDomain else { return }
         focusedModelProvider = provider
         llmTestTask?.cancel()
+        sttTestTask?.cancel()
         llmConnectionTestState = .idle
+        sttConnectionTestState = .idle
     }
 
     func setLLMBaseURL(_ value: String) { llmBaseURL = value; llmConnectionTestState = .idle }
@@ -647,16 +651,16 @@ final class StudioViewModel: ObservableObject {
     func setOllamaBaseURL(_ value: String) { ollamaBaseURL = value; llmConnectionTestState = .idle }
     func setOllamaModel(_ value: String) { ollamaModel = value; llmConnectionTestState = .idle }
     func setOllamaAutoSetup(_ value: Bool) { ollamaAutoSetup = value; settingsStore.ollamaAutoSetup = value }
-    func setWhisperBaseURL(_ value: String) { whisperBaseURL = value }
-    func setWhisperModel(_ value: String) { whisperModel = value }
-    func setWhisperAPIKey(_ value: String) { whisperAPIKey = value }
-    func setMultimodalLLMBaseURL(_ value: String) { multimodalLLMBaseURL = value }
-    func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value }
-    func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value }
-    func setAliCloudAPIKey(_ value: String) { aliCloudAPIKey = value }
-    func setDoubaoAppID(_ value: String) { doubaoAppID = value }
-    func setDoubaoAccessToken(_ value: String) { doubaoAccessToken = value }
-    func setDoubaoResourceID(_ value: String) { doubaoResourceID = value }
+    func setWhisperBaseURL(_ value: String) { whisperBaseURL = value; sttConnectionTestState = .idle }
+    func setWhisperModel(_ value: String) { whisperModel = value; sttConnectionTestState = .idle }
+    func setWhisperAPIKey(_ value: String) { whisperAPIKey = value; sttConnectionTestState = .idle }
+    func setMultimodalLLMBaseURL(_ value: String) { multimodalLLMBaseURL = value; sttConnectionTestState = .idle }
+    func setMultimodalLLMModel(_ value: String) { multimodalLLMModel = value; sttConnectionTestState = .idle }
+    func setMultimodalLLMAPIKey(_ value: String) { multimodalLLMAPIKey = value; sttConnectionTestState = .idle }
+    func setAliCloudAPIKey(_ value: String) { aliCloudAPIKey = value; sttConnectionTestState = .idle }
+    func setDoubaoAppID(_ value: String) { doubaoAppID = value; sttConnectionTestState = .idle }
+    func setDoubaoAccessToken(_ value: String) { doubaoAccessToken = value; sttConnectionTestState = .idle }
+    func setDoubaoResourceID(_ value: String) { doubaoResourceID = value; sttConnectionTestState = .idle }
     func setLocalSTTModelIdentifier(_ value: String) {
         let identifier = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? localSTTModel.defaultModelIdentifier
@@ -1127,6 +1131,67 @@ final class StudioViewModel: ObservableObject {
             } catch {
                 if !Task.isCancelled {
                     llmConnectionTestState = .failure(message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    func testSTTConnection() {
+        sttTestTask?.cancel()
+        sttConnectionTestState = .testing
+
+        let capturedProvider = focusedModelProvider
+        let capturedWhisperBaseURL = whisperBaseURL
+        let capturedWhisperModel = whisperModel
+        let capturedWhisperAPIKey = whisperAPIKey
+        let capturedMultimodalBaseURL = multimodalLLMBaseURL
+        let capturedMultimodalModel = multimodalLLMModel
+        let capturedMultimodalAPIKey = multimodalLLMAPIKey
+        let capturedAliCloudAPIKey = aliCloudAPIKey
+        let capturedDoubaoAppID = doubaoAppID
+        let capturedDoubaoAccessToken = doubaoAccessToken
+        let capturedDoubaoResourceID = doubaoResourceID
+
+        sttTestTask = Task {
+            let startDate = Date()
+
+            do {
+                let preview: String
+                switch capturedProvider {
+                case .whisperAPI:
+                    preview = try await WhisperAPITranscriber.testConnection(
+                        baseURL: capturedWhisperBaseURL,
+                        model: capturedWhisperModel,
+                        apiKey: capturedWhisperAPIKey
+                    )
+                case .multimodalLLM:
+                    preview = try await MultimodalLLMTranscriber.testConnection(
+                        baseURL: capturedMultimodalBaseURL,
+                        model: capturedMultimodalModel,
+                        apiKey: capturedMultimodalAPIKey
+                    )
+                case .aliCloud:
+                    preview = try await AliCloudRealtimeTranscriber.testConnection(apiKey: capturedAliCloudAPIKey)
+                case .doubaoRealtime:
+                    preview = try await DoubaoRealtimeTranscriber.testConnection(
+                        appID: capturedDoubaoAppID,
+                        accessToken: capturedDoubaoAccessToken,
+                        resourceID: capturedDoubaoResourceID
+                    )
+                default:
+                    return
+                }
+
+                if Task.isCancelled { return }
+                let totalMs = Int(Date().timeIntervalSince(startDate) * 1000)
+                sttConnectionTestState = .success(
+                    firstTokenMs: totalMs,
+                    totalMs: totalMs,
+                    preview: String(preview.prefix(120))
+                )
+            } catch {
+                if !Task.isCancelled {
+                    sttConnectionTestState = .failure(message: error.localizedDescription)
                 }
             }
         }

@@ -147,6 +147,7 @@
 "common.ok" = "确定";
 "common.cancel" = "取消";
 "common.save" = "保存";
+"common.test" = "测试";
 "common.delete" = "删除";
 "common.clear" = "清空";
 "common.copy" = "复制";

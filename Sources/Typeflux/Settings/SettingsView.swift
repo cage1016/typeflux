@@ -1917,9 +1917,9 @@ struct StudioView: View {
                         StudioButton(title: L("common.save"), systemImage: "checkmark", variant: .primary) {
                             viewModel.applyModelConfiguration()
                         }
-                        if viewModel.focusedModelProvider == .openAICompatible || viewModel.focusedModelProvider == .ollama {
+                        if [StudioModelProviderID.openAICompatible, .ollama].contains(viewModel.focusedModelProvider) {
                             StudioButton(
-                                title: viewModel.llmConnectionTestState == .testing ? L("settings.models.testingConnection") : L("settings.models.testConnection"),
+                                title: viewModel.llmConnectionTestState == .testing ? L("settings.models.testingConnection") : L("common.test"),
                                 systemImage: viewModel.llmConnectionTestState == .testing ? nil : "network",
                                 variant: .secondary,
                                 isDisabled: viewModel.llmConnectionTestState == .testing,
@@ -1927,12 +1927,24 @@ struct StudioView: View {
                             ) {
                                 viewModel.testLLMConnection()
                             }
+                        } else if [StudioModelProviderID.whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime].contains(viewModel.focusedModelProvider) {
+                            StudioButton(
+                                title: viewModel.sttConnectionTestState == .testing ? L("settings.models.testingConnection") : L("common.test"),
+                                systemImage: viewModel.sttConnectionTestState == .testing ? nil : "network",
+                                variant: .secondary,
+                                isDisabled: viewModel.sttConnectionTestState == .testing,
+                                isLoading: viewModel.sttConnectionTestState == .testing
+                            ) {
+                                viewModel.testSTTConnection()
+                            }
                         }
                         Spacer()
                     }
 
-                    if viewModel.focusedModelProvider == .openAICompatible || viewModel.focusedModelProvider == .ollama {
-                        llmTestResultView
+                    if [StudioModelProviderID.openAICompatible, .ollama].contains(viewModel.focusedModelProvider) {
+                        connectionTestResultView(viewModel.llmConnectionTestState)
+                    } else if [StudioModelProviderID.whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime].contains(viewModel.focusedModelProvider) {
+                        connectionTestResultView(viewModel.sttConnectionTestState)
                     }
                 }
 
@@ -2152,8 +2164,8 @@ struct StudioView: View {
     }
 
     @ViewBuilder
-    private var llmTestResultView: some View {
-        switch viewModel.llmConnectionTestState {
+    private func connectionTestResultView(_ state: ConnectionTestState) -> some View {
+        switch state {
         case .idle:
             EmptyView()
         case .testing:

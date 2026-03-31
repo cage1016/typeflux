@@ -7,6 +7,43 @@ final class WhisperAPITranscriber: Transcriber {
         self.settingsStore = settingsStore
     }
 
+    static func testConnection(baseURL: String, model: String, apiKey: String) async throws -> String {
+        let trimmedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedBaseURL.isEmpty, let resolvedBaseURL = URL(string: trimmedBaseURL) else {
+            throw NSError(
+                domain: "WhisperAPITranscriber",
+                code: 1001,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid transcription endpoint. Please enter a valid URL."]
+            )
+        }
+
+        let resolvedModel = model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? OpenAIAudioModelCatalog.whisperModels[0]
+            : model.trimmingCharacters(in: .whitespacesAndNewlines)
+        let request = try makeTestRequest(baseURL: resolvedBaseURL, model: resolvedModel, apiKey: apiKey)
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: "WhisperAPITranscriber",
+                code: 1002,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid response type."]
+            )
+        }
+
+        guard (200..<300).contains(http.statusCode) else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(
+                domain: "WhisperAPITranscriber",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(errorBody)"]
+            )
+        }
+
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return (json?["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     func transcribe(audioFile: AudioFile) async throws -> String {
         try await transcribeStream(audioFile: audioFile) { _ in }
     }
@@ -254,6 +291,31 @@ final class WhisperAPITranscriber: Transcriber {
         return request
     }
 
+    private static func makeTestRequest(baseURL: URL, model: String, apiKey: String) throws -> URLRequest {
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "audio/transcriptions")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try MultipartFormData.build(
+            boundary: boundary,
+            parts: [
+                .text(name: "model", value: model),
+                .fileData(
+                    name: "file",
+                    filename: "typeflux-stt-test.wav",
+                    mimeType: "audio/wav",
+                    data: RemoteSTTTestAudio.wavSilence()
+                )
+            ]
+        )
+        return request
+    }
+
     private func mimeType(for fileURL: URL) -> String {
         switch fileURL.pathExtension.lowercased() {
         case "wav":
@@ -273,6 +335,7 @@ final class WhisperAPITranscriber: Transcriber {
 enum MultipartPart {
     case text(name: String, value: String)
     case file(name: String, filename: String, mimeType: String, fileURL: URL)
+    case fileData(name: String, filename: String, mimeType: String, data: Data)
 }
 
 enum MultipartFormData {
@@ -291,6 +354,12 @@ enum MultipartFormData {
                 data.append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
                 data.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
                 data.append(try Data(contentsOf: fileURL))
+                data.append("\r\n".data(using: .utf8)!)
+
+            case .fileData(let name, let filename, let mimeType, let fileData):
+                data.append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+                data.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+                data.append(fileData)
                 data.append("\r\n".data(using: .utf8)!)
             }
         }

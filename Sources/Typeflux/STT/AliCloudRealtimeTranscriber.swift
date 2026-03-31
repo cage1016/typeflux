@@ -10,6 +10,28 @@ final class AliCloudRealtimeTranscriber: Transcriber {
         self.settingsStore = settingsStore
     }
 
+    static func testConnection(apiKey: String, model: String = AliCloudASRDefaults.model) async throws -> String {
+        let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAPIKey.isEmpty else {
+            throw NSError(
+                domain: "AliCloudRealtimeTranscriber",
+                code: 1001,
+                userInfo: [NSLocalizedDescriptionKey: "Alibaba Cloud API key is not configured."]
+            )
+        }
+
+        let resolvedModel = model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? AliCloudASRDefaults.model
+            : model.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pcmData = RemoteSTTTestAudio.pcm16MonoSilence()
+
+        if resolvedModel.lowercased().hasPrefix("qwen") {
+            return try await AliCloudQwenASRSession.run(pcmData: pcmData, model: resolvedModel, apiKey: trimmedAPIKey) { _ in }
+        } else {
+            return try await AliCloudFunASRSession.run(pcmData: pcmData, model: resolvedModel, apiKey: trimmedAPIKey) { _ in }
+        }
+    }
+
     func transcribe(audioFile: AudioFile) async throws -> String {
         try await transcribeStream(audioFile: audioFile) { _ in }
     }

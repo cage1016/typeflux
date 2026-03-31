@@ -13,6 +13,45 @@ final class MultimodalLLMTranscriber: Transcriber {
         self.settingsStore = settingsStore
     }
 
+    static func testConnection(baseURL: String, model: String, apiKey: String) async throws -> String {
+        let trimmedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedBaseURL.isEmpty else {
+            throw NSError(
+                domain: "MultimodalLLMTranscriber",
+                code: 1001,
+                userInfo: [NSLocalizedDescriptionKey: "Multimodal LLM base URL is not configured."]
+            )
+        }
+        guard let resolvedBaseURL = URL(string: trimmedBaseURL) else {
+            throw NSError(
+                domain: "MultimodalLLMTranscriber",
+                code: 1002,
+                userInfo: [NSLocalizedDescriptionKey: "Multimodal LLM base URL is invalid."]
+            )
+        }
+
+        let resolvedModel = model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? OpenAIAudioModelCatalog.multimodalModels[0]
+            : model.trimmingCharacters(in: .whitespacesAndNewlines)
+        let request = try makeTestRequest(baseURL: resolvedBaseURL, model: resolvedModel, apiKey: apiKey)
+
+        var buffer = ""
+        for try await chunk in try await SSEClient.lines(for: request) {
+            if chunk == "[DONE]" { break }
+            guard let data = chunk.data(using: .utf8) else { continue }
+            guard let delta = OpenAICompatibleResponseSupport.extractTextDelta(from: data), !delta.isEmpty else {
+                if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
+                    continue
+                }
+                continue
+            }
+            buffer += delta
+            if buffer.count >= 120 { break }
+        }
+
+        return buffer.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     func transcribe(audioFile: AudioFile) async throws -> String {
         try await transcribeStream(audioFile: audioFile) { _ in }
     }
@@ -126,6 +165,43 @@ final class MultimodalLLMTranscriber: Transcriber {
         ]
         OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
 
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    private static func makeTestRequest(baseURL: URL, model: String, apiKey: String) throws -> URLRequest {
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "chat/completions")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let base64Audio = RemoteSTTTestAudio.wavSilence().base64EncodedString()
+        var body: [String: Any] = [
+            "model": model,
+            "stream": true,
+            "messages": [
+                [
+                    "role": "system",
+                    "content": "You are validating a speech-to-text configuration. Transcribe the provided audio. If it contains no speech, reply with OK."
+                ],
+                [
+                    "role": "user",
+                    "content": [
+                        [
+                            "type": "input_audio",
+                            "input_audio": [
+                                "data": base64Audio,
+                                "format": "wav"
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+        OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }

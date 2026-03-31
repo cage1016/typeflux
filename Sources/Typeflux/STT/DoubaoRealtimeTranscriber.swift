@@ -9,6 +9,36 @@ final class DoubaoRealtimeTranscriber: Transcriber {
         self.settingsStore = settingsStore
     }
 
+    static func testConnection(appID: String, accessToken: String, resourceID: String) async throws -> String {
+        let trimmedAppID = appID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAccessToken = accessToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedResourceID = resourceID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedAppID.isEmpty else {
+            throw NSError(
+                domain: "DoubaoRealtimeTranscriber",
+                code: 1001,
+                userInfo: [NSLocalizedDescriptionKey: "Doubao App ID is not configured."]
+            )
+        }
+
+        guard !trimmedAccessToken.isEmpty else {
+            throw NSError(
+                domain: "DoubaoRealtimeTranscriber",
+                code: 1002,
+                userInfo: [NSLocalizedDescriptionKey: "Doubao access token is not configured."]
+            )
+        }
+
+        return try await DoubaoRealtimeSession.run(
+            pcmData: RemoteSTTTestAudio.pcm16MonoSilence(),
+            appID: trimmedAppID,
+            accessToken: trimmedAccessToken,
+            resourceID: trimmedResourceID.isEmpty ? "volc.seedasr.sauc.duration" : trimmedResourceID,
+            hotwords: []
+        ) { _ in }
+    }
+
     func transcribe(audioFile: AudioFile) async throws -> String {
         try await transcribeStream(audioFile: audioFile) { _ in }
     }
