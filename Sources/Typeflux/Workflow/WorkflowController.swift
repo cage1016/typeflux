@@ -4,6 +4,7 @@ final class WorkflowController {
     private static let recordingTimeoutNanoseconds: UInt64 = 600_000_000_000 // 10 minutes
     private static let processingTimeoutNanoseconds: UInt64 = 120_000_000_000 // 2 minutes
     private static let tapToLockThreshold: TimeInterval = 0.22
+    private static let selectionRestoreDelayMicroseconds: useconds_t = 120_000
 
     private enum RecordingMode {
         case holdToTalk
@@ -459,6 +460,7 @@ final class WorkflowController {
 
         do {
             if replace {
+                dismissOverlayForExternalReplacement()
                 try textInjector.replaceSelection(text: text)
             } else {
                 try textInjector.insert(text: text)
@@ -944,7 +946,18 @@ final class WorkflowController {
     }
 
     private func shouldPresentResultDialog(for snapshot: TextSelectionSnapshot) -> Bool {
-        snapshot.hasSelection && (!snapshot.isEditable || snapshot.selectedRange == nil)
+        snapshot.hasSelection && !snapshot.isEditable
+    }
+
+    private func dismissOverlayForExternalReplacement() {
+        if Thread.isMainThread {
+            overlayController.dismiss(after: 0)
+        } else {
+            DispatchQueue.main.sync {
+                self.overlayController.dismiss(after: 0)
+            }
+        }
+        usleep(Self.selectionRestoreDelayMicroseconds)
     }
 
     private func personaPickerTitle(for mode: PersonaPickerMode) -> String {
