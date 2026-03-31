@@ -5,6 +5,10 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     override var isOpaque: Bool { false }
 }
 
+private final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 final class OverlayController {
     private static let autoDismissDelay: TimeInterval = 10.0
 
@@ -80,13 +84,14 @@ final class OverlayController {
             hosting.wantsLayer = true
             hosting.layer?.backgroundColor = NSColor.clear.cgColor
             let metrics = metrics(for: .recordingHold)
-            let panel = NSPanel(contentRect: NSRect(origin: .zero, size: metrics.size), styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
+            let panel = OverlayPanel(contentRect: NSRect(origin: .zero, size: metrics.size), styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
             panel.isFloatingPanel = true
             panel.level = NSWindow.Level.statusBar
             panel.backgroundColor = NSColor.clear
             panel.hasShadow = false
             panel.isOpaque = false
             panel.ignoresMouseEvents = false
+            panel.becomesKeyOnlyIfNeeded = false
             panel.collectionBehavior = [NSWindow.CollectionBehavior.canJoinAllSpaces, NSWindow.CollectionBehavior.transient]
             panel.contentView = hosting
             panel.contentView?.wantsLayer = true
@@ -282,7 +287,11 @@ final class OverlayController {
     private func refreshWindow() {
         positionWindow()
         configureWindowAppearance()
-        window?.orderFrontRegardless()
+        if metrics(for: model.presentation).interactive {
+            window?.makeKeyAndOrderFront(nil)
+        } else {
+            window?.orderFrontRegardless()
+        }
         updateKeyMonitoring()
     }
 
@@ -393,11 +402,11 @@ final class OverlayController {
     private func installKeyMonitoringIfNeeded() {
         guard globalKeyMonitor == nil, localKeyMonitor == nil else { return }
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event)
+            _ = self?.handleKeyEvent(event)
         }
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event)
-            return event
+            guard let self else { return event }
+            return self.handleKeyEvent(event) ? nil : event
         }
     }
 
@@ -412,38 +421,47 @@ final class OverlayController {
         }
     }
 
-    private func handleKeyEvent(_ event: NSEvent) {
+    private func handleKeyEvent(_ event: NSEvent) -> Bool {
         if model.presentation == .recordingLocked || model.presentation == .recordingLockedPreview {
             if Int(event.keyCode) == 53 {
                 model.requestCancel()
+                return true
             }
-            return
+            return false
         }
 
         switch model.presentation {
         case .failure:
             if Int(event.keyCode) == 53 {
                 model.requestDismiss()
+                return true
             }
+            return false
         case .personaPicker:
             switch Int(event.keyCode) {
             case 53:
                 model.requestPersonaCancel()
+                return true
             case 125:
                 model.requestPersonaMoveDown()
+                return true
             case 126:
                 model.requestPersonaMoveUp()
+                return true
             case 36, 76:
                 model.requestPersonaConfirm()
+                return true
             default:
-                return
+                return false
             }
         case .resultDialog:
             if Int(event.keyCode) == 53 {
                 model.requestDismiss()
+                return true
             }
+            return false
         default:
-            return
+            return false
         }
     }
 }
