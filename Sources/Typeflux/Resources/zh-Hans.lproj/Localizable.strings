@@ -360,6 +360,8 @@
 "settings.models.doubao.productName" = "豆包语音识别 2.0";
 "settings.models.editCurrentProvider" = "编辑当前提供方";
 "settings.models.useAsDefault" = "设为默认";
+"settings.models.activationMissingAPIKey.title" = "需要填写 API Key";
+"settings.models.activationMissingAPIKey.message" = "请先为 %@ 填写 API Key，再将它设为默认模型。";
 "settings.models.active" = "当前";
 "settings.models.selected" = "已选中";
 "settings.models.testConnection" = "测试连接";

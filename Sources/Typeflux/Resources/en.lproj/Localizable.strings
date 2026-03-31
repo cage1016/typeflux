@@ -360,6 +360,8 @@
 "settings.models.doubao.productName" = "Doubao Speech Recognition 2.0";
 "settings.models.editCurrentProvider" = "Edit current provider";
 "settings.models.useAsDefault" = "Use as Default";
+"settings.models.activationMissingAPIKey.title" = "API key required";
+"settings.models.activationMissingAPIKey.message" = "Add an API key for %@ before setting it as the default model.";
 "settings.models.active" = "Active";
 "settings.models.selected" = "Selected";
 "settings.models.testConnection" = "Test Connection";

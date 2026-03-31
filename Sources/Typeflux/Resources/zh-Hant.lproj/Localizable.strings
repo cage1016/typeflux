@@ -360,6 +360,8 @@
 "settings.models.doubao.productName" = "豆包語音辨識 2.0";
 "settings.models.editCurrentProvider" = "編輯目前提供方";
 "settings.models.useAsDefault" = "設為預設";
+"settings.models.activationMissingAPIKey.title" = "需要填入 API Key";
+"settings.models.activationMissingAPIKey.message" = "請先為 %@ 填入 API Key，再將它設為預設模型。";
 "settings.models.active" = "目前";
 "settings.models.selected" = "已選取";
 "settings.models.testConnection" = "測試連線";

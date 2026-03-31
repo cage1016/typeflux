@@ -1051,7 +1051,7 @@ final class StudioViewModel: ObservableObject {
         showToast(L("history.toast.transcriptDeleted"))
     }
 
-    func applyModelConfiguration() {
+    func applyModelConfiguration(shouldShowToast: Bool = true) {
         switch focusedModelProvider {
         case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             let remoteProvider = LLMRemoteProvider.from(providerID: focusedModelProvider) ?? llmRemoteProvider
@@ -1081,7 +1081,15 @@ final class StudioViewModel: ObservableObject {
         case .appleSpeech, .localSTT:
             break
         }
-        showToast(L("settings.models.configurationSaved"))
+        if shouldShowToast {
+            showToast(L("settings.models.configurationSaved"))
+        }
+    }
+
+    func focusedLLMProviderMissingAPIKey() -> Bool {
+        guard focusedModelProvider.domain == .llm else { return false }
+        guard focusedModelProvider != .ollama else { return false }
+        return llmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func testLLMConnection() {

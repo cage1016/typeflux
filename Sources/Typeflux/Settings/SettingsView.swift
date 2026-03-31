@@ -57,6 +57,7 @@ struct StudioView: View {
     @State private var personaPendingDeletion: PersonaProfile?
     @State private var localSTTPendingDelete: LocalSTTModel? = nil
     @State private var localSTTPendingRedownload: LocalSTTModel? = nil
+    @State private var llmActivationMissingAPIKeyProviderName: String?
     @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
@@ -125,6 +126,23 @@ struct StudioView: View {
                 Text(L("settings.personas.deleteDialog.message", personaPendingDeletion.name))
             }
         }
+        .alert(
+            L("settings.models.activationMissingAPIKey.title"),
+            isPresented: Binding(
+                get: { llmActivationMissingAPIKeyProviderName != nil },
+                set: { if !$0 { llmActivationMissingAPIKeyProviderName = nil } }
+            ),
+            actions: {
+                Button(L("common.ok"), role: .cancel) {
+                    llmActivationMissingAPIKeyProviderName = nil
+                }
+            },
+            message: {
+                if let providerName = llmActivationMissingAPIKeyProviderName {
+                    Text(L("settings.models.activationMissingAPIKey.message", providerName))
+                }
+            }
+        )
     }
 
     private func sendFeedbackEmail() {
@@ -2546,6 +2564,11 @@ struct StudioView: View {
     }
 
     private func applyFocusedProviderAsDefault() {
+        if viewModel.focusedLLMProviderMissingAPIKey() {
+            llmActivationMissingAPIKeyProviderName = focusedProviderTitle
+            return
+        }
+
         switch viewModel.focusedModelProvider {
         case .appleSpeech:
             viewModel.setSTTModelSelection(.appleSpeech, suggestedModel: viewModel.whisperModel)
@@ -2554,10 +2577,12 @@ struct StudioView: View {
         case .whisperAPI:
             viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel)
         case .ollama:
+            viewModel.applyModelConfiguration(shouldShowToast: false)
             viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
             viewModel.prepareOllamaModel()
         case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             if let provider = focusedLLMRemoteProvider {
+                viewModel.applyModelConfiguration(shouldShowToast: false)
                 viewModel.setLLMRemoteProvider(provider)
                 if viewModel.llmModel.isEmpty {
                     viewModel.setLLMModel(provider.defaultModel)
