@@ -577,19 +577,53 @@ struct StudioView: View {
             StudioSectionTitle(title: L("settings.general"))
 
             StudioCard {
-                StudioSettingRow(
-                    title: L("settings.launchAtLogin.title"),
-                    subtitle: L("settings.launchAtLogin.subtitle")
-                ) {
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { viewModel.launchAtLogin },
-                            set: viewModel.setLaunchAtLogin
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                    StudioSettingRow(
+                        title: L("settings.launchAtLogin.title"),
+                        subtitle: L("settings.launchAtLogin.subtitle")
+                    ) {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { viewModel.launchAtLogin },
+                                set: viewModel.setLaunchAtLogin
+                            )
                         )
-                    )
-                    .labelsHidden()
-                    .toggleStyle(.switch)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    StudioSettingRow(
+                        title: L("settings.appearance.title"),
+                        subtitle: L("settings.appearance.subtitle")
+                    ) {
+                        StudioSegmentedPicker(
+                            options: AppearanceMode.allCases.map { (label: $0.displayName, value: $0) },
+                            selection: Binding(
+                                get: { viewModel.appearanceMode },
+                                set: viewModel.setAppearanceMode
+                            )
+                        )
+                        .frame(width: StudioTheme.Layout.appearancePickerWidth)
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    StudioSettingRow(
+                        title: L("settings.language.title"),
+                        subtitle: L("settings.language.subtitle")
+                    ) {
+                        StudioMenuPicker(
+                            options: AppLanguage.allCases.map { (label: $0.displayName, value: $0) },
+                            selection: Binding(
+                                get: { viewModel.appLanguage },
+                                set: viewModel.setAppLanguage
+                            ),
+                            width: StudioTheme.Layout.appearancePickerWidth
+                        )
+                    }
                 }
             }
 
@@ -728,70 +762,6 @@ struct StudioView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-            }
-
-            StudioCard {
-                HStack {
-                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                        .fill(StudioTheme.accentSoft)
-                        .frame(width: StudioTheme.ControlSize.appearanceBadge, height: StudioTheme.ControlSize.appearanceBadge)
-                        .overlay(
-                            Image(systemName: "paintbrush.pointed.fill")
-                                .foregroundStyle(StudioTheme.accent)
-                        )
-
-                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
-                        Text(L("settings.appearance.title"))
-                            .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
-                            .foregroundStyle(StudioTheme.textPrimary)
-                        Text(L("settings.appearance.subtitle"))
-                            .font(.studioBody(StudioTheme.Typography.bodySmall))
-                            .foregroundStyle(StudioTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    StudioSegmentedPicker(
-                        options: AppearanceMode.allCases.map { (label: $0.displayName, value: $0) },
-                        selection: Binding(
-                            get: { viewModel.appearanceMode },
-                            set: viewModel.setAppearanceMode
-                        )
-                    )
-                    .frame(width: StudioTheme.Layout.appearancePickerWidth)
-                }
-            }
-
-            StudioCard {
-                HStack {
-                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                        .fill(StudioTheme.accentSoft)
-                        .frame(width: StudioTheme.ControlSize.appearanceBadge, height: StudioTheme.ControlSize.appearanceBadge)
-                        .overlay(
-                            Image(systemName: "globe")
-                                .foregroundStyle(StudioTheme.accent)
-                        )
-
-                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
-                        Text(L("settings.language.title"))
-                            .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
-                            .foregroundStyle(StudioTheme.textPrimary)
-                        Text(L("settings.language.subtitle"))
-                            .font(.studioBody(StudioTheme.Typography.bodySmall))
-                            .foregroundStyle(StudioTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    StudioMenuPicker(
-                        options: AppLanguage.allCases.map { (label: $0.displayName, value: $0) },
-                        selection: Binding(
-                            get: { viewModel.appLanguage },
-                            set: viewModel.setAppLanguage
-                        ),
-                        width: StudioTheme.Layout.appearancePickerWidth
-                    )
-                }
             }
 
             StudioSectionTitle(title: L("settings.audio"))
