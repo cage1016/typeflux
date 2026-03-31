@@ -92,6 +92,14 @@ final class SettingsStore {
         set { defaults.set(newValue.rawValue, forKey: "llm.provider") }
     }
 
+    var llmRemoteProvider: LLMRemoteProvider {
+        get {
+            let raw = defaults.string(forKey: "llm.remote.provider") ?? LLMRemoteProvider.custom.rawValue
+            return LLMRemoteProvider(rawValue: raw) ?? .custom
+        }
+        set { defaults.set(newValue.rawValue, forKey: "llm.remote.provider") }
+    }
+
     var appearanceMode: AppearanceMode {
         get {
             let raw = defaults.string(forKey: "ui.appearance") ?? AppearanceMode.light.rawValue
@@ -119,18 +127,18 @@ final class SettingsStore {
     }
 
     var llmBaseURL: String {
-        get { defaults.string(forKey: "llm.baseURL") ?? "" }
-        set { defaults.set(newValue, forKey: "llm.baseURL") }
+        get { llmBaseURL(for: llmRemoteProvider) }
+        set { setLLMBaseURL(newValue, for: llmRemoteProvider) }
     }
 
     var llmModel: String {
-        get { defaults.string(forKey: "llm.model") ?? "" }
-        set { defaults.set(newValue, forKey: "llm.model") }
+        get { llmModel(for: llmRemoteProvider) }
+        set { setLLMModel(newValue, for: llmRemoteProvider) }
     }
 
     var llmAPIKey: String {
-        get { defaults.string(forKey: "llm.apiKey") ?? "" }
-        set { defaults.set(newValue, forKey: "llm.apiKey") }
+        get { llmAPIKey(for: llmRemoteProvider) }
+        set { setLLMAPIKey(newValue, for: llmRemoteProvider) }
     }
 
     var ollamaBaseURL: String {
@@ -282,6 +290,62 @@ final class SettingsStore {
         NotificationCenter.default.post(name: .personaSelectionDidChange, object: self)
     }
 
+    func llmBaseURL(for provider: LLMRemoteProvider) -> String {
+        if provider.usesFixedBaseURL {
+            return provider.defaultBaseURL
+        }
+
+        let key = llmRemoteKey(provider, suffix: "baseURL")
+        if let stored = defaults.string(forKey: key) {
+            return stored
+        }
+        return defaults.string(forKey: "llm.baseURL") ?? ""
+    }
+
+    func setLLMBaseURL(_ value: String, for provider: LLMRemoteProvider) {
+        guard !provider.usesFixedBaseURL else { return }
+        defaults.set(value, forKey: llmRemoteKey(provider, suffix: "baseURL"))
+        if provider == llmRemoteProvider {
+            defaults.set(value, forKey: "llm.baseURL")
+        }
+    }
+
+    func llmModel(for provider: LLMRemoteProvider) -> String {
+        let key = llmRemoteKey(provider, suffix: "model")
+        if let stored = defaults.string(forKey: key), !stored.isEmpty {
+            return stored
+        }
+        if provider == .custom {
+            return defaults.string(forKey: "llm.model") ?? ""
+        }
+        return provider.defaultModel
+    }
+
+    func setLLMModel(_ value: String, for provider: LLMRemoteProvider) {
+        defaults.set(value, forKey: llmRemoteKey(provider, suffix: "model"))
+        if provider == llmRemoteProvider {
+            defaults.set(value, forKey: "llm.model")
+        }
+    }
+
+    func llmAPIKey(for provider: LLMRemoteProvider) -> String {
+        let key = llmRemoteKey(provider, suffix: "apiKey")
+        if let stored = defaults.string(forKey: key), !stored.isEmpty {
+            return stored
+        }
+        if provider == .custom {
+            return defaults.string(forKey: "llm.apiKey") ?? ""
+        }
+        return ""
+    }
+
+    func setLLMAPIKey(_ value: String, for provider: LLMRemoteProvider) {
+        defaults.set(value, forKey: llmRemoteKey(provider, suffix: "apiKey"))
+        if provider == llmRemoteProvider {
+            defaults.set(value, forKey: "llm.apiKey")
+        }
+    }
+
     var useAppleSpeechFallback: Bool {
         get { defaults.object(forKey: "stt.appleSpeech.enabled") as? Bool ?? false }
         set { defaults.set(newValue, forKey: "stt.appleSpeech.enabled") }
@@ -353,5 +417,9 @@ final class SettingsStore {
                 prompt: "Rewrite into more engaging and shareable Chinese content with a natural, vivid tone that is suitable for social media posting."
             )
         ]
+    }
+
+    private func llmRemoteKey(_ provider: LLMRemoteProvider, suffix: String) -> String {
+        "llm.remote.\(provider.rawValue).\(suffix)"
     }
 }

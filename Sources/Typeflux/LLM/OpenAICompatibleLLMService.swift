@@ -25,28 +25,130 @@ final class OpenAICompatibleLLMService: LLMService {
         request rewriteRequest: LLMRewriteRequest,
         continuation: AsyncThrowingStream<String, Error>.Continuation
     ) async throws -> String {
-        guard let baseURL = URL(string: settingsStore.llmBaseURL), !settingsStore.llmBaseURL.isEmpty else {
+        let remoteProvider = settingsStore.llmRemoteProvider
+        let configuredBaseURL = settingsStore.llmBaseURL
+        guard let baseURL = URL(string: configuredBaseURL), !configuredBaseURL.isEmpty else {
             throw NSError(domain: "LLM", code: 1)
         }
 
-        let model = settingsStore.llmModel.isEmpty ? "gpt-4o-mini" : settingsStore.llmModel
+        let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
 
-        let url = baseURL.appendingPathComponent("chat/completions")
+        let model = settingsStore.llmModel.isEmpty ? remoteProvider.defaultModel : settingsStore.llmModel
+        let final = try await RemoteLLMClient.streamRewrite(
+            provider: remoteProvider,
+            baseURL: baseURL,
+            model: model,
+            apiKey: settingsStore.llmAPIKey,
+            systemPrompt: prompts.system,
+            userPrompt: prompts.user,
+            continuation: continuation
+        )
+
+        NetworkDebugLogger.logMessage("LLM final result: \(final.isEmpty ? "<empty stream result>" : final)")
+
+        return final
+    }
+}
+
+enum RemoteLLMClient {
+    static func streamRewrite(
+        provider: LLMRemoteProvider,
+        baseURL: URL,
+        model: String,
+        apiKey: String,
+        systemPrompt: String,
+        userPrompt: String,
+        continuation: AsyncThrowingStream<String, Error>.Continuation
+    ) async throws -> String {
+        switch provider.apiStyle {
+        case .openAICompatible:
+            return try await streamOpenAICompatible(
+                provider: provider,
+                baseURL: baseURL,
+                model: model,
+                apiKey: apiKey,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                continuation: continuation
+            )
+        case .anthropic:
+            let text = try await requestAnthropic(
+                baseURL: baseURL,
+                model: model,
+                apiKey: apiKey,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt
+            )
+            if !text.isEmpty {
+                continuation.yield(text)
+            }
+            return text
+        case .gemini:
+            let text = try await requestGemini(
+                baseURL: baseURL,
+                model: model,
+                apiKey: apiKey,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt
+            )
+            if !text.isEmpty {
+                continuation.yield(text)
+            }
+            return text
+        }
+    }
+
+    static func previewConnection(
+        provider: LLMRemoteProvider,
+        baseURL: URL,
+        model: String,
+        apiKey: String
+    ) async throws -> String {
+        switch provider.apiStyle {
+        case .openAICompatible:
+            return try await previewOpenAICompatible(provider: provider, baseURL: baseURL, model: model, apiKey: apiKey)
+        case .anthropic:
+            return try await requestAnthropic(
+                baseURL: baseURL,
+                model: model,
+                apiKey: apiKey,
+                systemPrompt: "Reply with a short greeting.",
+                userPrompt: "Hello"
+            )
+        case .gemini:
+            return try await requestGemini(
+                baseURL: baseURL,
+                model: model,
+                apiKey: apiKey,
+                systemPrompt: "Reply with a short greeting.",
+                userPrompt: "Hello"
+            )
+        }
+    }
+
+    private static func streamOpenAICompatible(
+        provider: LLMRemoteProvider,
+        baseURL: URL,
+        model: String,
+        apiKey: String,
+        systemPrompt: String,
+        userPrompt: String,
+        continuation: AsyncThrowingStream<String, Error>.Continuation
+    ) async throws -> String {
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "chat/completions")
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
-        if !settingsStore.llmAPIKey.isEmpty {
-            urlRequest.setValue("Bearer \(settingsStore.llmAPIKey)", forHTTPHeaderField: "Authorization")
+        if !apiKey.isEmpty {
+            urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
 
         var body: [String: Any] = [
             "model": model,
             "stream": true,
             "messages": [
-                ["role": "system", "content": prompts.system],
-                ["role": "user", "content": prompts.user]
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": userPrompt]
             ]
         ]
         OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
@@ -74,9 +176,144 @@ final class OpenAICompatibleLLMService: LLMService {
             throw error
         }
 
-        NetworkDebugLogger.logMessage("LLM final result: \(final.isEmpty ? "<empty stream result>" : final)")
-
         return final
+    }
+
+    private static func previewOpenAICompatible(
+        provider: LLMRemoteProvider,
+        baseURL: URL,
+        model: String,
+        apiKey: String
+    ) async throws -> String {
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "chat/completions")
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        if !apiKey.isEmpty {
+            urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "model": model,
+            "stream": true,
+            "max_completion_tokens": 50,
+            "messages": [["role": "user", "content": "Hello"]]
+        ]
+        OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        var collected = ""
+        for try await chunk in try await SSEClient.lines(for: urlRequest) {
+            if chunk == "[DONE]" { break }
+            guard let data = chunk.data(using: .utf8) else { continue }
+            if let content = OpenAICompatibleResponseSupport.extractTextDelta(from: data), !content.isEmpty {
+                collected += content
+                if collected.count >= 60 {
+                    break
+                }
+            }
+        }
+        return collected
+    }
+
+    private static func requestAnthropic(
+        baseURL: URL,
+        model: String,
+        apiKey: String,
+        systemPrompt: String,
+        userPrompt: String
+    ) async throws -> String {
+        let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "messages")
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 1024,
+            "system": systemPrompt,
+            "messages": [
+                [
+                    "role": "user",
+                    "content": [
+                        ["type": "text", "text": userPrompt]
+                    ]
+                ]
+            ]
+        ]
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let data = try await performJSONRequest(urlRequest)
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = object["content"] as? [[String: Any]] else {
+            return ""
+        }
+
+        return content.compactMap { item -> String? in
+            guard (item["type"] as? String) == "text" else { return nil }
+            return item["text"] as? String
+        }.joined()
+    }
+
+    private static func requestGemini(
+        baseURL: URL,
+        model: String,
+        apiKey: String,
+        systemPrompt: String,
+        userPrompt: String
+    ) async throws -> String {
+        guard var components = URLComponents(url: baseURL.appendingPathComponent("models/\(model):generateContent"), resolvingAgainstBaseURL: false) else {
+            throw NSError(domain: "LLM", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid Gemini endpoint."])
+        }
+        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "key", value: apiKey)]
+        guard let url = components.url else {
+            throw NSError(domain: "LLM", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid Gemini endpoint."])
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "systemInstruction": [
+                "parts": [["text": systemPrompt]]
+            ],
+            "contents": [
+                [
+                    "role": "user",
+                    "parts": [["text": userPrompt]]
+                ]
+            ],
+            "generationConfig": [
+                "candidateCount": 1,
+                "maxOutputTokens": 1024
+            ]
+        ]
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let data = try await performJSONRequest(urlRequest)
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = object["candidates"] as? [[String: Any]],
+              let content = candidates.first?["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]] else {
+            return ""
+        }
+
+        return parts.compactMap { $0["text"] as? String }.joined()
+    }
+
+    private static func performJSONRequest(_ request: URLRequest) async throws -> Data {
+        NetworkDebugLogger.logRequest(request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        NetworkDebugLogger.logResponse(response, data: data)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(domain: "LLM", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid response."])
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "LLM", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(message)"])
+        }
+        return data
     }
 }
 

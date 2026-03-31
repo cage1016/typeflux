@@ -1341,6 +1341,19 @@ struct StudioView: View {
         ])
     }
 
+    private var focusedLLMRemoteProvider: LLMRemoteProvider? {
+        LLMRemoteProvider.from(providerID: viewModel.focusedModelProvider)
+    }
+
+    private var activeLLMRemoteProvider: LLMRemoteProvider {
+        viewModel.llmRemoteProvider
+    }
+
+    private var remoteLLMModelSuggestions: [String] {
+        guard let provider = focusedLLMRemoteProvider else { return llmModelSuggestions }
+        return uniqueSuggestions([viewModel.llmModel] + provider.suggestedModels)
+    }
+
     private var ollamaEndpointSuggestions: [String] {
         uniqueSuggestions([
             viewModel.ollamaBaseURL,
@@ -1364,6 +1377,43 @@ struct StudioView: View {
 
     private var multimodalModelSuggestions: [String] {
         OpenAIAudioModelCatalog.multimodalModels
+    }
+
+    @ViewBuilder
+    private var llmRemoteProviderForm: some View {
+        if let provider = focusedLLMRemoteProvider {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                if provider == .custom {
+                    StudioSuggestedTextInputCard(
+                        label: L("settings.models.chatEndpoint"),
+                        placeholder: "https://api.openai.com/v1",
+                        text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
+                        suggestions: llmEndpointSuggestions
+                    )
+                } else {
+                    providerFactRow(title: L("settings.models.apiEndpoint"), value: provider.defaultBaseURL)
+                }
+
+                StudioSuggestedTextInputCard(
+                    label: L("common.model"),
+                    placeholder: provider.defaultModel,
+                    text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
+                    suggestions: remoteLLMModelSuggestions
+                )
+                StudioTextInputCard(
+                    label: L("common.apiKey"),
+                    placeholder: provider == .gemini ? "AIza..." : "sk-...",
+                    text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey),
+                    secure: true
+                )
+
+                if provider != .custom {
+                    Text(L("settings.models.llm.providerEndpointHint", provider.displayName))
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+            }
+        }
     }
 
     private var parameterCard: some View {
@@ -1742,9 +1792,11 @@ struct StudioView: View {
             viewModel.setSTTModelSelection(.whisperAPI, suggestedModel: viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel)
         case "ollama-local":
             viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
-        case "openai-compatible":
-            viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
         default:
+            if let providerID = StudioModelProviderID(rawValue: card.id),
+               let provider = LLMRemoteProvider.from(providerID: providerID) {
+                viewModel.setLLMRemoteProvider(provider)
+            }
             break
         }
     }
@@ -1767,7 +1819,7 @@ struct StudioView: View {
                 return .doubaoRealtime
             }
         case .llm:
-            return viewModel.llmProvider == .ollama ? .ollama : .openAICompatible
+            return viewModel.llmProvider == .ollama ? .ollama : viewModel.llmRemoteProvider.studioProviderID
         }
     }
 
@@ -1837,18 +1889,19 @@ struct StudioView: View {
                     isSelected: viewModel.llmProvider == .ollama,
                     isMuted: false,
                     actionTitle: L("settings.models.useLocal")
-                ),
+                )
+            ] + LLMRemoteProvider.allCases.map { provider in
                 StudioModelCard(
-                    id: StudioModelProviderID.openAICompatible.rawValue,
-                    name: LLMProvider.openAICompatible.displayName,
-                    summary: L("settings.models.card.openAICompatible.summary"),
-                    badge: L("settings.models.badge.api"),
-                    metadata: viewModel.llmModel.isEmpty ? L("settings.models.modelNotConfigured") : viewModel.llmModel,
-                    isSelected: viewModel.llmProvider == .openAICompatible,
+                    id: provider.studioProviderID.rawValue,
+                    name: provider.displayName,
+                    summary: L("settings.models.card.\(provider.rawValue).summary"),
+                    badge: provider.apiStyle == .openAICompatible ? L("settings.models.badge.api") : L("settings.models.badge.native"),
+                    metadata: metadata(for: provider),
+                    isSelected: viewModel.llmProvider == .openAICompatible && viewModel.llmRemoteProvider == provider,
                     isMuted: false,
                     actionTitle: L("settings.models.useRemote")
                 )
-            ]
+            }
         }
     }
 
@@ -1933,12 +1986,12 @@ struct StudioView: View {
 
                 focusedProviderForm
 
-                if [StudioModelProviderID.whisperAPI, .multimodalLLM, .openAICompatible, .ollama, .aliCloud, .doubaoRealtime].contains(viewModel.focusedModelProvider) {
+                if [StudioModelProviderID.whisperAPI, .multimodalLLM, .ollama, .aliCloud, .doubaoRealtime].contains(viewModel.focusedModelProvider) || focusedLLMRemoteProvider != nil {
                     HStack(spacing: StudioTheme.Spacing.small) {
                         StudioButton(title: L("common.save"), systemImage: "checkmark", variant: .primary) {
                             viewModel.applyModelConfiguration()
                         }
-                        if [StudioModelProviderID.openAICompatible, .ollama].contains(viewModel.focusedModelProvider) {
+                        if viewModel.focusedModelProvider == .ollama || focusedLLMRemoteProvider != nil {
                             StudioButton(
                                 title: viewModel.llmConnectionTestState == .testing ? L("settings.models.testingConnection") : L("common.test"),
                                 systemImage: viewModel.llmConnectionTestState == .testing ? nil : "network",
@@ -1962,11 +2015,11 @@ struct StudioView: View {
                         Spacer()
                     }
 
-                    if [StudioModelProviderID.openAICompatible, .ollama].contains(viewModel.focusedModelProvider) {
-                        connectionTestResultView(viewModel.llmConnectionTestState)
-                    } else if [StudioModelProviderID.whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime].contains(viewModel.focusedModelProvider) {
-                        connectionTestResultView(viewModel.sttConnectionTestState)
-                    }
+                        if viewModel.focusedModelProvider == .ollama || focusedLLMRemoteProvider != nil {
+                            connectionTestResultView(viewModel.llmConnectionTestState)
+                        } else if [StudioModelProviderID.whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime].contains(viewModel.focusedModelProvider) {
+                            connectionTestResultView(viewModel.sttConnectionTestState)
+                        }
                 }
 
                 if viewModel.focusedModelProvider == .ollama {
@@ -2151,20 +2204,8 @@ struct StudioView: View {
                 Toggle(L("settings.models.ollama.autoInstall"), isOn: Binding(get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup))
                     .toggleStyle(.switch)
 
-            case .openAICompatible:
-                StudioSuggestedTextInputCard(
-                    label: L("settings.models.chatEndpoint"),
-                    placeholder: "https://api.openai.com/v1",
-                    text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
-                    suggestions: llmEndpointSuggestions
-                )
-                StudioSuggestedTextInputCard(
-                    label: L("common.model"),
-                    placeholder: "gpt-4o-mini",
-                    text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
-                    suggestions: llmModelSuggestions
-                )
-                StudioTextInputCard(label: L("common.apiKey"), placeholder: "sk-...", text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey), secure: true)
+            case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+                llmRemoteProviderForm
 
             case .multimodalLLM:
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
@@ -2370,6 +2411,11 @@ struct StudioView: View {
         }
     }
 
+    private func metadata(for provider: LLMRemoteProvider) -> String {
+        let model = viewModel.llmRemoteProvider == provider ? viewModel.llmModel : provider.defaultModel
+        return model.isEmpty ? L("settings.models.modelNotConfigured") : model
+    }
+
     private func localSTTModelOptionCard(_ model: LocalSTTModel) -> some View {
         let isSelected = viewModel.localSTTModel == model
         let specs = model.specs
@@ -2463,7 +2509,7 @@ struct StudioView: View {
             return !viewModel.whisperBaseURL.isEmpty
         case .ollama:
             return !viewModel.ollamaModel.isEmpty
-        case .openAICompatible:
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
             return !viewModel.llmBaseURL.isEmpty && !viewModel.llmModel.isEmpty
         case .multimodalLLM:
             return !viewModel.multimodalLLMBaseURL.isEmpty && !viewModel.multimodalLLMModel.isEmpty
@@ -2485,8 +2531,13 @@ struct StudioView: View {
         case .ollama:
             viewModel.setLLMModelSelection(.ollama, suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel)
             viewModel.prepareOllamaModel()
-        case .openAICompatible:
-            viewModel.setLLMModelSelection(.openAICompatible, suggestedModel: viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel)
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            if let provider = focusedLLMRemoteProvider {
+                viewModel.setLLMRemoteProvider(provider)
+                if viewModel.llmModel.isEmpty {
+                    viewModel.setLLMModel(provider.defaultModel)
+                }
+            }
         case .multimodalLLM:
             viewModel.setSTTModelSelection(.multimodalLLM, suggestedModel: viewModel.multimodalLLMModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel)
         case .aliCloud:
@@ -2506,8 +2557,22 @@ struct StudioView: View {
             return "dot.radiowaves.left.and.right"
         case .ollama:
             return "cpu"
-        case .openAICompatible:
+        case .customLLM:
             return "sparkles"
+        case .openAI:
+            return "circle.hexagongrid"
+        case .anthropic:
+            return "sun.max"
+        case .gemini:
+            return "diamond"
+        case .deepSeek:
+            return "bird"
+        case .kimi:
+            return "moon.stars"
+        case .qwen:
+            return "cloud"
+        case .zhipu:
+            return "dot.scope"
         case .multimodalLLM:
             return "brain.filled.head.profile"
         case .aliCloud:
@@ -2541,8 +2606,8 @@ struct StudioView: View {
             return L("settings.models.overview.whisper")
         case .ollama:
             return L("settings.models.overview.ollama")
-        case .openAICompatible:
-            return L("settings.models.overview.openAICompatible")
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return L("settings.models.overview.remoteProvider", activeLLMRemoteProvider.displayName)
         case .multimodalLLM:
             return L("settings.models.overview.multimodal")
         case .aliCloud:
@@ -2562,8 +2627,8 @@ struct StudioView: View {
             return STTProvider.whisperAPI.displayName
         case .ollama:
             return LLMProvider.ollama.displayName
-        case .openAICompatible:
-            return LLMProvider.openAICompatible.displayName
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return activeLLMRemoteProvider.displayName
         case .multimodalLLM:
             return STTProvider.multimodalLLM.displayName
         case .aliCloud:
@@ -2577,7 +2642,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return L("settings.models.mode.local")
-        case .whisperAPI, .openAICompatible, .multimodalLLM, .aliCloud, .doubaoRealtime:
+        case .whisperAPI, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return L("settings.models.mode.remote")
         }
     }
@@ -2586,7 +2651,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success
-        case .whisperAPI, .openAICompatible, .multimodalLLM, .aliCloud, .doubaoRealtime:
+        case .whisperAPI, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return StudioTheme.accent
         }
     }
@@ -2595,7 +2660,7 @@ struct StudioView: View {
         switch activeModelProviderID {
         case .appleSpeech, .localSTT, .ollama:
             return StudioTheme.success.opacity(0.12)
-        case .whisperAPI, .openAICompatible, .multimodalLLM, .aliCloud, .doubaoRealtime:
+        case .whisperAPI, .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu, .multimodalLLM, .aliCloud, .doubaoRealtime:
             return StudioTheme.accentSoft
         }
     }
@@ -2618,8 +2683,8 @@ struct StudioView: View {
             return viewModel.whisperModel.isEmpty ? OpenAIAudioModelCatalog.whisperModels[0] : viewModel.whisperModel
         case .ollama:
             return viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
-        case .openAICompatible:
-            return viewModel.llmModel.isEmpty ? "gpt-4o-mini" : viewModel.llmModel
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return viewModel.llmModel.isEmpty ? activeLLMRemoteProvider.defaultModel : viewModel.llmModel
         case .multimodalLLM:
             return viewModel.multimodalLLMModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel
         case .aliCloud:
@@ -2643,8 +2708,8 @@ struct StudioView: View {
             return STTProvider.whisperAPI.displayName
         case .ollama:
             return LLMProvider.ollama.displayName
-        case .openAICompatible:
-            return LLMProvider.openAICompatible.displayName
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName
         case .multimodalLLM:
             return STTProvider.multimodalLLM.displayName
         case .aliCloud:
@@ -2664,8 +2729,8 @@ struct StudioView: View {
             return L("settings.models.focused.whisper")
         case .ollama:
             return L("settings.models.focused.ollama")
-        case .openAICompatible:
-            return L("settings.models.focused.openAICompatible")
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return L("settings.models.focused.remoteProvider", focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName)
         case .multimodalLLM:
             return L("settings.models.focused.multimodal")
         case .aliCloud:
@@ -2689,8 +2754,8 @@ struct StudioView: View {
             return L("settings.models.routing.whisper")
         case .ollama:
             return L("settings.models.routing.ollama")
-        case .openAICompatible:
-            return L("settings.models.routing.openAICompatible")
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            return L("settings.models.routing.remoteProvider", activeLLMRemoteProvider.displayName)
         case .multimodalLLM:
             return L("settings.models.routing.multimodal")
         case .aliCloud:
@@ -2721,7 +2786,7 @@ struct StudioView: View {
                 : L("settings.models.routing.localSetupManual")
         }
 
-        return providerIsConfigured(.openAICompatible)
+        return providerIsConfigured(activeLLMRemoteProvider.studioProviderID)
             ? L("settings.models.routing.readinessConfigured")
             : L("settings.models.routing.readinessNeedsSetup")
     }

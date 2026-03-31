@@ -26,6 +26,7 @@ final class StudioViewModel: ObservableObject {
 
     @Published var sttProvider: STTProvider
     @Published var llmProvider: LLMProvider
+    @Published var llmRemoteProvider: LLMRemoteProvider
     @Published var appearanceMode: AppearanceMode
     @Published var appLanguage: AppLanguage
     @Published var availableMicrophones: [AudioInputDevice] = []
@@ -127,11 +128,13 @@ final class StudioViewModel: ObservableObject {
 
         currentSection = initialSection
         let initialSTTProvider = Self.visibleSTTProvider(from: settingsStore.sttProvider)
+        let initialLLMRemoteProvider = settingsStore.llmRemoteProvider
         if initialSTTProvider != settingsStore.sttProvider {
             settingsStore.sttProvider = initialSTTProvider
         }
         sttProvider = initialSTTProvider
         llmProvider = settingsStore.llmProvider
+        llmRemoteProvider = initialLLMRemoteProvider
         switch initialSTTProvider {
         case .appleSpeech:
             focusedModelProvider = .appleSpeech
@@ -150,9 +153,9 @@ final class StudioViewModel: ObservableObject {
         appLanguage = settingsStore.appLanguage
         preferredMicrophoneID = settingsStore.preferredMicrophoneID
         muteSystemOutputDuringRecording = settingsStore.muteSystemOutputDuringRecording
-        llmBaseURL = settingsStore.llmBaseURL
-        llmModel = settingsStore.llmModel
-        llmAPIKey = settingsStore.llmAPIKey
+        llmBaseURL = settingsStore.llmBaseURL(for: initialLLMRemoteProvider)
+        llmModel = settingsStore.llmModel(for: initialLLMRemoteProvider)
+        llmAPIKey = settingsStore.llmAPIKey(for: initialLLMRemoteProvider)
         ollamaBaseURL = settingsStore.ollamaBaseURL
         ollamaModel = settingsStore.ollamaModel
         ollamaAutoSetup = settingsStore.ollamaAutoSetup
@@ -590,7 +593,16 @@ final class StudioViewModel: ObservableObject {
     func setLLMProvider(_ provider: LLMProvider) {
         llmProvider = provider
         settingsStore.llmProvider = provider
-        focusedModelProvider = provider == .ollama ? .ollama : .openAICompatible
+        focusedModelProvider = provider == .ollama ? .ollama : llmRemoteProvider.studioProviderID
+    }
+
+    func setLLMRemoteProvider(_ provider: LLMRemoteProvider) {
+        llmRemoteProvider = provider
+        settingsStore.llmRemoteProvider = provider
+        llmProvider = .openAICompatible
+        settingsStore.llmProvider = .openAICompatible
+        loadLLMConfiguration(for: provider)
+        focusedModelProvider = provider.studioProviderID
     }
 
     func setSTTModelSelection(_ provider: STTProvider, suggestedModel: String) {
@@ -629,8 +641,14 @@ final class StudioViewModel: ObservableObject {
             settingsStore.ollamaModel = suggestedModel
         case .openAICompatible:
             llmModel = suggestedModel
-            settingsStore.llmModel = suggestedModel
+            settingsStore.setLLMModel(suggestedModel, for: llmRemoteProvider)
         }
+    }
+
+    func loadLLMConfiguration(for provider: LLMRemoteProvider) {
+        llmBaseURL = settingsStore.llmBaseURL(for: provider)
+        llmModel = settingsStore.llmModel(for: provider)
+        llmAPIKey = settingsStore.llmAPIKey(for: provider)
     }
 
     func setModelDomain(_ domain: StudioModelDomain) {
@@ -641,6 +659,9 @@ final class StudioViewModel: ObservableObject {
     func focusModelProvider(_ provider: StudioModelProviderID) {
         guard provider.domain == modelDomain else { return }
         focusedModelProvider = provider
+        if let remoteProvider = LLMRemoteProvider.from(providerID: provider) {
+            loadLLMConfiguration(for: remoteProvider)
+        }
         llmTestTask?.cancel()
         sttTestTask?.cancel()
         llmConnectionTestState = .idle
@@ -1018,10 +1039,14 @@ final class StudioViewModel: ObservableObject {
 
     func applyModelConfiguration() {
         switch focusedModelProvider {
-        case .openAICompatible:
-            settingsStore.llmBaseURL = llmBaseURL
-            settingsStore.llmModel = llmModel
-            settingsStore.llmAPIKey = llmAPIKey
+        case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
+            let remoteProvider = LLMRemoteProvider.from(providerID: focusedModelProvider) ?? llmRemoteProvider
+            settingsStore.setLLMBaseURL(llmBaseURL, for: remoteProvider)
+            settingsStore.setLLMModel(llmModel, for: remoteProvider)
+            settingsStore.setLLMAPIKey(llmAPIKey, for: remoteProvider)
+            if llmProvider == .openAICompatible && llmRemoteProvider == remoteProvider {
+                settingsStore.llmRemoteProvider = remoteProvider
+            }
         case .ollama:
             settingsStore.ollamaBaseURL = ollamaBaseURL
             settingsStore.ollamaModel = ollamaModel
@@ -1050,8 +1075,9 @@ final class StudioViewModel: ObservableObject {
         llmConnectionTestState = .testing
 
         let capturedProvider = focusedModelProvider
+        let capturedRemoteProvider = LLMRemoteProvider.from(providerID: capturedProvider) ?? llmRemoteProvider
         let capturedBaseURL = llmBaseURL
-        let capturedModel = llmModel.isEmpty ? "gpt-4o-mini" : llmModel
+        let capturedModel = llmModel.isEmpty ? capturedRemoteProvider.defaultModel : llmModel
         let capturedAPIKey = llmAPIKey
         let capturedOllamaURL = ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : ollamaBaseURL
         let capturedOllamaModel = ollamaModel
@@ -1063,39 +1089,20 @@ final class StudioViewModel: ObservableObject {
 
             do {
                 switch capturedProvider {
-                case .openAICompatible:
+                case .customLLM, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu:
                     guard !capturedBaseURL.isEmpty, let baseURL = URL(string: capturedBaseURL) else {
                         throw NSError(domain: "LLMTest", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid base URL. Please enter a valid endpoint."])
                     }
-                    let url = baseURL.appendingPathComponent("chat/completions")
-                    var urlRequest = URLRequest(url: url)
-                    urlRequest.httpMethod = "POST"
-                    if !capturedAPIKey.isEmpty {
-                        urlRequest.setValue("Bearer \(capturedAPIKey)", forHTTPHeaderField: "Authorization")
+                    let preview = try await RemoteLLMClient.previewConnection(
+                        provider: capturedRemoteProvider,
+                        baseURL: baseURL,
+                        model: capturedModel,
+                        apiKey: capturedAPIKey
+                    )
+                    if !preview.isEmpty {
+                        firstTokenDate = Date()
                     }
-                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    let body: [String: Any] = [
-                        "model": capturedModel,
-                        "stream": true,
-                        "max_completion_tokens": 50,
-                        "messages": [["role": "user", "content": "Hello"]]
-                    ]
-                    urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-                    for try await chunk in try await SSEClient.lines(for: urlRequest) {
-                        if Task.isCancelled { return }
-                        if chunk == "[DONE]" { break }
-                        guard let data = chunk.data(using: .utf8),
-                              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                              let choices = obj["choices"] as? [[String: Any]],
-                              let delta = choices.first?["delta"] as? [String: Any],
-                              let content = delta["content"] as? String,
-                              !content.isEmpty
-                        else { continue }
-                        if firstTokenDate == nil { firstTokenDate = Date() }
-                        collected += content
-                        if collected.count >= 60 { break }
-                    }
+                    collected = preview
 
                 case .ollama:
                     guard let baseURL = URL(string: capturedOllamaURL) else {
@@ -1147,8 +1154,7 @@ final class StudioViewModel: ObservableObject {
                         }
                         if payload.done || collected.count >= 60 { break }
                     }
-
-                default:
+                case .appleSpeech, .localSTT, .whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime:
                     return
                 }
 
@@ -1339,7 +1345,7 @@ final class StudioViewModel: ObservableObject {
                 return .doubaoRealtime
             }
         case .llm:
-            return llmProvider == .ollama ? .ollama : .openAICompatible
+            return llmProvider == .ollama ? .ollama : llmRemoteProvider.studioProviderID
         }
     }
 

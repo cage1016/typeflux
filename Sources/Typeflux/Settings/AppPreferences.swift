@@ -122,7 +122,7 @@ enum LLMProvider: String, CaseIterable, Codable {
     var displayName: String {
         switch self {
         case .openAICompatible:
-            return L("provider.llm.openAICompatible")
+            return L("provider.llm.custom")
         case .ollama:
             return L("provider.llm.ollama")
         }
