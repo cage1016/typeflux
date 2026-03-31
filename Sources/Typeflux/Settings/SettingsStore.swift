@@ -283,7 +283,7 @@ final class SettingsStore {
     }
 
     var useAppleSpeechFallback: Bool {
-        get { defaults.object(forKey: "stt.appleSpeech.enabled") as? Bool ?? true }
+        get { defaults.object(forKey: "stt.appleSpeech.enabled") as? Bool ?? false }
         set { defaults.set(newValue, forKey: "stt.appleSpeech.enabled") }
     }
 

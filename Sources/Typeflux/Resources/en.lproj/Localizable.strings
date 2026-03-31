@@ -337,6 +337,7 @@
 "settings.models.whisper.endpoint" = "Whisper Endpoint";
 "settings.models.whisper.model" = "Whisper Model";
 "settings.models.appleFallback" = "Enable Apple fallback";
+"settings.models.appleFallback.detail" = "When disabled, provider errors are shown to the user immediately instead of retrying with Apple Speech automatically.";
 "settings.models.ollama.baseURL" = "Ollama Base URL";
 "settings.models.ollama.autoSetup" = "Automatic local setup";
 "settings.models.ollama.autoInstall" = "Automatically install or pull the model when missing";

@@ -337,6 +337,7 @@
 "settings.models.whisper.endpoint" = "Whisper 地址";
 "settings.models.whisper.model" = "Whisper 模型";
 "settings.models.appleFallback" = "启用 Apple 回退";
+"settings.models.appleFallback.detail" = "关闭后，模型侧报错会立即展示给用户，而不会再自动回退到 Apple Speech。";
 "settings.models.ollama.baseURL" = "Ollama 地址";
 "settings.models.ollama.autoSetup" = "自动本地准备";
 "settings.models.ollama.autoInstall" = "缺失时自动安装或拉取模型";

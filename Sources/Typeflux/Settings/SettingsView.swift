@@ -1950,6 +1950,27 @@ struct StudioView: View {
                     }
                 }
 
+                if viewModel.modelDomain == .stt {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                        Divider()
+                            .overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        Toggle(
+                            L("settings.models.appleFallback"),
+                            isOn: Binding(
+                                get: { viewModel.appleSpeechFallback },
+                                set: viewModel.setAppleSpeechFallback
+                            )
+                        )
+                        .toggleStyle(.switch)
+
+                        Text(L("settings.models.appleFallback.detail"))
+                            .font(.studioBody(StudioTheme.Typography.caption))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 if viewModel.focusedModelProvider == .ollama {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                         StudioButton(
