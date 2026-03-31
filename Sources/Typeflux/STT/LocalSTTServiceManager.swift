@@ -351,6 +351,41 @@ final class LocalSTTServiceManager {
         ]
     }
 
+    func isModelDownloaded(_ model: LocalSTTModel) -> Bool {
+        let path = defaultStoragePath(for: model)
+        return modelExists(at: path, for: model)
+    }
+
+    func deleteModelFiles(_ model: LocalSTTModel) throws {
+        let path = defaultStoragePath(for: model)
+        if FileManager.default.fileExists(atPath: path) {
+            try FileManager.default.removeItem(atPath: path)
+        }
+        removePreparedRecord(model: model)
+    }
+
+    private func defaultStoragePath(for model: LocalSTTModel) -> String {
+        let identifier = model.defaultModelIdentifier
+        switch model {
+        case .whisperLocal:
+            return modelsRootURL.appendingPathComponent("\(identifier).pt", isDirectory: false).path
+        case .senseVoiceSmall, .qwen3ASR:
+            return modelsRootURL.appendingPathComponent(identifier.replacingOccurrences(of: "/", with: "--"), isDirectory: true).path
+        }
+    }
+
+    private func removePreparedRecord(model: LocalSTTModel) {
+        let identifier = model.defaultModelIdentifier
+        guard
+            let data = try? Data(contentsOf: preparedManifestURL),
+            var records = try? JSONDecoder().decode([LocalSTTPreparedRecord].self, from: data)
+        else { return }
+        records = records.filter { !($0.model == model.rawValue && $0.modelIdentifier == identifier) }
+        if let encoded = try? JSONEncoder().encode(records) {
+            try? encoded.write(to: preparedManifestURL, options: .atomic)
+        }
+    }
+
     private func expectedStoragePath(for configuration: LocalSTTConfiguration) -> String {
         switch configuration.model {
         case .whisperLocal:

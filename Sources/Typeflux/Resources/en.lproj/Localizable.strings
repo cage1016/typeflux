@@ -445,3 +445,10 @@
 "settings.models.localSTT.ready" = "Local speech model is ready.";
 "settings.models.localSTT.readyNamed" = "%@ is ready.";
 "settings.models.localSTT.prepareFailed" = "Local speech model preparation failed.";
+"settings.models.localSTT.deleted" = "Model files deleted.";
+"settings.models.redownload" = "Re-download";
+"settings.models.deleteModelFiles" = "Delete Model Files";
+"settings.models.redownloadDialog.title" = "Re-download %@?";
+"settings.models.redownloadDialog.message" = "The existing model files will be deleted before re-downloading.";
+"settings.models.deleteDialog.title" = "Delete %@?";
+"settings.models.deleteDialog.message" = "Model files will be deleted. You'll need to re-download before next use.";

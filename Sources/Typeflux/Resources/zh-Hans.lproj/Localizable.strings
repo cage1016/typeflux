@@ -445,3 +445,10 @@
 "settings.models.localSTT.ready" = "本地语音模型已就绪。";
 "settings.models.localSTT.readyNamed" = "%@ 已就绪。";
 "settings.models.localSTT.prepareFailed" = "本地语音模型准备失败。";
+"settings.models.localSTT.deleted" = "模型文件已删除。";
+"settings.models.redownload" = "重新下载";
+"settings.models.deleteModelFiles" = "删除模型文件";
+"settings.models.redownloadDialog.title" = "重新下载 %@？";
+"settings.models.redownloadDialog.message" = "本地模型文件已存在，将先删除已有文件再重新下载。";
+"settings.models.deleteDialog.title" = "删除 %@？";
+"settings.models.deleteDialog.message" = "模型文件将被删除，下次使用时需要重新下载。";

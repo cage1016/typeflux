@@ -55,6 +55,8 @@ struct StudioView: View {
     @State private var isAddingVocabulary = false
     @State private var newVocabularyTerm = ""
     @State private var personaPendingDeletion: PersonaProfile?
+    @State private var localSTTPendingDelete: LocalSTTModel? = nil
+    @State private var localSTTPendingRedownload: LocalSTTModel? = nil
     @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
@@ -2064,6 +2066,40 @@ struct StudioView: View {
                         localSTTModelOptionCard(model)
                     }
                 }
+                .confirmationDialog(
+                    localSTTPendingRedownload.map { L("settings.models.redownloadDialog.title", $0.displayName) } ?? "",
+                    isPresented: Binding(get: { localSTTPendingRedownload != nil }, set: { if !$0 { localSTTPendingRedownload = nil } }),
+                    titleVisibility: .visible
+                ) {
+                    Button(L("settings.models.redownload"), role: .destructive) {
+                        if let model = localSTTPendingRedownload {
+                            viewModel.redownloadLocalSTTModel(model)
+                            localSTTPendingRedownload = nil
+                        }
+                    }
+                    Button(L("common.cancel"), role: .cancel) {
+                        localSTTPendingRedownload = nil
+                    }
+                } message: {
+                    Text(L("settings.models.redownloadDialog.message"))
+                }
+                .confirmationDialog(
+                    localSTTPendingDelete.map { L("settings.models.deleteDialog.title", $0.displayName) } ?? "",
+                    isPresented: Binding(get: { localSTTPendingDelete != nil }, set: { if !$0 { localSTTPendingDelete = nil } }),
+                    titleVisibility: .visible
+                ) {
+                    Button(L("common.delete"), role: .destructive) {
+                        if let model = localSTTPendingDelete {
+                            viewModel.deleteLocalSTTModel(model)
+                            localSTTPendingDelete = nil
+                        }
+                    }
+                    Button(L("common.cancel"), role: .cancel) {
+                        localSTTPendingDelete = nil
+                    }
+                } message: {
+                    Text(L("settings.models.deleteDialog.message"))
+                }
 
             case .whisperAPI:
                 StudioSuggestedTextInputCard(
@@ -2363,6 +2399,27 @@ struct StudioView: View {
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
+        .contextMenu {
+            Button {
+                if viewModel.isModelDownloaded(model) {
+                    localSTTPendingRedownload = model
+                } else {
+                    viewModel.setLocalSTTModel(model)
+                    viewModel.prepareLocalSTTModel()
+                }
+            } label: {
+                Label(L("settings.models.redownload"), systemImage: "arrow.clockwise")
+            }
+
+            if viewModel.isModelDownloaded(model) {
+                Divider()
+                Button(role: .destructive) {
+                    localSTTPendingDelete = model
+                } label: {
+                    Label(L("settings.models.deleteModelFiles"), systemImage: "trash")
+                }
+            }
+        }
     }
 
     private func localSTTSpecPill(_ text: String) -> some View {

@@ -66,6 +66,8 @@ final class StudioViewModel: ObservableObject {
     @Published var localSTTPreparedSource = L("common.automatic")
     @Published var isLocalSTTPrepared = false
     @Published var isPreparingLocalSTT = false
+    @Published var localSTTPendingDelete: LocalSTTModel? = nil
+    @Published var localSTTPendingRedownload: LocalSTTModel? = nil
 
     @Published var appleSpeechFallback: Bool
 
@@ -909,6 +911,36 @@ final class StudioViewModel: ObservableObject {
             }
             isPreparingLocalSTT = false
         }
+    }
+
+    func isModelDownloaded(_ model: LocalSTTModel) -> Bool {
+        localSTTServiceManager.isModelDownloaded(model)
+    }
+
+    func deleteLocalSTTModel(_ model: LocalSTTModel) {
+        do {
+            try localSTTServiceManager.deleteModelFiles(model)
+            if model == localSTTModel {
+                isLocalSTTPrepared = false
+                localSTTPreparationProgress = 0
+                localSTTStatus = L("settings.models.localSTT.notPrepared")
+                localSTTPreparationDetail = L("settings.models.localSTT.autoPrepareHint")
+            }
+            showToast(L("settings.models.localSTT.deleted"))
+        } catch {
+            showToast(L("common.failedWithReason", error.localizedDescription))
+        }
+    }
+
+    func redownloadLocalSTTModel(_ model: LocalSTTModel) {
+        try? localSTTServiceManager.deleteModelFiles(model)
+        if localSTTModel != model {
+            setLocalSTTModel(model)
+        } else {
+            isLocalSTTPrepared = false
+            localSTTPreparationProgress = 0
+        }
+        prepareLocalSTTModel()
     }
 
     func exportHistory() {
