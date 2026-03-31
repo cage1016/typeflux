@@ -14,6 +14,7 @@ final class AXTextInjector: TextInjector {
 
     private static var didRequestAccessibility = false
     private static let pasteRestoreDelayNanoseconds: UInt64 = 180_000_000
+    private static let focusRestoreDelayMicroseconds: useconds_t = 80_000
     private static let selectedTextTimeoutMilliseconds = 200
     private static let copySelectionTimeoutMilliseconds = 180
     private static let copyShortcutKeyCode: CGKeyCode = 8
@@ -226,11 +227,13 @@ final class AXTextInjector: TextInjector {
         }
 
         if replaceSelection,
-           let context = activeSelectionContext(),
-           context.range != nil,
-           try insertTextViaAX(text, into: context.element, replaceSelection: true, selectionRange: context.range) {
-            latestSelectionContext = nil
-            return
+           let context = activeSelectionContext() {
+            restoreSelectionContext(context)
+            if context.range != nil,
+               try insertTextViaAX(text, into: context.element, replaceSelection: true, selectionRange: context.range) {
+                latestSelectionContext = nil
+                return
+            }
         }
 
         if let element = focusedElement(), try insertTextViaAX(text, into: element, replaceSelection: replaceSelection, selectionRange: nil) {
@@ -277,13 +280,7 @@ final class AXTextInjector: TextInjector {
 
         if replaceSelection, let context = activeSelectionContext() {
             targetPID = context.processID
-            if let range = context.range {
-                _ = setSelectedTextRange(range, on: context.element)
-            }
-            if let processID = context.processID,
-               let app = NSRunningApplication(processIdentifier: processID) {
-                app.activate(options: [.activateIgnoringOtherApps])
-            }
+            restoreSelectionContext(context)
         } else {
             targetPID = frontmostProcessID()
         }
@@ -342,6 +339,17 @@ final class AXTextInjector: TextInjector {
         return result == .success
     }
 
+    @discardableResult
+    private func setFocused(_ focused: Bool, on element: AXUIElement) -> Bool {
+        let value: CFBoolean = focused ? true as CFBoolean : false as CFBoolean
+        let result = AXUIElementSetAttributeValue(
+            element,
+            kAXFocusedAttribute as CFString,
+            value
+        )
+        return result == .success
+    }
+
     private func frontmostProcessID() -> pid_t? {
         NSWorkspace.shared.frontmostApplication?.processIdentifier
     }
@@ -395,6 +403,19 @@ final class AXTextInjector: TextInjector {
             return nil
         }
         return latestSelectionContext
+    }
+
+    private func restoreSelectionContext(_ context: SelectionContext) {
+        if let processID = context.processID,
+           let app = NSRunningApplication(processIdentifier: processID) {
+            app.activate(options: [.activateIgnoringOtherApps])
+            usleep(Self.focusRestoreDelayMicroseconds)
+        }
+
+        _ = setFocused(true, on: context.element)
+        if let range = context.range {
+            _ = setSelectedTextRange(range, on: context.element)
+        }
     }
 
     private func restorePasteboardAfterPaste(_ previousString: String?) {
