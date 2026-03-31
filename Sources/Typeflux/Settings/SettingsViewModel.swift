@@ -105,6 +105,7 @@ final class StudioViewModel: ObservableObject {
     private let onRetryHistory: (HistoryRecord) -> Void
     private var historyObserver: NSObjectProtocol?
     private var personaSelectionObserver: NSObjectProtocol?
+    private var appearanceObserver: NSObjectProtocol?
     private var llmTestTask: Task<Void, Never>?
     private var sttTestTask: Task<Void, Never>?
 
@@ -217,6 +218,16 @@ final class StudioViewModel: ObservableObject {
                 self?.syncPersonaSelectionFromStore()
             }
         }
+        appearanceObserver = NotificationCenter.default.addObserver(
+            forName: .appearanceModeDidChange,
+            object: settingsStore,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.appearanceMode = self.settingsStore.appearanceMode
+            }
+        }
     }
 
     deinit {
@@ -225,6 +236,9 @@ final class StudioViewModel: ObservableObject {
         }
         if let personaSelectionObserver {
             NotificationCenter.default.removeObserver(personaSelectionObserver)
+        }
+        if let appearanceObserver {
+            NotificationCenter.default.removeObserver(appearanceObserver)
         }
     }
 

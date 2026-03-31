@@ -5,9 +5,11 @@ import SwiftUI
 final class SettingsWindowController: NSObject {
     static let shared = SettingsWindowController()
 
+    private var settingsStore: SettingsStore?
     private var window: NSWindow?
     private var viewModel: StudioViewModel?
     private var languageObserver: NSObjectProtocol?
+    private var appearanceObserver: NSObjectProtocol?
 
     override init() {
         super.init()
@@ -20,6 +22,15 @@ final class SettingsWindowController: NSObject {
                 self?.window?.title = L("window.voiceStudio")
             }
         }
+        appearanceObserver = NotificationCenter.default.addObserver(
+            forName: .appearanceModeDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshAppearance()
+            }
+        }
     }
 
     func show(
@@ -28,8 +39,11 @@ final class SettingsWindowController: NSObject {
         initialSection: StudioSection = .settings,
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in }
     ) {
+        self.settingsStore = settingsStore
+
         if let window {
             viewModel?.navigate(to: initialSection)
+            refreshAppearance()
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -69,11 +83,17 @@ final class SettingsWindowController: NSObject {
             width: StudioTheme.Layout.settingsWindowMinWidth,
             height: StudioTheme.Layout.settingsWindowMinHeight
         )
+        window.appearance = AppAppearance.nsAppearance(for: settingsStore.appearanceMode)
 
         self.viewModel = viewModel
         self.window = window
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func refreshAppearance() {
+        guard let settingsStore else { return }
+        window?.appearance = AppAppearance.nsAppearance(for: settingsStore.appearanceMode)
     }
 }
 

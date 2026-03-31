@@ -2,6 +2,7 @@ import Foundation
 
 extension Notification.Name {
     static let personaSelectionDidChange = Notification.Name("SettingsStore.personaSelectionDidChange")
+    static let appearanceModeDidChange = Notification.Name("SettingsStore.appearanceModeDidChange")
 }
 
 enum HistoryRetentionPolicy: String, CaseIterable, Identifiable {
@@ -105,7 +106,12 @@ final class SettingsStore {
             let raw = defaults.string(forKey: "ui.appearance") ?? AppearanceMode.light.rawValue
             return AppearanceMode(rawValue: raw) ?? .system
         }
-        set { defaults.set(newValue.rawValue, forKey: "ui.appearance") }
+        set {
+            let currentValue = appearanceMode
+            guard currentValue != newValue else { return }
+            defaults.set(newValue.rawValue, forKey: "ui.appearance")
+            NotificationCenter.default.post(name: .appearanceModeDidChange, object: self)
+        }
     }
 
     var preferredMicrophoneID: String {

@@ -9,6 +9,7 @@ final class AboutWindowController: NSObject {
     private var window: NSWindow?
     private var hostingView: NSHostingView<AboutView>?
     private var languageObserver: NSObjectProtocol?
+    private var appearanceObserver: NSObjectProtocol?
 
     override init() {
         super.init()
@@ -21,6 +22,17 @@ final class AboutWindowController: NSObject {
                 guard let self, let window = self.window else { return }
                 self.hostingView?.rootView = AboutView(appearanceMode: self.settingsStore.appearanceMode)
                 window.title = L("window.about")
+            }
+        }
+        appearanceObserver = NotificationCenter.default.addObserver(
+            forName: .appearanceModeDidChange,
+            object: settingsStore,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let window = self.window else { return }
+                self.hostingView?.rootView = AboutView(appearanceMode: self.settingsStore.appearanceMode)
+                self.applyAppearance(to: window)
             }
         }
     }
@@ -63,14 +75,7 @@ final class AboutWindowController: NSObject {
     }
 
     private func applyAppearance(to window: NSWindow) {
-        switch settingsStore.appearanceMode {
-        case .system:
-            window.appearance = nil
-        case .light:
-            window.appearance = NSAppearance(named: .aqua)
-        case .dark:
-            window.appearance = NSAppearance(named: .darkAqua)
-        }
+        window.appearance = AppAppearance.nsAppearance(for: settingsStore.appearanceMode)
     }
 }
 
