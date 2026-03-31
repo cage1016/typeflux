@@ -2343,7 +2343,7 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
                         RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                            .fill(isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
+                            .fill(providerBadgeBackground(for: providerID, isFocused: isFocused))
                             .frame(width: StudioTheme.ControlSize.modelProviderBadge, height: StudioTheme.ControlSize.modelProviderBadge)
                             .overlay(
                                 providerIconView(for: providerID, isFocused: isFocused)
@@ -2414,24 +2414,22 @@ struct StudioView: View {
         return model.isEmpty ? L("settings.models.modelNotConfigured") : model
     }
 
+    private func providerBadgeBackground(for provider: StudioModelProviderID, isFocused: Bool) -> Color {
+        if providerLogoResourceName(for: provider) != nil {
+            return isFocused ? Color.white.opacity(0.98) : Color.white.opacity(0.92)
+        }
+
+        return isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted
+    }
+
     @ViewBuilder
     private func providerIconView(for provider: StudioModelProviderID, isFocused: Bool) -> some View {
         if let image = providerLogoImage(for: provider) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(isFocused ? 0.98 : 0.94))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
-                    )
-                    .padding(6)
-
-                Image(nsImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .padding(11)
-            }
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .padding(9)
         } else {
             Image(systemName: iconName(for: provider))
                 .font(.system(size: StudioTheme.ControlSize.modelProviderBadgeSymbol, weight: .semibold))
