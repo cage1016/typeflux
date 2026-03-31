@@ -499,20 +499,28 @@ struct StudioMetricCard: View {
 struct StudioSettingRow<Accessory: View>: View {
     let title: String
     let subtitle: String
+    let badge: String?
     let accessory: Accessory
 
-    init(title: String, subtitle: String, @ViewBuilder accessory: () -> Accessory) {
+    init(title: String, subtitle: String, badge: String? = nil, @ViewBuilder accessory: () -> Accessory) {
         self.title = title
         self.subtitle = subtitle
+        self.badge = badge
         self.accessory = accessory()
     }
 
     var body: some View {
         HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
-                Text(title)
-                    .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
-                    .foregroundStyle(StudioTheme.textPrimary)
+                HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
+                    Text(title)
+                        .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    if let badge {
+                        StudioPill(title: badge)
+                    }
+                }
                 Text(subtitle)
                     .font(.studioBody(StudioTheme.Typography.bodyLarge))
                     .foregroundStyle(StudioTheme.textSecondary)

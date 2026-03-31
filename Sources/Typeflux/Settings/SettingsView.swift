@@ -865,7 +865,8 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("settings.advanced.personaHotkeyApply.title"),
-                        subtitle: L("settings.advanced.personaHotkeyApply.subtitle")
+                        subtitle: L("settings.advanced.personaHotkeyApply.subtitle"),
+                        badge: "Beta"
                     ) {
                         Toggle(
                             "",
