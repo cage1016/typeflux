@@ -120,7 +120,7 @@ final class SettingsStore {
 
     var appearanceMode: AppearanceMode {
         get {
-            let raw = defaults.string(forKey: "ui.appearance") ?? AppearanceMode.light.rawValue
+            let raw = defaults.string(forKey: "ui.appearance") ?? AppearanceMode.system.rawValue
             return AppearanceMode(rawValue: raw) ?? .system
         }
         set {

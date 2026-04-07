@@ -5,15 +5,14 @@ import SwiftUI
 @MainActor
 final class OnboardingViewModel: ObservableObject {
     enum Step: Int, CaseIterable {
-        case welcome = 0
-        case language = 1
-        case stt = 2
-        case llm = 3
-        case permissions = 4
-        case shortcuts = 5
+        case language = 0
+        case stt = 1
+        case llm = 2
+        case permissions = 3
+        case shortcuts = 4
     }
 
-    static let orderedSteps: [Step] = [.language, .welcome, .stt, .llm, .permissions, .shortcuts]
+    static let orderedSteps: [Step] = [.language, .stt, .llm, .permissions, .shortcuts]
 
     @Published var currentStep: Step = .language
     @Published var stepDirection: Int = 1 // 1 = forward, -1 = backward
@@ -109,7 +108,7 @@ final class OnboardingViewModel: ObservableObject {
         switch currentStep {
         case .language, .stt, .llm, .permissions:
             true
-        case .welcome, .shortcuts:
+        case .shortcuts:
             false
         }
     }
@@ -195,8 +194,6 @@ final class OnboardingViewModel: ObservableObject {
 
     private func saveCurrentStepSettings() {
         switch currentStep {
-        case .welcome:
-            break
         case .language:
             settingsStore.appLanguage = appLanguage
             AppLocalization.shared.setLanguage(appLanguage)

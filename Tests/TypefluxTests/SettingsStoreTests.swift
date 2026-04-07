@@ -52,7 +52,7 @@ final class SettingsStoreTests: XCTestCase {
     // MARK: - Appearance Mode
 
     func testDefaultAppearanceMode() {
-        XCTAssertEqual(store.appearanceMode, .light)
+        XCTAssertEqual(store.appearanceMode, .system)
     }
 
     func testSetAppearanceMode() {

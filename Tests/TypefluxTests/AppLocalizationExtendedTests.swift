@@ -70,6 +70,20 @@ final class AppLocalizationExtendedTests: XCTestCase {
         XCTAssertEqual(AppLanguage.korean.bundleLocalizationName, "ko")
     }
 
+    // MARK: - displayName
+
+    func testDisplayNameReturnsLocalizedLanguageOptionForEachLanguage() {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
+        XCTAssertEqual(AppLanguage.english.displayName, "English")
+        XCTAssertEqual(AppLanguage.simplifiedChinese.displayName, "简体中文")
+        XCTAssertEqual(AppLanguage.traditionalChinese.displayName, "繁體中文")
+        XCTAssertEqual(AppLanguage.japanese.displayName, "日本語")
+        XCTAssertEqual(AppLanguage.korean.displayName, "한국어")
+    }
+
     // MARK: - allCases
 
     func testAllCasesContainsAllLanguages() {

@@ -22,6 +22,23 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testVisibleStepsDoNotIncludeWelcomeStep() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        XCTAssertEqual(viewModel.visibleSteps, [.language, .stt, .llm, .permissions, .shortcuts])
+        XCTAssertEqual(viewModel.currentStep, .language)
+    }
+
+    @MainActor
+    func testAdvanceFromLanguageMovesDirectlyToSTT() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .stt)
+    }
+
+    @MainActor
     func testMultimodalSTTSkipsLLMStep() {
         let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
 

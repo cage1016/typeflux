@@ -1,10 +1,33 @@
 import AppKit
 import SwiftUI
 
+private struct OnboardingVisualEffectView: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context _: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.state = .active
+        view.isEmphasized = false
+        view.material = material
+        view.blendingMode = blendingMode
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+        nsView.state = .active
+        nsView.isEmphasized = false
+    }
+}
+
 // swiftlint:disable file_length
 struct OnboardingView: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    let appearanceMode: AppearanceMode
     @ObservedObject private var localization = AppLocalization.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     private let languageColumns = [
         GridItem(.flexible(), spacing: 18),
@@ -22,7 +45,7 @@ struct OnboardingView: View {
                     .padding(.bottom, 18)
             }
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(preferredColorScheme)
         .environment(\.locale, localization.locale)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             if viewModel.currentStep == .permissions {
@@ -33,13 +56,17 @@ struct OnboardingView: View {
 
     private var windowBackdrop: some View {
         ZStack {
-            Color(red: 0.075, green: 0.075, blue: 0.08)
+            StudioTheme.windowBackground
                 .ignoresSafeArea()
 
             LinearGradient(
                 colors: [
-                    Color(red: 0.085, green: 0.085, blue: 0.095),
-                    Color(red: 0.06, green: 0.06, blue: 0.07),
+                    isDarkMode
+                        ? Color(red: 0.085, green: 0.085, blue: 0.095)
+                        : Color(red: 0.985, green: 0.982, blue: 0.976),
+                    isDarkMode
+                        ? Color(red: 0.06, green: 0.06, blue: 0.07)
+                        : Color(red: 0.94, green: 0.95, blue: 0.965),
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing,
@@ -48,7 +75,7 @@ struct OnboardingView: View {
 
             RadialGradient(
                 colors: [
-                    Color(red: 0.13, green: 0.18, blue: 0.34).opacity(0.16),
+                    StudioTheme.accent.opacity(isDarkMode ? 0.16 : 0.10),
                     Color.clear,
                 ],
                 center: .topTrailing,
@@ -72,7 +99,6 @@ struct OnboardingView: View {
                         .padding(.bottom, 110)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .scrollDisabled(viewModel.currentStep == .welcome)
             }
 
             footerBar
@@ -99,8 +125,6 @@ struct OnboardingView: View {
 
     private func stepEyebrow(for step: OnboardingViewModel.Step) -> String {
         switch step {
-        case .welcome:
-            "Introduction"
         case .language:
             "Language"
         case .stt:
@@ -122,8 +146,6 @@ struct OnboardingView: View {
         switch step {
         case .language, .shortcuts:
             1_030
-        case .welcome:
-            1_030
         case .permissions:
             940
         case .stt, .llm:
@@ -134,8 +156,6 @@ struct OnboardingView: View {
     @ViewBuilder
     private func stepContent(in size: CGSize) -> some View {
         switch viewModel.currentStep {
-        case .welcome:
-            welcomeStep(contentHeight: availableContentHeight(in: size))
         case .language:
             languageStep(contentHeight: availableContentHeight(in: size))
         case .stt:
@@ -151,100 +171,6 @@ struct OnboardingView: View {
 
     private func availableContentHeight(in size: CGSize) -> CGFloat {
         max(420, size.height - 220)
-    }
-
-    private func welcomeStep(contentHeight: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-
-            VStack(spacing: 12) {
-                appIconBadge(size: 84, iconSize: 54)
-
-                Text(L("sidebar.appName"))
-                    .font(.studioDisplay(38, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.95))
-
-                Text(L("onboarding.welcome.tagline"))
-                    .font(.studioBody(15))
-                    .foregroundStyle(Color.white.opacity(0.58))
-            }
-            .frame(maxWidth: .infinity)
-
-            HStack(spacing: 14) {
-                welcomeFeatureCard(
-                    icon: "mic.fill",
-                    accent: StudioTheme.accent,
-                    title: L("onboarding.welcome.feature1.title"),
-                    desc: L("onboarding.welcome.feature1.desc"),
-                )
-                welcomeFeatureCard(
-                    icon: "sparkles",
-                    accent: Color(red: 0.90, green: 0.66, blue: 0.38),
-                    title: L("onboarding.welcome.feature3.title"),
-                    desc: L("onboarding.welcome.feature3.desc"),
-                )
-                welcomeFeatureCard(
-                    icon: "square.stack.3d.down.right.fill",
-                    accent: Color(red: 0.67, green: 0.75, blue: 1.00),
-                    title: L("onboarding.welcome.feature2.title"),
-                    desc: L("onboarding.welcome.feature2.desc"),
-                )
-            }
-            .padding(.top, 26)
-
-            Spacer(minLength: 0)
-        }
-        .frame(minHeight: contentHeight)
-        .frame(maxWidth: 860)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func welcomeFeatureCard(icon: String, accent: Color, title: String, desc: String) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(accent.opacity(0.12))
-                    .frame(width: 30, height: 30)
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(accent)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(.studioBody(14, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
-                Text(desc)
-                    .font(.studioBody(11))
-                    .foregroundStyle(Color.white.opacity(0.54))
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
-        .padding(18)
-        .background(onboardingCardFill)
-        .overlay(onboardingCardStroke)
-    }
-
-    private func appIconBadge(size: CGFloat, iconSize: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(Color.white.opacity(0.03))
-                .frame(width: size, height: size)
-                .overlay(
-                    RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1),
-                )
-
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: iconSize, height: iconSize)
-                .clipShape(RoundedRectangle(cornerRadius: iconSize * 0.24, style: .continuous))
-        }
-        .shadow(color: .black.opacity(0.26), radius: 20, x: 0, y: 10)
     }
 
     private func languageStep(contentHeight: CGFloat) -> some View {
@@ -282,17 +208,9 @@ struct OnboardingView: View {
             }
         } label: {
             HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(languageRegionLabel(language))
-                        .font(.studioBody(9, weight: .semibold))
-                        .tracking(1.4)
-                        .textCase(.uppercase)
-                        .foregroundStyle(isSelected ? StudioTheme.accent.opacity(0.92) : Color.white.opacity(0.4))
-
-                    Text(languageNativeName(language))
-                        .font(.studioDisplay(15, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.92))
-                }
+                Text(language.displayName)
+                    .font(.studioDisplay(15, weight: .bold))
+                    .foregroundStyle(onboardingPrimaryText)
 
                 Spacer()
 
@@ -300,7 +218,7 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             .background(languageCardFill(isSelected: isSelected))
             .overlay(languageCardStroke(isSelected: isSelected))
             .shadow(color: isSelected ? StudioTheme.accent.opacity(0.16) : .clear, radius: 20, x: 0, y: 10)
@@ -311,7 +229,7 @@ struct OnboardingView: View {
     private func languageSelectionIndicator(isSelected: Bool) -> some View {
         ZStack {
             Circle()
-                .stroke(isSelected ? StudioTheme.accent.opacity(0.32) : Color(red: 0.27, green: 0.31, blue: 0.43), lineWidth: 1)
+                .stroke(isSelected ? StudioTheme.accent.opacity(0.32) : onboardingSelectionRing, lineWidth: 1)
                 .frame(width: 28, height: 28)
 
             if isSelected {
@@ -328,33 +246,8 @@ struct OnboardingView: View {
 
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color.black.opacity(0.78))
+                    .foregroundStyle(onboardingSelectionCheckmark)
             }
-        }
-    }
-
-    private func languageRegionLabel(_ language: AppLanguage) -> String {
-        switch language {
-        case .english:
-            "United States / Global"
-        case .simplifiedChinese:
-            "Mainland China"
-        case .traditionalChinese:
-            "Taiwan / Hong Kong"
-        case .japanese:
-            "Japan"
-        case .korean:
-            "South Korea"
-        }
-    }
-
-    private func languageNativeName(_ language: AppLanguage) -> String {
-        switch language {
-        case .english: "English"
-        case .simplifiedChinese: "简体中文"
-        case .traditionalChinese: "繁體中文"
-        case .japanese: "日本語"
-        case .korean: "한국어"
         }
     }
 
@@ -397,7 +290,7 @@ struct OnboardingView: View {
         VStack(alignment: .trailing, spacing: 8) {
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.08))
+                    .fill(onboardingProgressTrack)
                     .frame(width: 140, height: 4)
                 Capsule(style: .continuous)
                     .fill(StudioTheme.accent)
@@ -406,7 +299,7 @@ struct OnboardingView: View {
 
             Text(label)
                 .font(.studioBody(10, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.42))
+                .foregroundStyle(onboardingTertiaryText)
         }
     }
 
@@ -534,7 +427,7 @@ struct OnboardingView: View {
                 if FreeSTTModelRegistry.suggestedModelNames.isEmpty {
                     Text(L("settings.models.freeSTT.noSources"))
                         .font(.studioBody(12))
-                        .foregroundStyle(Color.white.opacity(0.48))
+                        .foregroundStyle(onboardingSecondaryText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     StudioMenuPicker(
@@ -546,7 +439,7 @@ struct OnboardingView: View {
 
                 Text(L("settings.models.freeSTT.hint"))
                     .font(.studioBody(12))
-                    .foregroundStyle(Color.white.opacity(0.48))
+                    .foregroundStyle(onboardingSecondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -567,10 +460,10 @@ struct OnboardingView: View {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(model.displayName)
                                 .font(.studioBody(14, weight: .semibold))
-                                .foregroundStyle(Color.white.opacity(0.9))
+                                .foregroundStyle(onboardingPrimaryText)
                             Text(model.specs.summary)
                                 .font(.studioBody(12))
-                                .foregroundStyle(Color.white.opacity(0.5))
+                                .foregroundStyle(onboardingSecondaryText)
                                 .lineLimit(1)
                         }
 
@@ -578,12 +471,12 @@ struct OnboardingView: View {
 
                         Text(model.specs.sizeValue)
                             .font(.studioBody(11, weight: .semibold))
-                            .foregroundStyle(isSelected ? StudioTheme.accent.opacity(0.92) : Color.white.opacity(0.44))
+                            .foregroundStyle(isSelected ? StudioTheme.accent.opacity(0.92) : onboardingTertiaryText)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(
                                 Capsule(style: .continuous)
-                                    .fill(Color.white.opacity(isSelected ? 0.08 : 0.04)),
+                                    .fill(isSelected ? onboardingSelectedBadgeFill : onboardingBadgeFill),
                             )
                     }
                     .padding(.horizontal, 18)
@@ -598,10 +491,10 @@ struct OnboardingView: View {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 12))
-                    .foregroundStyle(Color.white.opacity(0.42))
+                    .foregroundStyle(onboardingTertiaryText)
                 Text(L("onboarding.models.stt.local.hint"))
                     .font(.studioBody(12))
-                    .foregroundStyle(Color.white.opacity(0.46))
+                    .foregroundStyle(onboardingSecondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 6)
@@ -769,15 +662,15 @@ struct OnboardingView: View {
                 .font(.studioBody(10, weight: .semibold))
                 .tracking(1.4)
                 .textCase(.uppercase)
-                .foregroundStyle(Color.white.opacity(0.36))
+                .foregroundStyle(onboardingTertiaryText)
 
             Text(viewModel.sttProvider.displayName)
                 .font(.studioDisplay(18, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(onboardingPrimaryText)
 
             Text(sttProviderDescription(viewModel.sttProvider))
                 .font(.studioBody(12))
-                .foregroundStyle(Color.white.opacity(0.5))
+                .foregroundStyle(onboardingSecondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
             Group {
@@ -787,7 +680,7 @@ struct OnboardingView: View {
                     onboardingConfigCard {
                         Text("This provider is ready to use with the current defaults.")
                             .font(.studioBody(12))
-                            .foregroundStyle(Color.white.opacity(0.5))
+                            .foregroundStyle(onboardingSecondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -802,17 +695,17 @@ struct OnboardingView: View {
                 .font(.studioBody(10, weight: .semibold))
                 .tracking(1.4)
                 .textCase(.uppercase)
-                .foregroundStyle(Color.white.opacity(0.36))
+                .foregroundStyle(onboardingTertiaryText)
 
             Text(viewModel.llmProvider == .ollama ? L("provider.llm.ollama") : viewModel.llmRemoteProvider.displayName)
                 .font(.studioDisplay(18, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(onboardingPrimaryText)
 
             Text(viewModel.llmProvider == .ollama
                 ? L("settings.models.card.ollama.summary")
                 : L("settings.models.card.\(viewModel.llmRemoteProvider.rawValue).summary"))
                 .font(.studioBody(12))
-                .foregroundStyle(Color.white.opacity(0.5))
+                .foregroundStyle(onboardingSecondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
             Group {
@@ -950,10 +843,10 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.studioBody(14, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.92))
+                        .foregroundStyle(onboardingPrimaryText)
                     Text(description)
                         .font(.studioBody(11))
-                        .foregroundStyle(Color.white.opacity(0.48))
+                        .foregroundStyle(onboardingSecondaryText)
                         .lineLimit(2)
                 }
 
@@ -963,12 +856,12 @@ struct OnboardingView: View {
                     .font(.studioBody(9, weight: .semibold))
                     .tracking(0.8)
                     .textCase(.uppercase)
-                    .foregroundStyle(isSelected ? StudioTheme.accent.opacity(0.95) : Color.white.opacity(0.42))
+                    .foregroundStyle(isSelected ? StudioTheme.accent.opacity(0.95) : onboardingTertiaryText)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(isSelected ? 0.08 : 0.04)),
+                            .fill(isSelected ? onboardingSelectedBadgeFill : onboardingBadgeFill),
                     )
 
                 languageSelectionIndicator(isSelected: isSelected)
@@ -1002,7 +895,7 @@ struct OnboardingView: View {
                     } else {
                         Image(systemName: providerSymbol(for: providerID))
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(isSelected ? StudioTheme.accent : Color.white.opacity(0.62))
+                            .foregroundStyle(isSelected ? StudioTheme.accent : onboardingSecondaryText)
                     }
                 },
             )
@@ -1019,8 +912,12 @@ struct OnboardingView: View {
                 : Color(red: 0.84, green: 0.87, blue: 0.93).opacity(0.84)
             return LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .neutral:
-            let top = Color.white.opacity(isSelected ? 0.1 : 0.07)
-            let bottom = Color(red: 0.12, green: 0.13, blue: 0.17).opacity(isSelected ? 0.72 : 0.82)
+            let top = isDarkMode
+                ? Color.white.opacity(isSelected ? 0.1 : 0.07)
+                : StudioTheme.surface.opacity(isSelected ? 0.96 : 0.92)
+            let bottom = isDarkMode
+                ? Color(red: 0.12, green: 0.13, blue: 0.17).opacity(isSelected ? 0.72 : 0.82)
+                : StudioTheme.surfaceMuted.opacity(isSelected ? 0.98 : 0.94)
             return LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
@@ -1028,9 +925,9 @@ struct OnboardingView: View {
     private func providerIconBadgeBorder(for providerID: StudioModelProviderID, isSelected: Bool) -> Color {
         switch OnboardingProviderStyle.iconPlateStyle(for: providerID) {
         case .light:
-            return Color.white.opacity(isSelected ? 0.28 : 0.18)
+            return isDarkMode ? Color.white.opacity(isSelected ? 0.28 : 0.18) : StudioTheme.border.opacity(isSelected ? 0.9 : 0.72)
         case .neutral:
-            return Color.white.opacity(isSelected ? 0.12 : 0.08)
+            return isDarkMode ? Color.white.opacity(isSelected ? 0.12 : 0.08) : StudioTheme.border.opacity(isSelected ? 0.85 : 0.72)
         }
     }
 
@@ -1071,7 +968,7 @@ struct OnboardingView: View {
         return HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(isGranted ? 0.08 : 0.05))
+                    .fill(isGranted ? onboardingSelectedBadgeFill : onboardingMutedSurface)
                     .frame(width: 38, height: 38)
                 Image(systemName: permissionIcon(snapshot.id))
                     .font(.system(size: 14, weight: .semibold))
@@ -1081,10 +978,10 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(snapshot.title)
                     .font(.studioBody(13, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(onboardingPrimaryText)
                 Text(snapshot.detail)
                     .font(.studioBody(11))
-                    .foregroundStyle(Color.white.opacity(0.5))
+                    .foregroundStyle(onboardingSecondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -1107,11 +1004,11 @@ struct OnboardingView: View {
                     if isRequesting {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(Color.white.opacity(0.8))
+                            .tint(onboardingPrimaryText)
                             .frame(width: 18, height: 18)
                     } else {
                         Circle()
-                            .fill(Color.white.opacity(0.88))
+                            .fill(onboardingPrimaryText)
                             .frame(width: 14, height: 14)
                     }
                 }
@@ -1119,11 +1016,11 @@ struct OnboardingView: View {
                 .frame(width: 36, height: 36)
                 .background(
                     Circle()
-                        .fill(Color.white.opacity(0.03)),
+                        .fill(onboardingMutedSurface),
                 )
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1),
+                        .stroke(onboardingSubtleBorder, lineWidth: 1),
                 )
             }
         }
@@ -1137,41 +1034,32 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(red: 0.11, green: 0.23, blue: 0.20).opacity(0.9))
+                    .fill(privacyCalloutIconBackground)
                     .frame(width: 34, height: 34)
 
                 Image(systemName: "shield.lefthalf.filled")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.56, green: 0.93, blue: 0.79))
+                    .foregroundStyle(privacyCalloutIconForeground)
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(L("onboarding.permissions.privacyCallout.title"))
                     .font(.studioBody(13, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(onboardingPrimaryText)
                 Text(L("onboarding.permissions.privacyCallout.subtitle"))
                     .font(.studioBody(12))
-                    .foregroundStyle(Color.white.opacity(0.58))
+                    .foregroundStyle(onboardingSecondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.08, green: 0.14, blue: 0.13).opacity(0.96),
-                            Color(red: 0.07, green: 0.11, blue: 0.12).opacity(0.92),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
-                ),
+                .fill(privacyCalloutBackground),
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(red: 0.30, green: 0.58, blue: 0.49).opacity(0.32), lineWidth: 1),
+                .stroke(privacyCalloutBorder, lineWidth: 1),
         )
     }
 
@@ -1184,15 +1072,15 @@ struct OnboardingView: View {
     }
 
     private var shortcutsStep: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: shortcutsSectionSpacing) {
             editorialStepHeader(
                 title: L("onboarding.shortcuts.title"),
                 subtitle: L("onboarding.shortcuts.subtitle"),
                 alignCenter: false,
             )
 
-            VStack(spacing: 12) {
-                HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: shortcutsSectionSpacing) {
+                HStack(alignment: .top, spacing: shortcutsSectionSpacing) {
                     shortcutCard(
                         title: L("settings.shortcuts.activation.title"),
                         subtitle: L("onboarding.shortcuts.activation.hint"),
@@ -1215,6 +1103,7 @@ struct OnboardingView: View {
                 )
 
                 keyboardHero
+                    .padding(.top, 4)
             }
         }
         .frame(maxWidth: 920, alignment: .leading)
@@ -1231,7 +1120,7 @@ struct OnboardingView: View {
             HStack(alignment: .center, spacing: 16) {
                 Text(title)
                     .font(.studioDisplay(16, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.93))
+                    .foregroundStyle(onboardingPrimaryText)
                     .lineLimit(1)
 
                 Spacer()
@@ -1242,14 +1131,12 @@ struct OnboardingView: View {
 
             Text(subtitle)
                 .font(.studioBody(12))
-                .foregroundStyle(Color.white.opacity(0.48))
+                .foregroundStyle(onboardingSecondaryText)
                 .lineLimit(expanded ? 2 : 3)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
         }
         .padding(18)
-        .frame(maxWidth: expanded ? .infinity : nil, minHeight: 108, alignment: .topLeading)
+        .frame(maxWidth: expanded ? .infinity : nil, minHeight: 96, alignment: .topLeading)
         .background(onboardingCardFill)
         .overlay(onboardingCardStroke)
     }
@@ -1263,7 +1150,7 @@ struct OnboardingView: View {
             HStack(alignment: .center, spacing: 16) {
                 Text(title)
                     .font(.studioDisplay(16, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.93))
+                    .foregroundStyle(onboardingPrimaryText)
                     .lineLimit(1)
 
                 Spacer()
@@ -1274,7 +1161,7 @@ struct OnboardingView: View {
 
             Text(subtitle)
                 .font(.studioBody(12))
-                .foregroundStyle(Color.white.opacity(0.48))
+                .foregroundStyle(onboardingSecondaryText)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1284,35 +1171,26 @@ struct OnboardingView: View {
     }
 
     private var keyboardHero: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.10, green: 0.10, blue: 0.11),
-                                Color(red: 0.07, green: 0.07, blue: 0.08),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom,
-                        ),
-                    )
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(keyboardHeroBackground)
 
+            ZStack(alignment: .bottom) {
                 keyboardPattern
                     .padding(.horizontal, 18)
                     .padding(.top, 18)
-                    .padding(.bottom, 18)
+                    .padding(.bottom, 70)
                     .opacity(0.82)
             }
-            .frame(height: 170)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(L("onboarding.shortcuts.hero.title"))
                     .font(.studioDisplay(18, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(onboardingPrimaryText)
                 Text(L("onboarding.shortcuts.hero.subtitle"))
                     .font(.studioBody(13))
-                    .foregroundStyle(Color.white.opacity(0.52))
+                    .foregroundStyle(onboardingSecondaryText)
                     .frame(maxWidth: 520, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1320,29 +1198,17 @@ struct OnboardingView: View {
             .padding(.vertical, 18)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.black.opacity(0.34)),
+                    .fill(keyboardHeroCaptionBackground),
             )
-            .padding(.horizontal, 14)
+            .padding(.leading, 14)
+            .padding(.trailing, 14)
             .padding(.bottom, 14)
-            .offset(y: -14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.10, green: 0.10, blue: 0.11),
-                            Color(red: 0.06, green: 0.06, blue: 0.07),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom,
-                    ),
-                ),
-        )
-        .frame(height: 286)
+        .frame(height: 236)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1),
+                .stroke(keyboardHeroBorder, lineWidth: 1),
         )
     }
 
@@ -1352,14 +1218,14 @@ struct OnboardingView: View {
                 HStack(spacing: 8) {
                     ForEach(0..<(row == 3 ? 12 : 14), id: \.self) { index in
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(index.isMultiple(of: 5) ? 0.10 : 0.07))
+                            .fill(keyboardPatternKeyFill(index: index))
                             .frame(
                                 width: row == 1 && index == 9 ? 70 : 42,
                                 height: 32,
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .stroke(Color.white.opacity(0.03), lineWidth: 1),
+                                    .stroke(keyboardPatternKeyBorder, lineWidth: 1),
                             )
                     }
                 }
@@ -1376,7 +1242,7 @@ struct OnboardingView: View {
             if index > 0 {
                 Text("+")
                     .font(.studioBody(12, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.42))
+                    .foregroundStyle(onboardingTertiaryText)
             }
 
             hotkeyKeycap(key)
@@ -1387,16 +1253,16 @@ struct OnboardingView: View {
         Text(key.uppercased())
             .font(.studioBody(12, weight: .bold))
             .tracking(key.count > 1 ? 0.8 : 0.2)
-            .foregroundStyle(Color.white.opacity(0.9))
+            .foregroundStyle(onboardingPrimaryText)
             .padding(.horizontal, key.count > 2 ? 16 : 12)
             .frame(height: 30)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.white.opacity(0.08)),
+                    .fill(onboardingMutedSurface),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1),
+                    .stroke(onboardingSubtleBorder, lineWidth: 1),
             )
     }
 
@@ -1429,13 +1295,12 @@ struct OnboardingView: View {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(red: 0.125, green: 0.128, blue: 0.145).opacity(0.96)),
+                .fill(onboardingFooterSurface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1),
+                .stroke(onboardingBorder, lineWidth: 1),
         )
-        .shadow(color: .black.opacity(0.22), radius: 16, x: 0, y: 8)
     }
 
     private func footerPrimaryButton(title: String, action: @escaping () -> Void) -> some View {
@@ -1447,16 +1312,16 @@ struct OnboardingView: View {
                 Image(systemName: viewModel.isLastStep ? "arrow.right" : "arrow.right")
                     .font(.system(size: 12, weight: .bold))
             }
-            .foregroundStyle(Color.white.opacity(0.98))
-            .padding(.horizontal, 24)
-            .frame(height: 44)
+            .foregroundStyle(onboardingPrimaryButtonText)
+            .padding(.horizontal, 18)
+            .frame(height: 38)
             .background(
                 Capsule(style: .continuous)
                     .fill(StudioTheme.accent),
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 1),
+                    .stroke(onboardingPrimaryButtonStroke, lineWidth: 1),
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
@@ -1470,16 +1335,16 @@ struct OnboardingView: View {
                 Text(title)
                     .font(.studioBody(12, weight: .semibold))
             }
-            .foregroundStyle(Color.white.opacity(0.82))
+            .foregroundStyle(onboardingPrimaryText)
             .frame(height: 38)
             .padding(.horizontal, 14)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.05)),
+                    .fill(onboardingMutedSurface),
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 1),
+                    .stroke(onboardingSubtleBorder, lineWidth: 1),
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
@@ -1490,7 +1355,7 @@ struct OnboardingView: View {
             Text(title.uppercased())
                 .font(.studioBody(11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(Color.white.opacity(0.56))
+                .foregroundStyle(onboardingSecondaryText)
                 .frame(height: 38)
                 .padding(.horizontal, 10)
         }
@@ -1518,12 +1383,12 @@ struct OnboardingView: View {
 
                         Text(title)
                             .font(.studioDisplay(30, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.94))
+                            .foregroundStyle(onboardingPrimaryText)
                             .lineLimit(2)
 
                         Text(subtitle)
                             .font(.studioBody(13))
-                            .foregroundStyle(Color.white.opacity(0.55))
+                            .foregroundStyle(onboardingSecondaryText)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1544,12 +1409,12 @@ struct OnboardingView: View {
 
                         Text(title)
                             .font(.studioDisplay(30, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.94))
+                            .foregroundStyle(onboardingPrimaryText)
                             .lineLimit(2)
 
                         Text(subtitle)
                             .font(.studioBody(13))
-                            .foregroundStyle(Color.white.opacity(0.55))
+                            .foregroundStyle(onboardingSecondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
@@ -1568,42 +1433,42 @@ struct OnboardingView: View {
     private var stepCounterPill: some View {
         Text(stepCounterText)
             .font(.studioBody(10, weight: .semibold))
-            .foregroundStyle(Color.white.opacity(0.45))
+            .foregroundStyle(onboardingTertiaryText)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.04)),
+                    .fill(onboardingMutedSurface),
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1),
+                    .stroke(onboardingSubtleBorder, lineWidth: 1),
             )
     }
 
     private var onboardingCardFill: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.white.opacity(0.045))
+            .fill(onboardingCardSurface)
     }
 
     private var onboardingCardStroke: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+            .stroke(onboardingSubtleBorder, lineWidth: 1)
     }
 
     private func languageCardFill(isSelected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(
                 isSelected
-                    ? Color(red: 0.23, green: 0.23, blue: 0.25).opacity(0.96)
-                    : Color.white.opacity(0.045),
+                    ? onboardingSelectedCardSurface
+                    : onboardingCardSurface,
             )
     }
 
     private func languageCardStroke(isSelected: Bool) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(isSelected ? Color.white.opacity(0.28) : Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(isSelected ? onboardingSelectedBorder : onboardingSubtleBorder, lineWidth: 1)
 
             if isSelected {
                 RoundedRectangle(cornerRadius: 21, style: .continuous)
@@ -1611,5 +1476,156 @@ struct OnboardingView: View {
                     .padding(-2)
             }
         }
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch appearanceMode {
+        case .system:
+            nil
+        case .light:
+            .light
+        case .dark:
+            .dark
+        }
+    }
+
+    private var isDarkMode: Bool {
+        colorScheme == .dark
+    }
+
+    private var onboardingPrimaryText: Color {
+        StudioTheme.textPrimary.opacity(isDarkMode ? 0.96 : 0.98)
+    }
+
+    private var onboardingSecondaryText: Color {
+        StudioTheme.textSecondary.opacity(isDarkMode ? 0.9 : 0.96)
+    }
+
+    private var onboardingTertiaryText: Color {
+        StudioTheme.textTertiary.opacity(isDarkMode ? 0.94 : 0.98)
+    }
+
+    private var onboardingCardSurface: Color {
+        isDarkMode ? Color.white.opacity(0.045) : StudioTheme.surface
+    }
+
+    private var onboardingMutedSurface: Color {
+        isDarkMode ? Color.white.opacity(0.05) : StudioTheme.surfaceMuted
+    }
+
+    private var onboardingSelectedCardSurface: Color {
+        isDarkMode
+            ? Color(red: 0.23, green: 0.23, blue: 0.25).opacity(0.96)
+            : StudioTheme.accentSoft
+    }
+
+    private var onboardingBorder: Color {
+        isDarkMode ? Color.white.opacity(0.06) : StudioTheme.border.opacity(0.9)
+    }
+
+    private var onboardingSubtleBorder: Color {
+        isDarkMode ? Color.white.opacity(0.05) : StudioTheme.border
+    }
+
+    private var onboardingSelectedBorder: Color {
+        isDarkMode ? Color.white.opacity(0.28) : StudioTheme.accent.opacity(0.28)
+    }
+
+    private var onboardingFooterSurface: Color {
+        isDarkMode
+            ? Color(red: 0.12, green: 0.13, blue: 0.16).opacity(0.96)
+            : Color(red: 0.955, green: 0.958, blue: 0.965)
+    }
+
+    private var onboardingPrimaryButtonText: Color {
+        isDarkMode ? Color.white.opacity(0.98) : Color.white.opacity(0.96)
+    }
+
+    private var onboardingPrimaryButtonStroke: Color {
+        isDarkMode ? Color.white.opacity(0.14) : Color.white.opacity(0.22)
+    }
+
+    private var shortcutsSectionSpacing: CGFloat { 14 }
+
+    private var onboardingSelectionRing: Color {
+        isDarkMode ? Color(red: 0.27, green: 0.31, blue: 0.43) : StudioTheme.border
+    }
+
+    private var onboardingSelectionCheckmark: Color {
+        isDarkMode ? Color.black.opacity(0.78) : Color.white.opacity(0.96)
+    }
+
+    private var onboardingProgressTrack: Color {
+        isDarkMode ? Color.white.opacity(0.08) : StudioTheme.border.opacity(0.72)
+    }
+
+    private var onboardingBadgeFill: Color {
+        isDarkMode ? Color.white.opacity(0.04) : StudioTheme.surfaceMuted
+    }
+
+    private var onboardingSelectedBadgeFill: Color {
+        isDarkMode ? Color.white.opacity(0.08) : StudioTheme.accentSoft
+    }
+
+    private var privacyCalloutBackground: Color {
+        isDarkMode
+            ? Color(red: 0.08, green: 0.14, blue: 0.13).opacity(0.94)
+            : Color(red: 0.93, green: 0.97, blue: 0.95)
+    }
+
+    private var privacyCalloutBorder: Color {
+        isDarkMode
+            ? Color(red: 0.30, green: 0.58, blue: 0.49).opacity(0.32)
+            : Color(red: 0.76, green: 0.87, blue: 0.81)
+    }
+
+    private var privacyCalloutIconBackground: Color {
+        isDarkMode
+            ? Color(red: 0.11, green: 0.23, blue: 0.20).opacity(0.9)
+            : Color(red: 0.85, green: 0.95, blue: 0.89)
+    }
+
+    private var privacyCalloutIconForeground: Color {
+        isDarkMode
+            ? Color(red: 0.56, green: 0.93, blue: 0.79)
+            : Color(red: 0.12, green: 0.62, blue: 0.42)
+    }
+
+    private var keyboardHeroBackground: LinearGradient {
+        LinearGradient(
+            colors: isDarkMode
+                ? [
+                    Color(red: 0.10, green: 0.10, blue: 0.11),
+                    Color(red: 0.06, green: 0.06, blue: 0.07),
+                ]
+                : [
+                    Color(red: 0.92, green: 0.94, blue: 0.97),
+                    Color(red: 0.84, green: 0.87, blue: 0.92),
+                ],
+            startPoint: .top,
+            endPoint: .bottom,
+        )
+    }
+
+    private var keyboardHeroCaptionBackground: Color {
+        isDarkMode
+            ? Color.black.opacity(0.34)
+            : Color.white.opacity(0.72)
+    }
+
+    private var keyboardHeroBorder: Color {
+        isDarkMode ? Color.white.opacity(0.06) : StudioTheme.border
+    }
+
+    private func keyboardPatternKeyFill(index: Int) -> Color {
+        if isDarkMode {
+            return Color.white.opacity(index.isMultiple(of: 5) ? 0.10 : 0.07)
+        }
+
+        return Color.black.opacity(index.isMultiple(of: 5) ? 0.10 : 0.07)
+    }
+
+    private var keyboardPatternKeyBorder: Color {
+        isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.04)
     }
 }

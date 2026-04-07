@@ -28,7 +28,10 @@ final class OnboardingWindowController: NSObject {
             self?.handleComplete()
         }
 
-        let view = OnboardingView(viewModel: viewModel)
+        let view = OnboardingView(
+            viewModel: viewModel,
+            appearanceMode: settingsStore.appearanceMode,
+        )
         let hosting = NSHostingView(rootView: view)
 
         let window = NSWindow(
