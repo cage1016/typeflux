@@ -955,19 +955,19 @@ extension WorkflowController {
             rewriteOutput = rewriteResult.text
             record.personaResultText = rewriteResult.text
             logPipelineEvent("llm-processing-completed", for: record)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            NetworkDebugLogger.logError(
-                context: "Persona rewrite failed, using transcript as fallback",
-                error: error,
-            )
+        } catch is LLMRequestTimeoutError {
+            // Timeout: insert transcript as fallback so the user isn't left empty-handed
+            // after waiting the full timeout period. Log for diagnostics.
             ErrorLogStore.shared.log(
-                "Persona rewrite failed, using transcript as fallback: \(error.localizedDescription)",
+                "Persona rewrite timed out after \(Int(Self.llmTimeoutAfterTranscriptionSeconds))s, using transcript as fallback",
             )
             pipelineTiming.llmProcessingCompletedAt = Date()
             rewriteOutput = transcribedText
             record.personaResultText = transcribedText
+        } catch {
+            // All other failures (network error, API error, etc.) are surfaced to the
+            // user as a retryable failure so they are never silently swallowed.
+            throw error
         }
 
         record.pipelineTiming = pipelineTiming

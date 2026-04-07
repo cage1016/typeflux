@@ -71,6 +71,9 @@ private enum AliCloudAudioConverter {
     static let targetSampleRate: Double = 16000
     /// 100ms of PCM16 at 16kHz mono: 16000 * 0.1 * 2 bytes = 3200
     static let chunkSize: Int = 3200
+    /// 1000ms of silence appended before finish-task so the server can finalize
+    /// the last sentence (max_sentence_silence is 800ms): 16000 * 1.0 * 2 bytes = 32000
+    static let trailingSilenceBytes: Int = 32000
 
     static func convert(url: URL) throws -> Data {
         let sourceFile = try AVAudioFile(forReading: url)
@@ -249,6 +252,17 @@ private actor AliCloudFunASRSession {
             let chunk = pcmData[offset ..< end]
             try await socketTask.send(.data(chunk))
             offset = end
+        }
+
+        // Append trailing silence so the server has enough pause to finalize the last
+        // sentence (max_sentence_silence = 800 ms). Without this, the final spoken
+        // phrase may not receive a sentence_end=true event before task-finished arrives.
+        let silencePadding = Data(count: AliCloudAudioConverter.trailingSilenceBytes)
+        var silenceOffset = 0
+        while silenceOffset < silencePadding.count {
+            let end = min(silenceOffset + chunkSize, silencePadding.count)
+            try await socketTask.send(.data(silencePadding[silenceOffset ..< end]))
+            silenceOffset = end
         }
 
         let finishTask: [String: Any] = [
@@ -533,6 +547,20 @@ private actor AliCloudQwenASRSession {
             ]
             try await sendJSON(audioAppend, to: socketTask)
             offset = end
+        }
+
+        // Append trailing silence so the server can finalize the last sentence before
+        // the session ends (mirrors the same fix in AliCloudFunASRSession).
+        let silencePadding = Data(count: AliCloudAudioConverter.trailingSilenceBytes)
+        var silenceOffset = 0
+        while silenceOffset < silencePadding.count {
+            let end = min(silenceOffset + chunkSize, silencePadding.count)
+            let silenceAppend: [String: Any] = [
+                "type": "input_audio_buffer.append",
+                "audio": silencePadding[silenceOffset ..< end].base64EncodedString(),
+            ]
+            try await sendJSON(silenceAppend, to: socketTask)
+            silenceOffset = end
         }
 
         try await sendJSON(["type": "input_audio_buffer.commit"], to: socketTask)
