@@ -385,10 +385,15 @@
 "settings.shortcuts.stopRecording" = "録音を停止する";
 "settings.shortcuts.activationConflict" = "音声入力ショートカットは、「何でも質問」またはペルソナのショートカットと一致することはできません。";
 "settings.shortcuts.activationUpdated" = "音声入力ショートカットが更新されました。";
+"settings.shortcuts.activationUnset" = "音声入力ショートカットを削除しました。";
 "settings.shortcuts.askConflict" = "「何でも聞く」ショートカットは、音声入力またはペルソナのショートカットと一致しません。";
 "settings.shortcuts.askUpdated" = "「何でも質問」ショートカットが更新されました。";
+"settings.shortcuts.askUnset" = "「何でも質問」ショートカットを削除しました。";
 "settings.shortcuts.personaConflict" = "ペルソナのショートカットは、音声入力または「何でも聞く」ショートカットと一致できません。";
 "settings.shortcuts.personaUpdated" = "ペルソナのショートカットが更新されました。";
+"settings.shortcuts.personaUnset" = "ペルソナのショートカットを削除しました。";
+"settings.shortcuts.unset" = "解除";
+"settings.shortcuts.none" = "未設定";
 
 "settings.audio.microphone.unavailable" = "選択したマイクは使用できません。自動に切り替えました。";
 "settings.permissions.updated" = "許可ステータスが更新されました。";

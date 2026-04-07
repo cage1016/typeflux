@@ -864,7 +864,7 @@ struct StudioView: View {
                             icon: "command",
                             badgeSymbol: "mic.fill",
                             binding: viewModel.activationHotkey,
-                            isDefault: viewModel.activationHotkey.signature
+                            isDefault: viewModel.activationHotkey?.signature
                                 == HotkeyBinding.defaultActivation.signature,
                             onStartRecording: {
                                 recordingTarget = .activation
@@ -876,6 +876,9 @@ struct StudioView: View {
                             onReset: {
                                 viewModel.resetActivationHotkey()
                             },
+                            onUnset: {
+                                viewModel.unsetActivationHotkey()
+                            },
                         )
 
                         shortcutConfigurationRow(
@@ -885,7 +888,7 @@ struct StudioView: View {
                             icon: "questionmark.bubble.fill",
                             badgeSymbol: "text.quote",
                             binding: viewModel.askHotkey,
-                            isDefault: viewModel.askHotkey.signature
+                            isDefault: viewModel.askHotkey?.signature
                                 == HotkeyBinding.defaultAsk.signature,
                             onStartRecording: {
                                 recordingTarget = .ask
@@ -897,6 +900,9 @@ struct StudioView: View {
                             onReset: {
                                 viewModel.resetAskHotkey()
                             },
+                            onUnset: {
+                                viewModel.unsetAskHotkey()
+                            },
                         )
 
                         shortcutConfigurationRow(
@@ -906,7 +912,7 @@ struct StudioView: View {
                             icon: "person.crop.rectangle.stack.fill",
                             badgeSymbol: "person.crop.circle.badge.checkmark",
                             binding: viewModel.personaHotkey,
-                            isDefault: viewModel.personaHotkey.signature
+                            isDefault: viewModel.personaHotkey?.signature
                                 == HotkeyBinding.defaultPersona.signature,
                             onStartRecording: {
                                 recordingTarget = .persona
@@ -917,6 +923,9 @@ struct StudioView: View {
                             },
                             onReset: {
                                 viewModel.resetPersonaHotkey()
+                            },
+                            onUnset: {
+                                viewModel.unsetPersonaHotkey()
                             },
                         )
                     }
@@ -1580,10 +1589,11 @@ struct StudioView: View {
         footnote: String,
         icon: String,
         badgeSymbol: String,
-        binding: HotkeyBinding,
+        binding: HotkeyBinding?,
         isDefault: Bool,
         onStartRecording: @escaping () -> Void,
         onReset: @escaping () -> Void,
+        onUnset: @escaping () -> Void,
     ) -> some View {
         HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
@@ -1623,8 +1633,10 @@ struct StudioView: View {
 
             shortcutActionButtons(
                 isDefault: isDefault,
+                isUnset: binding == nil,
                 onStart: onStartRecording,
                 onReset: onReset,
+                onUnset: onUnset,
             )
         }
         .padding(StudioTheme.Insets.cardDense)
@@ -1706,8 +1718,10 @@ struct StudioView: View {
 
     private func shortcutActionButtons(
         isDefault: Bool,
+        isUnset: Bool,
         onStart: @escaping () -> Void,
         onReset: @escaping () -> Void,
+        onUnset: @escaping () -> Void,
     ) -> some View {
         HStack(spacing: StudioTheme.Spacing.small) {
             StudioButton(
@@ -1726,18 +1740,31 @@ struct StudioView: View {
 
             StudioButton(
                 title: L("common.reset"), systemImage: "arrow.counterclockwise",
-                variant: .secondary, isDisabled: isDefault,
+                variant: .secondary, isDisabled: isDefault || isUnset,
             ) {
                 onReset()
+            }
+
+            StudioButton(
+                title: L("settings.shortcuts.unset"), systemImage: "xmark.circle",
+                variant: .secondary, isDisabled: isUnset,
+            ) {
+                onUnset()
             }
         }
     }
 
-    private func shortcutPill(_ binding: HotkeyBinding, accentSymbol _: String) -> some View {
-        HStack(spacing: StudioTheme.Spacing.xxxSmall) {
-            ForEach(HotkeyFormat.components(binding), id: \.self) { key in
-                shortcutKeycap(key)
+    @ViewBuilder
+    private func shortcutPill(_ binding: HotkeyBinding?, accentSymbol _: String) -> some View {
+        if let binding {
+            HStack(spacing: StudioTheme.Spacing.xxxSmall) {
+                ForEach(HotkeyFormat.components(binding), id: \.self) { key in
+                    shortcutKeycap(key)
+                }
             }
+        } else {
+            shortcutKeycap(L("settings.shortcuts.none"))
+                .opacity(0.5)
         }
     }
 

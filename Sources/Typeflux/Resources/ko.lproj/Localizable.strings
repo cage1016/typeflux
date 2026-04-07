@@ -385,10 +385,15 @@
 "settings.shortcuts.stopRecording" = "녹음 중지";
 "settings.shortcuts.activationConflict" = "음성 입력 바로가기는 무엇이든 물어보세요 또는 페르소나 바로가기와 일치할 수 없습니다.";
 "settings.shortcuts.activationUpdated" = "음성 입력 단축키가 업데이트되었습니다.";
+"settings.shortcuts.activationUnset" = "음성 입력 단축키가 삭제되었습니다.";
 "settings.shortcuts.askConflict" = "무엇이든 물어보세요 단축키는 음성 입력 또는 페르소나 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.askUpdated" = "무엇이든 물어보세요 바로가기가 업데이트되었습니다.";
+"settings.shortcuts.askUnset" = "무엇이든 물어보세요 단축키가 삭제되었습니다.";
 "settings.shortcuts.personaConflict" = "페르소나 단축키는 음성 입력 또는 무엇이든 물어보세요 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.personaUpdated" = "페르소나 바로가기가 업데이트되었습니다.";
+"settings.shortcuts.personaUnset" = "페르소나 단축키가 삭제되었습니다.";
+"settings.shortcuts.unset" = "해제";
+"settings.shortcuts.none" = "없음";
 
 "settings.audio.microphone.unavailable" = "선택한 마이크를 사용할 수 없습니다. 자동으로 전환되었습니다.";
 "settings.permissions.updated" = "권한 상태가 업데이트되었습니다.";

@@ -449,8 +449,9 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "hotkey.activation.json") }
     }
 
-    var activationHotkey: HotkeyBinding {
+    var activationHotkey: HotkeyBinding? {
         get {
+            if activationHotkeyJSON == "__unset__" { return nil }
             if let migrated = legacyActivationHotkey {
                 return migrated
             }
@@ -463,8 +464,12 @@ final class SettingsStore {
             return (try? JSONDecoder().decode(HotkeyBinding.self, from: data)) ?? .defaultActivation
         }
         set {
-            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
-            activationHotkeyJSON = String(decoding: data, as: UTF8.self)
+            if let newValue {
+                let data = (try? JSONEncoder().encode(newValue)) ?? Data()
+                activationHotkeyJSON = String(decoding: data, as: UTF8.self)
+            } else {
+                activationHotkeyJSON = "__unset__"
+            }
             defaults.removeObject(forKey: "hotkey.custom.json")
         }
     }
@@ -474,8 +479,9 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "hotkey.ask.json") }
     }
 
-    var askHotkey: HotkeyBinding {
+    var askHotkey: HotkeyBinding? {
         get {
+            if askHotkeyJSON == "__unset__" { return nil }
             guard let data = askHotkeyJSON.data(using: .utf8), !askHotkeyJSON.isEmpty else {
                 return .defaultAsk
             }
@@ -483,8 +489,12 @@ final class SettingsStore {
             return (try? JSONDecoder().decode(HotkeyBinding.self, from: data)) ?? .defaultAsk
         }
         set {
-            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
-            askHotkeyJSON = String(decoding: data, as: UTF8.self)
+            if let newValue {
+                let data = (try? JSONEncoder().encode(newValue)) ?? Data()
+                askHotkeyJSON = String(decoding: data, as: UTF8.self)
+            } else {
+                askHotkeyJSON = "__unset__"
+            }
         }
     }
 
@@ -493,8 +503,9 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "hotkey.persona.json") }
     }
 
-    var personaHotkey: HotkeyBinding {
+    var personaHotkey: HotkeyBinding? {
         get {
+            if personaHotkeyJSON == "__unset__" { return nil }
             guard let data = personaHotkeyJSON.data(using: .utf8), !personaHotkeyJSON.isEmpty else {
                 return .defaultPersona
             }
@@ -502,8 +513,12 @@ final class SettingsStore {
             return (try? JSONDecoder().decode(HotkeyBinding.self, from: data)) ?? .defaultPersona
         }
         set {
-            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
-            personaHotkeyJSON = String(decoding: data, as: UTF8.self)
+            if let newValue {
+                let data = (try? JSONEncoder().encode(newValue)) ?? Data()
+                personaHotkeyJSON = String(decoding: data, as: UTF8.self)
+            } else {
+                personaHotkeyJSON = "__unset__"
+            }
         }
     }
 

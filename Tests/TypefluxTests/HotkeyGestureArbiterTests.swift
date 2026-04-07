@@ -299,4 +299,72 @@ extension HotkeyGestureArbiterTests {
             XCTAssertFalse(desc.isEmpty)
         }
     }
+
+    // MARK: - Unset (nil) hotkey behavior
+
+    func testNilActivationHotkeyDoesNotFireOnFlagsChanged() {
+        var arbiter = HotkeyGestureArbiter()
+        let events = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: nil,
+            askHotkey: ask,
+        )
+        XCTAssertTrue(events.isEmpty)
+        XCTAssertFalse(arbiter.hasPendingModifierActivation)
+    }
+
+    func testNilActivationHotkeyDoesNotConsumeOnFlagsChanged() {
+        let arbiter = HotkeyGestureArbiter()
+        let shouldConsume = arbiter.shouldConsume(
+            eventType: .flagsChanged,
+            keyCode: activation.keyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: nil,
+            askHotkey: ask,
+            personaHotkey: persona,
+        )
+        XCTAssertFalse(shouldConsume)
+    }
+
+    func testNilAskHotkeyDoesNotFireOnKeyDown() {
+        var arbiter = HotkeyGestureArbiter()
+        let events = arbiter.handleKeyDown(
+            keyCode: ask.keyCode,
+            modifierFlags: ask.modifierFlags,
+            isRepeat: false,
+            activationHotkey: activation,
+            askHotkey: nil,
+            personaHotkey: persona,
+        )
+        XCTAssertTrue(events.isEmpty)
+    }
+
+    func testNilPersonaHotkeyDoesNotFirePersonaRequested() {
+        var arbiter = HotkeyGestureArbiter()
+        let events = arbiter.handleKeyDown(
+            keyCode: persona.keyCode,
+            modifierFlags: persona.modifierFlags,
+            isRepeat: false,
+            activationHotkey: activation,
+            askHotkey: ask,
+            personaHotkey: nil,
+        )
+        XCTAssertFalse(events.contains(.personaRequested))
+    }
+
+    func testAllNilHotkeysNeverConsume() {
+        let arbiter = HotkeyGestureArbiter()
+        for eventType in [HotkeyPhysicalEventType.keyDown, .keyUp, .flagsChanged] {
+            let shouldConsume = arbiter.shouldConsume(
+                eventType: eventType,
+                keyCode: activation.keyCode,
+                modifierFlags: activation.modifierFlags,
+                activationHotkey: nil,
+                askHotkey: nil,
+                personaHotkey: nil,
+            )
+            XCTAssertFalse(shouldConsume, "Should not consume \(eventType) when all hotkeys are nil")
+        }
+    }
 }

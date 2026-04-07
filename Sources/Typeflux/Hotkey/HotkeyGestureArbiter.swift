@@ -30,29 +30,32 @@ struct HotkeyGestureArbiter {
         eventType: HotkeyPhysicalEventType,
         keyCode: Int,
         modifierFlags: UInt,
-        activationHotkey: HotkeyBinding,
-        askHotkey: HotkeyBinding,
-        personaHotkey: HotkeyBinding,
+        activationHotkey: HotkeyBinding?,
+        askHotkey: HotkeyBinding?,
+        personaHotkey: HotkeyBinding?,
     ) -> Bool {
         switch eventType {
         case .flagsChanged:
+            guard let activationHotkey else { return false }
             return activationHotkey.isModifierOnlyTrigger && keyCode == activationHotkey.keyCode
         case .keyDown:
-            if askHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
+            if let askHotkey, askHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
                 return true
             }
-            if !activationHotkey.isModifierOnlyTrigger,
+            if let activationHotkey,
+               !activationHotkey.isModifierOnlyTrigger,
                activationHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags)
             {
                 return true
             }
-            if personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
+            if let personaHotkey, personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
                 return true
             }
-            if case .active(.ask) = phase, askHotkey.keyCode == keyCode {
+            if case .active(.ask) = phase, let askHotkey, askHotkey.keyCode == keyCode {
                 return true
             }
             if case .active(.activation) = phase,
+               let activationHotkey,
                !activationHotkey.isModifierOnlyTrigger,
                activationHotkey.keyCode == keyCode
             {
@@ -60,10 +63,11 @@ struct HotkeyGestureArbiter {
             }
             return false
         case .keyUp:
-            if case .active(.ask) = phase, askHotkey.keyCode == keyCode {
+            if case .active(.ask) = phase, let askHotkey, askHotkey.keyCode == keyCode {
                 return true
             }
             if case .active(.activation) = phase,
+               let activationHotkey,
                !activationHotkey.isModifierOnlyTrigger,
                activationHotkey.keyCode == keyCode
             {
@@ -77,19 +81,20 @@ struct HotkeyGestureArbiter {
         keyCode: Int,
         modifierFlags: UInt,
         isRepeat: Bool,
-        activationHotkey: HotkeyBinding,
-        askHotkey: HotkeyBinding,
-        personaHotkey: HotkeyBinding,
+        activationHotkey: HotkeyBinding?,
+        askHotkey: HotkeyBinding?,
+        personaHotkey: HotkeyBinding?,
     ) -> [HotkeyGestureEvent] {
         guard !isRepeat else { return [] }
 
-        if askHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
+        if let askHotkey, askHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
             guard phase == .idle || phase == .pendingModifierActivation else { return [] }
             phase = .active(.ask)
             return [.begin(.ask)]
         }
 
-        if !activationHotkey.isModifierOnlyTrigger,
+        if let activationHotkey,
+           !activationHotkey.isModifierOnlyTrigger,
            activationHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags),
            phase == .idle
         {
@@ -97,7 +102,7 @@ struct HotkeyGestureArbiter {
             return [.begin(.activation)]
         }
 
-        if personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
+        if let personaHotkey, personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
             return [.personaRequested]
         }
 
@@ -106,17 +111,18 @@ struct HotkeyGestureArbiter {
 
     mutating func handleKeyUp(
         keyCode: Int,
-        activationHotkey: HotkeyBinding,
-        askHotkey: HotkeyBinding,
+        activationHotkey: HotkeyBinding?,
+        askHotkey: HotkeyBinding?,
     ) -> [HotkeyGestureEvent] {
         switch phase {
         case .active(.activation):
+            guard let activationHotkey else { return [] }
             guard !activationHotkey.isModifierOnlyTrigger else { return [] }
             guard activationHotkey.keyCode == keyCode else { return [] }
             phase = .idle
             return [.end(.activation)]
         case .active(.ask):
-            guard askHotkey.keyCode == keyCode else { return [] }
+            guard let askHotkey, askHotkey.keyCode == keyCode else { return [] }
             phase = .idle
             return [.end(.ask)]
         default:
@@ -127,9 +133,10 @@ struct HotkeyGestureArbiter {
     mutating func handleFlagsChanged(
         keyCode: Int,
         modifierFlags: UInt,
-        activationHotkey: HotkeyBinding,
-        askHotkey: HotkeyBinding,
+        activationHotkey: HotkeyBinding?,
+        askHotkey: HotkeyBinding?,
     ) -> [HotkeyGestureEvent] {
+        guard let activationHotkey else { return [] }
         guard activationHotkey.isModifierOnlyTrigger else { return [] }
 
         let isActivationModifierEvent = keyCode == activationHotkey.keyCode
@@ -167,9 +174,10 @@ struct HotkeyGestureArbiter {
 
     private func shouldDeferModifierActivation(
         activationHotkey: HotkeyBinding,
-        askHotkey: HotkeyBinding,
+        askHotkey: HotkeyBinding?,
     ) -> Bool {
-        activationHotkey.isModifierOnlyTrigger
+        guard let askHotkey else { return false }
+        return activationHotkey.isModifierOnlyTrigger
             && askHotkey.modifierFlags == activationHotkey.modifierFlags
             && askHotkey.keyCode != activationHotkey.keyCode
     }

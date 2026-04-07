@@ -387,10 +387,15 @@
 "settings.shortcuts.stopRecording" = "Stop Recording";
 "settings.shortcuts.activationConflict" = "Voice input shortcut cannot match the Ask Anything or persona shortcut.";
 "settings.shortcuts.activationUpdated" = "Voice input shortcut updated.";
+"settings.shortcuts.activationUnset" = "Voice input shortcut cleared.";
 "settings.shortcuts.askConflict" = "Ask Anything shortcut cannot match the voice input or persona shortcut.";
 "settings.shortcuts.askUpdated" = "Ask Anything shortcut updated.";
+"settings.shortcuts.askUnset" = "Ask Anything shortcut cleared.";
 "settings.shortcuts.personaConflict" = "Persona shortcut cannot match the voice input or Ask Anything shortcut.";
 "settings.shortcuts.personaUpdated" = "Persona shortcut updated.";
+"settings.shortcuts.personaUnset" = "Persona shortcut cleared.";
+"settings.shortcuts.unset" = "Unset";
+"settings.shortcuts.none" = "None";
 
 "settings.audio.microphone.unavailable" = "Selected microphone is unavailable. Switched to automatic.";
 "settings.permissions.updated" = "Permission status updated.";

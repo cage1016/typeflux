@@ -134,9 +134,9 @@ final class StudioViewModel: ObservableObject {
     @Published var vocabularyEntries: [VocabularyEntry]
 
     @Published var launchAtLogin: Bool
-    @Published var activationHotkey: HotkeyBinding
-    @Published var askHotkey: HotkeyBinding
-    @Published var personaHotkey: HotkeyBinding
+    @Published var activationHotkey: HotkeyBinding?
+    @Published var askHotkey: HotkeyBinding?
+    @Published var personaHotkey: HotkeyBinding?
     @Published var historyRetentionPolicy: HistoryRetentionPolicy
     @Published private(set) var historyRecords: [HistoryRecord]
     @Published var toastMessage: String?
@@ -1244,9 +1244,11 @@ final class StudioViewModel: ObservableObject {
     }
 
     func setActivationHotkey(_ binding: HotkeyBinding) {
-        guard binding.signature != personaHotkey.signature,
-              binding.signature != askHotkey.signature
-        else {
+        if let personaHotkey, binding.signature == personaHotkey.signature {
+            showToast(L("settings.shortcuts.activationConflict"))
+            return
+        }
+        if let askHotkey, binding.signature == askHotkey.signature {
             showToast(L("settings.shortcuts.activationConflict"))
             return
         }
@@ -1260,10 +1262,18 @@ final class StudioViewModel: ObservableObject {
         setActivationHotkey(.defaultActivation)
     }
 
+    func unsetActivationHotkey() {
+        activationHotkey = nil
+        settingsStore.activationHotkey = nil
+        showToast(L("settings.shortcuts.activationUnset"))
+    }
+
     func setAskHotkey(_ binding: HotkeyBinding) {
-        guard binding.signature != activationHotkey.signature,
-              binding.signature != personaHotkey.signature
-        else {
+        if let activationHotkey, binding.signature == activationHotkey.signature {
+            showToast(L("settings.shortcuts.askConflict"))
+            return
+        }
+        if let personaHotkey, binding.signature == personaHotkey.signature {
             showToast(L("settings.shortcuts.askConflict"))
             return
         }
@@ -1277,10 +1287,18 @@ final class StudioViewModel: ObservableObject {
         setAskHotkey(.defaultAsk)
     }
 
+    func unsetAskHotkey() {
+        askHotkey = nil
+        settingsStore.askHotkey = nil
+        showToast(L("settings.shortcuts.askUnset"))
+    }
+
     func setPersonaHotkey(_ binding: HotkeyBinding) {
-        guard binding.signature != activationHotkey.signature,
-              binding.signature != askHotkey.signature
-        else {
+        if let activationHotkey, binding.signature == activationHotkey.signature {
+            showToast(L("settings.shortcuts.personaConflict"))
+            return
+        }
+        if let askHotkey, binding.signature == askHotkey.signature {
             showToast(L("settings.shortcuts.personaConflict"))
             return
         }
@@ -1292,6 +1310,12 @@ final class StudioViewModel: ObservableObject {
 
     func resetPersonaHotkey() {
         setPersonaHotkey(.defaultPersona)
+    }
+
+    func unsetPersonaHotkey() {
+        personaHotkey = nil
+        settingsStore.personaHotkey = nil
+        showToast(L("settings.shortcuts.personaUnset"))
     }
 
     func applyPersonaSelection(_ id: UUID?) {

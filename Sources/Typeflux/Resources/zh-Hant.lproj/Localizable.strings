@@ -385,10 +385,15 @@
 "settings.shortcuts.stopRecording" = "停止錄製";
 "settings.shortcuts.activationConflict" = "語音輸入快捷鍵不能與「隨便問」或人設快捷鍵相同。";
 "settings.shortcuts.activationUpdated" = "語音輸入快捷鍵已更新。";
+"settings.shortcuts.activationUnset" = "語音輸入快捷鍵已清除。";
 "settings.shortcuts.askConflict" = "「隨便問」快捷鍵不能與語音輸入或人設快捷鍵相同。";
 "settings.shortcuts.askUpdated" = "「隨便問」快捷鍵已更新。";
+"settings.shortcuts.askUnset" = "「隨便問」快捷鍵已清除。";
 "settings.shortcuts.personaConflict" = "人設快捷鍵不能與語音輸入或「隨便問」快捷鍵相同。";
 "settings.shortcuts.personaUpdated" = "人設快捷鍵已更新。";
+"settings.shortcuts.personaUnset" = "人設快捷鍵已清除。";
+"settings.shortcuts.unset" = "取消設定";
+"settings.shortcuts.none" = "未設定";
 
 "settings.audio.microphone.unavailable" = "所選麥克風不可用，已切換為自動。";
 "settings.permissions.updated" = "權限狀態已更新。";
