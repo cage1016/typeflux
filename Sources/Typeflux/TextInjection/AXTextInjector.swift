@@ -206,6 +206,7 @@ final class AXTextInjector: TextInjector {
             return TextSelectionSnapshot(
                 processID: frontmostProcessID(),
                 processName: frontmostApplicationName(),
+                bundleIdentifier: frontmostApplicationBundleIdentifier(),
                 selectedRange: nil,
                 selectedText: nil,
                 source: "unavailable",
@@ -218,6 +219,7 @@ final class AXTextInjector: TextInjector {
 
         let processID = frontmostProcessID()
         let processName = frontmostApplicationName()
+        let bundleIdentifier = frontmostApplicationBundleIdentifier()
         logger.debug("getSelectionSnapshot — app: \(processName ?? "?", privacy: .public) (pid: \(processID.map(String.init) ?? "?", privacy: .public))")
 
         if let result = readSelectedTextWithTimeout(milliseconds: Self.selectedTextTimeoutMilliseconds) {
@@ -229,6 +231,7 @@ final class AXTextInjector: TextInjector {
             return TextSelectionSnapshot(
                 processID: result.context.processID,
                 processName: result.context.processName,
+                bundleIdentifier: bundleIdentifier,
                 selectedRange: result.context.range,
                 selectedText: result.text.trimmingCharacters(in: .whitespacesAndNewlines),
                 source: result.context.source,
@@ -271,6 +274,7 @@ final class AXTextInjector: TextInjector {
             return TextSelectionSnapshot(
                 processID: processID,
                 processName: processName,
+                bundleIdentifier: bundleIdentifier,
                 selectedRange: nil,
                 selectedText: copiedText,
                 source: "clipboard-copy",
@@ -288,6 +292,7 @@ final class AXTextInjector: TextInjector {
         return TextSelectionSnapshot(
             processID: processID,
             processName: processName,
+            bundleIdentifier: bundleIdentifier,
             selectedRange: nil,
             selectedText: nil,
             source: "none",

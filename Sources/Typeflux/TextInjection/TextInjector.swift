@@ -3,6 +3,7 @@ import Foundation
 struct TextSelectionSnapshot {
     var processID: pid_t?
     var processName: String?
+    var bundleIdentifier: String? = nil
     var selectedRange: CFRange?
     var selectedText: String?
     var source: String = "none"

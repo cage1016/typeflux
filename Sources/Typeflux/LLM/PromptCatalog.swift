@@ -69,6 +69,27 @@ enum PromptCatalog {
         return "\(trimmedPrompt)\n\n\(environmentContext)"
     }
 
+    /// Returns additional system prompt content tailored to the current app context.
+    /// Called during system prompt assembly so that app-specific optimizations can be
+    /// injected at the end of the system prompt. Returns an empty string until
+    /// business logic is implemented.
+    /// - Parameter context: Environment info captured at the time of the LLM request.
+    static func appSpecificSystemContext(_ context: AppSystemContext) -> String {
+        NetworkDebugLogger.logMessage(
+            """
+            [AppSystemContext]
+            bundleIdentifier: \(context.bundleIdentifier ?? "<nil>")
+            appName: \(context.appName ?? "<nil>")
+            role: \(context.role ?? "<nil>")
+            windowTitle: \(context.windowTitle ?? "<nil>")
+            isEditable: \(context.isEditable)
+            isFocusedTarget: \(context.isFocusedTarget)
+            selectedText(\(context.selectedText?.count ?? 0)): \(context.selectedText.map { String($0.prefix(80)) } ?? "<nil>")
+            """,
+        )
+        return ""
+    }
+
     /// Builds the system prompt for a multimodal LLM transcription call.
     /// When a persona is provided, the model transcribes AND rewrites in one shot.
     /// Otherwise, it acts as a high-quality transcription engine with vocabulary hints.

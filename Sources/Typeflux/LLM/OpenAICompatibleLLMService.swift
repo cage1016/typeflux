@@ -168,10 +168,16 @@ final class OpenAICompatibleLLMService: LLMService {
         )
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: prompts.system,
             appLanguage: settingsStore.appLanguage,
         )
+        if let appContext = rewriteRequest.appSystemContext {
+            let extra = PromptCatalog.appSpecificSystemContext(appContext)
+            if !extra.isEmpty {
+                effectiveSystemPrompt += "\n\n\(extra)"
+            }
+        }
 
         let final = try await RemoteLLMClient.streamRewrite(
             provider: connection.provider,

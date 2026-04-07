@@ -945,6 +945,7 @@ extension WorkflowController {
                     sourceText: transcribedText,
                     spokenInstruction: nil,
                     personaPrompt: personaPrompt,
+                    appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
                 ),
                 sessionID: sessionID,
                 timeout: Self.llmTimeoutAfterTranscriptionSeconds,

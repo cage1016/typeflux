@@ -132,6 +132,7 @@ extension WorkflowController {
                         sourceText: context.selectedText,
                         spokenInstruction: nil,
                         personaPrompt: personaPrompt,
+                        appSystemContext: AppSystemContext(snapshot: context.snapshot),
                     ),
                     sessionID: sessionID,
                     showsStreamingPreview: !shouldShowResultDialog,

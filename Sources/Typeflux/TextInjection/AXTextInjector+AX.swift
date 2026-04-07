@@ -93,6 +93,10 @@ extension AXTextInjector {
         NSWorkspace.shared.frontmostApplication?.localizedName
     }
 
+    func frontmostApplicationBundleIdentifier() -> String? {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+
     func copyBooleanAttribute(_ attribute: String, from element: AXUIElement) -> Bool? {
         var value: AnyObject?
         let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)

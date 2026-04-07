@@ -124,10 +124,16 @@ final class OllamaLLMService: LLMService {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let prompts = PromptCatalog.rewritePrompts(for: request)
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: prompts.system,
             appLanguage: settingsStore.appLanguage,
         )
+        if let appContext = request.appSystemContext {
+            let extra = PromptCatalog.appSpecificSystemContext(appContext)
+            if !extra.isEmpty {
+                effectiveSystemPrompt += "\n\n\(extra)"
+            }
+        }
         let body: [String: Any] = [
             "model": settingsStore.ollamaModel,
             "stream": true,
