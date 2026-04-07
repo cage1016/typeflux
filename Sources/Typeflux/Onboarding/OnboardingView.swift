@@ -1426,16 +1426,16 @@ struct OnboardingView: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.black.opacity(0.55)),
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(red: 0.125, green: 0.128, blue: 0.145).opacity(0.96)),
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.07), lineWidth: 1),
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1),
         )
-        .shadow(color: .black.opacity(0.3), radius: 18, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.22), radius: 16, x: 0, y: 8)
     }
 
     private func footerPrimaryButton(title: String, action: @escaping () -> Void) -> some View {
@@ -1447,20 +1447,17 @@ struct OnboardingView: View {
                 Image(systemName: viewModel.isLastStep ? "arrow.right" : "arrow.right")
                     .font(.system(size: 12, weight: .bold))
             }
-            .foregroundStyle(Color.black.opacity(0.76))
-            .padding(.horizontal, 22)
-            .frame(height: 42)
+            .foregroundStyle(Color.white.opacity(0.98))
+            .padding(.horizontal, 24)
+            .frame(height: 44)
             .background(
                 Capsule(style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.67, green: 0.79, blue: 1.0), StudioTheme.accent],
-                            startPoint: .leading,
-                            endPoint: .trailing,
-                        ),
-                    ),
+                    .fill(StudioTheme.accent),
             )
-            .shadow(color: StudioTheme.accent.opacity(0.32), radius: 18, x: 0, y: 8)
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1),
+            )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
     }
@@ -1473,9 +1470,17 @@ struct OnboardingView: View {
                 Text(title)
                     .font(.studioBody(12, weight: .semibold))
             }
-            .foregroundStyle(Color.white.opacity(0.44))
-            .frame(height: 36)
-            .padding(.horizontal, 12)
+            .foregroundStyle(Color.white.opacity(0.82))
+            .frame(height: 38)
+            .padding(.horizontal, 14)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.05)),
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(Color.white.opacity(0.05), lineWidth: 1),
+            )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
     }
@@ -1485,8 +1490,8 @@ struct OnboardingView: View {
             Text(title.uppercased())
                 .font(.studioBody(11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(Color.white.opacity(0.22))
-                .frame(height: 36)
+                .foregroundStyle(Color.white.opacity(0.56))
+                .frame(height: 38)
                 .padding(.horizontal, 10)
         }
         .buttonStyle(StudioInteractiveButtonStyle())
