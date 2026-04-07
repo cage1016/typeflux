@@ -19,10 +19,16 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             model: llmConfig.model,
             apiKey: llmConfig.apiKey,
         )
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: request.systemPrompt,
             appLanguage: settingsStore.appLanguage,
         )
+        if let appContext = request.appSystemContext {
+            let extra = PromptCatalog.appSpecificSystemContext(appContext)
+            if !extra.isEmpty {
+                effectiveSystemPrompt += "\n\n\(extra)"
+            }
+        }
 
         return try await RequestRetry.perform(operationName: "LLM agent tool call") {
             try await RemoteAgentClient.runTool(
@@ -56,10 +62,16 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             model: llmConfig.model,
             apiKey: llmConfig.apiKey,
         )
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: request.systemPrompt,
             appLanguage: settingsStore.appLanguage,
         )
+        if let appContext = request.appSystemContext {
+            let extra = PromptCatalog.appSpecificSystemContext(appContext)
+            if !extra.isEmpty {
+                effectiveSystemPrompt += "\n\n\(extra)"
+            }
+        }
 
         return try await RequestRetry.perform(operationName: "LLM phase 1 router call") {
             try await RemoteAgentClient.runAnyTool(

@@ -85,6 +85,7 @@ extension WorkflowController {
         spokenInstruction: String,
         personaPrompt: String?,
         editableTarget: Bool?,
+        appSystemContext: AppSystemContext? = nil,
         sessionID: UUID,
     ) async throws -> AskSelectionDecisionResult {
         NetworkDebugLogger.logMessage(
@@ -108,6 +109,7 @@ extension WorkflowController {
                     userPrompt: prompts.user,
                     tools: [AskSelectionDecision.tool],
                     forcedToolName: AskSelectionDecision.tool.name,
+                    appSystemContext: appSystemContext,
                 ),
                 decoding: AskSelectionDecision.self,
             )
@@ -710,6 +712,7 @@ extension WorkflowController {
             spokenInstruction: transcribedText,
             personaPrompt: personaPrompt,
             editableTarget: askEditableTargetContext(for: selectionSnapshot),
+            appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
             sessionID: sessionID,
         )
         try await applyLegacyAskDecision(
@@ -736,6 +739,7 @@ extension WorkflowController {
             selectedText: askContextText,
             spokenInstruction: transcribedText,
             personaPrompt: personaPrompt,
+            appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
         )
         try ensureProcessingIsActive(sessionID)
         pipelineTiming.llmProcessingCompletedAt = Date()
@@ -831,6 +835,7 @@ extension WorkflowController {
                 selectedText: nil,
                 spokenInstruction: transcribedText,
                 personaPrompt: personaPrompt,
+                appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
             )
             try ensureProcessingIsActive(sessionID)
             pipelineTiming.llmProcessingCompletedAt = Date()
@@ -887,6 +892,7 @@ extension WorkflowController {
             spokenInstruction: transcribedText,
             personaPrompt: personaPrompt,
             editableTarget: askEditableTargetContext(for: selectionSnapshot),
+            appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
             sessionID: sessionID,
         )
         try await applyLegacyAskDecision(

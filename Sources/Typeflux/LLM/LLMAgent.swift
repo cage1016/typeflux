@@ -11,17 +11,20 @@ struct LLMAgentRequest: Sendable {
     let userPrompt: String
     let tools: [LLMAgentTool]
     let forcedToolName: String?
+    let appSystemContext: AppSystemContext?
 
     init(
         systemPrompt: String,
         userPrompt: String,
         tools: [LLMAgentTool],
         forcedToolName: String? = nil,
+        appSystemContext: AppSystemContext? = nil,
     ) {
         self.systemPrompt = systemPrompt
         self.userPrompt = userPrompt
         self.tools = tools
         self.forcedToolName = forcedToolName
+        self.appSystemContext = appSystemContext
     }
 }
 

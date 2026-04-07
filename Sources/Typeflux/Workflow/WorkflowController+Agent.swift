@@ -33,6 +33,7 @@ extension WorkflowController {
         selectedText: String?,
         spokenInstruction: String,
         personaPrompt: String?,
+        appSystemContext: AppSystemContext? = nil,
     ) async throws -> AskAgentResult {
         let llmService = OpenAICompatibleAgentService(settingsStore: settingsStore)
 
@@ -48,6 +49,7 @@ extension WorkflowController {
                 selectedText: selectedText,
                 spokenInstruction: spokenInstruction,
                 personaPrompt: personaPrompt,
+                appSystemContext: appSystemContext,
                 llmService: llmService,
             )
         } catch {
@@ -84,6 +86,7 @@ extension WorkflowController {
                 spokenInstruction: spokenInstruction,
                 detailedInstruction: detailedInstruction,
                 personaPrompt: personaPrompt,
+                appSystemContext: appSystemContext,
                 llmService: llmService,
                 jobRecorder: jobRecorder,
             )
@@ -96,6 +99,7 @@ extension WorkflowController {
         selectedText: String?,
         spokenInstruction: String,
         personaPrompt: String?,
+        appSystemContext: AppSystemContext?,
         llmService: OpenAICompatibleAgentService,
     ) async throws -> Phase1RouterResult {
         let systemPrompt = PromptCatalog.appendUserEnvironmentContext(
@@ -114,6 +118,7 @@ extension WorkflowController {
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
                 tools: tools,
+                appSystemContext: appSystemContext,
             ),
         )
         let end = DispatchTime.now()
@@ -151,6 +156,7 @@ extension WorkflowController {
         spokenInstruction: String,
         detailedInstruction: String,
         personaPrompt: String?,
+        appSystemContext: AppSystemContext?,
         llmService: OpenAICompatibleAgentService,
         jobRecorder: AgentJobRecorder,
     ) async throws -> AskAgentResult {
@@ -182,10 +188,16 @@ extension WorkflowController {
         )
         await loop.setStepMonitor(jobRecorder)
 
-        let systemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var systemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: AgentPromptCatalog.agentSystemPrompt(personaPrompt: personaPrompt),
             appLanguage: settingsStore.appLanguage,
         )
+        if let appContext = appSystemContext {
+            let extra = PromptCatalog.appSpecificSystemContext(appContext)
+            if !extra.isEmpty {
+                systemPrompt += "\n\n\(extra)"
+            }
+        }
         let userPrompt = AgentPromptCatalog.agentUserPrompt(
             selectedText: selectedText,
             spokenInstruction: spokenInstruction,
