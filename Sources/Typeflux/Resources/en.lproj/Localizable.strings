@@ -111,6 +111,8 @@
 "about.developer" = "Developer";
 "about.developer.subtitle" = "Independent developer";
 "about.website" = "Website";
+"about.privacy" = "Privacy";
+"about.privacy.value" = "Privacy Policy";
 "about.project" = "Project";
 "about.project.subtitle" = "Source code, issues, and release history";
 "about.build" = "Build";

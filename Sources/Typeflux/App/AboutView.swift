@@ -7,6 +7,7 @@ struct AboutView: View {
 
     private let developerURL = URL(string: "https://gulu.ai")!
     private let websiteURL = URL(string: "https://typeflux.gulu.ai")!
+    private let privacyURL = URL(string: "https://typeflux.gulu.ai/privacy")!
     private let projectURL = URL(string: "https://github.com/mylxsw/typeflux")!
 
     var body: some View {
@@ -95,6 +96,16 @@ struct AboutView: View {
                 value: "typeflux.gulu.ai",
                 subtitle: websiteURL.absoluteString,
                 url: websiteURL,
+            )
+
+            divider
+
+            detailLinkRow(
+                icon: "hand.raised",
+                title: L("about.privacy"),
+                value: L("about.privacy.value"),
+                subtitle: privacyURL.absoluteString,
+                url: privacyURL,
             )
 
             divider

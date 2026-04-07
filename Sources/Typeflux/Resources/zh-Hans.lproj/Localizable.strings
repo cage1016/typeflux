@@ -111,6 +111,8 @@
 "about.developer" = "开发者";
 "about.developer.subtitle" = "独立开发者";
 "about.website" = "网站";
+"about.privacy" = "隐私";
+"about.privacy.value" = "隐私条款";
 "about.project" = "项目";
 "about.project.subtitle" = "源码、问题反馈与版本发布";
 "about.build" = "构建版本";
