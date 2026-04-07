@@ -910,33 +910,6 @@ struct StudioHistoryRow: View {
                         helpText: isExpanded ? L("common.collapse") : L("common.expand"),
                         action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } }
                     )
-
-                    Menu {
-                        if let onRetry {
-                            Button(L("common.retry"), systemImage: "arrow.clockwise", action: onRetry)
-                                .disabled(!record.canRetry)
-                        }
-                        if let onDownloadAudio {
-                            Button(L("history.action.downloadAudio"), systemImage: "arrow.down.circle", action: onDownloadAudio)
-                                .disabled(record.audioFilePath == nil)
-                        }
-                        Divider()
-                        if let onDelete {
-                            Button(L("history.action.deleteTranscript"), systemImage: "trash", role: .destructive, action: onDelete)
-                        }
-                    } label: {
-                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                            .fill(StudioTheme.surfaceMuted)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: "ellipsis")
-                                    .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
-                                    .foregroundStyle(StudioTheme.textSecondary),
-                            )
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
                 }
             }
 
@@ -960,6 +933,20 @@ struct StudioHistoryRow: View {
         .padding(.horizontal, StudioTheme.Insets.historyRowHorizontal)
         .padding(.vertical, StudioTheme.Insets.historyRowVertical)
         .background(StudioTheme.surface)
+        .contextMenu {
+            if let onRetry {
+                Button(L("common.retry"), systemImage: "arrow.clockwise", action: onRetry)
+                    .disabled(!record.canRetry)
+            }
+            if let onDownloadAudio {
+                Button(L("history.action.downloadAudio"), systemImage: "arrow.down.circle", action: onDownloadAudio)
+                    .disabled(record.audioFilePath == nil)
+            }
+            Divider()
+            if let onDelete {
+                Button(L("history.action.deleteTranscript"), systemImage: "trash", role: .destructive, action: onDelete)
+            }
+        }
     }
 
     private func historyIconButton(systemImage: String, helpText: String, action: @escaping () -> Void) -> some View {
