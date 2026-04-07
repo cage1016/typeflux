@@ -71,9 +71,16 @@ private enum AliCloudAudioConverter {
     static let targetSampleRate: Double = 16000
     /// 100ms of PCM16 at 16kHz mono: 16000 * 0.1 * 2 bytes = 3200
     static let chunkSize: Int = 3200
-    /// 1000ms of silence appended before finish-task so the server can finalize
-    /// the last sentence (max_sentence_silence is 800ms): 16000 * 1.0 * 2 bytes = 32000
-    static let trailingSilenceBytes: Int = 32000
+    /// 2000ms of silence appended before finish-task so the server can finalize
+    /// the last sentence. The server's max_sentence_silence is 800ms, so 2000ms
+    /// gives a generous margin for the server to emit sentence_end=true before
+    /// finish-task is received: 16000 * 2.0 * 2 bytes = 64000
+    static let trailingSilenceBytes: Int = 64000
+    /// After task-finished is received, wait this long before closing the connection
+    /// so the receive loop can drain any result-generated events the server sends
+    /// around the same time as task-finished (the server processes pre-recorded audio
+    /// faster than real-time and may emit the final sentence result just after it).
+    static let postTaskFinishedDrainDuration: Duration = .milliseconds(300)
 
     static func convert(url: URL) throws -> Data {
         let sourceFile = try AVAudioFile(forReading: url)
@@ -276,6 +283,13 @@ private actor AliCloudFunASRSession {
         try await sendJSON(finishTask, to: socketTask)
 
         try await waitForTaskFinished()
+
+        // Drain any result-generated events that the server may send around the
+        // same time as task-finished. Because pre-recorded audio is sent much
+        // faster than real-time, the server sometimes emits the final sentence
+        // result just after task-finished. Sleeping here releases the actor so
+        // the receive loop can process those buffered messages before we close.
+        try? await Task.sleep(for: AliCloudAudioConverter.postTaskFinishedDrainDuration)
 
         return composedText()
     }
@@ -567,6 +581,10 @@ private actor AliCloudQwenASRSession {
         try await sendJSON(["type": "session.finish"], to: socketTask)
 
         try await waitForSessionFinished()
+
+        // Same drain window as AliCloudFunASRSession: let the receive loop process
+        // any result events the server emits alongside session.finished.
+        try? await Task.sleep(for: AliCloudAudioConverter.postTaskFinishedDrainDuration)
 
         return accumulator.finalText()
     }
