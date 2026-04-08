@@ -12,6 +12,13 @@ final class OnboardingViewModel: ObservableObject {
         case shortcuts = 4
     }
 
+    enum ConnectionTestState: Equatable {
+        case idle
+        case testing
+        case success(totalMs: Int, preview: String)
+        case failure(message: String)
+    }
+
     static let orderedSteps: [Step] = [.language, .stt, .llm, .permissions, .shortcuts]
 
     @Published var currentStep: Step = .language
@@ -19,6 +26,12 @@ final class OnboardingViewModel: ObservableObject {
 
     /// Language
     @Published var appLanguage: AppLanguage
+
+    // Connection testing
+    @Published var sttConnectionTestState: ConnectionTestState = .idle
+    @Published var llmConnectionTestState: ConnectionTestState = .idle
+    private var sttTestTask: Task<Void, Never>?
+    private var llmTestTask: Task<Void, Never>?
 
     // STT Config
     @Published var sttProvider: STTProvider
@@ -162,6 +175,12 @@ final class OnboardingViewModel: ObservableObject {
 
     func selectOllama() {
         llmProvider = .ollama
+        llmConnectionTestState = .idle
+    }
+
+    func selectSTTProvider(_ provider: STTProvider) {
+        sttProvider = provider
+        sttConnectionTestState = .idle
     }
 
     func selectLLMRemoteProvider(_ provider: LLMRemoteProvider) {
@@ -170,6 +189,145 @@ final class OnboardingViewModel: ObservableObject {
         llmBaseURL = settingsStore.llmBaseURL(for: provider)
         llmAPIKey = settingsStore.llmAPIKey(for: provider)
         llmModel = settingsStore.llmModel(for: provider)
+        llmConnectionTestState = .idle
+    }
+
+    func testSTTConnection() {
+        sttTestTask?.cancel()
+        sttConnectionTestState = .testing
+
+        let provider = sttProvider
+        let baseURL = whisperBaseURL
+        let model = whisperModel
+        let apiKey = whisperAPIKey
+        let multimodalBaseURL = multimodalLLMBaseURL
+        let multimodalModel = multimodalLLMModel
+        let multimodalAPIKey = multimodalLLMAPIKey
+        let aliKey = aliCloudAPIKey
+        let doubaoID = doubaoAppID
+        let doubaoToken = doubaoAccessToken
+        let doubaoResource = doubaoResourceID
+        let groqKey = groqSTTAPIKey
+        let groqModel = groqSTTModel
+        let freeModel = freeSTTModel
+
+        sttTestTask = Task {
+            let start = Date()
+            do {
+                let preview: String
+                switch provider {
+                case .whisperAPI:
+                    preview = try await WhisperAPITranscriber.testConnection(
+                        baseURL: baseURL,
+                        model: model,
+                        apiKey: apiKey,
+                    )
+                case .multimodalLLM:
+                    preview = try await MultimodalLLMTranscriber.testConnection(
+                        baseURL: multimodalBaseURL,
+                        model: multimodalModel,
+                        apiKey: multimodalAPIKey,
+                    )
+                case .aliCloud:
+                    preview = try await AliCloudRealtimeTranscriber.testConnection(apiKey: aliKey)
+                case .doubaoRealtime:
+                    preview = try await DoubaoRealtimeTranscriber.testConnection(
+                        appID: doubaoID,
+                        accessToken: doubaoToken,
+                        resourceID: doubaoResource,
+                    )
+                case .groq:
+                    let effectiveModel = groqModel.isEmpty
+                        ? OpenAIAudioModelCatalog.groqWhisperModels[0] : groqModel
+                    preview = try await WhisperAPITranscriber.testConnection(
+                        baseURL: "https://api.groq.com/openai/v1",
+                        model: effectiveModel,
+                        apiKey: groqKey,
+                    )
+                case .freeModel:
+                    preview = try await FreeSTTTranscriber.testConnection(modelName: freeModel)
+                case .localModel, .appleSpeech:
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                let ms = Int(Date().timeIntervalSince(start) * 1000)
+                sttConnectionTestState = .success(totalMs: ms, preview: String(preview.prefix(120)))
+            } catch {
+                guard !Task.isCancelled else { return }
+                sttConnectionTestState = .failure(message: error.localizedDescription)
+            }
+        }
+    }
+
+    func testLLMConnection() {
+        llmTestTask?.cancel()
+        llmConnectionTestState = .testing
+
+        let provider = llmProvider
+        let remoteProvider = llmRemoteProvider
+        let baseURL = llmBaseURL
+        let model = llmModel
+        let apiKey = llmAPIKey
+        let ollamaURL = ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : ollamaBaseURL
+        let ollamaModel = ollamaModel
+
+        llmTestTask = Task {
+            let start = Date()
+            do {
+                let preview: String
+                if provider == .ollama {
+                    guard let base = URL(string: ollamaURL) else {
+                        throw NSError(
+                            domain: "LLMTest",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama URL."],
+                        )
+                    }
+                    let url = base.appendingPathComponent("api/chat")
+                    var req = URLRequest(url: url, timeoutInterval: 30)
+                    req.httpMethod = "POST"
+                    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    req.httpBody = try JSONSerialization.data(withJSONObject: [
+                        "model": ollamaModel,
+                        "stream": false,
+                        "messages": [["role": "user", "content": "Reply with exactly: ok"]],
+                        "options": ["num_predict": 10],
+                    ])
+                    let (data, response) = try await URLSession.shared.data(for: req)
+                    guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
+                        let msg = String(data: data, encoding: .utf8) ?? "Unknown error"
+                        throw NSError(domain: "LLMTest", code: -1,
+                                      userInfo: [NSLocalizedDescriptionKey: msg])
+                    }
+                    let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+                    let message = json?["message"] as? [String: Any]
+                    preview = (message?["content"] as? String) ?? ""
+                } else {
+                    let connection = try LLMConnectionResolver.resolve(
+                        provider: remoteProvider,
+                        baseURL: baseURL,
+                        model: model,
+                        apiKey: apiKey,
+                    )
+                    preview = try await RemoteLLMClient.previewConnection(
+                        provider: connection.provider,
+                        baseURL: connection.baseURL,
+                        model: connection.model,
+                        apiKey: connection.apiKey,
+                        additionalHeaders: connection.additionalHeaders,
+                    )
+                }
+                guard !Task.isCancelled else { return }
+                let ms = Int(Date().timeIntervalSince(start) * 1000)
+                llmConnectionTestState = .success(
+                    totalMs: ms,
+                    preview: String(preview.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+                )
+            } catch {
+                guard !Task.isCancelled else { return }
+                llmConnectionTestState = .failure(message: error.localizedDescription)
+            }
+        }
     }
 
     func setLanguage(_ language: AppLanguage) {

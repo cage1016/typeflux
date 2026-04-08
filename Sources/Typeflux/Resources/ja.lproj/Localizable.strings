@@ -611,6 +611,8 @@
 "onboarding.models.badge.apiKey" = "API キー";
 "onboarding.models.badge.local" = "ローカル";
 
+"onboarding.models.getAPIKey" = "APIキーを取得";
+
 "onboarding.sttProvider.subtitle" = "音声をテキストに変換するエンジンを選択してください";
 "onboarding.sttConfig.subtitle" = "資格情報と設定を構成する";
 "onboarding.llmProvider.subtitle" = "ディクテーションを書き直して改良するモデルを選択してください";

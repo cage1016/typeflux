@@ -271,7 +271,7 @@ struct OnboardingView: View {
                             isSelected: viewModel.sttProvider == provider,
                         ) {
                             withAnimation(.easeOut(duration: 0.18)) {
-                                viewModel.sttProvider = provider
+                                viewModel.selectSTTProvider(provider)
                             }
                         }
                     }
@@ -685,6 +685,37 @@ struct OnboardingView: View {
                     }
                 }
             }
+
+            if sttProviderSupportsTest(viewModel.sttProvider) {
+                HStack(spacing: 12) {
+                    StudioButton(
+                        title: viewModel.sttConnectionTestState == .testing
+                            ? L("settings.models.testingConnection") : L("settings.models.testConnection"),
+                        systemImage: viewModel.sttConnectionTestState == .testing ? nil : "network",
+                        variant: .secondary,
+                        isDisabled: viewModel.sttConnectionTestState == .testing,
+                        isLoading: viewModel.sttConnectionTestState == .testing,
+                    ) {
+                        viewModel.testSTTConnection()
+                    }
+
+                    if let url = sttProviderAPIKeyURL(viewModel.sttProvider) {
+                        Link(destination: url) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "key")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(L("onboarding.models.getAPIKey"))
+                                    .font(.studioBody(12, weight: .semibold))
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundStyle(StudioTheme.accent)
+                        }
+                    }
+                }
+
+                connectionTestResultView(viewModel.sttConnectionTestState)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -715,6 +746,39 @@ struct OnboardingView: View {
                     llmRemoteConfigFields
                 }
             }
+
+            if viewModel.llmProvider == .ollama || viewModel.llmRemoteProvider != .freeModel {
+                HStack(spacing: 12) {
+                    StudioButton(
+                        title: viewModel.llmConnectionTestState == .testing
+                            ? L("settings.models.testingConnection") : L("settings.models.testConnection"),
+                        systemImage: viewModel.llmConnectionTestState == .testing ? nil : "network",
+                        variant: .secondary,
+                        isDisabled: viewModel.llmConnectionTestState == .testing,
+                        isLoading: viewModel.llmConnectionTestState == .testing,
+                    ) {
+                        viewModel.testLLMConnection()
+                    }
+
+                    if let url = llmProviderAPIKeyURL(viewModel.llmRemoteProvider) {
+                        if viewModel.llmProvider != .ollama {
+                            Link(destination: url) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "key")
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text(L("onboarding.models.getAPIKey"))
+                                        .font(.studioBody(12, weight: .semibold))
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.system(size: 10, weight: .semibold))
+                                }
+                                .foregroundStyle(StudioTheme.accent)
+                            }
+                        }
+                    }
+                }
+
+                connectionTestResultView(viewModel.llmConnectionTestState)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -725,6 +789,109 @@ struct OnboardingView: View {
             false
         default:
             true
+        }
+    }
+
+    private func sttProviderSupportsTest(_ provider: STTProvider) -> Bool {
+        switch provider {
+        case .whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime, .groq, .freeModel:
+            true
+        case .localModel, .appleSpeech:
+            false
+        }
+    }
+
+    private func sttProviderAPIKeyURL(_ provider: STTProvider) -> URL? {
+        switch provider {
+        case .whisperAPI:
+            URL(string: "https://platform.openai.com/api-keys")
+        case .groq:
+            URL(string: "https://console.groq.com/keys")
+        case .aliCloud:
+            URL(string: "https://bailian.console.aliyun.com/")
+        case .doubaoRealtime:
+            URL(string: "https://console.volcengine.com/speech/service/asr")
+        case .multimodalLLM:
+            URL(string: "https://platform.openai.com/api-keys")
+        case .freeModel, .localModel, .appleSpeech:
+            nil
+        }
+    }
+
+    private func llmProviderAPIKeyURL(_ provider: LLMRemoteProvider) -> URL? {
+        switch provider {
+        case .openAI:
+            URL(string: "https://platform.openai.com/api-keys")
+        case .anthropic:
+            URL(string: "https://console.anthropic.com/settings/keys")
+        case .gemini:
+            URL(string: "https://aistudio.google.com/apikey")
+        case .deepSeek:
+            URL(string: "https://platform.deepseek.com/api_keys")
+        case .groq:
+            URL(string: "https://console.groq.com/keys")
+        case .openRouter:
+            URL(string: "https://openrouter.ai/settings/keys")
+        case .kimi:
+            URL(string: "https://platform.moonshot.cn/console/api-keys")
+        case .qwen:
+            URL(string: "https://dashscope.console.aliyun.com/apiKey")
+        case .zhipu:
+            URL(string: "https://open.bigmodel.cn/usercenter/proj-mgmt/apikey")
+        case .minimax:
+            URL(string: "https://platform.minimaxi.com/user-center/basic-information/interface-key")
+        case .grok:
+            URL(string: "https://console.x.ai/")
+        case .xiaomi:
+            URL(string: "https://ai.xiaomi.com/")
+        case .freeModel, .custom:
+            nil
+        }
+    }
+
+    @ViewBuilder
+    private func connectionTestResultView(_ state: OnboardingViewModel.ConnectionTestState) -> some View {
+        switch state {
+        case .idle:
+            EmptyView()
+        case .testing:
+            EmptyView()
+        case let .success(totalMs, preview):
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(StudioTheme.success)
+                        .font(.system(size: 13))
+                    Text(L("settings.models.connectionSuccess", totalMs, totalMs))
+                        .font(.studioBody(12, weight: .semibold))
+                        .foregroundStyle(StudioTheme.success)
+                }
+                if !preview.isEmpty {
+                    Text(preview)
+                        .font(.studioBody(11))
+                        .foregroundStyle(onboardingSecondaryText)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(onboardingMutedSurface),
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(onboardingSubtleBorder, lineWidth: 1),
+                        )
+                }
+            }
+        case let .failure(message):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(StudioTheme.danger)
+                    .font(.system(size: 13))
+                Text(message)
+                    .font(.studioBody(12))
+                    .foregroundStyle(StudioTheme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

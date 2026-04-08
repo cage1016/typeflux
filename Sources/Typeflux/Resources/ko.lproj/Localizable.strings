@@ -611,6 +611,8 @@
 "onboarding.models.badge.apiKey" = "API 키";
 "onboarding.models.badge.local" = "지역";
 
+"onboarding.models.getAPIKey" = "API 키 받기";
+
 "onboarding.sttProvider.subtitle" = "음성을 텍스트로 변환하는 엔진을 선택하세요";
 "onboarding.sttConfig.subtitle" = "자격 증명 및 기본 설정 구성";
 "onboarding.llmProvider.subtitle" = "받아쓰기를 다시 작성하고 다듬는 모델을 선택하세요";

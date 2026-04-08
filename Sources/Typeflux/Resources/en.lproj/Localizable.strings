@@ -613,6 +613,8 @@
 "onboarding.models.badge.apiKey" = "API key";
 "onboarding.models.badge.local" = "Local";
 
+"onboarding.models.getAPIKey" = "Get API Key";
+
 "onboarding.sttProvider.subtitle" = "Choose the engine that converts your voice to text";
 "onboarding.sttConfig.subtitle" = "Configure credentials and preferences";
 "onboarding.llmProvider.subtitle" = "Choose the model that rewrites and refines your dictation";
