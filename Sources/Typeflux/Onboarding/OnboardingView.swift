@@ -702,6 +702,8 @@ struct OnboardingView: View {
                         }
                     }
 
+                    Spacer()
+
                     StudioButton(
                         title: viewModel.sttConnectionTestState == .testing
                             ? L("settings.models.testingConnection") : L("settings.models.testConnection"),
@@ -713,6 +715,7 @@ struct OnboardingView: View {
                         viewModel.testSTTConnection()
                     }
                 }
+                .frame(maxWidth: .infinity)
 
                 connectionTestResultView(viewModel.sttConnectionTestState)
             }
@@ -764,6 +767,8 @@ struct OnboardingView: View {
                         }
                     }
 
+                    Spacer()
+
                     StudioButton(
                         title: viewModel.llmConnectionTestState == .testing
                             ? L("settings.models.testingConnection") : L("settings.models.testConnection"),
@@ -775,6 +780,7 @@ struct OnboardingView: View {
                         viewModel.testLLMConnection()
                     }
                 }
+                .frame(maxWidth: .infinity)
 
                 connectionTestResultView(viewModel.llmConnectionTestState)
             }
