@@ -12,6 +12,19 @@ final class PromptCatalogTests: XCTestCase {
         )
     }
 
+    func testLanguageConsistencyRuleAllowsFixedLanguagePersonaOverride() {
+        let rule = PromptCatalog.languageConsistencyRule(
+            for: "source text",
+            personaPrompt: """
+            Persona language mode: fixed English.
+            - Always produce the final output in English.
+            """,
+        )
+
+        XCTAssertTrue(rule.contains("fixed output language mode: English"))
+        XCTAssertTrue(rule.contains("Follow that fixed language mode"))
+    }
+
     func testAppendUserEnvironmentContextAddsSystemAndAppLanguageToSystemPrompt() {
         let prompt = PromptCatalog.appendUserEnvironmentContext(
             to: "Base system prompt.",
@@ -72,6 +85,23 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertTrue(prompts.user.contains("<raw_transcript>\nraw text\n</raw_transcript>"))
         XCTAssertTrue(prompts.user.contains("<persona_definition>\nformal and concise\n</persona_definition>"))
         XCTAssertTrue(prompts.user.contains(PromptCatalog.languageConsistencyRule(for: "source text")))
+    }
+
+    func testRewritePromptsAllowFixedLanguagePersonaToOverrideSourceLanguage() {
+        let request = LLMRewriteRequest(
+            mode: .rewriteTranscript,
+            sourceText: "你好，世界",
+            spokenInstruction: nil,
+            personaPrompt: """
+            Persona language mode: fixed English.
+            - Always produce the final output in English.
+            """,
+        )
+
+        let prompts = PromptCatalog.rewritePrompts(for: request)
+
+        XCTAssertTrue(prompts.user.contains("fixed output language mode: English"))
+        XCTAssertTrue(prompts.user.contains("Follow that fixed language mode"))
     }
 
     func testRewritePromptsIncludeLanguageConsistencyForSelectionEditing() {

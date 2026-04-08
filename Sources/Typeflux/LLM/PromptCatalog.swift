@@ -24,11 +24,32 @@ enum PromptCatalog {
         }
     }
 
-    static func languageConsistencyRule(for contentDescription: String) -> String {
-        """
+    static func languageConsistencyRule(for contentDescription: String, personaPrompt: String? = nil) -> String {
+        if let fixedLanguage = fixedPersonaOutputLanguage(in: personaPrompt) {
+            return """
+            Language consistency rule:
+            Keep the output language consistent with the original language of the \(contentDescription) by default. However, <persona_definition> explicitly declares a fixed output language mode: \(fixedLanguage). Follow that fixed language mode unless a later instruction explicitly and clearly requires a different language.
+            """
+        }
+
+        return """
         Language consistency rule:
         You must keep the output language consistent with the original language of the \(contentDescription) by default. Do not translate, paraphrase into another language, or switch languages because of persona defaults, style preferences, or formatting instructions alone. Only change the output language when a later instruction explicitly and clearly requires a different language.
         """
+    }
+
+    static func fixedPersonaOutputLanguage(in personaPrompt: String?) -> String? {
+        let trimmedPersona = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmedPersona.isEmpty else { return nil }
+
+        let header = "Persona language mode: fixed "
+        guard let line = trimmedPersona.split(separator: "\n", maxSplits: 1).first else { return nil }
+        let lineString = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard lineString.hasPrefix(header) else { return nil }
+
+        let suffix = lineString.dropFirst(header.count)
+        let language = suffix.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespacesAndNewlines))
+        return language.isEmpty ? nil : language
     }
 
     static func xmlSection(tag: String, content: String) -> String {
@@ -147,7 +168,7 @@ enum PromptCatalog {
             tag: "rules",
             content: """
             <language_policy>
-            \(languageConsistencyRule(for: "spoken content"))
+            \(languageConsistencyRule(for: "spoken content", personaPrompt: personaPrompt))
             </language_policy>
             <input_semantics>
             \(inputSemantics)
@@ -210,7 +231,7 @@ enum PromptCatalog {
         switch request.mode {
         case .editSelection:
             let spokenInstruction = request.spokenInstruction?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let sourceTextRule = languageConsistencyRule(for: "selected text")
+            let sourceTextRule = languageConsistencyRule(for: "selected text", personaPrompt: request.personaPrompt)
             let sourceSection = xmlSection(tag: "selected_text", content: request.sourceText)
             let instructionSection = xmlSection(tag: "spoken_instruction", content: spokenInstruction)
             let personaPrompt = request.personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -257,7 +278,7 @@ enum PromptCatalog {
             )
 
         case .rewriteTranscript:
-            let sourceTextRule = languageConsistencyRule(for: "source text")
+            let sourceTextRule = languageConsistencyRule(for: "source text", personaPrompt: request.personaPrompt)
             let transcriptSection = xmlSection(tag: "raw_transcript", content: request.sourceText)
             let personaPrompt = request.personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let personaSection = personaPrompt.isEmpty ? "" : """
