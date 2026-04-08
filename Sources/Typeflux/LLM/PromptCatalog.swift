@@ -25,10 +25,10 @@ enum PromptCatalog {
     }
 
     static func languageConsistencyRule(for contentDescription: String, personaPrompt: String? = nil) -> String {
-        if let fixedLanguage = fixedPersonaOutputLanguage(in: personaPrompt) {
+        if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return """
             Language consistency rule:
-            Keep the output language consistent with the original language of the \(contentDescription) by default. However, <persona_definition> explicitly declares a fixed output language mode: \(fixedLanguage). Follow that fixed language mode unless a later instruction explicitly and clearly requires a different language.
+            You must keep the output language consistent with the original language of the \(contentDescription) by default. Do not translate, paraphrase into another language, or switch languages because of persona defaults, vague style preferences, or formatting instructions alone. However, if <persona_definition> explicitly asks for translation or clearly specifies a target output language, treat that as a real language instruction and follow it unless a later instruction explicitly and clearly requires a different language.
             """
         }
 
@@ -36,20 +36,6 @@ enum PromptCatalog {
         Language consistency rule:
         You must keep the output language consistent with the original language of the \(contentDescription) by default. Do not translate, paraphrase into another language, or switch languages because of persona defaults, style preferences, or formatting instructions alone. Only change the output language when a later instruction explicitly and clearly requires a different language.
         """
-    }
-
-    static func fixedPersonaOutputLanguage(in personaPrompt: String?) -> String? {
-        let trimmedPersona = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !trimmedPersona.isEmpty else { return nil }
-
-        let header = "Persona language mode: fixed "
-        guard let line = trimmedPersona.split(separator: "\n", maxSplits: 1).first else { return nil }
-        let lineString = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard lineString.hasPrefix(header) else { return nil }
-
-        let suffix = lineString.dropFirst(header.count)
-        let language = suffix.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespacesAndNewlines))
-        return language.isEmpty ? nil : language
     }
 
     static func xmlSection(tag: String, content: String) -> String {
@@ -64,9 +50,9 @@ enum PromptCatalog {
         """
         Language resolution policy:
         - If a later user instruction explicitly requests a target language, follow that language.
-        - If <persona_definition> explicitly declares a fixed output language mode, follow it unless a later user instruction explicitly requires a different language.
+        - If <persona_definition> explicitly asks for translation or clearly specifies a target output language, follow that requested language unless a later user instruction explicitly requires a different language.
         - Otherwise, when the task is editing, rewriting, or transcribing existing content and that source content has a clear language, preserve that language.
-        - Otherwise, if <persona_definition> explicitly declares a default language preference, follow it.
+        - Otherwise, if <persona_definition> only suggests a language as a loose preference or style cue, do not let that override a clear source-language constraint.
         - Otherwise, default to the app interface language: \(appLanguage.promptDisplayName) (\(appLanguage.rawValue)).
         - Persona style or formatting instructions alone must not change the output language.
         - Proper nouns, product names, API names, code identifiers, and established technical terms may remain in their natural form when appropriate, but the surrounding text should still follow the resolved output language.

@@ -12,17 +12,16 @@ final class PromptCatalogTests: XCTestCase {
         )
     }
 
-    func testLanguageConsistencyRuleAllowsFixedLanguagePersonaOverride() {
+    func testLanguageConsistencyRuleTreatsPersonaTranslationRequestAsLanguageInstruction() {
         let rule = PromptCatalog.languageConsistencyRule(
             for: "source text",
             personaPrompt: """
-            Persona language mode: fixed English.
-            - Always produce the final output in English.
+            将内容翻译为地地道道的中文。
             """,
         )
 
-        XCTAssertTrue(rule.contains("fixed output language mode: English"))
-        XCTAssertTrue(rule.contains("Follow that fixed language mode"))
+        XCTAssertTrue(rule.contains("explicitly asks for translation"))
+        XCTAssertTrue(rule.contains("treat that as a real language instruction"))
     }
 
     func testAppendUserEnvironmentContextAddsSystemAndAppLanguageToSystemPrompt() {
@@ -34,7 +33,7 @@ final class PromptCatalogTests: XCTestCase {
 
         XCTAssertTrue(prompt.hasPrefix("Language resolution policy:"))
         XCTAssertTrue(prompt.contains("default to the app interface language: English (en)"))
-        XCTAssertTrue(prompt.contains("fixed output language mode"))
+        XCTAssertTrue(prompt.contains("explicitly asks for translation"))
         XCTAssertTrue(prompt.contains("Base system prompt."))
         XCTAssertTrue(prompt.contains("User environment context:"))
         XCTAssertTrue(prompt.contains("The user's operating system preferred language is: zh-Hans-CN"))
@@ -46,7 +45,7 @@ final class PromptCatalogTests: XCTestCase {
         let policy = PromptCatalog.languageResolutionPolicy(appLanguage: .simplifiedChinese)
 
         XCTAssertTrue(policy.contains("If a later user instruction explicitly requests a target language"))
-        XCTAssertTrue(policy.contains("If <persona_definition> explicitly declares a fixed output language mode"))
+        XCTAssertTrue(policy.contains("If <persona_definition> explicitly asks for translation"))
         XCTAssertTrue(policy.contains("Otherwise, default to the app interface language: Simplified Chinese (zh-Hans)."))
         XCTAssertTrue(policy.contains("Persona style or formatting instructions alone must not change the output language."))
     }
@@ -87,21 +86,20 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertTrue(prompts.user.contains(PromptCatalog.languageConsistencyRule(for: "source text")))
     }
 
-    func testRewritePromptsAllowFixedLanguagePersonaToOverrideSourceLanguage() {
+    func testRewritePromptsAllowPersonaTranslationInstructionToOverrideSourceLanguage() {
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
             sourceText: "你好，世界",
             spokenInstruction: nil,
             personaPrompt: """
-            Persona language mode: fixed English.
-            - Always produce the final output in English.
+            将内容翻译为地地道道的中文。
             """,
         )
 
         let prompts = PromptCatalog.rewritePrompts(for: request)
 
-        XCTAssertTrue(prompts.user.contains("fixed output language mode: English"))
-        XCTAssertTrue(prompts.user.contains("Follow that fixed language mode"))
+        XCTAssertTrue(prompts.user.contains("explicitly asks for translation"))
+        XCTAssertTrue(prompts.user.contains("treat that as a real language instruction"))
     }
 
     func testRewritePromptsIncludeLanguageConsistencyForSelectionEditing() {
