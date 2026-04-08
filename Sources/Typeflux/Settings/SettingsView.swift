@@ -245,7 +245,7 @@ struct StudioView: View {
                 HStack(spacing: StudioTheme.Spacing.medium) {
                     StudioIconButton(
                         systemImage: "square.and.arrow.up",
-                        variant: .primary,
+                        variant: .ghost,
                     ) {
                         viewModel.exportHistory()
                     }
