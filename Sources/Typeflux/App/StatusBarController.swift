@@ -325,11 +325,13 @@ final class StatusBarController: NSObject {
     private func startRunningJobDurationTimer() {
         guard runningJobDurationTimer == nil, !runningAgentJobs.isEmpty else { return }
 
-        runningJobDurationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.refreshVisibleAgentTaskMenuTitles()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        runningJobDurationTimer = timer
     }
 
     private func stopRunningJobDurationTimer() {
