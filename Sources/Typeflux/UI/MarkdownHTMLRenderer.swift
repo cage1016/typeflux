@@ -9,6 +9,10 @@ struct MarkdownHTMLRenderer {
 }
 
 private struct HTMLVisitor: MarkupVisitor {
+    private var tableColumnAlignments: [Table.ColumnAlignment?] = []
+    private var currentTableColumn = 0
+    private var isRenderingTableHead = false
+
     mutating func defaultVisit(_ markup: Markup) -> String {
         markup.children.map { visit($0) }.joined()
     }
@@ -19,6 +23,60 @@ private struct HTMLVisitor: MarkupVisitor {
 
     mutating func visitParagraph(_ paragraph: Paragraph) -> String {
         "<p>\(defaultVisit(paragraph))</p>"
+    }
+
+    mutating func visitTable(_ table: Table) -> String {
+        let previousAlignments = tableColumnAlignments
+        tableColumnAlignments = table.columnAlignments
+        defer { tableColumnAlignments = previousAlignments }
+        return "<table>\(defaultVisit(table))</table>"
+    }
+
+    mutating func visitTableHead(_ tableHead: Table.Head) -> String {
+        let previousColumn = currentTableColumn
+        let previousIsRenderingTableHead = isRenderingTableHead
+        currentTableColumn = 0
+        isRenderingTableHead = true
+        defer {
+            currentTableColumn = previousColumn
+            isRenderingTableHead = previousIsRenderingTableHead
+        }
+        return "<thead><tr>\(defaultVisit(tableHead))</tr></thead>"
+    }
+
+    mutating func visitTableBody(_ tableBody: Table.Body) -> String {
+        guard !tableBody.isEmpty else { return "" }
+        return "<tbody>\(defaultVisit(tableBody))</tbody>"
+    }
+
+    mutating func visitTableRow(_ tableRow: Table.Row) -> String {
+        let previousColumn = currentTableColumn
+        currentTableColumn = 0
+        defer { currentTableColumn = previousColumn }
+        return "<tr>\(defaultVisit(tableRow))</tr>"
+    }
+
+    mutating func visitTableCell(_ tableCell: Table.Cell) -> String {
+        guard tableCell.colspan > 0, tableCell.rowspan > 0 else {
+            return ""
+        }
+
+        let tagName = isRenderingTableHead ? "th" : "td"
+        var attributes: [String] = []
+        if currentTableColumn < tableColumnAlignments.count,
+           let alignment = tableColumnAlignments[currentTableColumn]
+        {
+            attributes.append(" align=\"\(htmlAlignment(alignment))\"")
+        }
+        if tableCell.rowspan > 1 {
+            attributes.append(" rowspan=\"\(tableCell.rowspan)\"")
+        }
+        if tableCell.colspan > 1 {
+            attributes.append(" colspan=\"\(tableCell.colspan)\"")
+        }
+
+        currentTableColumn += 1
+        return "<\(tagName)\(attributes.joined())>\(defaultVisit(tableCell))</\(tagName)>"
     }
 
     mutating func visitHeading(_ heading: Heading) -> String {
@@ -117,5 +175,16 @@ private struct HTMLVisitor: MarkupVisitor {
 
     private func escapeAttribute(_ string: String) -> String {
         escapeHTML(string)
+    }
+
+    private func htmlAlignment(_ alignment: Table.ColumnAlignment) -> String {
+        switch alignment {
+        case .left:
+            "left"
+        case .center:
+            "center"
+        case .right:
+            "right"
+        }
     }
 }

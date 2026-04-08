@@ -698,8 +698,11 @@
 "agent.jobs.detail.context" = "컨텍스트";
 "agent.jobs.detail.steps" = "실행 단계";
 "agent.jobs.detail.result" = "결과";
+"agent.jobs.detail.result.view.plainText" = "일반 텍스트";
+"agent.jobs.detail.result.view.markdown" = "Markdown";
 "agent.jobs.detail.error" = "오류";
 "agent.jobs.detail.stepNumber" = "단계 %d";
+"agent.jobs.detail.toolCall.arguments" = "인수";
 "agent.jobs.detail.reasoning" = "추론 과정";
 "agent.jobs.detail.stepTokens" = "%d 토큰";
 "agent.jobs.detail.context.showMore" = "더 보기";

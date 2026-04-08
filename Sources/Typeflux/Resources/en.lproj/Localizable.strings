@@ -704,8 +704,11 @@
 "agent.jobs.detail.context" = "CONTEXT";
 "agent.jobs.detail.steps" = "EXECUTION STEPS";
 "agent.jobs.detail.result" = "RESULT";
+"agent.jobs.detail.result.view.plainText" = "Plain Text";
+"agent.jobs.detail.result.view.markdown" = "Markdown";
 "agent.jobs.detail.error" = "ERROR";
 "agent.jobs.detail.stepNumber" = "Step %d";
+"agent.jobs.detail.toolCall.arguments" = "Arguments";
 "agent.jobs.detail.reasoning" = "REASONING";
 "agent.jobs.detail.stepTokens" = "%d tokens";
 "agent.jobs.detail.context.showMore" = "Show More";

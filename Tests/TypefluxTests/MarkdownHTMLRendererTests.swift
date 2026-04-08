@@ -116,6 +116,23 @@ final class MarkdownHTMLRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("start=\"3\""))
     }
 
+    func testTableRendering() {
+        let md = """
+        | Name | Score |
+        | :--- | ----: |
+        | Ada | 95 |
+        | Bob | 88 |
+        """
+        let html = renderer.render(markdown: md)
+        XCTAssertTrue(html.contains("<table>"))
+        XCTAssertTrue(html.contains("<thead><tr>"))
+        XCTAssertTrue(html.contains("<th align=\"left\">Name</th>"))
+        XCTAssertTrue(html.contains("<th align=\"right\">Score</th>"))
+        XCTAssertTrue(html.contains("<tbody>"))
+        XCTAssertTrue(html.contains("<td align=\"left\">Ada</td>"))
+        XCTAssertTrue(html.contains("<td align=\"right\">95</td>"))
+    }
+
     // MARK: - Breaks
 
     func testThematicBreak() {

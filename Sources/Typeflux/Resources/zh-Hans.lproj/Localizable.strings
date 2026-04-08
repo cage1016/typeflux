@@ -704,8 +704,11 @@
 "agent.jobs.detail.context" = "上下文";
 "agent.jobs.detail.steps" = "执行步骤";
 "agent.jobs.detail.result" = "结果";
+"agent.jobs.detail.result.view.plainText" = "纯文本";
+"agent.jobs.detail.result.view.markdown" = "Markdown";
 "agent.jobs.detail.error" = "错误";
 "agent.jobs.detail.stepNumber" = "步骤 %d";
+"agent.jobs.detail.toolCall.arguments" = "调用参数";
 "agent.jobs.detail.reasoning" = "推理过程";
 "agent.jobs.detail.stepTokens" = "%d tokens";
 "agent.jobs.detail.context.showMore" = "展开全部";

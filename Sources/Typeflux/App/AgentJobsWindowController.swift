@@ -144,7 +144,7 @@ final class AgentJobsWindowController: NSObject {
     private func ensureWindow() {
         guard window == nil else { return }
 
-        let rootView = AgentJobsWindowView(model: model)
+        let rootView = AgentJobsWindowView(model: model, appearanceMode: settingsStore.appearanceMode)
         let hostingView = NSHostingView(rootView: rootView)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 860, height: 720),
@@ -168,7 +168,7 @@ final class AgentJobsWindowController: NSObject {
     }
 
     private func reloadRootView() {
-        hostingView?.rootView = AgentJobsWindowView(model: model)
+        hostingView?.rootView = AgentJobsWindowView(model: model, appearanceMode: settingsStore.appearanceMode)
     }
 
     private func applyAppearance(to window: NSWindow) {
@@ -190,6 +190,7 @@ extension AgentJobsWindowController: NSWindowDelegate {
 
 private struct AgentJobsWindowView: View {
     @ObservedObject var model: AgentJobsWindowController.Model
+    let appearanceMode: AppearanceMode
 
     var body: some View {
         ZStack {
@@ -198,6 +199,7 @@ private struct AgentJobsWindowView: View {
             if let job = model.selectedJob {
                 AgentJobDetailPane(
                     job: job,
+                    appearanceMode: appearanceMode,
                     onBack: model.showList,
                     onCancel: { model.cancel(jobID: job.id) },
                 )
@@ -313,9 +315,17 @@ private struct AgentJobsListPane: View {
 }
 
 private struct AgentJobDetailPane: View {
+    private enum ResultViewMode: String, Hashable {
+        case plainText
+        case markdown
+    }
+
     let job: AgentJob
+    let appearanceMode: AppearanceMode
     let onBack: () -> Void
     let onCancel: () -> Void
+
+    @State private var resultViewMode: ResultViewMode = .plainText
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -408,10 +418,26 @@ private struct AgentJobDetailPane: View {
 
                     if let result = job.resultText, !result.isEmpty {
                         AgentJobSection(title: L("agent.jobs.detail.result"), icon: "sparkles") {
-                            Text(result)
-                                .font(.studioBody(StudioTheme.Typography.body))
-                                .foregroundStyle(StudioTheme.textPrimary)
-                                .textSelection(.enabled)
+                            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                                StudioSegmentedPicker(
+                                    options: [
+                                        (L("agent.jobs.detail.result.view.plainText"), ResultViewMode.plainText),
+                                        (L("agent.jobs.detail.result.view.markdown"), ResultViewMode.markdown),
+                                    ],
+                                    selection: $resultViewMode,
+                                )
+
+                                if resultViewMode == .plainText {
+                                    Text(result)
+                                        .font(.studioBody(StudioTheme.Typography.body))
+                                        .foregroundStyle(StudioTheme.textPrimary)
+                                        .textSelection(.enabled)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    MarkdownWebView(markdown: result, appearanceMode: appearanceMode)
+                                        .frame(minHeight: 220)
+                                }
+                            }
                         }
                     }
 
@@ -503,10 +529,7 @@ private struct AgentJobStepView: View {
                                 .foregroundStyle(StudioTheme.textPrimary)
 
                             if !toolCall.argumentsJSON.isEmpty, toolCall.argumentsJSON != "{}" {
-                                Text(toolCall.argumentsJSON)
-                                    .font(.system(size: 11, weight: .regular, design: .monospaced))
-                                    .foregroundStyle(StudioTheme.textTertiary)
-                                    .textSelection(.enabled)
+                                AgentToolCallArgumentsView(argumentsJSON: toolCall.argumentsJSON)
                             }
 
                             if !toolCall.resultContent.isEmpty {
@@ -526,6 +549,43 @@ private struct AgentJobStepView: View {
 
             if !isLast {
                 Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+            }
+        }
+    }
+}
+
+private struct AgentToolCallArgumentsView: View {
+    let argumentsJSON: String
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: StudioTheme.Spacing.xSmall) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(L("agent.jobs.detail.toolCall.arguments"))
+                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                }
+                .foregroundStyle(StudioTheme.textTertiary)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Text(argumentsJSON)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(StudioTheme.textTertiary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(StudioTheme.surfaceMuted.opacity(0.7))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }

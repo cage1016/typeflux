@@ -702,8 +702,11 @@
 "agent.jobs.detail.context" = "上下文";
 "agent.jobs.detail.steps" = "執行步驟";
 "agent.jobs.detail.result" = "結果";
+"agent.jobs.detail.result.view.plainText" = "純文字";
+"agent.jobs.detail.result.view.markdown" = "Markdown";
 "agent.jobs.detail.error" = "錯誤";
 "agent.jobs.detail.stepNumber" = "步驟 %d";
+"agent.jobs.detail.toolCall.arguments" = "呼叫參數";
 "agent.jobs.detail.reasoning" = "推理過程";
 "agent.jobs.detail.stepTokens" = "%d tokens";
 "agent.jobs.detail.context.showMore" = "展開全部";
