@@ -239,6 +239,26 @@ struct StudioView: View {
                 ) {
                     viewModel.openJobsPage()
                 }
+            } else if viewModel.currentSection == .history {
+                Spacer()
+
+                HStack(spacing: StudioTheme.Spacing.medium) {
+                    StudioIconButton(
+                        systemImage: "square.and.arrow.up",
+                        variant: .primary,
+                    ) {
+                        viewModel.exportHistory()
+                    }
+                    .studioTooltip(L("history.action.exportMarkdown"), yOffset: 34)
+
+                    StudioIconButton(
+                        systemImage: "trash",
+                        variant: .ghost,
+                    ) {
+                        viewModel.clearHistory()
+                    }
+                    .studioTooltip(L("common.clear"), yOffset: 34)
+                }
             } else if viewModel.currentSection == .personas {
                 Spacer()
 
@@ -610,30 +630,6 @@ struct StudioView: View {
                     ) {
                         Image(systemName: "lock.fill")
                             .foregroundStyle(StudioTheme.success)
-                    }
-
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("history.export.title"),
-                        subtitle: L("history.export.subtitle"),
-                    ) {
-                        HStack(spacing: StudioTheme.Spacing.medium) {
-                            StudioIconButton(
-                                systemImage: "square.and.arrow.up",
-                                variant: .primary,
-                            ) {
-                                viewModel.exportHistory()
-                            }
-                            .studioTooltip(L("history.action.exportMarkdown"), yOffset: 34)
-                            StudioIconButton(
-                                systemImage: "trash",
-                                variant: .ghost,
-                            ) {
-                                viewModel.clearHistory()
-                            }
-                            .studioTooltip(L("common.clear"), yOffset: 34)
-                        }
                     }
                 }
             }
