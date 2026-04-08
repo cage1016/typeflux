@@ -111,11 +111,26 @@ actor HTTPMCPClient: MCPClient {
             request.setValue(value, forHTTPHeaderField: key)
         }
         request.httpBody = try JSONEncoder().encode(message)
+        NetworkDebugLogger.logMessage("""
+        [MCP HTTP Request]
+        URL: \(Self.redactedDebugURL(config.url))
+        Method: POST
+        Headers: \(Self.redactedHeaders(request.allHTTPHeaderFields ?? [:]))
+        BodyPreview: \(Self.debugPreview(for: request.httpBody))
+        """)
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw MCPClientError.invalidResponse("Non-HTTP response")
         }
+        NetworkDebugLogger.logMessage("""
+        [MCP HTTP Response]
+        URL: \(Self.redactedDebugURL(httpResponse.url))
+        Status: \(httpResponse.statusCode)
+        Content-Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "<missing>")
+        Headers: \(httpResponse.allHeaderFields)
+        BodyPreview: \(Self.debugPreview(for: data))
+        """)
 
         if !(200 ..< 300).contains(httpResponse.statusCode) {
             throw MCPClientError.serverError(
@@ -124,6 +139,66 @@ actor HTTPMCPClient: MCPClient {
             )
         }
 
-        return (try JSONDecoder().decode(MCPJsonRPCMessage.self, from: data), httpResponse)
+        do {
+            return (try JSONDecoder().decode(MCPJsonRPCMessage.self, from: data), httpResponse)
+        } catch {
+            NetworkDebugLogger.logError(
+                context: """
+                MCP JSON decode failed | url=\(Self.redactedDebugURL(httpResponse.url)) \
+                | status=\(httpResponse.statusCode) \
+                | contentType=\(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "<missing>") \
+                | bodyPreview=\(Self.debugPreview(for: data))
+                """,
+                error: error,
+            )
+            throw error
+        }
+    }
+
+    static func redactedDebugURL(_ url: URL?) -> String {
+        guard let url else { return "<nil>" }
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.absoluteString
+        }
+
+        let sensitiveNames = Set(["apikey", "api_key", "token", "access_token", "authorization"])
+        components.queryItems = components.queryItems?.map { item in
+            if sensitiveNames.contains(item.name.lowercased()) {
+                return URLQueryItem(name: item.name, value: "<redacted>")
+            }
+            return item
+        }
+        return components.string ?? url.absoluteString
+    }
+
+    static func debugPreview(for data: Data?) -> String {
+        guard let data, !data.isEmpty else { return "<empty>" }
+
+        let prefix = data.prefix(2048)
+        let preview: String
+        if let string = String(data: prefix, encoding: .utf8) {
+            preview = string
+        } else {
+            preview = "<non-utf8 \(data.count) bytes>"
+        }
+
+        if data.count > prefix.count {
+            return "\(preview)\n<truncated totalBytes=\(data.count)>"
+        }
+
+        return preview
+    }
+
+    static func redactedHeaders(_ headers: [String: String]) -> [String: String] {
+        var redacted = headers
+        for key in headers.keys {
+            switch key.lowercased() {
+            case "authorization", "x-api-key", "api-key":
+                redacted[key] = "<redacted>"
+            default:
+                continue
+            }
+        }
+        return redacted
     }
 }

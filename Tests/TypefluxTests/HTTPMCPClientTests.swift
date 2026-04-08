@@ -88,6 +88,26 @@ final class HTTPMCPClientTests: XCTestCase {
         XCTAssertEqual(listRequest.value(forHTTPHeaderField: "MCP-Protocol-Version"), "2025-03-26")
     }
 
+    func testRedactedDebugURLMasksSensitiveQueryItems() {
+        let url = URL(string: "https://example.com/mcp?apiKey=secret&token=abc123&query=swift")!
+
+        let result = HTTPMCPClient.redactedDebugURL(url)
+
+        XCTAssertTrue(result.contains("apiKey=%3Credacted%3E"))
+        XCTAssertTrue(result.contains("token=%3Credacted%3E"))
+        XCTAssertTrue(result.contains("query=swift"))
+        XCTAssertFalse(result.contains("secret"))
+        XCTAssertFalse(result.contains("abc123"))
+    }
+
+    func testDebugPreviewTruncatesLargeUTF8Payloads() {
+        let payload = String(repeating: "a", count: 2100)
+        let result = HTTPMCPClient.debugPreview(for: Data(payload.utf8))
+
+        XCTAssertTrue(result.contains("<truncated totalBytes=2100>"))
+        XCTAssertEqual(String(result.prefix(16)), String(repeating: "a", count: 16))
+    }
+
     private func makeMockSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockMCPURLProtocol.self]
