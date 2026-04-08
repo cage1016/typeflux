@@ -81,6 +81,10 @@
 "menu.openVoiceStudio" = "打开 Typeflux";
 "menu.history" = "历史…";
 "menu.personas" = "人设";
+"menu.agentTasks" = "Agent 任务";
+"menu.agentTasks.empty" = "暂无运行中的任务";
+"menu.agentTasks.viewAll" = "查看所有任务…";
+"menu.agentTasks.runningCount" = "%d 个运行中";
 "menu.appearance" = "外观";
 "menu.settings" = "设置…";
 "menu.setupGuide" = "新手引导…";
@@ -706,3 +710,7 @@
 "agent.jobs.detail.stepTokens" = "%d tokens";
 "agent.jobs.detail.context.showMore" = "展开全部";
 "agent.jobs.detail.context.showLess" = "收起";
+"agent.jobs.cancel" = "取消任务";
+"agent.jobs.status.running" = "运行中";
+"agent.jobs.status.completed" = "已完成";
+"agent.jobs.status.failed" = "失败";

@@ -64,6 +64,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
         let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "chat/completions")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        AgentRequestConfiguration.apply(to: &request)
         if !apiKey.isEmpty {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
@@ -189,6 +190,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
         let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "messages")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        AgentRequestConfiguration.apply(to: &request)
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -311,6 +313,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        AgentRequestConfiguration.apply(to: &request)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         for (field, value) in additionalHeaders {
             request.setValue(value, forHTTPHeaderField: field)

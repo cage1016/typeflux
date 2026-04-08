@@ -224,6 +224,7 @@ enum RemoteAgentClient {
         let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "chat/completions")
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
+        AgentRequestConfiguration.apply(to: &urlRequest)
         if !apiKey.isEmpty {
             urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
@@ -259,6 +260,7 @@ enum RemoteAgentClient {
         let url = OpenAIEndpointResolver.resolve(from: baseURL, path: "messages")
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
+        AgentRequestConfiguration.apply(to: &urlRequest)
         urlRequest.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -301,6 +303,7 @@ enum RemoteAgentClient {
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
+        AgentRequestConfiguration.apply(to: &urlRequest)
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         for (field, value) in additionalHeaders {
             urlRequest.setValue(value, forHTTPHeaderField: field)

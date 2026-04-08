@@ -81,6 +81,10 @@
 "menu.openVoiceStudio" = "Open Typeflux";
 "menu.history" = "History…";
 "menu.personas" = "Personas";
+"menu.agentTasks" = "Agent Tasks";
+"menu.agentTasks.empty" = "No running tasks";
+"menu.agentTasks.viewAll" = "View All Tasks…";
+"menu.agentTasks.runningCount" = "%d running";
 "menu.appearance" = "Appearance";
 "menu.settings" = "Settings…";
 "menu.setupGuide" = "Setup Guide…";
@@ -706,3 +710,7 @@
 "agent.jobs.detail.stepTokens" = "%d tokens";
 "agent.jobs.detail.context.showMore" = "Show More";
 "agent.jobs.detail.context.showLess" = "Show Less";
+"agent.jobs.cancel" = "Cancel Task";
+"agent.jobs.status.running" = "Running";
+"agent.jobs.status.completed" = "Completed";
+"agent.jobs.status.failed" = "Failed";

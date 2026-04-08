@@ -1,6 +1,7 @@
 import Foundation
 import os
 
+@MainActor
 final class DIContainer {
     let appState = AppStateStore()
     let settingsStore = SettingsStore()
@@ -21,6 +22,8 @@ final class DIContainer {
     let ollamaModelManager: OllamaLocalModelManager
     let localModelManager: LocalModelManager
     let agentJobStore: AgentJobStore
+    let agentExecutionRegistry: AgentExecutionRegistry
+    let agentJobsWindowController: AgentJobsWindowController
     let mcpRegistry: MCPRegistry
 
     init() {
@@ -37,6 +40,12 @@ final class DIContainer {
         Logger(subsystem: "dev.typeflux", category: "DIContainer").debug("DIContainer initialized — Logger test message")
         historyStore = SQLiteHistoryStore()
         agentJobStore = SQLiteAgentJobStore()
+        agentExecutionRegistry = AgentExecutionRegistry()
+        agentJobsWindowController = AgentJobsWindowController(
+            settingsStore: settingsStore,
+            jobStore: agentJobStore,
+            executionRegistry: agentExecutionRegistry,
+        )
         mcpRegistry = MCPRegistry()
         ollamaModelManager = OllamaLocalModelManager()
         llmAgentService = LLMAgentRouter(

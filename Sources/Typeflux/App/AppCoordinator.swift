@@ -21,6 +21,7 @@ final class AppCoordinator {
             clipboard: di.clipboard,
             historyStore: di.historyStore,
             agentJobStore: di.agentJobStore,
+            agentExecutionRegistry: di.agentExecutionRegistry,
             mcpRegistry: di.mcpRegistry,
             overlayController: di.overlayController,
             askAnswerWindowController: di.askAnswerWindowController,
@@ -32,11 +33,18 @@ final class AppCoordinator {
             appState: di.appState,
             settingsStore: di.settingsStore,
             historyStore: di.historyStore,
+            agentJobStore: di.agentJobStore,
             onRetryHistory: { [weak self] record in
                 self?.workflowController?.retry(record: record)
             },
             onOpenOnboarding: { [weak self] in
                 self?.showOnboarding()
+            },
+            onOpenAgentJobs: { [weak self] in
+                self?.di.agentJobsWindowController.showJobsList()
+            },
+            onOpenAgentJob: { [weak self] jobID in
+                self?.di.agentJobsWindowController.showJob(id: jobID)
             },
         )
         statusBarController?.start()

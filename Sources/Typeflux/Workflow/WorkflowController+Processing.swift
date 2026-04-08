@@ -545,8 +545,9 @@ extension WorkflowController {
                 return
             }
 
+            let detachedAgentExecution: Bool
             if isAskSelectionFlow, let askContextText, !askContextText.isEmpty {
-                try await processAskFlowWithSelection(
+                detachedAgentExecution = try await processAskFlowWithSelection(
                     transcribedText: transcribedText,
                     askContextText: askContextText,
                     personaPrompt: personaPrompt,
@@ -556,7 +557,7 @@ extension WorkflowController {
                     pipelineTiming: &pipelineTiming,
                 )
             } else if recordingIntent == .askSelection {
-                try await processAskFlowWithoutSelection(
+                detachedAgentExecution = try await processAskFlowWithoutSelection(
                     transcribedText: transcribedText,
                     askContextText: askContextText,
                     personaPrompt: personaPrompt,
@@ -566,6 +567,7 @@ extension WorkflowController {
                     pipelineTiming: &pipelineTiming,
                 )
             } else if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                detachedAgentExecution = false
                 try await processPersonaRewriteFlow(
                     transcribedText: transcribedText,
                     personaPrompt: personaPrompt,
@@ -576,6 +578,7 @@ extension WorkflowController {
                     pipelineTiming: &pipelineTiming,
                 )
             } else {
+                detachedAgentExecution = false
                 try processDictationFlow(
                     transcribedText: transcribedText,
                     selectionSnapshot: selectionSnapshot,
@@ -583,6 +586,10 @@ extension WorkflowController {
                     record: &record,
                     pipelineTiming: &pipelineTiming,
                 )
+            }
+
+            if detachedAgentExecution {
+                return
             }
 
             try ensureProcessingIsActive(sessionID)
@@ -676,7 +683,7 @@ extension WorkflowController {
         sessionID: UUID,
         record: inout HistoryRecord,
         pipelineTiming: inout HistoryPipelineTiming,
-    ) async throws {
+    ) async throws -> Bool {
         NetworkDebugLogger.logMessage(
             """
             [Ask Flow] selected-text context
@@ -704,7 +711,7 @@ extension WorkflowController {
                 record: &record,
                 pipelineTiming: &pipelineTiming,
             )
-            return
+            return true
         }
 
         let askDecisionResult = try await decideAskSelection(
@@ -724,6 +731,7 @@ extension WorkflowController {
             pipelineTiming: &pipelineTiming,
             sessionID: sessionID,
         )
+        return false
     }
 
     private func processAgentAskFlowWithSelection(
@@ -733,75 +741,54 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming: inout HistoryPipelineTiming,
+        pipelineTiming _: inout HistoryPipelineTiming,
     ) async throws {
-        let agentResult = try await runAskAgent(
-            selectedText: askContextText,
-            spokenInstruction: transcribedText,
-            personaPrompt: personaPrompt,
-            appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
-        )
         try ensureProcessingIsActive(sessionID)
-        pipelineTiming.llmProcessingCompletedAt = Date()
-        record.pipelineTiming = pipelineTiming
-        logPipelineEvent("llm-processing-completed", for: record)
-
-        switch agentResult {
-        case let .answer(text):
-            record.mode = .askAnswer
-            record.personaResultText = text
-            record.processingStatus = .succeeded
-            record.applyStatus = .running
-            saveHistoryRecord(record)
-
-            try ensureProcessingIsActive(sessionID)
-            pipelineTiming.applyStartedAt = Date()
-            record.pipelineTiming = pipelineTiming
-            await MainActor.run {
-                self.presentAskAnswer(
-                    question: transcribedText,
-                    selectedText: askContextText,
-                    answerMarkdown: text,
-                )
+        let jobID = UUID()
+        launchDetachedAgentAskTask(
+            jobID: jobID,
+            recordID: record.id,
+            transcribedText: transcribedText,
+            selectedText: askContextText,
+            personaPrompt: personaPrompt,
+            selectionSnapshot: selectionSnapshot,
+            selectedTextForAnswerPresentation: askContextText,
+        )
+        activeProcessingRecordID = nil
+        await MainActor.run {
+            if self.processingSessionID == sessionID {
+                self.appState.setStatus(.idle)
+                self.overlayController.dismissSoon()
             }
-            pipelineTiming.applyCompletedAt = Date()
-            record.pipelineTiming = pipelineTiming
-            record.applyStatus = .succeeded
-            record.applyMessage = L("workflow.ask.answerPresented")
+        }
+    }
 
-        case let .edit(text):
-            record.mode = .editSelection
-            record.selectionEditedText = text
-            record.processingStatus = .succeeded
-            record.applyStatus = .running
-            saveHistoryRecord(record)
-
-            try ensureProcessingIsActive(sessionID)
-            pipelineTiming.applyStartedAt = Date()
-            record.pipelineTiming = pipelineTiming
-            let shouldShowResultDialog = shouldPresentResultDialog(for: selectionSnapshot)
-            let outcome: ApplyOutcome
-            NetworkDebugLogger.logMessage(
-                "[Apply Decision] mode=editSelection hasSelection=\(selectionSnapshot.hasSelection) " +
-                    "isEditable=\(selectionSnapshot.isEditable) hasRange=\(selectionSnapshot.selectedRange != nil) " +
-                    "showResultDialog=\(shouldShowResultDialog)",
-            )
-            if shouldShowResultDialog {
-                await MainActor.run {
-                    self.lastDialogResultText = text
-                    self.overlayController.showResultDialog(
-                        title: L("workflow.result.copyTitle"),
-                        message: text,
-                    )
-                }
-                outcome = .presentedInDialog
-            } else {
-                outcome = applyText(text, replace: true, fallbackTitle: L("workflow.result.copyTitle"))
+    private func processAgentAskFlowWithoutSelection(
+        transcribedText: String,
+        askContextText: String?,
+        personaPrompt: String?,
+        selectionSnapshot: TextSelectionSnapshot,
+        sessionID: UUID,
+        record: inout HistoryRecord,
+        pipelineTiming _: inout HistoryPipelineTiming,
+    ) async throws {
+        try ensureProcessingIsActive(sessionID)
+        let jobID = UUID()
+        launchDetachedAgentAskTask(
+            jobID: jobID,
+            recordID: record.id,
+            transcribedText: transcribedText,
+            selectedText: nil,
+            personaPrompt: personaPrompt,
+            selectionSnapshot: selectionSnapshot,
+            selectedTextForAnswerPresentation: askContextText,
+        )
+        activeProcessingRecordID = nil
+        await MainActor.run {
+            if self.processingSessionID == sessionID {
+                self.appState.setStatus(.idle)
+                self.overlayController.dismissSoon()
             }
-            pipelineTiming.applyCompletedAt = Date()
-            record.pipelineTiming = pipelineTiming
-            record.applyStatus = .succeeded
-            record.applyMessage = outcome.message
         }
     }
 
@@ -813,7 +800,7 @@ extension WorkflowController {
         sessionID: UUID,
         record: inout HistoryRecord,
         pipelineTiming: inout HistoryPipelineTiming,
-    ) async throws {
+    ) async throws -> Bool {
         NetworkDebugLogger.logMessage(
             """
             [Ask Flow] no selected-text context
@@ -831,60 +818,16 @@ extension WorkflowController {
         logPipelineEvent("llm-processing-started", for: record)
 
         if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
-            let agentResult = try await runAskAgent(
-                selectedText: nil,
-                spokenInstruction: transcribedText,
+            try await processAgentAskFlowWithoutSelection(
+                transcribedText: transcribedText,
+                askContextText: askContextText,
                 personaPrompt: personaPrompt,
-                appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
+                selectionSnapshot: selectionSnapshot,
+                sessionID: sessionID,
+                record: &record,
+                pipelineTiming: &pipelineTiming,
             )
-            try ensureProcessingIsActive(sessionID)
-            pipelineTiming.llmProcessingCompletedAt = Date()
-            record.pipelineTiming = pipelineTiming
-            logPipelineEvent("llm-processing-completed", for: record)
-
-            switch Self.askWithoutSelectionAgentDisposition(for: agentResult) {
-            case let .answer(answerText):
-                record.mode = .askAnswer
-                record.personaResultText = answerText
-                record.processingStatus = .succeeded
-                record.applyStatus = .running
-                saveHistoryRecord(record)
-
-                try ensureProcessingIsActive(sessionID)
-                pipelineTiming.applyStartedAt = Date()
-                record.pipelineTiming = pipelineTiming
-                await MainActor.run {
-                    self.presentAskAnswer(
-                        question: transcribedText,
-                        selectedText: askContextText,
-                        answerMarkdown: answerText,
-                    )
-                }
-                pipelineTiming.applyCompletedAt = Date()
-                record.pipelineTiming = pipelineTiming
-                record.applyStatus = .succeeded
-                record.applyMessage = L("workflow.ask.answerPresented")
-            case let .insert(text):
-                record.mode = .editSelection
-                record.selectionEditedText = text
-                record.processingStatus = .succeeded
-                record.applyStatus = .running
-                saveHistoryRecord(record)
-
-                try ensureProcessingIsActive(sessionID)
-                pipelineTiming.applyStartedAt = Date()
-                record.pipelineTiming = pipelineTiming
-                let outcome = applyText(
-                    text,
-                    replace: false,
-                    fallbackTitle: L("workflow.result.copyTitle"),
-                )
-                pipelineTiming.applyCompletedAt = Date()
-                record.pipelineTiming = pipelineTiming
-                record.applyStatus = .succeeded
-                record.applyMessage = outcome.message
-            }
-            return
+            return true
         }
 
         let askDecisionResult = try await decideAskSelection(
@@ -904,6 +847,151 @@ extension WorkflowController {
             pipelineTiming: &pipelineTiming,
             sessionID: sessionID,
         )
+        return false
+    }
+
+    private func launchDetachedAgentAskTask(
+        jobID: UUID,
+        recordID: UUID,
+        transcribedText: String,
+        selectedText: String?,
+        personaPrompt: String?,
+        selectionSnapshot: TextSelectionSnapshot,
+        selectedTextForAnswerPresentation: String?,
+    ) {
+        let task = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                Task {
+                    await self.agentExecutionRegistry.finish(jobID: jobID)
+                }
+            }
+
+            do {
+                let execution = try await self.runAskAgent(
+                    selectedText: selectedText,
+                    spokenInstruction: transcribedText,
+                    personaPrompt: personaPrompt,
+                    jobID: jobID,
+                    appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
+                )
+                await self.completeDetachedAgentAskTask(
+                    execution: execution,
+                    recordID: recordID,
+                    transcribedText: transcribedText,
+                    selectedTextForAnswerPresentation: selectedTextForAnswerPresentation,
+                )
+            } catch is CancellationError {
+                await self.failDetachedAgentAskTask(
+                    recordID: recordID,
+                    errorMessage: L("workflow.cancel.userCancelled"),
+                    treatAsCancellation: true,
+                )
+            } catch {
+                let message = "Processing failed: \(error.localizedDescription)"
+                ErrorLogStore.shared.log(message)
+                await self.failDetachedAgentAskTask(
+                    recordID: recordID,
+                    errorMessage: message,
+                    treatAsCancellation: false,
+                )
+            }
+        }
+
+        Task {
+            await agentExecutionRegistry.register(task, for: jobID)
+        }
+    }
+
+    private func completeDetachedAgentAskTask(
+        execution: AskAgentExecutionResult,
+        recordID: UUID,
+        transcribedText: String,
+        selectedTextForAnswerPresentation: String?,
+    ) async {
+        guard var record = historyStore.record(id: recordID) else { return }
+
+        var pipelineTiming = record.pipelineTiming ?? HistoryPipelineTiming()
+        pipelineTiming.llmProcessingCompletedAt = Date()
+        pipelineTiming.applyStartedAt = Date()
+        record.pipelineTiming = pipelineTiming
+        logPipelineEvent("llm-processing-completed", for: record)
+
+        switch Self.askWithoutSelectionAgentDisposition(for: execution.result) {
+        case let .answer(text):
+            record.mode = .askAnswer
+            record.personaResultText = text
+            record.processingStatus = .succeeded
+            record.applyStatus = .running
+            saveHistoryRecord(record)
+
+            await MainActor.run {
+                self.presentAskAnswer(
+                    question: transcribedText,
+                    selectedText: selectedTextForAnswerPresentation,
+                    answerMarkdown: text,
+                )
+            }
+            pipelineTiming.applyCompletedAt = Date()
+            record.pipelineTiming = pipelineTiming
+            record.applyStatus = .succeeded
+            record.applyMessage = L("workflow.ask.answerPresented")
+
+        case let .insert(text):
+            record.mode = .editSelection
+            record.selectionEditedText = text
+            record.processingStatus = .succeeded
+            record.applyStatus = .running
+            saveHistoryRecord(record)
+
+            await MainActor.run {
+                self.lastDialogResultText = text
+                self.overlayController.showResultDialog(
+                    title: L("workflow.result.copyTitle"),
+                    message: text,
+                )
+            }
+            pipelineTiming.applyCompletedAt = Date()
+            record.pipelineTiming = pipelineTiming
+            record.applyStatus = .succeeded
+            record.applyMessage = ApplyOutcome.presentedInDialog.message
+        }
+
+        saveHistoryRecord(record)
+        logPipelineEvent("pipeline-completed", for: record)
+        UsageStatsStore.shared.recordSession(record: record)
+        enforceHistoryRetentionPolicy()
+        _ = execution.jobID
+    }
+
+    private func failDetachedAgentAskTask(
+        recordID: UUID,
+        errorMessage: String,
+        treatAsCancellation: Bool,
+    ) async {
+        guard var record = historyStore.record(id: recordID) else { return }
+
+        if treatAsCancellation {
+            markCancelled(&record)
+            record.errorMessage = errorMessage
+            saveHistoryRecord(record)
+            logPipelineEvent("pipeline-cancelled", for: record)
+            enforceHistoryRetentionPolicy()
+            return
+        }
+
+        markFailure(&record, message: errorMessage)
+        saveHistoryRecord(record)
+        logPipelineEvent("pipeline-failed", for: record)
+        UsageStatsStore.shared.recordSession(record: record)
+        enforceHistoryRetentionPolicy()
+
+        await MainActor.run {
+            self.soundEffectPlayer.play(.error)
+            self.appState.setStatus(.failed(message: L("workflow.processing.failed")))
+            self.overlayController.showFailure(message: errorMessage)
+            self.overlayController.dismiss(after: 3.0)
+        }
     }
 
     private func processPersonaRewriteFlow(

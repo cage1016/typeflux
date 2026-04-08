@@ -6,26 +6,37 @@ final class StatusBarController: NSObject {
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
     private let historyStore: HistoryStore
+    private let agentJobStore: AgentJobStore
     private let onRetryHistory: (HistoryRecord) -> Void
     private let onOpenOnboarding: () -> Void
+    private let onOpenAgentJobs: () -> Void
+    private let onOpenAgentJob: (UUID) -> Void
 
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     private var languageObserver: NSObjectProtocol?
+    private var agentJobObserver: NSObjectProtocol?
+    private var runningAgentJobs: [AgentJob] = []
 
     init(
         appState: AppStateStore,
         settingsStore: SettingsStore,
         historyStore: HistoryStore,
+        agentJobStore: AgentJobStore,
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         onOpenOnboarding: @escaping () -> Void = {},
+        onOpenAgentJobs: @escaping () -> Void = {},
+        onOpenAgentJob: @escaping (UUID) -> Void = { _ in },
     ) {
         self.appState = appState
         self.settingsStore = settingsStore
         self.historyStore = historyStore
+        self.agentJobStore = agentJobStore
         self.onRetryHistory = onRetryHistory
         self.onOpenOnboarding = onOpenOnboarding
+        self.onOpenAgentJobs = onOpenAgentJobs
+        self.onOpenAgentJob = onOpenAgentJob
         AppLocalization.shared.setLanguage(settingsStore.appLanguage)
     }
 
@@ -42,6 +53,16 @@ final class StatusBarController: NSObject {
                 self?.rebuildMenu()
             }
         }
+        agentJobObserver = NotificationCenter.default.addObserver(
+            forName: .agentJobStoreDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshRunningAgentJobs()
+            }
+        }
+        refreshRunningAgentJobs()
 
         appState.$status
             .receive(on: DispatchQueue.main)
@@ -62,6 +83,10 @@ final class StatusBarController: NSObject {
             NotificationCenter.default.removeObserver(languageObserver)
         }
         languageObserver = nil
+        if let agentJobObserver {
+            NotificationCenter.default.removeObserver(agentJobObserver)
+        }
+        agentJobObserver = nil
         cancellables.removeAll()
     }
 
@@ -97,6 +122,11 @@ final class StatusBarController: NSObject {
         menu.addItem(makeItem(title: L("menu.openVoiceStudio"), action: #selector(openHome)))
         menu.addItem(makeItem(title: L("menu.history"), action: #selector(openHistory)))
         menu.addItem(makeItem(title: L("menu.personas"), action: #selector(openPersonas)))
+        if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
+            let agentTasksItem = NSMenuItem(title: L("menu.agentTasks"), action: nil, keyEquivalent: "")
+            agentTasksItem.submenu = buildAgentTasksMenu()
+            menu.addItem(agentTasksItem)
+        }
         menu.addItem(NSMenuItem.separator())
 
         let appearanceItem = NSMenuItem(title: L("menu.appearance"), action: nil, keyEquivalent: "")
@@ -121,6 +151,27 @@ final class StatusBarController: NSObject {
         menu.addItem(makeAppearanceItem(mode: .light))
         menu.addItem(makeAppearanceItem(mode: .dark))
 
+        return menu
+    }
+
+    private func buildAgentTasksMenu() -> NSMenu {
+        let menu = NSMenu(title: L("menu.agentTasks"))
+
+        if runningAgentJobs.isEmpty {
+            let emptyItem = NSMenuItem(title: L("menu.agentTasks.empty"), action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            menu.addItem(emptyItem)
+        } else {
+            for job in runningAgentJobs.prefix(8) {
+                let item = NSMenuItem(title: job.displayTitle, action: #selector(openAgentJob(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = job.id.uuidString
+                menu.addItem(item)
+            }
+        }
+
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(makeItem(title: L("menu.agentTasks.viewAll"), action: #selector(openAgentJobs)))
         return menu
     }
 
@@ -189,11 +240,36 @@ final class StatusBarController: NSObject {
         onOpenOnboarding()
     }
 
+    @objc private func openAgentJobs() {
+        onOpenAgentJobs()
+    }
+
+    @objc private func openAgentJob(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let jobID = UUID(uuidString: rawValue)
+        else {
+            return
+        }
+        onOpenAgentJob(jobID)
+    }
+
     @objc private func openAbout() {
         AboutWindowController.shared.show()
     }
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    private func refreshRunningAgentJobs() {
+        Task {
+            let jobs = await (try? agentJobStore.list(limit: 100, offset: 0)) ?? []
+            let runningJobs = jobs.filter { $0.status == .running }
+            await MainActor.run {
+                self.runningAgentJobs = runningJobs
+                self.rebuildMenu()
+            }
+        }
     }
 }

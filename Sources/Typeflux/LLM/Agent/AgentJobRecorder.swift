@@ -160,6 +160,17 @@ final class AgentJobRecorder: AgentStepMonitor, @unchecked Sendable {
         try? await store.save(job)
     }
 
+    /// Mark the job as cancelled by the user or workflow.
+    func markCancelled(message: String) async {
+        guard var job = try? await store.job(id: jobID) else { return }
+        job.status = .failed
+        job.completedAt = Date()
+        job.errorMessage = message
+        job.outcomeType = "cancelled"
+        job.totalDurationMs = Int64(Date().timeIntervalSince(job.createdAt) * 1000)
+        try? await store.save(job)
+    }
+
     private func extractStringField(_ field: String, from json: String) -> String? {
         guard let data = json.data(using: .utf8),
               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]

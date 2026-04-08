@@ -617,19 +617,22 @@ extension SettingsStoreTests {
         let testHotkey = HotkeyBinding(keyCode: 49, modifierFlags: 0)
         store.activationHotkey = testHotkey
         let loaded = store.activationHotkey
-        XCTAssertEqual(loaded.keyCode, 49)
+        XCTAssertNotNil(loaded)
+        XCTAssertEqual(loaded?.keyCode, 49)
     }
 
     func testActivationHotkeyDefaultIsFunctionKey() {
         let defaultHotkey = store.activationHotkey
-        XCTAssertEqual(defaultHotkey.keyCode, HotkeyBinding.functionKeyCode)
+        XCTAssertNotNil(defaultHotkey)
+        XCTAssertEqual(defaultHotkey?.keyCode, HotkeyBinding.functionKeyCode)
     }
 
     func testAskHotkeyRoundTrip() {
         let testHotkey = HotkeyBinding(keyCode: 32, modifierFlags: 256)
         store.askHotkey = testHotkey
-        XCTAssertEqual(store.askHotkey.keyCode, 32)
-        XCTAssertEqual(store.askHotkey.modifierFlags, 256)
+        XCTAssertNotNil(store.askHotkey)
+        XCTAssertEqual(store.askHotkey?.keyCode, 32)
+        XCTAssertEqual(store.askHotkey?.modifierFlags, 256)
     }
 
     // MARK: - automaticVocabularyCollectionEnabled

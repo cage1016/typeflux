@@ -6,6 +6,11 @@ enum AskAgentResult {
     case edit(String)
 }
 
+struct AskAgentExecutionResult {
+    let jobID: UUID
+    let result: AskAgentResult
+}
+
 /// Internal Phase 1 routing decision.
 private enum Phase1Decision {
     case answer(String)
@@ -33,13 +38,14 @@ extension WorkflowController {
         selectedText: String?,
         spokenInstruction: String,
         personaPrompt: String?,
+        jobID: UUID = UUID(),
         appSystemContext: AppSystemContext? = nil,
-    ) async throws -> AskAgentResult {
+    ) async throws -> AskAgentExecutionResult {
         let llmService = OpenAICompatibleAgentService(settingsStore: settingsStore)
 
         // Create the job recorder upfront so every invocation—regardless of routing
         // decision—produces a history record.
-        let jobRecorder = AgentJobRecorder(store: agentJobStore, jobID: UUID())
+        let jobRecorder = AgentJobRecorder(store: agentJobStore, jobID: jobID)
         await jobRecorder.beginJob(userPrompt: spokenInstruction, selectedText: selectedText)
 
         // Phase 1: single LLM tool call that routes to answer_text, edit_text, or run_agent.
@@ -52,6 +58,9 @@ extension WorkflowController {
                 appSystemContext: appSystemContext,
                 llmService: llmService,
             )
+        } catch is CancellationError {
+            await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
+            throw CancellationError()
         } catch {
             await jobRecorder.markFailed(error: error)
             throw error
@@ -74,14 +83,14 @@ extension WorkflowController {
         case let .answer(text):
             await jobRecorder.completeWithPhase1Result(resultText: text, outcomeType: "answer_text")
             scheduleJobTitle(for: jobRecorder.recordedJobID)
-            return .answer(text)
+            return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: .answer(text))
         case let .edit(text):
             await jobRecorder.completeWithPhase1Result(resultText: text, outcomeType: "edit_text")
             scheduleJobTitle(for: jobRecorder.recordedJobID)
-            return .edit(text)
+            return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: .edit(text))
         case let .runAgent(detailedInstruction):
             // Phase 2: full agent loop continues in the same job; steps start at index 1.
-            return try await runPhase2AgentLoop(
+            let result = try await runPhase2AgentLoop(
                 selectedText: selectedText,
                 spokenInstruction: spokenInstruction,
                 detailedInstruction: detailedInstruction,
@@ -90,6 +99,7 @@ extension WorkflowController {
                 llmService: llmService,
                 jobRecorder: jobRecorder,
             )
+            return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: result)
         }
     }
 
@@ -210,6 +220,9 @@ extension WorkflowController {
                 .system(systemPrompt),
                 .user(userPrompt),
             ])
+        } catch is CancellationError {
+            await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
+            throw CancellationError()
         } catch {
             await jobRecorder.markFailed(error: error)
             throw error
