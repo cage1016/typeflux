@@ -500,38 +500,15 @@ struct StudioView: View {
                                     .foregroundStyle(StudioTheme.accent),
                                 )
                                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
-                                    HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
-                                        Text(persona.name)
-                                            .font(
-                                                .studioBody(
-                                                    StudioTheme.Typography.bodyLarge,
-                                                    weight: .semibold,
-                                                ),
-                                            )
-                                            .foregroundStyle(StudioTheme.textPrimary)
-                                            .lineLimit(1)
-
-                                        Spacer(minLength: StudioTheme.Spacing.small)
-
-                                        if persona.isSystem {
-                                            Text(L("settings.personas.tag.system"))
-                                                .font(.studioBody(9, weight: .semibold))
-                                                .foregroundStyle(StudioTheme.textTertiary)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(
-                                                    Capsule()
-                                                        .fill(StudioTheme.surfaceMuted),
-                                                )
-                                                .overlay(
-                                                    Capsule()
-                                                        .stroke(
-                                                            StudioTheme.border.opacity(0.75),
-                                                            lineWidth: StudioTheme.BorderWidth.thin,
-                                                        ),
-                                                )
-                                        }
-                                    }
+                                    Text(persona.name)
+                                        .font(
+                                            .studioBody(
+                                                StudioTheme.Typography.body,
+                                                weight: .semibold,
+                                            ),
+                                        )
+                                        .foregroundStyle(StudioTheme.textPrimary)
+                                        .lineLimit(1)
                                     Text(persona.prompt)
                                         .font(.studioBody(StudioTheme.Typography.caption))
                                         .foregroundStyle(StudioTheme.textSecondary)
@@ -539,7 +516,7 @@ struct StudioView: View {
                                 }
                             }
                             .padding(StudioTheme.Insets.personaRow)
-                            .padding(.trailing, 18)
+                            .padding(.trailing, StudioTheme.ControlSize.personaStatusDot + 4)
                             .background(
                                 RoundedRectangle(
                                     cornerRadius: StudioTheme.CornerRadius.xxLarge,
@@ -561,6 +538,28 @@ struct StudioView: View {
                                         height: StudioTheme.ControlSize.personaStatusDot,
                                     )
                                     .padding(.trailing, StudioTheme.Insets.personaRow)
+                            }
+                            .overlay(alignment: .topTrailing) {
+                                if persona.isSystem {
+                                    Text(L("settings.personas.tag.system"))
+                                        .font(.studioBody(8, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textTertiary)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            Capsule()
+                                                .fill(StudioTheme.surfaceMuted),
+                                        )
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(
+                                                    StudioTheme.border.opacity(0.75),
+                                                    lineWidth: StudioTheme.BorderWidth.thin,
+                                                ),
+                                        )
+                                        .padding(.top, StudioTheme.Insets.personaRow)
+                                        .padding(.trailing, StudioTheme.Insets.personaRow)
+                                }
                             }
                             .contentShape(
                                 RoundedRectangle(
