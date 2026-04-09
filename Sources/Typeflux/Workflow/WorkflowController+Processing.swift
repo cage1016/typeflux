@@ -1059,6 +1059,13 @@ extension WorkflowController {
             pipelineTiming.llmProcessingCompletedAt = Date()
             rewriteOutput = transcribedText
             record.personaResultText = transcribedText
+        } catch let error where Self.isServiceOverloadedError(error) {
+            // Service overloaded (HTTP 529): all retries exhausted; insert transcript as
+            // fallback so the user isn't left with an error dialog.
+            ErrorLogStore.shared.log("LLM service overloaded after retries, using transcript as fallback")
+            pipelineTiming.llmProcessingCompletedAt = Date()
+            rewriteOutput = transcribedText
+            record.personaResultText = transcribedText
         } catch {
             // All other failures (network error, API error, etc.) are surfaced to the
             // user as a retryable failure so they are never silently swallowed.
@@ -1100,6 +1107,10 @@ extension WorkflowController {
         record.pipelineTiming = pipelineTiming
         record.applyStatus = .succeeded
         record.applyMessage = outcome.message
+    }
+
+    static func isServiceOverloadedError(_ error: Error) -> Bool {
+        (error as NSError).code == 529
     }
 
     func shouldTreatAsSkippedSpeechInput(error: Error, audioFile: AudioFile) -> Bool {
