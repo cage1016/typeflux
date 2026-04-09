@@ -475,12 +475,12 @@ struct StudioView: View {
     private var personasPage: some View {
         HStack(alignment: .top, spacing: StudioTheme.Spacing.section) {
             StudioCard {
-                VStack(spacing: StudioTheme.Spacing.smallMedium) {
+                VStack(spacing: StudioTheme.Spacing.xxSmall) {
                     ForEach(viewModel.filteredPersonas) { persona in
                         Button {
                             viewModel.selectPersona(persona.id)
                         } label: {
-                            HStack(spacing: StudioTheme.Spacing.medium) {
+                            HStack(spacing: StudioTheme.Spacing.small) {
                                 RoundedRectangle(
                                     cornerRadius: StudioTheme.CornerRadius.medium,
                                     style: .continuous,
@@ -496,7 +496,7 @@ struct StudioView: View {
                                             persona.name.prefix(StudioTheme.Count.personaInitials),
                                         ).uppercased(),
                                     )
-                                    .font(.studioBody(StudioTheme.Typography.body, weight: .bold))
+                                    .font(.studioBody(StudioTheme.Typography.bodySmall, weight: .bold))
                                     .foregroundStyle(StudioTheme.accent),
                                 )
                                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {

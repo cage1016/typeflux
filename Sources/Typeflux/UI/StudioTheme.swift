@@ -35,7 +35,7 @@ enum StudioTheme {
         static let textEditorMinHeight: CGFloat = 360
         static let heroMaxWidth: CGFloat = 680
         static let modelsArchitectureCardWidth: CGFloat = 320
-        static let personasListWidth: CGFloat = 360
+        static let personasListWidth: CGFloat = 240
         static let debugActionsCardWidth: CGFloat = 320
         static let appearancePickerWidth: CGFloat = 280
         static let overviewSideMetricsWidth: CGFloat = 320
@@ -165,7 +165,7 @@ enum StudioTheme {
 
     enum LineLimit {
         static let detail: Int = 2
-        static let personaPrompt: Int = 2
+        static let personaPrompt: Int = 1
     }
 
     enum Count {
@@ -181,7 +181,7 @@ enum StudioTheme {
         static let buttonHeight: CGFloat = 34
         static let sidebarUtilityButton: CGFloat = 28
         static let personaAddButton: CGFloat = 36
-        static let personaAvatar: CGFloat = 52
+        static let personaAvatar: CGFloat = 36
         static let personaStatusDot: CGFloat = 10
         static let appearanceBadge: CGFloat = 48
         static let hotkeyBadge: CGFloat = 48
@@ -225,7 +225,7 @@ enum StudioTheme {
         static let cardDefault: CGFloat = 24
         static let cardCompact: CGFloat = 16
         static let cardDense: CGFloat = 18
-        static let personaRow: CGFloat = 16
+        static let personaRow: CGFloat = 10
         static let textEditor: CGFloat = 16
         static let textFieldHorizontal: CGFloat = 16
         static let textFieldVertical: CGFloat = 12
