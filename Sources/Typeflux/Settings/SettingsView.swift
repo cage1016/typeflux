@@ -1886,12 +1886,12 @@ struct StudioView: View {
                         cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
                     )
                     .fill(isSelected ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 32, height: 32)
                     .overlay(
                         Group {
                             if let systemImage {
                                 Image(systemName: systemImage)
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(
                                         isSelected ? StudioTheme.accent : StudioTheme.textSecondary,
                                     )
@@ -1933,7 +1933,7 @@ struct StudioView: View {
                         .lineLimit(2)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 126, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
             .padding(StudioTheme.Insets.cardCompact)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
