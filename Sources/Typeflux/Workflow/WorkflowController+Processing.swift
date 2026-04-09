@@ -329,7 +329,7 @@ extension WorkflowController {
                 return
             }
 
-            await MainActor.run {
+            await MainActor.run { () -> Void in
                 self.soundEffectPlayer.play(.done)
             }
             let selectedText = recordingIntent == .askSelection

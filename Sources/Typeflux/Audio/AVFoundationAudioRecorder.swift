@@ -159,9 +159,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         muteTask = Task { [weak self] in
             guard let self else { return }
             await sleep(Self.outputMuteDelay)
-            stateCondition.lock()
-            let isRecording = isRecording
-            stateCondition.unlock()
+            let isRecording = currentRecordingState()
             guard !Task.isCancelled, isRecording else { return }
             outputMuter.beginMutedSession()
         }
@@ -191,6 +189,13 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         guard let deviceID = audioDeviceManager.resolveInputDeviceID(for: preferredID) else { return }
 
         inputNode.auAudioUnit.setValue(Int(deviceID), forKey: "deviceID")
+    }
+
+    private func currentRecordingState() -> Bool {
+        stateCondition.lock()
+        let isRecording = isRecording
+        stateCondition.unlock()
+        return isRecording
     }
 
     private func handleInputBuffer(_ buffer: AVAudioPCMBuffer) {

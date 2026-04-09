@@ -26,13 +26,21 @@ final class FileHistoryStoreTests: XCTestCase {
         date: Date = Date(),
         transcriptText: String? = nil,
         mode: HistoryRecord.Mode = .dictation,
+        audioFilePath: String? = nil,
     ) -> HistoryRecord {
         HistoryRecord(
             id: id,
             date: date,
             mode: mode,
+            audioFilePath: audioFilePath,
             transcriptText: transcriptText,
         )
+    }
+
+    private func makeAudioFile(named name: String = UUID().uuidString) throws -> URL {
+        let url = testDir.appendingPathComponent("\(name).wav")
+        try Data("audio".utf8).write(to: url)
+        return url
     }
 
     private func flush() {
@@ -139,6 +147,20 @@ final class FileHistoryStoreTests: XCTestCase {
         XCTAssertEqual(store.list().count, 0)
     }
 
+    func testDeleteRemovesLinkedAudioFile() throws {
+        let id = UUID()
+        let audioURL = try makeAudioFile()
+        store.save(record: makeRecord(id: id, transcriptText: "delete me", audioFilePath: audioURL.path))
+        flush()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: audioURL.path))
+
+        store.delete(id: id)
+        flush()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: audioURL.path))
+    }
+
     // MARK: - purge
 
     func testPurgeRemovesOldRecords() {
@@ -157,6 +179,23 @@ final class FileHistoryStoreTests: XCTestCase {
         XCTAssertEqual(list.first?.transcriptText, "recent")
     }
 
+    func testPurgeRemovesAudioFilesForExpiredRecordsOnly() throws {
+        let oldAudioURL = try makeAudioFile(named: "old")
+        let recentAudioURL = try makeAudioFile(named: "recent")
+        let old = Date().addingTimeInterval(-10 * 24 * 3600)
+        let recent = Date()
+
+        store.save(record: makeRecord(date: old, transcriptText: "old", audioFilePath: oldAudioURL.path))
+        store.save(record: makeRecord(date: recent, transcriptText: "recent", audioFilePath: recentAudioURL.path))
+        flush()
+
+        store.purge(olderThanDays: 5)
+        flush()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: oldAudioURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recentAudioURL.path))
+    }
+
     // MARK: - clear
 
     func testClearRemovesAllRecords() {
@@ -168,6 +207,20 @@ final class FileHistoryStoreTests: XCTestCase {
         flush()
 
         XCTAssertEqual(store.list().count, 0)
+    }
+
+    func testClearRemovesAllLinkedAudioFiles() throws {
+        let firstAudioURL = try makeAudioFile(named: "first")
+        let secondAudioURL = try makeAudioFile(named: "second")
+        store.save(record: makeRecord(transcriptText: "a", audioFilePath: firstAudioURL.path))
+        store.save(record: makeRecord(transcriptText: "b", audioFilePath: secondAudioURL.path))
+        flush()
+
+        store.clear()
+        flush()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstAudioURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: secondAudioURL.path))
     }
 
     // MARK: - exportMarkdown
