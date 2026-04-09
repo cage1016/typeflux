@@ -627,17 +627,11 @@ struct StudioView: View {
 
     private var personaProviderSelectionSection: some View {
         StudioCard {
-            VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
-                HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
-                    HStack(spacing: StudioTheme.Spacing.xSmall) {
-                        Image(systemName: "waveform")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(StudioTheme.textSecondary)
-                        Text(L("settings.personas.providers.stt"))
-                            .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
-                            .foregroundStyle(StudioTheme.textPrimary)
-                    }
-                    Spacer()
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                StudioSettingRow(
+                    title: L("settings.personas.providers.stt"),
+                    subtitle: L("settings.personas.providers.stt.subtitle")
+                ) {
                     StudioMenuPicker(
                         options: STTProvider.settingsDisplayOrder.map {
                             (label: $0.displayName, value: $0)
@@ -650,18 +644,12 @@ struct StudioView: View {
                     )
                 }
 
-                Divider()
+                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
-                HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
-                    HStack(spacing: StudioTheme.Spacing.xSmall) {
-                        Image(systemName: "cpu")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(StudioTheme.textSecondary)
-                        Text(L("settings.personas.providers.llm"))
-                            .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
-                            .foregroundStyle(StudioTheme.textPrimary)
-                    }
-                    Spacer()
+                StudioSettingRow(
+                    title: L("settings.personas.providers.llm"),
+                    subtitle: L("settings.personas.providers.llm.subtitle")
+                ) {
                     StudioMenuPicker(
                         options: personaLLMProviderOptions,
                         selection: Binding(
@@ -1059,27 +1047,6 @@ struct StudioView: View {
                                 ),
                                 width: 200,
                             )
-                        }
-
-                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                        HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
-                            Text(
-                                viewModel.personaRewriteEnabled
-                                    ? L("settings.personaDefault.enabled")
-                                    : L("settings.personaDefault.disabled"),
-                            )
-                            .font(.studioBody(StudioTheme.Typography.caption))
-                            .foregroundStyle(StudioTheme.textSecondary)
-
-                            Spacer()
-
-                            StudioButton(
-                                title: L("settings.personaDefault.openPersonas"), systemImage: nil,
-                                variant: .secondary,
-                            ) {
-                                viewModel.navigate(to: .personas)
-                            }
                         }
                     }
                 }

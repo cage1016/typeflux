@@ -365,7 +365,9 @@
 "settings.personas.deleteDialog.message" = "「%@」を削除しますか?これを元に戻すことはできません。";
 "settings.providers" = "サービスプロバイダ";
 "settings.personas.providers.stt" = "音声サービス";
+"settings.personas.providers.stt.subtitle" = "音声からテキストへの変換に使用するサービスを選択します。";
 "settings.personas.providers.llm" = "言語モデルサービス";
+"settings.personas.providers.llm.subtitle" = "テキスト生成に使用する言語モデルサービスを選択します。";
 "settings.personaDefault.title" = "デフォルトのペルソナ";
 "settings.personaDefault.subtitle" = "新しいディクテーション セッションを形成するライティング アイデンティティを選択します。";
 "settings.personaDefault.enabled" = "新しいディクテーション セッションは、選択したペルソナで書き換えられます。";

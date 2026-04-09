@@ -371,7 +371,9 @@
 "settings.personas.deleteDialog.message" = "删除”%@”？此操作无法撤销。";
 "settings.providers" = "服务商";
 "settings.personas.providers.stt" = "语音服务商";
+"settings.personas.providers.stt.subtitle" = "选择用于语音转文字的服务商。";
 "settings.personas.providers.llm" = "大语言模型服务商";
+"settings.personas.providers.llm.subtitle" = "选择用于文本生成的大语言模型服务商。";
 "settings.personaDefault.title" = "默认人设";
 "settings.personaDefault.subtitle" = "选择新听写会话默认采用的写作身份。";
 "settings.personaDefault.enabled" = "新的听写会话会使用所选人设进行改写。";

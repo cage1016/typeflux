@@ -371,7 +371,9 @@
 "settings.personas.deleteDialog.message" = "Delete \"%@\"? This cannot be undone.";
 "settings.providers" = "Service Providers";
 "settings.personas.providers.stt" = "Voice Provider";
+"settings.personas.providers.stt.subtitle" = "Select the speech-to-text service for transcription.";
 "settings.personas.providers.llm" = "LLM Provider";
+"settings.personas.providers.llm.subtitle" = "Select the language model service for text generation.";
 "settings.personaDefault.title" = "Default Persona";
 "settings.personaDefault.subtitle" = "Choose the writing identity that should shape new dictation sessions.";
 "settings.personaDefault.enabled" = "New dictation sessions will be rewritten with the selected persona.";
