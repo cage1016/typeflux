@@ -932,9 +932,8 @@ struct StudioView: View {
 
             StudioSectionTitle(title: L("settings.activationHotkey"))
 
-            StudioCard {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
-                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
                         shortcutConfigurationRow(
                             configuration: ShortcutConfiguration(
                                 title: L("settings.shortcuts.activation.title"),
@@ -1021,7 +1020,6 @@ struct StudioView: View {
                         recordingShortcutBanner
                     }
                 }
-            }
 
             StudioSectionTitle(title: L("settings.providers"))
 
