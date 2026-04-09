@@ -181,8 +181,8 @@ enum StudioTheme {
         static let buttonHeight: CGFloat = 34
         static let sidebarUtilityButton: CGFloat = 28
         static let personaAddButton: CGFloat = 36
-        static let personaAvatar: CGFloat = 52
-        static let personaStatusDot: CGFloat = 10
+        static let personaAvatar: CGFloat = 36
+        static let personaStatusDot: CGFloat = 8
         static let appearanceBadge: CGFloat = 48
         static let hotkeyBadge: CGFloat = 48
         static let overviewMiniIcon: CGFloat = 30
@@ -225,7 +225,7 @@ enum StudioTheme {
         static let cardDefault: CGFloat = 24
         static let cardCompact: CGFloat = 16
         static let cardDense: CGFloat = 18
-        static let personaRow: CGFloat = 16
+        static let personaRow: CGFloat = 10
         static let textEditor: CGFloat = 16
         static let textFieldHorizontal: CGFloat = 16
         static let textFieldVertical: CGFloat = 12

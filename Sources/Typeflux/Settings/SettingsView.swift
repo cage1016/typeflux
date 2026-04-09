@@ -438,7 +438,9 @@ struct StudioView: View {
     }
 
     private var personasPage: some View {
-        HStack(alignment: .top, spacing: StudioTheme.Spacing.section) {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.section) {
+            personaProviderSelectionSection
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.section) {
             StudioCard {
                 VStack(spacing: StudioTheme.Spacing.smallMedium) {
                     ForEach(viewModel.filteredPersonas) { persona in
@@ -622,7 +624,77 @@ struct StudioView: View {
                     }
                 }
             }
+            }
         }
+    }
+
+    private var personaProviderSelectionSection: some View {
+        StudioCard {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
+                HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
+                    HStack(spacing: StudioTheme.Spacing.xSmall) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                        Text(L("settings.personas.providers.stt"))
+                            .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                    }
+                    Spacer()
+                    StudioMenuPicker(
+                        options: STTProvider.settingsDisplayOrder.map {
+                            (label: $0.displayName, value: $0)
+                        },
+                        selection: Binding(
+                            get: { viewModel.sttProvider },
+                            set: { viewModel.setSTTProvider($0) },
+                        ),
+                        width: 200,
+                    )
+                }
+
+                Divider()
+
+                HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
+                    HStack(spacing: StudioTheme.Spacing.xSmall) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                        Text(L("settings.personas.providers.llm"))
+                            .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                    }
+                    Spacer()
+                    StudioMenuPicker(
+                        options: personaLLMProviderOptions,
+                        selection: Binding(
+                            get: {
+                                viewModel.llmProvider == .ollama
+                                    ? .ollama
+                                    : viewModel.llmRemoteProvider.studioProviderID
+                            },
+                            set: { providerID in
+                                if providerID == .ollama {
+                                    viewModel.setLLMProvider(.ollama)
+                                } else if let remoteProvider = LLMRemoteProvider.from(
+                                    providerID: providerID,
+                                ) {
+                                    viewModel.setLLMRemoteProvider(remoteProvider)
+                                }
+                            },
+                        ),
+                        width: 200,
+                    )
+                }
+            }
+        }
+    }
+
+    private var personaLLMProviderOptions: [(label: String, value: StudioModelProviderID)] {
+        [(label: LLMProvider.ollama.displayName, value: .ollama)] +
+            LLMRemoteProvider.settingsDisplayOrder.map { provider in
+                (label: provider.displayName, value: provider.studioProviderID)
+            }
     }
 
     private var historyPage: some View {
