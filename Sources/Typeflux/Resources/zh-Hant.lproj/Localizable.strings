@@ -179,6 +179,8 @@
 "updater.action.later" = "稍後提醒";
 "updater.latest.title" = "已是最新版本";
 "updater.latest.message" = "你目前執行的是最新版本的 Typeflux。";
+"updater.checkFailed.title" = "檢查更新失敗";
+"updater.checkFailed.noData" = "無法取得更新資訊。";
 
 "provider.stt.whisperAPI" = "OpenAI";
 "provider.stt.freeModel" = "免費模型";

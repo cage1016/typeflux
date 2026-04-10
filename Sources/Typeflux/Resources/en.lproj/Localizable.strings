@@ -181,6 +181,8 @@
 "updater.action.later" = "Remind Me Later";
 "updater.latest.title" = "Up to Date";
 "updater.latest.message" = "You are running the latest version of Typeflux.";
+"updater.checkFailed.title" = "Update Check Failed";
+"updater.checkFailed.noData" = "Unable to retrieve update information.";
 
 "provider.stt.whisperAPI" = "OpenAI";
 "provider.stt.freeModel" = "Free Models";

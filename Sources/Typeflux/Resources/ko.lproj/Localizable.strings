@@ -175,6 +175,8 @@
 "updater.action.later" = "나중에 알림";
 "updater.latest.title" = "최신";
 "updater.latest.message" = "Typeflux의 최신 버전을 실행 중입니다.";
+"updater.checkFailed.title" = "업데이트 확인 실패";
+"updater.checkFailed.noData" = "업데이트 정보를 가져올 수 없습니다.";
 
 "provider.stt.whisperAPI" = "OpenAI";
 "provider.stt.freeModel" = "무료 모델";
