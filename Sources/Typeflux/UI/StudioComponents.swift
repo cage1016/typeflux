@@ -430,30 +430,28 @@ struct StudioSidebar: View {
 
                 Spacer()
 
-                utilityButton(
-                    systemImage: "envelope",
-                    accessibilityLabel: L("sidebar.feedbackAccessibility"),
-                    isActive: false,
-                    action: onSendFeedback,
-                )
+                HStack(spacing: StudioTheme.Spacing.smallMedium) {
+                    utilityButton(
+                        systemImage: "envelope",
+                        accessibilityLabel: L("sidebar.feedbackAccessibility"),
+                        isActive: false,
+                        action: onSendFeedback,
+                    )
 
-                Spacer()
+                    utilityButton(
+                        systemImage: "questionmark.circle",
+                        accessibilityLabel: L("sidebar.aboutAccessibility"),
+                        isActive: false,
+                        action: onOpenAbout,
+                    )
 
-                utilityButton(
-                    systemImage: "gearshape",
-                    accessibilityLabel: L("sidebar.settingsAccessibility"),
-                    isActive: currentSection == .settings,
-                    action: { onSelect(.settings) },
-                )
-
-                Spacer()
-
-                utilityButton(
-                    systemImage: "questionmark.circle",
-                    accessibilityLabel: L("sidebar.aboutAccessibility"),
-                    isActive: false,
-                    action: onOpenAbout,
-                )
+                    utilityButton(
+                        systemImage: "gearshape",
+                        accessibilityLabel: L("sidebar.settingsAccessibility"),
+                        isActive: currentSection == .settings,
+                        action: { onSelect(.settings) },
+                    )
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
