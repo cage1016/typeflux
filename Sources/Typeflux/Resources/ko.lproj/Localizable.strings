@@ -82,8 +82,15 @@
 
 "menu.openVoiceStudio" = "Typeflux 열기";
 "menu.history" = "역사";
+"menu.personas" = "페르소나";
+"menu.agentTasks" = "Agent 작업";
+"menu.agentTasks.empty" = "실행 중인 작업 없음";
+"menu.agentTasks.viewAll" = "모든 작업 보기";
+"menu.agentTasks.runningCount" = "%d개 실행 중";
+"menu.appearance" = "외관";
 "menu.settings" = "설정";
 "menu.setupGuide" = "설정 가이드";
+"menu.about" = "Typeflux 정보";
 "menu.checkForUpdates" = "업데이트 확인";
 "menu.downloadingUpdate" = "업데이트 다운로드 중…";
 "menu.installingUpdate" = "업데이트 설치 중…";
