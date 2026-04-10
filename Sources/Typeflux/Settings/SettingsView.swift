@@ -3216,10 +3216,12 @@ struct StudioView: View {
                             }
                         }
 
-                        StudioButton(
-                            title: L("common.save"), systemImage: "checkmark", variant: .primary,
-                        ) {
-                            viewModel.applyModelConfiguration()
+                        if viewModel.focusedModelProvider.showsManualSaveButton {
+                            StudioButton(
+                                title: L("common.save"), systemImage: "checkmark", variant: .primary,
+                            ) {
+                                viewModel.applyModelConfiguration()
+                            }
                         }
                     }
 
@@ -3843,6 +3845,10 @@ struct StudioView: View {
     }
 
     private func providerLogoImage(for provider: StudioModelProviderID) -> NSImage? {
+        if provider == .typefluxOfficial {
+            return NSApp.applicationIconImage
+        }
+
         guard let resourceName = providerLogoResourceName(for: provider) else { return nil }
 
         let url =

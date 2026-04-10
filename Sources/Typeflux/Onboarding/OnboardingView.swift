@@ -923,6 +923,10 @@ struct OnboardingView: View {
     }
 
     private func loadProviderLogo(for providerID: StudioModelProviderID) -> NSImage? {
+        if providerID == .typefluxOfficial {
+            return NSApp.applicationIconImage
+        }
+
         guard let name = providerLogoResourceName(for: providerID) else { return nil }
         let url = Bundle.module.url(
             forResource: name,

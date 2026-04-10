@@ -199,6 +199,15 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
             .llm
         }
     }
+
+    var showsManualSaveButton: Bool {
+        switch self {
+        case .typefluxOfficial:
+            false
+        default:
+            true
+        }
+    }
 }
 
 struct StudioModelCard: Identifiable {

@@ -140,6 +140,15 @@ final class StudioModelsTests: XCTestCase {
         }
     }
 
+    func testTypefluxOfficialDoesNotShowManualSaveButton() {
+        XCTAssertFalse(StudioModelProviderID.typefluxOfficial.showsManualSaveButton)
+    }
+
+    func testOtherProvidersStillShowManualSaveButton() {
+        XCTAssertTrue(StudioModelProviderID.whisperAPI.showsManualSaveButton)
+        XCTAssertTrue(StudioModelProviderID.openAI.showsManualSaveButton)
+    }
+
     // MARK: - HistoryPipelineStatPresentationItem
 
     func testPipelineStatItem() {
