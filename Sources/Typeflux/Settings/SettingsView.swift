@@ -681,9 +681,9 @@ struct StudioView: View {
                     subtitle: L("settings.personas.providers.stt.subtitle")
                 ) {
                     StudioMenuPicker(
-                        options: STTProvider.settingsDisplayOrder.map {
-                            (label: $0.displayName, value: $0)
-                        },
+                        options: STTProvider.settingsDisplayOrder
+                            .filter { $0 != .freeModel || !FreeSTTModelRegistry.suggestedModelNames.isEmpty }
+                            .map { (label: $0.displayName, value: $0) },
                         selection: Binding(
                             get: { viewModel.sttProvider },
                             set: { viewModel.setSTTProvider($0) },
@@ -725,9 +725,11 @@ struct StudioView: View {
 
     private var personaLLMProviderOptions: [(label: String, value: StudioModelProviderID)] {
         [(label: LLMProvider.ollama.displayName, value: .ollama)] +
-            LLMRemoteProvider.settingsDisplayOrder.map { provider in
-                (label: provider.displayName, value: provider.studioProviderID)
-            }
+            LLMRemoteProvider.settingsDisplayOrder
+                .filter { $0 != .freeModel || !FreeLLMModelRegistry.suggestedModelNames.isEmpty }
+                .map { provider in
+                    (label: provider.displayName, value: provider.studioProviderID)
+                }
     }
 
     private var historyPage: some View {
