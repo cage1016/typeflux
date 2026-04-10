@@ -1078,7 +1078,7 @@ struct OnboardingView: View {
                             .resizable()
                             .interpolation(.high)
                             .scaledToFit()
-                            .padding(6)
+                            .padding(providerID.usesExpandedLogo ? 1 : 6)
                     } else {
                         Image(systemName: providerSymbol(for: providerID))
                             .font(.system(size: 14, weight: .medium))

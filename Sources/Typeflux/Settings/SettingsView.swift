@@ -3202,7 +3202,9 @@ struct StudioView: View {
                         } else if [
                             StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .aliCloud,
                             .doubaoRealtime, .groqSTT, .typefluxOfficial,
-                        ].contains(viewModel.focusedModelProvider) {
+                        ].contains(viewModel.focusedModelProvider),
+                            !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
+                        {
                             StudioButton(
                                 title: viewModel.sttConnectionTestState == .testing
                                     ? L("settings.models.testingConnection") : L("common.test"),
@@ -3230,7 +3232,9 @@ struct StudioView: View {
                     } else if [
                         StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .aliCloud,
                         .doubaoRealtime, .groqSTT, .typefluxOfficial,
-                    ].contains(viewModel.focusedModelProvider) {
+                    ].contains(viewModel.focusedModelProvider),
+                        !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
+                    {
                         connectionTestResultView(viewModel.sttConnectionTestState)
                     }
                 }
@@ -3618,22 +3622,22 @@ struct StudioView: View {
     @ViewBuilder
     private var typefluxOfficialProviderForm: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-            Text(L("settings.models.typefluxOfficial.description"))
-                .font(.studioBody(StudioTheme.Typography.caption))
-                .foregroundStyle(StudioTheme.textSecondary)
-
             if !authState.isLoggedIn {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                     Text(L("settings.models.typefluxOfficial.loginRequired"))
                         .font(.studioBody(StudioTheme.Typography.caption))
                         .foregroundStyle(StudioTheme.warning)
 
-                    StudioButton(
-                        title: L("settings.models.typefluxOfficial.signIn"),
-                        systemImage: "person.circle",
-                        variant: .primary,
-                    ) {
-                        LoginWindowController.shared.show()
+                    HStack {
+                        Spacer()
+
+                        StudioButton(
+                            title: L("settings.models.typefluxOfficial.signIn"),
+                            systemImage: "person.circle",
+                            variant: .primary,
+                        ) {
+                            LoginWindowController.shared.show()
+                        }
                     }
                 }
             }
@@ -3832,7 +3836,7 @@ struct StudioView: View {
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()
-                .padding(9)
+                .padding(provider.usesExpandedLogo ? 2 : 9)
         } else {
             Image(systemName: iconName(for: provider))
                 .font(

@@ -208,6 +208,24 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
             true
         }
     }
+
+    var requiresLoginForConnectionTest: Bool {
+        switch self {
+        case .typefluxOfficial:
+            true
+        default:
+            false
+        }
+    }
+
+    var usesExpandedLogo: Bool {
+        switch self {
+        case .typefluxOfficial:
+            true
+        default:
+            false
+        }
+    }
 }
 
 struct StudioModelCard: Identifiable {

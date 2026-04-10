@@ -149,6 +149,16 @@ final class StudioModelsTests: XCTestCase {
         XCTAssertTrue(StudioModelProviderID.openAI.showsManualSaveButton)
     }
 
+    func testTypefluxOfficialRequiresLoginForConnectionTest() {
+        XCTAssertTrue(StudioModelProviderID.typefluxOfficial.requiresLoginForConnectionTest)
+        XCTAssertFalse(StudioModelProviderID.whisperAPI.requiresLoginForConnectionTest)
+    }
+
+    func testTypefluxOfficialUsesExpandedLogo() {
+        XCTAssertTrue(StudioModelProviderID.typefluxOfficial.usesExpandedLogo)
+        XCTAssertFalse(StudioModelProviderID.openAI.usesExpandedLogo)
+    }
+
     // MARK: - HistoryPipelineStatPresentationItem
 
     func testPipelineStatItem() {
