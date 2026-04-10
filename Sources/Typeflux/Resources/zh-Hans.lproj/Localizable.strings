@@ -788,7 +788,7 @@
 
 "auth.account.provider" = "登录方式";
 "auth.account.memberSince" = "注册时间";
-"auth.account.logout" = "退出登录";
+"auth.account.logout" = "退出";
 "auth.account.providerEmail" = "邮箱与密码";
 "auth.account.signIn" = "登录账号";
 "auth.account.signedOutTitle" = "尚未登录";

@@ -13,9 +13,8 @@ struct AccountView: View {
                 loadingCard
             } else {
                 signedOutCard
+                actionSection
             }
-
-            actionSection
         }
     }
 
@@ -49,6 +48,8 @@ struct AccountView: View {
                 if authState.isLoading {
                     ProgressView()
                         .controlSize(.small)
+                } else {
+                    actionSection
                 }
             }
 
