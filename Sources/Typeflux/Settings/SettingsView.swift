@@ -376,7 +376,9 @@ struct StudioView: View {
         case .agent:
             agentPage
         case .account:
-            AccountView(authState: AuthState.shared)
+            AccountView(authState: AuthState.shared) {
+                viewModel.navigate(to: .home)
+            }
         }
     }
 

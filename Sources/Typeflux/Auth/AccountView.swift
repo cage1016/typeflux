@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountView: View {
     @ObservedObject var authState: AuthState
+    let onLogout: () -> Void
     @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
@@ -116,15 +117,9 @@ struct AccountView: View {
                 Text(authState.isLoggedIn ? L("auth.account.logout") : L("auth.account.signIn"))
                     .font(.studioBody(StudioTheme.Typography.body, weight: .medium))
             }
-            .foregroundStyle(authState.isLoggedIn ? StudioTheme.danger : StudioTheme.accent)
-            .padding(.horizontal, StudioTheme.Spacing.medium)
-            .padding(.vertical, StudioTheme.Spacing.small)
-            .background(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill((authState.isLoggedIn ? StudioTheme.danger : StudioTheme.accent).opacity(0.1)),
-            )
+            .foregroundStyle(authState.isLoggedIn ? StudioTheme.textSecondary : StudioTheme.accent)
         }
-        .buttonStyle(StudioInteractiveButtonStyle())
+        .buttonStyle(.plain)
     }
 
     // MARK: - Helpers
@@ -183,6 +178,7 @@ struct AccountView: View {
     private func handlePrimaryAction() {
         if authState.isLoggedIn {
             authState.logout()
+            onLogout()
         } else {
             LoginWindowController.shared.show()
         }
