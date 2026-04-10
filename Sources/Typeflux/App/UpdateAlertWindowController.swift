@@ -19,6 +19,9 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
         panel.isMovableByWindowBackground = true
+        // Always float above other windows, even when another app is active
+        panel.level = .floating
+        panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
 
         self.init(window: panel)
 
@@ -36,8 +39,8 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func show() {
-        window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 
     private func fire(_ action: Action) {
@@ -82,12 +85,35 @@ private struct UpdateAlertContentView: View {
             Image(systemName: "arrow.down.circle.fill")
                 .font(.system(size: 36))
                 .foregroundStyle(.tint)
-            Text(L("updater.available.title"))
-                .font(.title3)
-                .fontWeight(.semibold)
-            Text(L("updater.available.versionLabel", version))
-                .font(.callout)
-                .foregroundStyle(.secondary)
+
+            // Title + optional external-link icon
+            HStack(spacing: 4) {
+                Text(L("updater.available.title"))
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                if let releaseURL {
+                    Link(destination: releaseURL) {
+                        Image(systemName: "arrow.up.right.circle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Version label — acts as a link when release_url is present
+            if let releaseURL {
+                Link(destination: releaseURL) {
+                    Text(L("updater.available.versionLabel", version))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(L("updater.available.versionLabel", version))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 20)
         .padding(.horizontal, 24)
@@ -98,17 +124,7 @@ private struct UpdateAlertContentView: View {
         HStack(spacing: 12) {
             Button(L("updater.action.skip"), action: onSkip)
                 .keyboardShortcut(.cancelAction)
-
             Spacer()
-
-            if let releaseURL {
-                Link(L("updater.action.viewDetails"), destination: releaseURL)
-                    .font(.callout)
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
-
             Button(L("updater.action.update"), action: onUpdate)
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
