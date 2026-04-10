@@ -30,24 +30,26 @@ final class AutoUpdater {
 
     private var websiteURL: URL { URL(string: apiBaseURL)! }
     private var autoCheckTimer: Timer?
+    private weak var settingsStore: SettingsStore?
 
     private init() {}
 
     // MARK: - Auto-check
 
     func startAutoCheck(settingsStore: SettingsStore) {
+        self.settingsStore = settingsStore
         stopAutoCheck()
         guard settingsStore.autoUpdateEnabled else { return }
 
         // Initial check after a short delay on app launch
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-            guard settingsStore.autoUpdateEnabled else { return }
+            guard self?.settingsStore?.autoUpdateEnabled == true else { return }
             self?.checkForUpdates(manual: false)
         }
 
         autoCheckTimer = Timer.scheduledTimer(withTimeInterval: Self.autoCheckInterval, repeats: true) { [weak self] _ in
-            guard settingsStore.autoUpdateEnabled else { return }
             Task { @MainActor [weak self] in
+                guard self?.settingsStore?.autoUpdateEnabled == true else { return }
                 self?.checkForUpdates(manual: false)
             }
         }
