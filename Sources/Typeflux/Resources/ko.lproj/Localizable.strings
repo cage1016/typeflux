@@ -782,3 +782,6 @@
 "auth.account.memberSince" = "가입일";
 "auth.account.logout" = "로그아웃";
 "auth.account.providerEmail" = "이메일 및 비밀번호";
+"auth.account.signIn" = "로그인";
+"auth.account.signedOutTitle" = "로그인되지 않음";
+"auth.account.signedOutSubtitle" = "로그인하면 계정 정보를 확인하고 현재 세션을 관리할 수 있습니다.";

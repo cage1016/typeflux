@@ -68,13 +68,24 @@ final class AuthState: ObservableObject {
             userProfile = profile
             KeychainTokenStore.saveUserProfile(profile)
             logger.info("Profile refreshed for \(profile.email)")
-        } catch let error as AuthError where error.authErrorCode == nil {
-            if case .unauthorized = error {
+        } catch let error as AuthError {
+            if shouldInvalidateSession(for: error) {
                 logout()
             }
             logger.error("Failed to refresh profile: \(error.localizedDescription)")
         } catch {
             logger.error("Failed to refresh profile: \(error.localizedDescription)")
+        }
+    }
+
+    private func shouldInvalidateSession(for error: AuthError) -> Bool {
+        switch error {
+        case .unauthorized:
+            true
+        case .serverError(let code, _):
+            code == "USER_NOT_FOUND"
+        case .networkError, .invalidResponse:
+            false
         }
     }
 }

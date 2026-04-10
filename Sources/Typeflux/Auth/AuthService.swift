@@ -5,10 +5,6 @@ import os
 struct AuthAPIService {
     private static let logger = Logger(subsystem: "dev.typeflux", category: "AuthAPIService")
 
-    private static var apiBaseURL: String {
-        ProcessInfo.processInfo.environment["TYPEFLUX_API_URL"] ?? "https://typeflux.gulu.ai"
-    }
-
     // MARK: - Public API
 
     static func enterEmail(_ email: String) async throws -> EnterEmailResponse {
@@ -41,7 +37,7 @@ struct AuthAPIService {
         body: Body,
         token: String? = nil,
     ) async throws -> Response {
-        guard let url = URL(string: "\(apiBaseURL)\(path)") else {
+        guard let url = URL(string: "\(AppServerConfiguration.apiBaseURL)\(path)") else {
             throw AuthError.invalidResponse
         }
 
@@ -61,7 +57,7 @@ struct AuthAPIService {
         path: String,
         token: String? = nil,
     ) async throws -> Response {
-        guard let url = URL(string: "\(apiBaseURL)\(path)") else {
+        guard let url = URL(string: "\(AppServerConfiguration.apiBaseURL)\(path)") else {
             throw AuthError.invalidResponse
         }
 

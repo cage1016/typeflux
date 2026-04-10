@@ -788,3 +788,6 @@
 "auth.account.memberSince" = "注册时间";
 "auth.account.logout" = "退出登录";
 "auth.account.providerEmail" = "邮箱与密码";
+"auth.account.signIn" = "登录账号";
+"auth.account.signedOutTitle" = "尚未登录";
+"auth.account.signedOutSubtitle" = "登录后可查看账号信息并管理当前会话。";

@@ -21,14 +21,9 @@ final class AutoUpdater {
         }
     }
 
-    private static let defaultBaseURL = "https://typeflux.gulu.ai"
     private static let autoCheckInterval: TimeInterval = 3 * 3600
 
-    private var apiBaseURL: String {
-        ProcessInfo.processInfo.environment["TYPEFLUX_API_URL"] ?? Self.defaultBaseURL
-    }
-
-    private var websiteURL: URL { URL(string: apiBaseURL)! }
+    private var websiteURL: URL { URL(string: AppServerConfiguration.apiBaseURL)! }
     private var autoCheckTimer: Timer?
     private weak var settingsStore: SettingsStore?
 
@@ -72,7 +67,7 @@ final class AutoUpdater {
 
         let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
 
-        guard var components = URLComponents(string: "\(apiBaseURL)/api/v1/app/update") else { return }
+        guard var components = URLComponents(string: "\(AppServerConfiguration.apiBaseURL)/api/v1/app/update") else { return }
         components.queryItems = [URLQueryItem(name: "version", value: currentVersion)]
         guard let url = components.url else { return }
 

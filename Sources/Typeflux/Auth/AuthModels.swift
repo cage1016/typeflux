@@ -65,7 +65,7 @@ struct LoginResponse: Decodable {
 struct UserProfile: Codable, Equatable {
     let id: String
     let email: String
-    let name: String
+    let name: String?
     let status: Int
     let provider: String
     let createdAt: String
@@ -75,6 +75,11 @@ struct UserProfile: Codable, Equatable {
         case id, email, name, status, provider
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+
+    var resolvedDisplayName: String {
+        let trimmedName = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmedName.isEmpty ? email : trimmedName
     }
 }
 

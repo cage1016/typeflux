@@ -788,3 +788,6 @@
 "auth.account.memberSince" = "Member Since";
 "auth.account.logout" = "Sign Out";
 "auth.account.providerEmail" = "Email & Password";
+"auth.account.signIn" = "Sign In";
+"auth.account.signedOutTitle" = "Not Signed In";
+"auth.account.signedOutSubtitle" = "Sign in to sync your account and manage your session.";

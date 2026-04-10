@@ -782,3 +782,6 @@
 "auth.account.memberSince" = "登録日";
 "auth.account.logout" = "サインアウト";
 "auth.account.providerEmail" = "メールとパスワード";
+"auth.account.signIn" = "サインイン";
+"auth.account.signedOutTitle" = "未サインイン";
+"auth.account.signedOutSubtitle" = "サインインすると、アカウント情報の確認と現在のセッション管理ができます。";

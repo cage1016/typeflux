@@ -10,9 +10,11 @@ struct AccountView: View {
                 profileCard(profile: profile)
             } else if authState.isLoading {
                 loadingCard
+            } else {
+                signedOutCard
             }
 
-            logoutSection
+            actionSection
         }
     }
 
@@ -32,7 +34,7 @@ struct AccountView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(profile.name.isEmpty ? profile.email : profile.name)
+                    Text(profile.resolvedDisplayName)
                         .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
                         .foregroundStyle(StudioTheme.textPrimary)
 
@@ -82,23 +84,44 @@ struct AccountView: View {
         )
     }
 
-    // MARK: - Logout Section
+    private var signedOutCard: some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+            Text(L("auth.account.signedOutTitle"))
+                .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
+                .foregroundStyle(StudioTheme.textPrimary)
 
-    private var logoutSection: some View {
-        Button(action: { authState.logout() }) {
+            Text(L("auth.account.signedOutSubtitle"))
+                .font(.studioBody(StudioTheme.Typography.body))
+                .foregroundStyle(StudioTheme.textSecondary)
+        }
+        .padding(StudioTheme.Spacing.section)
+        .background(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                .fill(StudioTheme.surfaceMuted),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+        )
+    }
+
+    // MARK: - Action Section
+
+    private var actionSection: some View {
+        Button(action: handlePrimaryAction) {
             HStack(spacing: StudioTheme.Spacing.small) {
-                Image(systemName: "rectangle.portrait.and.arrow.forward")
+                Image(systemName: authState.isLoggedIn ? "rectangle.portrait.and.arrow.forward" : "person.crop.circle.badge.plus")
                     .font(.system(size: StudioTheme.Typography.iconSmall, weight: .medium))
 
-                Text(L("auth.account.logout"))
+                Text(authState.isLoggedIn ? L("auth.account.logout") : L("auth.account.signIn"))
                     .font(.studioBody(StudioTheme.Typography.body, weight: .medium))
             }
-            .foregroundStyle(StudioTheme.danger)
+            .foregroundStyle(authState.isLoggedIn ? StudioTheme.danger : StudioTheme.accent)
             .padding(.horizontal, StudioTheme.Spacing.medium)
             .padding(.vertical, StudioTheme.Spacing.small)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(StudioTheme.danger.opacity(0.1)),
+                    .fill((authState.isLoggedIn ? StudioTheme.danger : StudioTheme.accent).opacity(0.1)),
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
@@ -120,7 +143,7 @@ struct AccountView: View {
     }
 
     private func avatarInitial(from profile: UserProfile) -> String {
-        let source = profile.name.isEmpty ? profile.email : profile.name
+        let source = profile.resolvedDisplayName
         return String(source.prefix(1)).uppercased()
     }
 
@@ -155,5 +178,13 @@ struct AccountView: View {
             return display.string(from: date)
         }
         return dateString
+    }
+
+    private func handlePrimaryAction() {
+        if authState.isLoggedIn {
+            authState.logout()
+        } else {
+            LoginWindowController.shared.show()
+        }
     }
 }

@@ -421,33 +421,39 @@ struct StudioSidebar: View {
                 .frame(height: 1)
 
             HStack(spacing: StudioTheme.Spacing.none) {
-                StudioSidebarIconButton(
+                utilityButton(
                     systemImage: isLoggedIn ? "person.circle.fill" : "person.circle",
                     accessibilityLabel: L("sidebar.accountAccessibility"),
+                    isActive: currentSection == .account,
                     action: onAccountAction,
                 )
 
                 Spacer()
 
-                HStack(spacing: StudioTheme.Spacing.smallMedium) {
-                    StudioSidebarIconButton(
-                        systemImage: "envelope",
-                        accessibilityLabel: L("sidebar.feedbackAccessibility"),
-                        action: onSendFeedback,
-                    )
+                utilityButton(
+                    systemImage: "envelope",
+                    accessibilityLabel: L("sidebar.feedbackAccessibility"),
+                    isActive: false,
+                    action: onSendFeedback,
+                )
 
-                    StudioSidebarIconButton(
-                        systemImage: "gearshape",
-                        accessibilityLabel: L("sidebar.settingsAccessibility"),
-                        action: { onSelect(.settings) },
-                    )
+                Spacer()
 
-                    StudioSidebarIconButton(
-                        systemImage: "questionmark.circle",
-                        accessibilityLabel: L("sidebar.aboutAccessibility"),
-                        action: onOpenAbout,
-                    )
-                }
+                utilityButton(
+                    systemImage: "gearshape",
+                    accessibilityLabel: L("sidebar.settingsAccessibility"),
+                    isActive: currentSection == .settings,
+                    action: { onSelect(.settings) },
+                )
+
+                Spacer()
+
+                utilityButton(
+                    systemImage: "questionmark.circle",
+                    accessibilityLabel: L("sidebar.aboutAccessibility"),
+                    isActive: false,
+                    action: onOpenAbout,
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -456,6 +462,48 @@ struct StudioSidebar: View {
         .environment(\.locale, localization.locale)
     }
 
+    private func utilityButton(
+        systemImage: String,
+        accessibilityLabel: String,
+        isActive: Bool,
+        action: @escaping () -> Void,
+    ) -> some View {
+        StudioSidebarIconButton(
+            systemImage: systemImage,
+            accessibilityLabel: accessibilityLabel,
+            isActive: isActive,
+            action: action,
+        )
+    }
+}
+
+private struct StudioSidebarIconButton: View {
+    let systemImage: String
+    let accessibilityLabel: String
+    let isActive: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+                .foregroundStyle(isActive ? StudioTheme.textPrimary : StudioTheme.textSecondary)
+                .frame(width: StudioTheme.ControlSize.sidebarUtilityButton, height: StudioTheme.ControlSize.sidebarUtilityButton)
+                .background(
+                    Circle()
+                        .fill((isHovered || isActive) ? StudioTheme.sidebarSelection : Color.clear),
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+        .accessibilityLabel(accessibilityLabel)
+        .studioTooltip(accessibilityLabel, yOffset: 34)
+        .onHover { isHovered = $0 }
+    }
+}
+
+extension StudioSidebar {
     private func sidebarNavigationButton(for section: StudioSection) -> some View {
         Button(action: { onSelect(section) }) {
             HStack(spacing: StudioTheme.Spacing.medium) {
@@ -478,31 +526,6 @@ struct StudioSidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(StudioInteractiveButtonStyle())
-    }
-}
-
-private struct StudioSidebarIconButton: View {
-    let systemImage: String
-    let accessibilityLabel: String
-    let action: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
-                .foregroundStyle(StudioTheme.textSecondary)
-                .frame(width: StudioTheme.ControlSize.sidebarUtilityButton, height: StudioTheme.ControlSize.sidebarUtilityButton)
-                .background(
-                    Circle()
-                        .fill(isHovered ? StudioTheme.sidebarSelection : Color.clear),
-                )
-                .contentShape(Circle())
-        }
-        .buttonStyle(StudioInteractiveButtonStyle())
-        .accessibilityLabel(accessibilityLabel)
-        .studioTooltip(accessibilityLabel, yOffset: 34)
-        .onHover { isHovered = $0 }
     }
 }
 

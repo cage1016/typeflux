@@ -3,31 +3,31 @@ import Security
 
 /// Stores authentication tokens in the macOS Keychain.
 struct KeychainTokenStore {
-    private static let service = "dev.typeflux.auth"
-    private static let tokenAccount = "accessToken"
-    private static let expiresAtAccount = "expiresAt"
+    private struct StoredToken: Codable {
+        let token: String
+        let expiresAt: Int
+    }
+
+    private static let service = "\(Bundle.main.bundleIdentifier ?? "dev.typeflux").auth"
+    private static let tokenAccount = "session"
     private static let userProfileAccount = "userProfile"
 
     // MARK: - Token
 
     static func saveToken(_ token: String, expiresAt: Int) {
-        setKeychainString(token, account: tokenAccount)
-        setKeychainString(String(expiresAt), account: expiresAtAccount)
+        let storedToken = StoredToken(token: token, expiresAt: expiresAt)
+        setKeychainValue(storedToken, account: tokenAccount)
     }
 
     static func loadToken() -> (token: String, expiresAt: Int)? {
-        guard let token = getKeychainString(account: tokenAccount),
-              let expiresAtString = getKeychainString(account: expiresAtAccount),
-              let expiresAt = Int(expiresAtString)
-        else {
+        guard let storedToken: StoredToken = getKeychainValue(account: tokenAccount) else {
             return nil
         }
-        return (token, expiresAt)
+        return (storedToken.token, storedToken.expiresAt)
     }
 
     static func deleteToken() {
         deleteKeychainItem(account: tokenAccount)
-        deleteKeychainItem(account: expiresAtAccount)
     }
 
     static var isTokenValid: Bool {
@@ -38,22 +38,11 @@ struct KeychainTokenStore {
     // MARK: - User Profile
 
     static func saveUserProfile(_ profile: UserProfile) {
-        guard let data = try? JSONEncoder().encode(profile),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return
-        }
-        setKeychainString(json, account: userProfileAccount)
+        setKeychainValue(profile, account: userProfileAccount)
     }
 
     static func loadUserProfile() -> UserProfile? {
-        guard let json = getKeychainString(account: userProfileAccount),
-              let data = json.data(using: .utf8),
-              let profile = try? JSONDecoder().decode(UserProfile.self, from: data)
-        else {
-            return nil
-        }
-        return profile
+        getKeychainValue(account: userProfileAccount)
     }
 
     static func deleteUserProfile() {
@@ -69,8 +58,8 @@ struct KeychainTokenStore {
 
     // MARK: - Keychain Helpers
 
-    private static func setKeychainString(_ value: String, account: String) {
-        guard let data = value.data(using: .utf8) else { return }
+    private static func setKeychainValue<Value: Encodable>(_ value: Value, account: String) {
+        guard let data = try? JSONEncoder().encode(value) else { return }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -83,12 +72,12 @@ struct KeychainTokenStore {
 
         var addQuery = query
         addQuery[kSecValueData as String] = data
-        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
         SecItemAdd(addQuery as CFDictionary, nil)
     }
 
-    private static func getKeychainString(account: String) -> String? {
+    private static func getKeychainValue<Value: Decodable>(account: String) -> Value? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -102,11 +91,11 @@ struct KeychainTokenStore {
 
         guard status == errSecSuccess,
               let data = result as? Data,
-              let string = String(data: data, encoding: .utf8)
+              let value = try? JSONDecoder().decode(Value.self, from: data)
         else {
             return nil
         }
-        return string
+        return value
     }
 
     private static func deleteKeychainItem(account: String) {

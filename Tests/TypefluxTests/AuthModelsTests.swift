@@ -124,6 +124,23 @@ final class AuthModelsTests: XCTestCase {
         XCTAssertEqual(profile.status, 1)
         XCTAssertEqual(profile.provider, "password")
         XCTAssertEqual(profile.createdAt, "2024-04-09T12:00:00Z")
+        XCTAssertEqual(profile.resolvedDisplayName, "John Doe")
+    }
+
+    func testUserProfileDecodingWithoutNameFallsBackToEmail() throws {
+        let json = """
+        {
+            "id": "user-uuid-123",
+            "email": "user@test.com",
+            "status": 1,
+            "provider": "password",
+            "created_at": "2024-04-09T12:00:00Z",
+            "updated_at": "2024-04-09T12:00:00Z"
+        }
+        """
+        let profile = try JSONDecoder().decode(UserProfile.self, from: json.data(using: .utf8)!)
+        XCTAssertNil(profile.name)
+        XCTAssertEqual(profile.resolvedDisplayName, "user@test.com")
     }
 
     func testUserProfileRoundTrip() throws {
