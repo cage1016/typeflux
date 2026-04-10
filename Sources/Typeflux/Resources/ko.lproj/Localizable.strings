@@ -740,3 +740,45 @@
 "agent.jobs.clearAllDialog.message" = "모든 작업 기록을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.";
 "agent.jobs.deleteDialog.title" = "작업 삭제";
 "agent.jobs.deleteDialog.message" = "\"%@\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.";
+
+// MARK: - Auth & Account
+
+"sidebar.accountAccessibility" = "계정";
+
+"studio.section.account" = "계정";
+"studio.eyebrow.account" = "계정";
+"studio.heading.account" = "계정";
+"studio.search.account" = "계정 검색...";
+
+"auth.login.windowTitle" = "로그인";
+"auth.login.title" = "환영합니다";
+"auth.login.enterEmailSubtitle" = "이메일을 입력하여 시작하세요";
+"auth.login.loginSubtitle" = "계정에 로그인";
+"auth.login.registerSubtitle" = "새 계정 만들기";
+"auth.login.activateSubtitle" = "이메일로 전송된 활성화 코드를 확인하세요";
+"auth.login.continue" = "계속";
+"auth.login.signIn" = "로그인";
+"auth.login.createAccount" = "계정 만들기";
+"auth.login.activate" = "활성화";
+"auth.login.back" = "뒤로";
+"auth.login.activateHint" = "%@(으)로 활성화 코드를 보냈습니다. 아래에 입력해 주세요.";
+
+"auth.field.email" = "이메일";
+"auth.field.password" = "비밀번호";
+"auth.field.confirmPassword" = "비밀번호 확인";
+"auth.field.name" = "이름 (선택)";
+"auth.field.activationCode" = "활성화 코드";
+
+"auth.error.emailRequired" = "이메일 주소를 입력해 주세요.";
+"auth.error.passwordRequired" = "비밀번호를 입력해 주세요.";
+"auth.error.passwordMismatch" = "비밀번호가 일치하지 않습니다.";
+"auth.error.passwordTooShort" = "비밀번호는 8자 이상이어야 합니다.";
+"auth.error.codeRequired" = "활성화 코드를 입력해 주세요.";
+"auth.error.unknown" = "알 수 없는 오류가 발생했습니다.";
+"auth.error.invalidResponse" = "서버 응답이 잘못되었습니다.";
+"auth.error.unauthorized" = "세션이 만료되었습니다. 다시 로그인해 주세요.";
+
+"auth.account.provider" = "로그인 방법";
+"auth.account.memberSince" = "가입일";
+"auth.account.logout" = "로그아웃";
+"auth.account.providerEmail" = "이메일 및 비밀번호";

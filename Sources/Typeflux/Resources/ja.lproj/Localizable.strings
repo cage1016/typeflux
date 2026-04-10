@@ -740,3 +740,45 @@
 "agent.jobs.clearAllDialog.message" = "すべてのジョブ記録を削除しますか?この操作は元に戻すことができません。";
 "agent.jobs.deleteDialog.title" = "ジョブの削除";
 "agent.jobs.deleteDialog.message" = "「%@」を削除しますか?この操作は元に戻すことができません。";
+
+// MARK: - Auth & Account
+
+"sidebar.accountAccessibility" = "アカウント";
+
+"studio.section.account" = "アカウント";
+"studio.eyebrow.account" = "アカウント";
+"studio.heading.account" = "アカウント";
+"studio.search.account" = "アカウントを検索...";
+
+"auth.login.windowTitle" = "サインイン";
+"auth.login.title" = "ようこそ";
+"auth.login.enterEmailSubtitle" = "メールアドレスを入力してください";
+"auth.login.loginSubtitle" = "アカウントにサインイン";
+"auth.login.registerSubtitle" = "新しいアカウントを作成";
+"auth.login.activateSubtitle" = "メールに届いたアクティベーションコードを確認してください";
+"auth.login.continue" = "次へ";
+"auth.login.signIn" = "サインイン";
+"auth.login.createAccount" = "アカウント作成";
+"auth.login.activate" = "アクティベート";
+"auth.login.back" = "戻る";
+"auth.login.activateHint" = "%@ にアクティベーションコードを送信しました。下に入力してください。";
+
+"auth.field.email" = "メールアドレス";
+"auth.field.password" = "パスワード";
+"auth.field.confirmPassword" = "パスワード確認";
+"auth.field.name" = "名前（任意）";
+"auth.field.activationCode" = "アクティベーションコード";
+
+"auth.error.emailRequired" = "メールアドレスを入力してください。";
+"auth.error.passwordRequired" = "パスワードを入力してください。";
+"auth.error.passwordMismatch" = "パスワードが一致しません。";
+"auth.error.passwordTooShort" = "パスワードは8文字以上必要です。";
+"auth.error.codeRequired" = "アクティベーションコードを入力してください。";
+"auth.error.unknown" = "不明なエラーが発生しました。";
+"auth.error.invalidResponse" = "サーバーの応答が無効です。";
+"auth.error.unauthorized" = "セッションが期限切れです。再度サインインしてください。";
+
+"auth.account.provider" = "ログイン方法";
+"auth.account.memberSince" = "登録日";
+"auth.account.logout" = "サインアウト";
+"auth.account.providerEmail" = "メールとパスワード";

@@ -8,6 +8,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
     case models
     case agent
     case settings
+    case account
 
     var id: String {
         rawValue
@@ -32,6 +33,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
         case .history: L("studio.section.history")
         case .agent: L("studio.section.agent")
         case .settings: L("studio.section.settings")
+        case .account: L("studio.section.account")
         }
     }
 
@@ -44,6 +46,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
         case .history: "clock.arrow.circlepath"
         case .agent: "puzzlepiece.extension"
         case .settings: "gearshape.fill"
+        case .account: "person.circle"
         }
     }
 
@@ -56,6 +59,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
         case .history: L("studio.eyebrow.history")
         case .agent: L("studio.eyebrow.agent")
         case .settings: L("studio.eyebrow.settings")
+        case .account: L("studio.eyebrow.account")
         }
     }
 
@@ -68,6 +72,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
         case .history: L("studio.heading.history")
         case .agent: L("studio.heading.agent")
         case .settings: L("studio.heading.settings")
+        case .account: L("studio.heading.account")
         }
     }
 
@@ -87,6 +92,8 @@ enum StudioSection: String, CaseIterable, Identifiable {
             L("studio.subheading.agent")
         case .settings:
             nil
+        case .account:
+            nil
         }
     }
 
@@ -99,6 +106,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
         case .history: L("studio.search.history")
         case .agent: L("studio.search.agent")
         case .settings: L("studio.search.settings")
+        case .account: L("studio.search.account")
         }
     }
 }

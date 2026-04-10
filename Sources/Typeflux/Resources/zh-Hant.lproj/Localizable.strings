@@ -744,3 +744,45 @@
 "agent.jobs.clearAllDialog.message" = "確定清除所有任務記錄嗎？此操作無法復原。";
 "agent.jobs.deleteDialog.title" = "刪除任務";
 "agent.jobs.deleteDialog.message" = "確定刪除「%@」嗎？此操作無法復原。";
+
+// MARK: - Auth & Account
+
+"sidebar.accountAccessibility" = "帳號";
+
+"studio.section.account" = "帳號";
+"studio.eyebrow.account" = "帳號";
+"studio.heading.account" = "帳號";
+"studio.search.account" = "搜尋帳號...";
+
+"auth.login.windowTitle" = "登入";
+"auth.login.title" = "歡迎";
+"auth.login.enterEmailSubtitle" = "輸入電子郵件以開始使用";
+"auth.login.loginSubtitle" = "登入您的帳號";
+"auth.login.registerSubtitle" = "建立新帳號";
+"auth.login.activateSubtitle" = "請查收電子郵件中的啟用碼";
+"auth.login.continue" = "繼續";
+"auth.login.signIn" = "登入";
+"auth.login.createAccount" = "建立帳號";
+"auth.login.activate" = "啟用";
+"auth.login.back" = "返回";
+"auth.login.activateHint" = "我們已向 %@ 發送了啟用碼，請在下方輸入。";
+
+"auth.field.email" = "電子郵件";
+"auth.field.password" = "密碼";
+"auth.field.confirmPassword" = "確認密碼";
+"auth.field.name" = "姓名（選填）";
+"auth.field.activationCode" = "啟用碼";
+
+"auth.error.emailRequired" = "請輸入電子郵件地址。";
+"auth.error.passwordRequired" = "請輸入密碼。";
+"auth.error.passwordMismatch" = "兩次密碼輸入不一致。";
+"auth.error.passwordTooShort" = "密碼至少需要 8 個字元。";
+"auth.error.codeRequired" = "請輸入啟用碼。";
+"auth.error.unknown" = "發生了未知錯誤。";
+"auth.error.invalidResponse" = "伺服器回應無效。";
+"auth.error.unauthorized" = "登入已過期，請重新登入。";
+
+"auth.account.provider" = "登入方式";
+"auth.account.memberSince" = "註冊時間";
+"auth.account.logout" = "登出";
+"auth.account.providerEmail" = "電子郵件與密碼";

@@ -746,3 +746,45 @@
 "agent.jobs.clearAllDialog.message" = "确定清除所有任务记录吗？此操作无法撤销。";
 "agent.jobs.deleteDialog.title" = "删除任务";
 "agent.jobs.deleteDialog.message" = "确定删除「%@」吗？此操作无法撤销。";
+
+// MARK: - Auth & Account
+
+"sidebar.accountAccessibility" = "账号";
+
+"studio.section.account" = "账号";
+"studio.eyebrow.account" = "账号";
+"studio.heading.account" = "账号";
+"studio.search.account" = "搜索账号...";
+
+"auth.login.windowTitle" = "登录";
+"auth.login.title" = "欢迎";
+"auth.login.enterEmailSubtitle" = "输入邮箱以开始使用";
+"auth.login.loginSubtitle" = "登录你的账号";
+"auth.login.registerSubtitle" = "创建新账号";
+"auth.login.activateSubtitle" = "请查收邮箱中的激活码";
+"auth.login.continue" = "继续";
+"auth.login.signIn" = "登录";
+"auth.login.createAccount" = "创建账号";
+"auth.login.activate" = "激活";
+"auth.login.back" = "返回";
+"auth.login.activateHint" = "我们已向 %@ 发送了激活码，请在下方输入。";
+
+"auth.field.email" = "邮箱";
+"auth.field.password" = "密码";
+"auth.field.confirmPassword" = "确认密码";
+"auth.field.name" = "姓名（可选）";
+"auth.field.activationCode" = "激活码";
+
+"auth.error.emailRequired" = "请输入邮箱地址。";
+"auth.error.passwordRequired" = "请输入密码。";
+"auth.error.passwordMismatch" = "两次密码输入不一致。";
+"auth.error.passwordTooShort" = "密码至少需要 8 个字符。";
+"auth.error.codeRequired" = "请输入激活码。";
+"auth.error.unknown" = "发生了未知错误。";
+"auth.error.invalidResponse" = "服务器响应无效。";
+"auth.error.unauthorized" = "登录已过期，请重新登录。";
+
+"auth.account.provider" = "登录方式";
+"auth.account.memberSince" = "注册时间";
+"auth.account.logout" = "退出登录";
+"auth.account.providerEmail" = "邮箱与密码";

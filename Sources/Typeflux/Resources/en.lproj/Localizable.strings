@@ -746,3 +746,45 @@
 "agent.jobs.clearAllDialog.message" = "Clear all job records? This action cannot be undone.";
 "agent.jobs.deleteDialog.title" = "Delete Job";
 "agent.jobs.deleteDialog.message" = "Delete \"%@\"? This action cannot be undone.";
+
+// MARK: - Auth & Account
+
+"sidebar.accountAccessibility" = "Account";
+
+"studio.section.account" = "Account";
+"studio.eyebrow.account" = "Account";
+"studio.heading.account" = "Account";
+"studio.search.account" = "Search account...";
+
+"auth.login.windowTitle" = "Sign In";
+"auth.login.title" = "Welcome";
+"auth.login.enterEmailSubtitle" = "Enter your email to get started";
+"auth.login.loginSubtitle" = "Sign in to your account";
+"auth.login.registerSubtitle" = "Create a new account";
+"auth.login.activateSubtitle" = "Check your email for the activation code";
+"auth.login.continue" = "Continue";
+"auth.login.signIn" = "Sign In";
+"auth.login.createAccount" = "Create Account";
+"auth.login.activate" = "Activate";
+"auth.login.back" = "Back";
+"auth.login.activateHint" = "We sent an activation code to %@. Please enter it below.";
+
+"auth.field.email" = "Email";
+"auth.field.password" = "Password";
+"auth.field.confirmPassword" = "Confirm Password";
+"auth.field.name" = "Name (optional)";
+"auth.field.activationCode" = "Activation Code";
+
+"auth.error.emailRequired" = "Please enter your email address.";
+"auth.error.passwordRequired" = "Please enter your password.";
+"auth.error.passwordMismatch" = "Passwords do not match.";
+"auth.error.passwordTooShort" = "Password must be at least 8 characters.";
+"auth.error.codeRequired" = "Please enter the activation code.";
+"auth.error.unknown" = "An unknown error occurred.";
+"auth.error.invalidResponse" = "Invalid server response.";
+"auth.error.unauthorized" = "Session expired. Please sign in again.";
+
+"auth.account.provider" = "Login Method";
+"auth.account.memberSince" = "Member Since";
+"auth.account.logout" = "Sign Out";
+"auth.account.providerEmail" = "Email & Password";

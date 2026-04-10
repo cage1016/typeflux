@@ -1,0 +1,159 @@
+import SwiftUI
+
+struct AccountView: View {
+    @ObservedObject var authState: AuthState
+    @ObservedObject private var localization = AppLocalization.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
+            if let profile = authState.userProfile {
+                profileCard(profile: profile)
+            } else if authState.isLoading {
+                loadingCard
+            }
+
+            logoutSection
+        }
+    }
+
+    // MARK: - Profile Card
+
+    private func profileCard(profile: UserProfile) -> some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.section) {
+            HStack(spacing: StudioTheme.Spacing.medium) {
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(StudioTheme.accentSoft)
+                        .frame(width: 56, height: 56)
+                    Text(avatarInitial(from: profile))
+                        .font(.studioDisplay(StudioTheme.Typography.pageTitle, weight: .bold))
+                        .foregroundStyle(StudioTheme.accent)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(profile.name.isEmpty ? profile.email : profile.name)
+                        .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    Text(profile.email)
+                        .font(.studioBody(StudioTheme.Typography.body))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+
+                Spacer()
+
+                if authState.isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+
+            // Info rows
+            VStack(spacing: StudioTheme.Spacing.small) {
+                infoRow(label: L("auth.account.provider"), value: providerDisplayName(profile.provider))
+                infoRow(label: L("auth.account.memberSince"), value: formattedDate(profile.createdAt))
+            }
+        }
+        .padding(StudioTheme.Spacing.section)
+        .background(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                .fill(StudioTheme.surfaceMuted),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+        )
+    }
+
+    // MARK: - Loading Card
+
+    private var loadingCard: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+                .controlSize(.regular)
+            Spacer()
+        }
+        .frame(height: 120)
+        .background(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                .fill(StudioTheme.surfaceMuted),
+        )
+    }
+
+    // MARK: - Logout Section
+
+    private var logoutSection: some View {
+        Button(action: { authState.logout() }) {
+            HStack(spacing: StudioTheme.Spacing.small) {
+                Image(systemName: "rectangle.portrait.and.arrow.forward")
+                    .font(.system(size: StudioTheme.Typography.iconSmall, weight: .medium))
+
+                Text(L("auth.account.logout"))
+                    .font(.studioBody(StudioTheme.Typography.body, weight: .medium))
+            }
+            .foregroundStyle(StudioTheme.danger)
+            .padding(.horizontal, StudioTheme.Spacing.medium)
+            .padding(.vertical, StudioTheme.Spacing.small)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                    .fill(StudioTheme.danger.opacity(0.1)),
+            )
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+    }
+
+    // MARK: - Helpers
+
+    private func infoRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.studioBody(StudioTheme.Typography.body))
+                .foregroundStyle(StudioTheme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.studioBody(StudioTheme.Typography.body, weight: .medium))
+                .foregroundStyle(StudioTheme.textPrimary)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func avatarInitial(from profile: UserProfile) -> String {
+        let source = profile.name.isEmpty ? profile.email : profile.name
+        return String(source.prefix(1)).uppercased()
+    }
+
+    private func providerDisplayName(_ provider: String) -> String {
+        switch provider {
+        case "password":
+            L("auth.account.providerEmail")
+        case "google":
+            "Google"
+        case "apple":
+            "Apple"
+        default:
+            provider
+        }
+    }
+
+    private func formattedDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: dateString) {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .none
+            return display.string(from: date)
+        }
+        // Fallback: try without fractional seconds
+        formatter.formatOptions = [.withInternetDateTime]
+        if let date = formatter.date(from: dateString) {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .none
+            return display.string(from: date)
+        }
+        return dateString
+    }
+}

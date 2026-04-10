@@ -5,7 +5,7 @@ final class StudioModelsTests: XCTestCase {
     // MARK: - StudioSection
 
     func testStudioSectionAllCasesCount() {
-        XCTAssertEqual(StudioSection.allCases.count, 7)
+        XCTAssertEqual(StudioSection.allCases.count, 8)
     }
 
     func testStudioSectionId() {
@@ -59,6 +59,7 @@ final class StudioModelsTests: XCTestCase {
         XCTAssertNil(StudioSection.personas.subheading)
         XCTAssertNil(StudioSection.history.subheading)
         XCTAssertNil(StudioSection.settings.subheading)
+        XCTAssertNil(StudioSection.account.subheading)
     }
 
     func testSubheadingNonNilForOtherSections() {

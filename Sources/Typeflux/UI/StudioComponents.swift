@@ -284,9 +284,11 @@ struct StudioShell<Content: View>: View {
     let onSelect: (StudioSection) -> Void
     let onOpenAbout: () -> Void
     let onSendFeedback: () -> Void
+    let onAccountAction: () -> Void
     let searchText: Binding<String>
     let searchPlaceholder: String
     let agentEnabled: Bool
+    let isLoggedIn: Bool
     let content: (CGSize) -> Content
 
     init(
@@ -294,18 +296,22 @@ struct StudioShell<Content: View>: View {
         onSelect: @escaping (StudioSection) -> Void,
         onOpenAbout: @escaping () -> Void,
         onSendFeedback: @escaping () -> Void,
+        onAccountAction: @escaping () -> Void,
         searchText: Binding<String>,
         searchPlaceholder: String,
         agentEnabled: Bool = false,
+        isLoggedIn: Bool = false,
         @ViewBuilder content: @escaping (CGSize) -> Content,
     ) {
         self.currentSection = currentSection
         self.onSelect = onSelect
         self.onOpenAbout = onOpenAbout
         self.onSendFeedback = onSendFeedback
+        self.onAccountAction = onAccountAction
         self.searchText = searchText
         self.searchPlaceholder = searchPlaceholder
         self.agentEnabled = agentEnabled
+        self.isLoggedIn = isLoggedIn
         self.content = content
     }
 
@@ -320,7 +326,9 @@ struct StudioShell<Content: View>: View {
                     onSelect: onSelect,
                     onSendFeedback: onSendFeedback,
                     onOpenAbout: onOpenAbout,
+                    onAccountAction: onAccountAction,
                     agentEnabled: agentEnabled,
+                    isLoggedIn: isLoggedIn,
                 )
                 .frame(width: StudioTheme.sidebarWidth)
 
@@ -358,7 +366,9 @@ struct StudioSidebar: View {
     let onSelect: (StudioSection) -> Void
     let onSendFeedback: () -> Void
     let onOpenAbout: () -> Void
+    let onAccountAction: () -> Void
     let agentEnabled: Bool
+    let isLoggedIn: Bool
     @ObservedObject private var localization = AppLocalization.shared
 
     var body: some View {
@@ -411,6 +421,14 @@ struct StudioSidebar: View {
                 .frame(height: 1)
 
             HStack(spacing: StudioTheme.Spacing.none) {
+                StudioSidebarIconButton(
+                    systemImage: isLoggedIn ? "person.circle.fill" : "person.circle",
+                    accessibilityLabel: L("sidebar.accountAccessibility"),
+                    action: onAccountAction,
+                )
+
+                Spacer()
+
                 HStack(spacing: StudioTheme.Spacing.smallMedium) {
                     StudioSidebarIconButton(
                         systemImage: "envelope",
@@ -419,19 +437,17 @@ struct StudioSidebar: View {
                     )
 
                     StudioSidebarIconButton(
+                        systemImage: "gearshape",
+                        accessibilityLabel: L("sidebar.settingsAccessibility"),
+                        action: { onSelect(.settings) },
+                    )
+
+                    StudioSidebarIconButton(
                         systemImage: "questionmark.circle",
                         accessibilityLabel: L("sidebar.aboutAccessibility"),
                         action: onOpenAbout,
                     )
                 }
-
-                Spacer()
-
-                StudioSidebarIconButton(
-                    systemImage: "gearshape",
-                    accessibilityLabel: L("sidebar.settingsAccessibility"),
-                    action: { onSelect(.settings) },
-                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

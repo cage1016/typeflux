@@ -89,9 +89,11 @@ struct StudioView: View {
             onSelect: viewModel.navigate,
             onOpenAbout: { AboutWindowController.shared.show() },
             onSendFeedback: sendFeedbackEmail,
+            onAccountAction: handleAccountAction,
             searchText: $viewModel.searchQuery,
             searchPlaceholder: viewModel.currentSection.searchPlaceholder,
             agentEnabled: viewModel.agentFrameworkEnabled,
+            isLoggedIn: AuthState.shared.isLoggedIn,
         ) { viewportSize in
             let viewportHeight = viewportContentHeight(from: viewportSize)
 
@@ -283,6 +285,14 @@ struct StudioView: View {
         NSWorkspace.shared.open(url)
     }
 
+    private func handleAccountAction() {
+        if AuthState.shared.isLoggedIn {
+            viewModel.navigate(to: .account)
+        } else {
+            LoginWindowController.shared.show()
+        }
+    }
+
     private var pageHeader: some View {
         HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
             StudioHeroHeader(
@@ -365,6 +375,8 @@ struct StudioView: View {
             settingsPage
         case .agent:
             agentPage
+        case .account:
+            AccountView(authState: AuthState.shared)
         }
     }
 
