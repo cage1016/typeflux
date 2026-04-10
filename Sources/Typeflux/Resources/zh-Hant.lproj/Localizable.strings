@@ -81,17 +81,11 @@
 "settings.permissionStatus.subtitle" = "檢視 Typeflux 依賴的 macOS 權限，並在需要時完成授權。";
 
 "menu.openVoiceStudio" = "打開 Typeflux";
-"menu.history" = "歷史…";
-"menu.personas" = "人設";
-"menu.agentTasks" = "Agent 任務";
-"menu.agentTasks.empty" = "暫無執行中的任務";
-"menu.agentTasks.viewAll" = "查看所有任務…";
-"menu.agentTasks.runningCount" = "%d 個執行中";
-"menu.appearance" = "外觀";
-"menu.settings" = "設定…";
-"menu.setupGuide" = "新手引導…";
-"menu.about" = "關於 Typeflux";
-"menu.checkForUpdates" = "檢查更新…";
+"menu.history" = "歷史";
+"menu.agentTasks.viewAll" = "查看所有任務";
+"menu.settings" = "設定";
+"menu.setupGuide" = "新手引導";
+"menu.checkForUpdates" = "檢查更新";
 "menu.downloadingUpdate" = "正在下載更新…";
 "menu.installingUpdate" = "正在安裝更新…";
 "menu.quit" = "結束";

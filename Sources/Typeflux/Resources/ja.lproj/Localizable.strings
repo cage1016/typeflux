@@ -81,13 +81,10 @@
 "settings.permissionStatus.subtitle" = "Typeflux が依存する macOS 権限を確認し、必要に応じてアクセスを許可します。";
 
 "menu.openVoiceStudio" = "Typeflux を開く";
-"menu.history" = "歴史…";
-"menu.personas" = "ペルソナ";
-"menu.appearance" = "外観";
-"menu.settings" = "設定…";
-"menu.setupGuide" = "セットアップガイド…";
-"menu.about" = "Typeflux について";
-"menu.checkForUpdates" = "アップデートを確認してください…";
+"menu.history" = "歴史";
+"menu.settings" = "設定";
+"menu.setupGuide" = "セットアップガイド";
+"menu.checkForUpdates" = "アップデートを確認";
 "menu.downloadingUpdate" = "アップデートをダウンロード中…";
 "menu.installingUpdate" = "アップデートをインストール中…";
 "menu.quit" = "やめる";
