@@ -122,6 +122,7 @@ final class AutoUpdater {
         let controller = UpdateAlertWindowController(
             version: info.latestVersion,
             releaseNotes: info.releaseNotes,
+            releaseURL: info.releaseURL.flatMap(URL.init),
             appearanceMode: appearanceMode
         )
         controller.onAction = { [weak self, weak controller] action in
@@ -258,11 +259,13 @@ private struct UpdateInfo: Decodable {
     let releaseNotes: String
     let shouldUpdate: Bool
     let downloadURL: String?
+    let releaseURL: String?
 
     enum CodingKeys: String, CodingKey {
         case latestVersion = "latest_version"
         case releaseNotes = "release_notes"
         case shouldUpdate = "should_update"
         case downloadURL = "download_url"
+        case releaseURL = "release_url"
     }
 }

@@ -8,7 +8,7 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
     var onAction: ((Action) -> Void)?
     private var actionFired = false
 
-    convenience init(version: String, releaseNotes: String, appearanceMode: AppearanceMode) {
+    convenience init(version: String, releaseNotes: String, releaseURL: URL?, appearanceMode: AppearanceMode) {
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 420),
             styleMask: [.titled, .closable, .fullSizeContentView],
@@ -25,6 +25,7 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
         let view = UpdateAlertContentView(
             version: version,
             releaseNotes: releaseNotes,
+            releaseURL: releaseURL,
             appearanceMode: appearanceMode,
             onUpdate: { [weak self] in self?.fire(.update) },
             onSkip: { [weak self] in self?.fire(.skip) }
@@ -57,6 +58,7 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
 private struct UpdateAlertContentView: View {
     let version: String
     let releaseNotes: String
+    let releaseURL: URL?
     let appearanceMode: AppearanceMode
     let onUpdate: () -> Void
     let onSkip: () -> Void
@@ -68,6 +70,7 @@ private struct UpdateAlertContentView: View {
             MarkdownWebView(markdown: releaseNotes, appearanceMode: appearanceMode)
                 .frame(maxWidth: .infinity)
                 .frame(height: 240)
+                .padding(.top, 8)
             Divider()
             buttonRow
         }
@@ -95,7 +98,17 @@ private struct UpdateAlertContentView: View {
         HStack(spacing: 12) {
             Button(L("updater.action.skip"), action: onSkip)
                 .keyboardShortcut(.cancelAction)
+
             Spacer()
+
+            if let releaseURL {
+                Link(L("updater.action.viewDetails"), destination: releaseURL)
+                    .font(.callout)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
             Button(L("updater.action.update"), action: onUpdate)
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)

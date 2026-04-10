@@ -183,6 +183,7 @@
 "updater.available.versionLabel" = "Version %@ is now available.";
 "updater.action.update" = "Update Now";
 "updater.action.skip" = "Skip This Version";
+"updater.action.viewDetails" = "View Details";
 "updater.latest.title" = "Up to Date";
 "updater.latest.message" = "You are running the latest version of Typeflux.";
 "updater.checkFailed.title" = "Update Check Failed";

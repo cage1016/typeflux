@@ -177,6 +177,7 @@
 "updater.available.versionLabel" = "バージョン %@ が利用可能です。";
 "updater.action.update" = "今すぐ更新";
 "updater.action.skip" = "このバージョンをスキップ";
+"updater.action.viewDetails" = "詳細を見る";
 "updater.latest.title" = "最新の状態";
 "updater.latest.message" = "最新バージョンの Typeflux を実行しています。";
 "updater.checkFailed.title" = "アップデートの確認に失敗";
