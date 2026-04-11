@@ -519,7 +519,7 @@ struct StudioSidebar: View {
 
     private var feedbackMenuButton: some View {
         StudioSidebarIconMenuButton(
-            systemImage: "envelope",
+            systemImage: "envelope.stack",
             accessibilityLabel: L("sidebar.feedbackAccessibility"),
         ) {
             Button(L("sidebar.feedback.emailOption"), action: onSendFeedbackEmail)
