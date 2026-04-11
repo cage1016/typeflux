@@ -377,6 +377,7 @@ struct StudioShell<Content: View>: View {
                     isLoggedIn: isLoggedIn,
                 )
                 .frame(width: StudioTheme.sidebarWidth)
+                .background(StudioTheme.sidebar)
 
                 GeometryReader { proxy in
                     ScrollView {
