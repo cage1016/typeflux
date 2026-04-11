@@ -1736,7 +1736,7 @@ final class StudioViewModel: ObservableObject {
         case .groqSTT:
             settingsStore.groqSTTAPIKey = groqSTTAPIKey
             settingsStore.groqSTTModel = groqSTTModel
-        case .appleSpeech, .localSTT, .typefluxOfficial:
+        case .appleSpeech, .localSTT, .typefluxOfficial, .typefluxCloud:
             break
         }
         if shouldShowToast {
@@ -1748,6 +1748,7 @@ final class StudioViewModel: ObservableObject {
         guard focusedModelProvider.domain == .llm else { return false }
         guard focusedModelProvider != .ollama else { return false }
         guard focusedModelProvider != .freeModel else { return false }
+        guard focusedModelProvider != .typefluxCloud else { return false }
         return llmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -1844,7 +1845,7 @@ final class StudioViewModel: ObservableObject {
                         if payload.done || collected.count >= 60 { break }
                     }
                 case .appleSpeech, .localSTT, .whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime,
-                     .groqSTT, .typefluxOfficial:
+                     .groqSTT, .typefluxOfficial, .typefluxCloud:
                     return
                 }
 

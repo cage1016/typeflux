@@ -1,5 +1,18 @@
 import Foundation
 
+// MARK: - Typeflux Cloud LLM Error
+
+enum TypefluxCloudLLMError: LocalizedError {
+    case notLoggedIn
+
+    var errorDescription: String? {
+        switch self {
+        case .notLoggedIn:
+            "Please sign in to use Typeflux Cloud language model."
+        }
+    }
+}
+
 struct ResolvedLLMConnection {
     let provider: LLMRemoteProvider
     let baseURL: URL
@@ -17,6 +30,25 @@ enum LLMConnectionResolver {
     ) throws -> ResolvedLLMConnection {
         let trimmedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // typefluxCloud uses the server URL + Bearer token injected at call time
+        if provider == .typefluxCloud {
+            let serverBaseURL = AppServerConfiguration.apiBaseURL + "/api/v1"
+            guard let url = URL(string: serverBaseURL) else {
+                throw NSError(
+                    domain: "LLM",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid Typeflux Cloud server URL."],
+                )
+            }
+            return ResolvedLLMConnection(
+                provider: provider,
+                baseURL: url,
+                model: trimmedModel.isEmpty ? "default" : trimmedModel,
+                apiKey: apiKey,
+                additionalHeaders: [:],
+            )
+        }
 
         if provider == .freeModel {
             guard !trimmedModel.isEmpty else {
@@ -89,6 +121,27 @@ final class OpenAICompatibleLLMService: LLMService {
         self.settingsStore = settingsStore
     }
 
+    private func resolveConnection(for config: SettingsStore.TextLLMConfiguration) async throws -> ResolvedLLMConnection {
+        if config.provider == .typefluxCloud {
+            let token = await MainActor.run { AuthState.shared.accessToken }
+            guard let token else {
+                throw TypefluxCloudLLMError.notLoggedIn
+            }
+            return try LLMConnectionResolver.resolve(
+                provider: config.provider,
+                baseURL: "",
+                model: config.model,
+                apiKey: token,
+            )
+        }
+        return try LLMConnectionResolver.resolve(
+            provider: config.provider,
+            baseURL: config.baseURL,
+            model: config.model,
+            apiKey: config.apiKey,
+        )
+    }
+
     func streamRewrite(request rewriteRequest: LLMRewriteRequest) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -105,12 +158,7 @@ final class OpenAICompatibleLLMService: LLMService {
 
     func complete(systemPrompt: String, userPrompt: String) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try LLMConnectionResolver.resolve(
-            provider: llmConfig.provider,
-            baseURL: llmConfig.baseURL,
-            model: llmConfig.model,
-            apiKey: llmConfig.apiKey,
-        )
+        let connection = try await resolveConnection(for: llmConfig)
         let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: systemPrompt,
             appLanguage: settingsStore.appLanguage,
@@ -131,12 +179,7 @@ final class OpenAICompatibleLLMService: LLMService {
 
     func completeJSON(systemPrompt: String, userPrompt: String, schema: LLMJSONSchema) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try LLMConnectionResolver.resolve(
-            provider: llmConfig.provider,
-            baseURL: llmConfig.baseURL,
-            model: llmConfig.model,
-            apiKey: llmConfig.apiKey,
-        )
+        let connection = try await resolveConnection(for: llmConfig)
         let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: systemPrompt,
             appLanguage: settingsStore.appLanguage,
@@ -160,12 +203,7 @@ final class OpenAICompatibleLLMService: LLMService {
         continuation: AsyncThrowingStream<String, Error>.Continuation,
     ) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try LLMConnectionResolver.resolve(
-            provider: llmConfig.provider,
-            baseURL: llmConfig.baseURL,
-            model: llmConfig.model,
-            apiKey: llmConfig.apiKey,
-        )
+        let connection = try await resolveConnection(for: llmConfig)
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
         var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(

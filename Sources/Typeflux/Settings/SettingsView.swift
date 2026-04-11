@@ -2833,6 +2833,8 @@ struct StudioView: View {
             )
         case StudioModelProviderID.typefluxOfficial.rawValue:
             viewModel.setSTTProvider(.typefluxOfficial)
+        case StudioModelProviderID.typefluxCloud.rawValue:
+            viewModel.setLLMRemoteProvider(.typefluxCloud)
         case "ollama-local":
             viewModel.setLLMModelSelection(
                 .ollama,
@@ -2968,7 +2970,19 @@ struct StudioView: View {
                 ),
             ]
         case .llm:
-            (FreeLLMModelRegistry.suggestedModelNames.isEmpty ? [] : [
+            [
+                StudioModelCard(
+                    id: LLMRemoteProvider.typefluxCloud.studioProviderID.rawValue,
+                    name: LLMRemoteProvider.typefluxCloud.displayName,
+                    summary: L("settings.models.card.typefluxCloud.summary"),
+                    badge: L("settings.models.badge.official"),
+                    metadata: L("settings.models.builtInDefaultModel"),
+                    isSelected: viewModel.llmProvider == .openAICompatible
+                        && viewModel.llmRemoteProvider == .typefluxCloud,
+                    isMuted: false,
+                    actionTitle: L("settings.models.useTypefluxCloud"),
+                ),
+            ] + (FreeLLMModelRegistry.suggestedModelNames.isEmpty ? [] : [
                 StudioModelCard(
                     id: LLMRemoteProvider.freeModel.studioProviderID.rawValue,
                     name: LLMRemoteProvider.freeModel.displayName,
@@ -2993,7 +3007,7 @@ struct StudioView: View {
                     actionTitle: L("settings.models.useLocal"),
                 ),
             ] + LLMRemoteProvider.settingsDisplayOrder
-                .filter { $0 != .freeModel }
+                .filter { $0 != .freeModel && $0 != .typefluxCloud }
                 .map { provider in
                     StudioModelCard(
                         id: provider.studioProviderID.rawValue,
@@ -3456,6 +3470,9 @@ struct StudioView: View {
                  .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
                 llmRemoteProviderForm
 
+            case .typefluxCloud:
+                typefluxCloudLLMProviderForm
+
             case .multimodalLLM:
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                     StudioSuggestedTextInputCard(
@@ -3561,6 +3578,31 @@ struct StudioView: View {
             if !authState.isLoggedIn {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                     Text(L("settings.models.typefluxOfficial.loginRequired"))
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.warning)
+
+                    HStack {
+                        Spacer()
+
+                        StudioButton(
+                            title: L("settings.models.typefluxOfficial.signIn"),
+                            systemImage: "person.circle",
+                            variant: .primary,
+                        ) {
+                            LoginWindowController.shared.show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var typefluxCloudLLMProviderForm: some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+            if !authState.isLoggedIn {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    Text(L("settings.models.typefluxCloud.loginRequired"))
                         .font(.studioBody(StudioTheme.Typography.caption))
                         .foregroundStyle(StudioTheme.warning)
 
@@ -3976,6 +4018,8 @@ struct StudioView: View {
             !viewModel.groqSTTAPIKey.isEmpty
         case .typefluxOfficial:
             authState.isLoggedIn
+        case .typefluxCloud:
+            authState.isLoggedIn
         }
     }
 
@@ -4030,6 +4074,8 @@ struct StudioView: View {
             viewModel.setSTTProvider(.groq)
         case .typefluxOfficial:
             viewModel.setSTTProvider(.typefluxOfficial)
+        case .typefluxCloud:
+            viewModel.setLLMRemoteProvider(.typefluxCloud)
         }
     }
 
@@ -4083,6 +4129,8 @@ struct StudioView: View {
             "bolt.horizontal.circle"
         case .typefluxOfficial:
             "star.fill"
+        case .typefluxCloud:
+            "star.fill"
         }
     }
 
@@ -4117,6 +4165,8 @@ struct StudioView: View {
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
              .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
             L("settings.models.overview.remoteProvider", activeLLMRemoteProvider.displayName)
+        case .typefluxCloud:
+            L("settings.models.overview.typefluxCloud")
         case .multimodalLLM:
             L("settings.models.overview.multimodal")
         case .aliCloud:
@@ -4145,6 +4195,8 @@ struct StudioView: View {
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
              .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
             activeLLMRemoteProvider.displayName
+        case .typefluxCloud:
+            LLMRemoteProvider.typefluxCloud.displayName
         case .multimodalLLM:
             STTProvider.multimodalLLM.displayName
         case .aliCloud:
@@ -4164,7 +4216,7 @@ struct StudioView: View {
             L("settings.models.mode.local")
         case .freeSTT, .whisperAPI, .freeModel, .customLLM, .openRouter, .openAI, .anthropic,
              .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi,
-             .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT, .typefluxOfficial:
+             .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT, .typefluxOfficial, .typefluxCloud:
             L("settings.models.mode.remote")
         }
     }
@@ -4175,7 +4227,7 @@ struct StudioView: View {
             StudioTheme.success
         case .freeSTT, .whisperAPI, .freeModel, .customLLM, .openRouter, .openAI, .anthropic,
              .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi,
-             .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT, .typefluxOfficial:
+             .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT, .typefluxOfficial, .typefluxCloud:
             StudioTheme.accent
         }
     }
@@ -4186,7 +4238,7 @@ struct StudioView: View {
             StudioTheme.success.opacity(0.12)
         case .freeSTT, .whisperAPI, .freeModel, .customLLM, .openRouter, .openAI, .anthropic,
              .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi,
-             .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT, .typefluxOfficial:
+             .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT, .typefluxOfficial, .typefluxCloud:
             StudioTheme.accentSoft
         }
     }
@@ -4252,6 +4304,8 @@ struct StudioView: View {
             URL(string: "https://ai.xiaomi.com/")
         case .freeModel, .custom:
             nil
+        case .typefluxCloud:
+            nil
         }
     }
 
@@ -4297,6 +4351,8 @@ struct StudioView: View {
                 ? OpenAIAudioModelCatalog.groqWhisperModels[0] : viewModel.groqSTTModel
         case .typefluxOfficial:
             STTProvider.typefluxOfficial.displayName
+        case .typefluxCloud:
+            LLMRemoteProvider.typefluxCloud.displayName
         }
     }
 
@@ -4330,6 +4386,8 @@ struct StudioView: View {
             STTProvider.groq.displayName
         case .typefluxOfficial:
             STTProvider.typefluxOfficial.displayName
+        case .typefluxCloud:
+            LLMRemoteProvider.typefluxCloud.displayName
         }
     }
 
@@ -4361,6 +4419,8 @@ struct StudioView: View {
             L("settings.models.focused.groq")
         case .typefluxOfficial:
             L("settings.models.focused.typefluxOfficial")
+        case .typefluxCloud:
+            L("settings.models.focused.typefluxCloud")
         }
     }
 
@@ -4395,6 +4455,8 @@ struct StudioView: View {
             L("settings.models.routing.groq")
         case .typefluxOfficial:
             L("settings.models.routing.typefluxOfficial")
+        case .typefluxCloud:
+            L("settings.models.routing.typefluxCloud")
         }
     }
 

@@ -638,6 +638,7 @@ final class SettingsStore {
         }
 
         let providerRequiresAPIKey = llmRemoteProvider != .custom && llmRemoteProvider != .freeModel
+            && llmRemoteProvider != .typefluxCloud
         return providerRequiresAPIKey
             && llmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !multimodalLLMAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

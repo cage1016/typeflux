@@ -209,6 +209,7 @@
 "provider.llm.freeModel" = "無料モデル";
 "provider.llm.openRouter" = "OpenRouter";
 "provider.llm.ollama" = "Local Ollama";
+"provider.llm.typefluxCloud" = "Typeflux Cloud";
 
 "downloadSource.modelScope" = "ModelScope";
 "downloadSource.huggingFace" = "Hugging Face";
@@ -481,6 +482,7 @@
 "settings.models.useDoubao" = "豆包を使用する";
 "settings.models.useGroq" = "Groq を使用する";
 "settings.models.useTypefluxOfficial" = "Typeflux 公式を使用する";
+"settings.models.useTypefluxCloud" = "Typeflux Cloud を使用する";
 "settings.models.badge.local" = "ローカル";
 "settings.models.badge.api" = "API";
 "settings.models.badge.official" = "公式";
@@ -495,6 +497,7 @@
 "settings.models.card.doubao.summary" = "ByteDance のネイティブ バイナリ WebSocket プロトコルを使用した Doubao Speech Recognition 2.0 による低遅延ストリーミング認識。";
 "settings.models.card.groq.summary" = "Groq の推論エンドポイントによる高速な Whisper 文字起こし。既定モデルは whisper-large-v3-turbo。";
 "settings.models.card.typefluxOfficial.summary" = "Typeflux 内蔵の音声認識サービスです。Typeflux アカウントでサインインするだけで使用できます。追加の API キーは不要です。";
+"settings.models.card.typefluxCloud.summary" = "Typeflux 内蔵の大規模言語モデルサービスです。Typeflux アカウントでサインインするだけで使用できます。追加の API キーは不要です。";
 "settings.models.card.ollama.summary" = "オプションの自動モデル準備を使用して、ローカルで書き換えおよび編集コマンドを実行します。";
 "settings.models.card.openAICompatible.summary" = "リモート チャット補完プロバイダーに接続して、ペルソナの書き換えとワークフローの編集を行います。";
 "settings.models.card.custom.summary" = "独自のベース URL、モデル、および API キーを使用して、互換性のあるエンドポイントを手動で構成します。";
@@ -548,6 +551,7 @@
 "settings.models.overview.doubao" = "音声認識は、ByteDance WebSocket 経由で Doubao Speech Recognition 2.0 にリアルタイムでストリーミングされます。";
 "settings.models.overview.groq" = "音声認識は、Groq の高速推論エンドポイントが Whisper モデルを使用して処理します。";
 "settings.models.overview.typefluxOfficial" = "音声認識は Typeflux の内蔵サービスで処理されます。";
+"settings.models.overview.typefluxCloud" = "テキストの書き直しと編集は Typeflux の内蔵 LLM サービスで処理されます。";
 "settings.models.mode.local" = "ローカル";
 "settings.models.mode.remote" = "リモート";
 "settings.models.fallback.enabled" = "フォールバックが有効になっている";
@@ -567,6 +571,7 @@
 "settings.models.focused.doubao" = "Doubao Speech Recognition 2.0 を介した遅延の最も低いクラウド ディクテーション パスが必要な場合は、これを使用します。";
 "settings.models.focused.groq" = "Groq の高速推論を使用した迅速なクラウド文字起こしが必要な場合にこれを使用します。";
 "settings.models.focused.typefluxOfficial" = "Typeflux 内蔵の音声認識サービスを使用します。サインインするだけで、追加の設定は不要です。";
+"settings.models.focused.typefluxCloud" = "Typeflux 内蔵の LLM サービスを使用してテキストの書き直しと編集を行います。サインインするだけで、追加の設定は不要です。";
 "settings.models.routing" = "ルーティング動作";
 "settings.models.routing.primaryRecognizer" = "一次認識装置";
 "settings.models.routing.primaryRuntime" = "プライマリ ランタイム";
@@ -581,8 +586,10 @@
 "settings.models.routing.doubao" = "Doubao Speech Recognition 2.0 は、ByteDance のバイナリ WebSocket プロトコルを介してリアルタイム ストリーミング ASR を処理します。";
 "settings.models.routing.groq" = "Groq は、Whisper 互換の文字起こしエンドポイントを使用した高速推論でディクテーションを処理します。";
 "settings.models.routing.typefluxOfficial" = "Typeflux 公式は内蔵の音声認識サービスでディクテーションを処理します。";
+"settings.models.routing.typefluxCloud" = "Typeflux Cloud は内蔵の LLM サービスで書き直しと編集のリクエストを処理します。";
 "settings.models.typefluxOfficial.description" = "Typeflux 公式は内蔵の音声認識サービスです。API キーやエンドポイントの設定は不要です。Typeflux アカウントでサインインするだけでディクテーションを始められます。";
 "settings.models.typefluxOfficial.loginRequired" = "このサービスを使用するには、Typeflux アカウントでサインインしてください。";
+"settings.models.typefluxCloud.loginRequired" = "このサービスを使用するには、Typeflux アカウントでサインインしてください。";
 "settings.models.typefluxOfficial.signIn" = "サインイン";
 "settings.models.routing.fallback" = "フォールバック";
 "settings.models.routing.localSetup" = "ローカルセットアップ";

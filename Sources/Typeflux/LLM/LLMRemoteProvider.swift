@@ -12,6 +12,7 @@ struct LLMRemoteEndpointPreset: Equatable {
 }
 
 enum LLMRemoteProvider: String, CaseIterable, Codable {
+    case typefluxCloud
     case freeModel
     case openRouter
     case openAI
@@ -28,6 +29,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
     case custom
 
     static let settingsDisplayOrder: [LLMRemoteProvider] = [
+        .typefluxCloud,
         .freeModel,
         .openRouter,
         .openAI,
@@ -46,6 +48,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
 
     var displayName: String {
         switch self {
+        case .typefluxCloud:
+            L("provider.llm.typefluxCloud")
         case .freeModel:
             L("provider.llm.freeModel")
         case .custom:
@@ -83,7 +87,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
             .anthropic
         case .gemini:
             .gemini
-        case .freeModel, .custom, .openRouter, .openAI, .deepSeek, .kimi, .qwen, .zhipu, .minimax,
+        case .typefluxCloud, .freeModel, .custom, .openRouter, .openAI, .deepSeek, .kimi, .qwen, .zhipu, .minimax,
              .grok, .groq, .xiaomi:
             .openAICompatible
         }
@@ -91,6 +95,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
 
     var defaultBaseURL: String {
         switch self {
+        case .typefluxCloud:
+            ""
         case .freeModel:
             ""
         case .custom:
@@ -124,7 +130,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
 
     var endpointPresets: [LLMRemoteEndpointPreset] {
         switch self {
-        case .freeModel:
+        case .typefluxCloud, .freeModel:
             []
         case .zhipu:
             [
@@ -155,6 +161,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
 
     var suggestedModels: [String] {
         switch self {
+        case .typefluxCloud:
+            return []
         case .custom:
             let allModels = LLMRemoteProvider.allCases
                 .filter { $0 != .custom && $0 != .freeModel }
@@ -268,7 +276,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         switch self {
         case .openAI, .gemini:
             true
-        case .freeModel, .custom, .openRouter, .anthropic, .deepSeek, .kimi, .qwen, .zhipu, .minimax,
+        case .typefluxCloud, .freeModel, .custom, .openRouter, .anthropic, .deepSeek, .kimi, .qwen, .zhipu, .minimax,
              .grok, .groq, .xiaomi:
             false
         }
@@ -276,6 +284,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
 
     var studioProviderID: StudioModelProviderID {
         switch self {
+        case .typefluxCloud:
+            .typefluxCloud
         case .freeModel:
             .freeModel
         case .custom:
@@ -309,6 +319,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
 
     static func from(providerID: StudioModelProviderID) -> LLMRemoteProvider? {
         switch providerID {
+        case .typefluxCloud:
+            .typefluxCloud
         case .freeModel:
             .freeModel
         case .customLLM:

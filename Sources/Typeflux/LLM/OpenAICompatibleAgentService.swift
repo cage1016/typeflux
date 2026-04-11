@@ -7,18 +7,34 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         self.settingsStore = settingsStore
     }
 
+    private func resolveConnection(for config: SettingsStore.TextLLMConfiguration) async throws -> ResolvedLLMConnection {
+        if config.provider == .typefluxCloud {
+            let token = await MainActor.run { AuthState.shared.accessToken }
+            guard let token else {
+                throw TypefluxCloudLLMError.notLoggedIn
+            }
+            return try LLMConnectionResolver.resolve(
+                provider: config.provider,
+                baseURL: "",
+                model: config.model,
+                apiKey: token,
+            )
+        }
+        return try LLMConnectionResolver.resolve(
+            provider: config.provider,
+            baseURL: config.baseURL,
+            model: config.model,
+            apiKey: config.apiKey,
+        )
+    }
+
     func runTool<T: Decodable & Sendable>(request: LLMAgentRequest, decoding type: T.Type) async throws -> T {
         guard !request.tools.isEmpty else {
             throw LLMAgentError.noToolsConfigured
         }
 
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try LLMConnectionResolver.resolve(
-            provider: llmConfig.provider,
-            baseURL: llmConfig.baseURL,
-            model: llmConfig.model,
-            apiKey: llmConfig.apiKey,
-        )
+        let connection = try await resolveConnection(for: llmConfig)
         let effectiveSystemPrompt: String = {
             var prompt = PromptCatalog.appendUserEnvironmentContext(
                 to: request.systemPrompt,
@@ -57,12 +73,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         }
 
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try LLMConnectionResolver.resolve(
-            provider: llmConfig.provider,
-            baseURL: llmConfig.baseURL,
-            model: llmConfig.model,
-            apiKey: llmConfig.apiKey,
-        )
+        let connection = try await resolveConnection(for: llmConfig)
         let effectiveSystemPrompt: String = {
             var prompt = PromptCatalog.appendUserEnvironmentContext(
                 to: request.systemPrompt,

@@ -169,6 +169,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
     case doubaoRealtime
     case groqSTT
     case typefluxOfficial
+    case typefluxCloud
     case ollama
     case freeModel
     case customLLM
@@ -194,7 +195,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
         case .appleSpeech, .localSTT, .freeSTT, .whisperAPI, .multimodalLLM, .aliCloud, .doubaoRealtime, .groqSTT,
              .typefluxOfficial:
             .stt
-        case .ollama, .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek,
+        case .typefluxCloud, .ollama, .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek,
              .kimi, .qwen, .zhipu, .minimax, .grok, .xiaomi, .groq:
             .llm
         }
@@ -202,7 +203,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
 
     var showsManualSaveButton: Bool {
         switch self {
-        case .typefluxOfficial:
+        case .typefluxOfficial, .typefluxCloud:
             false
         default:
             true
@@ -211,7 +212,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
 
     var requiresLoginForConnectionTest: Bool {
         switch self {
-        case .typefluxOfficial:
+        case .typefluxOfficial, .typefluxCloud:
             true
         default:
             false
@@ -220,7 +221,7 @@ enum StudioModelProviderID: String, CaseIterable, Identifiable {
 
     var usesExpandedLogo: Bool {
         switch self {
-        case .typefluxOfficial:
+        case .typefluxOfficial, .typefluxCloud:
             true
         default:
             false

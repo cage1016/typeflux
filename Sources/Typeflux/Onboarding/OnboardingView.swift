@@ -342,7 +342,12 @@ struct OnboardingView: View {
             HStack(alignment: .top, spacing: 18) {
                 VStack(spacing: 10) {
                     if !FreeLLMModelRegistry.suggestedModelNames.isEmpty {
-                        ForEach(LLMRemoteProvider.settingsDisplayOrder.prefix(1), id: \.self) { provider in
+                        ForEach(
+                            LLMRemoteProvider.settingsDisplayOrder
+                                .filter { $0 == .freeModel }
+                                .prefix(1),
+                            id: \.self,
+                        ) { provider in
                             let isSelected = viewModel.llmProvider == .openAICompatible
                                 && viewModel.llmRemoteProvider == provider
                             modelProviderCard(
@@ -371,7 +376,11 @@ struct OnboardingView: View {
                         }
                     }
 
-                    ForEach(LLMRemoteProvider.settingsDisplayOrder.dropFirst(), id: \.self) { provider in
+                    ForEach(
+                        LLMRemoteProvider.settingsDisplayOrder
+                            .filter { $0 != .freeModel && $0 != .typefluxCloud },
+                        id: \.self,
+                    ) { provider in
                         let isSelected = viewModel.llmProvider == .openAICompatible
                             && viewModel.llmRemoteProvider == provider
                         modelProviderCard(
@@ -859,6 +868,8 @@ struct OnboardingView: View {
             URL(string: "https://ai.xiaomi.com/")
         case .freeModel, .custom:
             nil
+        case .typefluxCloud:
+            nil
         }
     }
 
@@ -986,6 +997,7 @@ struct OnboardingView: View {
         case .aliCloud: "antenna.radiowaves.left.and.right"
         case .doubaoRealtime: "bolt.horizontal.circle"
         case .typefluxOfficial: "star.fill"
+        case .typefluxCloud: "star.fill"
         }
     }
 
