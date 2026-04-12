@@ -27,6 +27,7 @@ struct OnboardingView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let appearanceMode: AppearanceMode
     @ObservedObject private var localization = AppLocalization.shared
+    @ObservedObject private var authState = AuthState.shared
     @Environment(\.colorScheme) private var colorScheme
 
     private let languageColumns = [
@@ -127,6 +128,8 @@ struct OnboardingView: View {
         switch step {
         case .language:
             "Language"
+        case .account:
+            "Typeflux Cloud"
         case .stt:
             "Voice Recognition"
         case .llm:
@@ -146,6 +149,8 @@ struct OnboardingView: View {
         switch step {
         case .language, .shortcuts:
             1030
+        case .account:
+            860
         case .permissions:
             940
         case .stt, .llm:
@@ -158,6 +163,8 @@ struct OnboardingView: View {
         switch viewModel.currentStep {
         case .language:
             languageStep(contentHeight: availableContentHeight(in: size))
+        case .account:
+            accountStep(contentHeight: availableContentHeight(in: size))
         case .stt:
             sttStep
         case .llm:
@@ -197,6 +204,90 @@ struct OnboardingView: View {
             Spacer(minLength: 0)
         }
         .frame(minHeight: contentHeight)
+    }
+
+    private func accountStep(contentHeight: CGFloat) -> some View {
+        VStack {
+            Spacer(minLength: 0)
+
+            VStack(alignment: .leading, spacing: 22) {
+                editorialStepHeader(
+                    eyebrow: stepEyebrow(for: .account),
+                    title: L("onboarding.account.title"),
+                    subtitle: L("onboarding.account.subtitle"),
+                    alignCenter: false,
+                )
+
+                VStack(spacing: 18) {
+                    if authState.isLoggedIn {
+                        signedInAccountCard
+                    } else {
+                        LoginView {
+                            viewModel.useCloudAccountModelsAndContinue()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 500)
+                        .clipShape(.rect(cornerRadius: 28))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .stroke(onboardingSubtleBorder, lineWidth: 1),
+                        )
+                    }
+
+                    Button {
+                        viewModel.continueWithoutCloudAccount()
+                    } label: {
+                        Text(L("onboarding.account.skip"))
+                            .font(.studioBody(12))
+                            .foregroundStyle(onboardingTertiaryText)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: 440)
+                .frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: contentHeight)
+    }
+
+    private var signedInAccountCard: some View {
+        onboardingConfigCard {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .center, spacing: 14) {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(StudioTheme.accent)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(authState.userProfile?.resolvedDisplayName ?? L("provider.llm.typefluxCloud"))
+                            .font(.studioDisplay(18, weight: .bold))
+                            .foregroundStyle(onboardingPrimaryText)
+                        Text(authState.userProfile?.email ?? L("onboarding.account.subtitle"))
+                            .font(.studioBody(12))
+                            .foregroundStyle(onboardingSecondaryText)
+                    }
+
+                    Spacer()
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L("settings.models.card.typefluxOfficial.summary"))
+                        .font(.studioBody(12))
+                        .foregroundStyle(onboardingSecondaryText)
+                    Text(L("settings.models.card.typefluxCloud.summary"))
+                        .font(.studioBody(12))
+                        .foregroundStyle(onboardingSecondaryText)
+                }
+
+                footerPrimaryButton(title: L("onboarding.action.continue")) {
+                    viewModel.useCloudAccountModelsAndContinue()
+                }
+            }
+        }
     }
 
     private func languageCard(_ language: AppLanguage) -> some View {
@@ -1517,10 +1608,12 @@ struct OnboardingView: View {
                 }
             }
 
-            footerPrimaryButton(
-                title: viewModel.isLastStep ? L("onboarding.action.getStarted") : L("onboarding.action.continue"),
-            ) {
-                viewModel.advance()
+            if viewModel.currentStep != .account {
+                footerPrimaryButton(
+                    title: viewModel.isLastStep ? L("onboarding.action.getStarted") : L("onboarding.action.continue"),
+                ) {
+                    viewModel.advance()
+                }
             }
         }
         .padding(.horizontal, 18)

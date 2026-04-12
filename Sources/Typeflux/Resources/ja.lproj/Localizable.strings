@@ -641,6 +641,8 @@
 
 "onboarding.language.title" = "言語を選択してください";
 "onboarding.language.subtitle" = "Typeflux インターフェイスの表示言語を選択します。";
+"onboarding.account.title" = "Typeflux Cloud にサインイン";
+"onboarding.account.subtitle" = "サインインすると、自分の Typeflux Cloud アカウントの音声モデルと言語モデルを使用できます。今はスキップして、後で手動でプロバイダーを設定することもできます。";
 
 "onboarding.models.title" = "モデルをセットアップする";
 "onboarding.models.subtitle" = "音声認識エンジンと言語モデルを選択します。これらは [設定] でいつでも変更できます。";
@@ -684,6 +686,7 @@
 "onboarding.action.back" = "前へ";
 "onboarding.action.continue" = "次へ";
 "onboarding.action.skip" = "スキップ";
+"onboarding.account.skip" = "サインインをスキップして手動でモデルを設定";
 "onboarding.action.getStarted" = "始めましょう";
 
 // MARK: - Agent Framework

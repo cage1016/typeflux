@@ -643,6 +643,8 @@
 
 "onboarding.language.title" = "选择语言";
 "onboarding.language.subtitle" = "选择 Typeflux 界面的显示语言。";
+"onboarding.account.title" = "登录 Typeflux Cloud";
+"onboarding.account.subtitle" = "登录后即可使用你自己账号下的 Typeflux Cloud 语音和语言模型。你也可以先跳过，稍后手动配置模型提供商。";
 
 "onboarding.models.title" = "配置模型";
 "onboarding.models.subtitle" = "选择语音识别引擎和语言模型，稍后可以在设置中随时更改。";
@@ -686,6 +688,7 @@
 "onboarding.action.back" = "上一步";
 "onboarding.action.continue" = "下一步";
 "onboarding.action.skip" = "跳过";
+"onboarding.account.skip" = "跳过登录，手动配置模型";
 "onboarding.action.getStarted" = "开始使用";
 
 // MARK: - Agent 框架

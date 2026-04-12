@@ -643,6 +643,8 @@
 
 "onboarding.language.title" = "Choose your language";
 "onboarding.language.subtitle" = "Select the display language for the Typeflux interface.";
+"onboarding.account.title" = "Sign in to Typeflux Cloud";
+"onboarding.account.subtitle" = "Sign in once to use your own Typeflux Cloud speech and language models. Or skip for now and configure providers manually.";
 
 "onboarding.models.title" = "Set up your models";
 "onboarding.models.subtitle" = "Pick a voice recognizer and a language model. You can change these anytime in Settings.";
@@ -686,6 +688,7 @@
 "onboarding.action.back" = "Previous";
 "onboarding.action.continue" = "Next";
 "onboarding.action.skip" = "Skip";
+"onboarding.account.skip" = "Skip sign in and configure models manually";
 "onboarding.action.getStarted" = "Get Started";
 
 // MARK: - Agent Framework

@@ -25,17 +25,42 @@ final class OnboardingViewModelTests: XCTestCase {
     func testVisibleStepsDoNotIncludeWelcomeStep() {
         let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
 
-        XCTAssertEqual(viewModel.visibleSteps, [.language, .stt, .llm, .permissions, .shortcuts])
+        XCTAssertEqual(viewModel.visibleSteps, [.language, .account, .stt, .llm, .permissions, .shortcuts])
         XCTAssertEqual(viewModel.currentStep, .language)
     }
 
     @MainActor
-    func testAdvanceFromLanguageMovesDirectlyToSTT() {
+    func testAdvanceFromLanguageMovesToAccountStep() {
         let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
 
         viewModel.advance()
 
+        XCTAssertEqual(viewModel.currentStep, .account)
+    }
+
+    @MainActor
+    func testAdvanceFromAccountWithoutLoginMovesToSTT() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .account
+
+        viewModel.advance()
+
         XCTAssertEqual(viewModel.currentStep, .stt)
+    }
+
+    @MainActor
+    func testUsingCloudAccountSkipsModelConfigurationSteps() {
+        let authState = makeLoggedInAuthState()
+        let viewModel = OnboardingViewModel(settingsStore: store, authState: authState, onComplete: {})
+        viewModel.currentStep = .account
+
+        viewModel.useCloudAccountModelsAndContinue()
+
+        XCTAssertEqual(viewModel.currentStep, .permissions)
+        XCTAssertEqual(viewModel.visibleSteps, [.language, .account, .permissions, .shortcuts])
+        XCTAssertEqual(store.sttProvider, .typefluxOfficial)
+        XCTAssertEqual(store.llmProvider, .openAICompatible)
+        XCTAssertEqual(store.llmRemoteProvider, .typefluxCloud)
     }
 
     @MainActor
@@ -51,5 +76,31 @@ final class OnboardingViewModelTests: XCTestCase {
 
         viewModel.goBack()
         XCTAssertEqual(viewModel.currentStep, .stt)
+    }
+
+    @MainActor
+    private func makeLoggedInAuthState() -> AuthState {
+        let storedToken = (
+            token: "token",
+            expiresAt: Int(Date().timeIntervalSince1970) + 3600
+        )
+        let storedProfile = UserProfile(
+            id: "user_123",
+            email: "test@example.com",
+            name: "Test User",
+            status: 1,
+            provider: "email",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z"
+        )
+        let authState = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { storedProfile },
+            saveStoredToken: { _, _ in },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: {},
+            fetchProfile: { _ in storedProfile }
+        )
+        return authState
     }
 }

@@ -7,10 +7,11 @@ import SwiftUI
 final class OnboardingViewModel: ObservableObject {
     enum Step: Int, CaseIterable {
         case language = 0
-        case stt = 1
-        case llm = 2
-        case permissions = 3
-        case shortcuts = 4
+        case account = 1
+        case stt = 2
+        case llm = 3
+        case permissions = 4
+        case shortcuts = 5
     }
 
     enum ConnectionTestState: Equatable {
@@ -20,10 +21,11 @@ final class OnboardingViewModel: ObservableObject {
         case failure(message: String)
     }
 
-    static let orderedSteps: [Step] = [.language, .stt, .llm, .permissions, .shortcuts]
+    static let orderedSteps: [Step] = [.language, .account, .stt, .llm, .permissions, .shortcuts]
 
     @Published var currentStep: Step = .language
     @Published var stepDirection: Int = 1 // 1 = forward, -1 = backward
+    @Published private(set) var useCloudAccountModels: Bool
 
     /// Language
     @Published var appLanguage: AppLanguage
@@ -65,11 +67,22 @@ final class OnboardingViewModel: ObservableObject {
     @Published var requestingPermissions: Set<PrivacyGuard.PermissionID> = []
 
     private let settingsStore: SettingsStore
+    private let authState: AuthState
     let onComplete: () -> Void
 
-    init(settingsStore: SettingsStore, onComplete: @escaping () -> Void) {
+    init(
+        settingsStore: SettingsStore,
+        authState: AuthState? = nil,
+        onComplete: @escaping () -> Void
+    ) {
         self.settingsStore = settingsStore
+        let resolvedAuthState = authState ?? .shared
+        self.authState = resolvedAuthState
         self.onComplete = onComplete
+        useCloudAccountModels = resolvedAuthState.isLoggedIn
+            && settingsStore.sttProvider == .typefluxOfficial
+            && settingsStore.llmProvider == .openAICompatible
+            && settingsStore.llmRemoteProvider == .typefluxCloud
 
         appLanguage = settingsStore.appLanguage
         sttProvider = {
@@ -112,6 +125,9 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     var visibleSteps: [Step] {
+        if useCloudAccountModels {
+            return Self.orderedSteps.filter { $0 != .stt && $0 != .llm }
+        }
         if sttProvider == .multimodalLLM {
             return Self.orderedSteps.filter { $0 != .llm }
         }
@@ -122,7 +138,7 @@ final class OnboardingViewModel: ObservableObject {
         switch currentStep {
         case .language, .stt, .llm, .permissions:
             true
-        case .shortcuts:
+        case .account, .shortcuts:
             false
         }
     }
@@ -172,6 +188,17 @@ final class OnboardingViewModel: ObservableObject {
     /// Used when the window is closed externally (e.g., user clicks the close button).
     func skipWithoutAnimation() {
         settingsStore.isOnboardingCompleted = true
+    }
+
+    func useCloudAccountModelsAndContinue() {
+        guard authState.isLoggedIn else { return }
+        useCloudAccountModels = true
+        advance()
+    }
+
+    func continueWithoutCloudAccount() {
+        useCloudAccountModels = false
+        advance()
     }
 
     func selectOllama() {
@@ -369,6 +396,17 @@ final class OnboardingViewModel: ObservableObject {
         case .language:
             settingsStore.appLanguage = appLanguage
             AppLocalization.shared.setLanguage(appLanguage)
+        case .account:
+            guard useCloudAccountModels else { return }
+            sttProvider = .typefluxOfficial
+            llmProvider = .openAICompatible
+            llmRemoteProvider = .typefluxCloud
+            llmBaseURL = settingsStore.llmBaseURL(for: .typefluxCloud)
+            llmModel = settingsStore.llmModel(for: .typefluxCloud)
+            llmAPIKey = settingsStore.llmAPIKey(for: .typefluxCloud)
+            settingsStore.sttProvider = .typefluxOfficial
+            settingsStore.llmProvider = .openAICompatible
+            settingsStore.llmRemoteProvider = .typefluxCloud
         case .stt:
             settingsStore.sttProvider = sttProvider
             switch sttProvider {
