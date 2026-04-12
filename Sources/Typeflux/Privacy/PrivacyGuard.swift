@@ -108,6 +108,21 @@ enum PrivacyGuard {
         PermissionID.allCases.map(snapshot(for:))
     }
 
+    /// Returns true if requesting this permission will show an in-app system dialog
+    /// (rather than opening System Preferences). Used to decide whether to re-activate
+    /// the app window after the dialog is dismissed.
+    @MainActor
+    static func willShowInAppDialog(for id: PermissionID) -> Bool {
+        switch id {
+        case .microphone:
+            return AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined
+        case .speechRecognition:
+            return SFSpeechRecognizer.authorizationStatus() == .notDetermined
+        case .accessibility:
+            return false
+        }
+    }
+
     @MainActor
     static func requestPermission(_ id: PermissionID) async {
         switch id {

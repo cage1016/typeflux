@@ -351,10 +351,16 @@ final class OnboardingViewModel: ObservableObject {
     func requestPermission(_ id: PrivacyGuard.PermissionID) {
         guard !requestingPermissions.contains(id) else { return }
         requestingPermissions.insert(id)
+        // Capture whether this will show an in-app system dialog (not open System Preferences).
+        // After such dialogs are dismissed, the app loses focus and needs to be re-activated.
+        let willShowInAppDialog = PrivacyGuard.willShowInAppDialog(for: id)
         Task {
             await PrivacyGuard.requestPermission(id)
             refreshPermissions()
             requestingPermissions.remove(id)
+            if willShowInAppDialog {
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 
