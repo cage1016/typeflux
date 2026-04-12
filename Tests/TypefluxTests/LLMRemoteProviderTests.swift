@@ -106,13 +106,12 @@ final class LLMRemoteProviderTests: XCTestCase {
         )
     }
 
-    func testOnboardingDisplayOrderIncludesTypefluxCloudAndExcludesOnlyFreeModel() {
-        XCTAssertEqual(LLMRemoteProvider.onboardingPinnedProvider, .typefluxCloud)
+    func testOnboardingDisplayOrderExcludesFreeModelAndTypefluxCloud() {
         XCTAssertFalse(LLMRemoteProvider.onboardingDisplayOrder.contains(.freeModel))
         XCTAssertFalse(LLMRemoteProvider.onboardingDisplayOrder.contains(.typefluxCloud))
 
         let expected = LLMRemoteProvider.settingsDisplayOrder.filter {
-            $0 != .freeModel && $0 != LLMRemoteProvider.onboardingPinnedProvider
+            $0 != .freeModel && $0 != .typefluxCloud
         }
         XCTAssertEqual(LLMRemoteProvider.onboardingDisplayOrder, expected)
     }

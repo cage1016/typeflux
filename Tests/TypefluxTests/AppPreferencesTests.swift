@@ -25,6 +25,13 @@ final class AppPreferencesTests: XCTestCase {
         }
     }
 
+    func testSTTProviderOnboardingDisplayOrderExcludesHiddenTypefluxCloudProvider() {
+        XCTAssertFalse(STTProvider.onboardingDisplayOrder.contains(.typefluxOfficial))
+
+        let expected = STTProvider.settingsDisplayOrder.filter { $0 != .typefluxOfficial }
+        XCTAssertEqual(STTProvider.onboardingDisplayOrder, expected)
+    }
+
     func testMultimodalLLMHandlesPersonaInternally() {
         XCTAssertTrue(STTProvider.multimodalLLM.handlesPersonaInternally)
     }

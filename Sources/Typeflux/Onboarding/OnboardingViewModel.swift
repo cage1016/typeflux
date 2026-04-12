@@ -79,16 +79,22 @@ final class OnboardingViewModel: ObservableObject {
         let resolvedAuthState = authState ?? .shared
         self.authState = resolvedAuthState
         self.onComplete = onComplete
-        useCloudAccountModels = resolvedAuthState.isLoggedIn
+        let initialUseCloudAccountModels = resolvedAuthState.isLoggedIn
             && settingsStore.sttProvider == .typefluxOfficial
             && settingsStore.llmProvider == .openAICompatible
             && settingsStore.llmRemoteProvider == .typefluxCloud
+        useCloudAccountModels = initialUseCloudAccountModels
 
         appLanguage = settingsStore.appLanguage
         sttProvider = {
             let p = settingsStore.sttProvider
-            // Never show Apple Speech in onboarding
-            return p == .appleSpeech ? .whisperAPI : p
+            // Never show providers that are hidden from onboarding model selection.
+            return switch p {
+            case .appleSpeech, .typefluxOfficial:
+                .whisperAPI
+            default:
+                p
+            }
         }()
         whisperBaseURL = settingsStore.whisperBaseURL
         whisperAPIKey = settingsStore.whisperAPIKey
@@ -105,11 +111,17 @@ final class OnboardingViewModel: ObservableObject {
         groqSTTAPIKey = settingsStore.groqSTTAPIKey
         groqSTTModel = settingsStore.groqSTTModel
 
-        llmProvider = settingsStore.llmProvider
-        llmRemoteProvider = settingsStore.llmRemoteProvider
-        llmBaseURL = settingsStore.llmBaseURL(for: settingsStore.llmRemoteProvider)
-        llmModel = settingsStore.llmModel(for: settingsStore.llmRemoteProvider)
-        llmAPIKey = settingsStore.llmAPIKey(for: settingsStore.llmRemoteProvider)
+        let initialLLMProvider = settingsStore.llmProvider
+        let storedRemoteProvider = settingsStore.llmRemoteProvider
+        let shouldHideStoredCloudProvider = !initialUseCloudAccountModels
+            && initialLLMProvider == .openAICompatible
+            && storedRemoteProvider == .typefluxCloud
+        let initialRemoteProvider: LLMRemoteProvider = shouldHideStoredCloudProvider ? .custom : storedRemoteProvider
+        llmProvider = initialLLMProvider
+        llmRemoteProvider = initialRemoteProvider
+        llmBaseURL = settingsStore.llmBaseURL(for: initialRemoteProvider)
+        llmModel = settingsStore.llmModel(for: initialRemoteProvider)
+        llmAPIKey = settingsStore.llmAPIKey(for: initialRemoteProvider)
         ollamaBaseURL = settingsStore.ollamaBaseURL
         ollamaModel = settingsStore.ollamaModel
 

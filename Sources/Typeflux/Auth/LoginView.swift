@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct LoginView: View {
+    enum PresentationStyle {
+        case card
+        case plain
+    }
+
     enum Step {
         case enterEmail
         case login
@@ -15,103 +20,139 @@ struct LoginView: View {
     @State private var confirmPassword = ""
     @State private var name = ""
     @State private var activationCode = ""
+    @State private var hasAcceptedPolicies = false
     @State private var errorMessage: String?
     @State private var isLoading = false
     @ObservedObject private var localization = AppLocalization.shared
+    @Environment(\.colorScheme) private var colorScheme
 
+    private let privacyURL = URL(string: "https://typeflux.gulu.ai/privacy")!
+    private let termsURL = URL(string: "https://typeflux.gulu.ai/terms")!
+
+    let presentationStyle: PresentationStyle
     let onDismiss: () -> Void
 
+    init(
+        presentationStyle: PresentationStyle = .card,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.presentationStyle = presentationStyle
+        self.onDismiss = onDismiss
+    }
+
     var body: some View {
-        VStack(spacing: StudioTheme.Spacing.none) {
-            // Header
-            VStack(spacing: StudioTheme.Spacing.xSmall) {
-                TypefluxLogoBadge()
-
-                Text(L("auth.login.title"))
-                    .font(.studioDisplay(StudioTheme.Typography.pageTitle, weight: .bold))
-                    .foregroundStyle(StudioTheme.textPrimary)
-
-                Text(stepSubtitle)
-                    .font(.studioBody(StudioTheme.Typography.body))
-                    .foregroundStyle(StudioTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.top, 40)
-            .padding(.bottom, StudioTheme.Spacing.section)
-
-            // Form content
-            VStack(spacing: StudioTheme.Spacing.medium) {
-                switch step {
-                case .enterEmail:
-                    enterEmailForm
-                case .login:
-                    loginForm
-                case .register:
-                    registerForm
-                case .activate:
-                    activateForm
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
+                if presentationStyle == .plain {
+                    plainHeader
+                        .padding(.bottom, 10)
                 }
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.studioBody(StudioTheme.Typography.caption))
-                        .foregroundStyle(StudioTheme.danger)
-                        .multilineTextAlignment(.center)
-                        .transition(.opacity)
-                }
-            }
-            .padding(.horizontal, 40)
-
-            Spacer()
-
-            // Back button for non-initial steps
-            if step != .enterEmail {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        goBack()
+                VStack(spacing: 16) {
+                    switch step {
+                    case .enterEmail:
+                        enterEmailForm
+                    case .login:
+                        loginForm
+                    case .register:
+                        registerForm
+                    case .activate:
+                        activateForm
                     }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: StudioTheme.Typography.caption, weight: .medium))
-                        Text(L("auth.login.back"))
-                            .font(.studioBody(StudioTheme.Typography.body))
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.studioBody(StudioTheme.Typography.caption))
+                            .foregroundStyle(StudioTheme.danger)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .transition(.opacity)
                     }
-                    .foregroundStyle(StudioTheme.textSecondary)
                 }
-                .buttonStyle(.plain)
-                .padding(.bottom, StudioTheme.Spacing.section)
+
+                if showsPolicyAgreement {
+                    policyAgreementSection
+                }
+
+                if step != .enterEmail {
+                    Divider()
+                        .overlay(loginCardDivider)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            goBack()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: StudioTheme.Typography.caption, weight: .medium))
+                            Text(L("auth.login.back"))
+                                .font(.studioBody(StudioTheme.Typography.body))
+                        }
+                        .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .padding(contentPadding)
+            .background(containerBackground)
+            .overlay(containerBorder)
+            .shadow(color: containerShadow, radius: containerShadowRadius, x: 0, y: containerShadowYOffset)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(StudioTheme.windowBackground)
+        .frame(maxWidth: maxWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
         .animation(.easeInOut(duration: 0.2), value: step)
     }
 
-    // MARK: - Step Subtitle
+    private var plainHeader: some View {
+        VStack(spacing: 10) {
+            if step == .enterEmail {
+                TypefluxLogoBadge(
+                    size: 84,
+                    symbolSize: 40,
+                    backgroundShape: .circle,
+                    showsBorder: true,
+                )
+                .padding(.bottom, 10)
 
-    private var stepSubtitle: String {
-        switch step {
-        case .enterEmail:
-            L("auth.login.enterEmailSubtitle")
-        case .login:
-            L("auth.login.loginSubtitle")
-        case .register:
-            L("auth.login.registerSubtitle")
-        case .activate:
-            L("auth.login.activateSubtitle")
+                Text("Typeflux Cloud")
+                    .font(.studioBody(11, weight: .semibold))
+                    .tracking(2.2)
+                    .textCase(.uppercase)
+                    .foregroundStyle(brandEyebrowColor)
+            }
+
+            Text(plainHeaderTitle)
+                .font(.studioDisplay(30, weight: .bold))
+                .foregroundStyle(StudioTheme.textPrimary)
+                .multilineTextAlignment(.center)
+
+            if let subtitle = plainHeaderSubtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.studioBody(13))
+                    .foregroundStyle(headerSubtitleColor)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Enter Email Form
 
     private var enterEmailForm: some View {
-        VStack(spacing: StudioTheme.Spacing.medium) {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
             LoginTextField(
                 placeholder: L("auth.field.email"),
                 text: $email,
                 icon: "envelope",
             )
+
+            if presentationStyle == .plain {
+                Text(plainEmailHelperText)
+                    .font(.studioBody(12))
+                    .foregroundStyle(helperTextColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             loginButton(title: L("auth.login.continue"), action: checkEmail)
         }
@@ -208,15 +249,344 @@ struct LoginView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 40)
-            .foregroundStyle(.white)
+            .frame(height: 46)
+            .foregroundStyle(buttonTextColor)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(StudioTheme.accent),
+                    .fill(buttonFillColor),
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                    .stroke(buttonStrokeColor, lineWidth: buttonStrokeWidth),
             )
         }
         .buttonStyle(.plain)
-        .disabled(isLoading)
+        .opacity(isButtonEnabled ? 1 : disabledButtonOpacity)
+        .disabled(!isButtonEnabled)
+    }
+
+    @ViewBuilder
+    private var containerBackground: some View {
+        switch presentationStyle {
+        case .card:
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(loginCardSurface)
+        case .plain:
+            Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private var containerBorder: some View {
+        switch presentationStyle {
+        case .card:
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(loginCardStroke, lineWidth: 1)
+        case .plain:
+            EmptyView()
+        }
+    }
+
+    private var loginCardDivider: Color {
+        colorScheme == .dark ? Color.white.opacity(0.06) : StudioTheme.border.opacity(0.9)
+    }
+
+    private var contentPadding: CGFloat {
+        switch presentationStyle {
+        case .card:
+            24
+        case .plain:
+            0
+        }
+    }
+
+    private var maxWidth: CGFloat {
+        switch presentationStyle {
+        case .card:
+            460
+        case .plain:
+            460
+        }
+    }
+
+    private var containerShadow: Color {
+        switch presentationStyle {
+        case .card:
+            loginCardShadow
+        case .plain:
+            .clear
+        }
+    }
+
+    private var containerShadowRadius: CGFloat {
+        presentationStyle == .card ? 28 : 0
+    }
+
+    private var containerShadowYOffset: CGFloat {
+        presentationStyle == .card ? 18 : 0
+    }
+
+    private var loginCardSurface: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.045)
+            : StudioTheme.surface
+    }
+
+    private var loginCardStroke: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : StudioTheme.border
+    }
+
+    private var loginCardShadow: Color {
+        colorScheme == .dark ? Color.black.opacity(0.28) : Color.black.opacity(0.08)
+    }
+
+    private var showsPolicyAgreement: Bool {
+        presentationStyle == .plain && step == .enterEmail
+    }
+
+    private var plainEmailHelperText: String {
+        switch localization.language {
+        case .simplifiedChinese:
+            "未注册的账号验证成功后将自动注册"
+        case .traditionalChinese:
+            "未註冊的帳號驗證成功後將自動註冊"
+        case .japanese:
+            "未登録のアカウントは認証後に自動作成されます。"
+        case .korean:
+            "등록되지 않은 계정은 인증이 완료되면 자동으로 생성됩니다."
+        case .english:
+            "Unregistered accounts will be created automatically after verification."
+        }
+    }
+
+    private var isButtonEnabled: Bool {
+        !isLoading && (!showsPolicyAgreement || hasAcceptedPolicies)
+    }
+
+    private var buttonFillColor: Color {
+        if isButtonEnabled {
+            return StudioTheme.accent
+        }
+
+        return colorScheme == .dark
+            ? Color.white.opacity(0.08)
+            : Color(red: 0.90, green: 0.91, blue: 0.94)
+    }
+
+    private var buttonTextColor: Color {
+        if isButtonEnabled {
+            return .white
+        }
+
+        return colorScheme == .dark
+            ? Color.white.opacity(0.6)
+            : Color.black.opacity(0.48)
+    }
+
+    private var buttonStrokeColor: Color {
+        if isButtonEnabled {
+            return .clear
+        }
+
+        return colorScheme == .dark
+            ? Color.white.opacity(0.08)
+            : Color.black.opacity(0.08)
+    }
+
+    private var buttonStrokeWidth: CGFloat {
+        isButtonEnabled ? 0 : 1
+    }
+
+    private var disabledButtonOpacity: Double {
+        colorScheme == .dark ? 0.62 : 1
+    }
+
+    private var policyAgreementSection: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Toggle(isOn: $hasAcceptedPolicies) {
+                agreementText
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .toggleStyle(.checkbox)
+            .tint(StudioTheme.accent)
+            .foregroundStyle(policyTextColor)
+            .font(.studioBody(12))
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 2)
+    }
+
+    private var agreementText: some View {
+        HStack(spacing: 4) {
+            Text(agreementLeadInText)
+                .foregroundStyle(policyTextColor)
+            Link(agreementTermsTitle, destination: termsURL)
+                .foregroundStyle(StudioTheme.accent)
+            Text(agreementSeparatorText)
+                .foregroundStyle(policyTextColor)
+            Link(agreementPrivacyTitle, destination: privacyURL)
+                .foregroundStyle(StudioTheme.accent)
+        }
+        .font(.studioBody(12))
+        .multilineTextAlignment(.center)
+    }
+
+    private var agreementLeadInText: String {
+        switch localization.language {
+        case .simplifiedChinese:
+            "已阅读并同意"
+        case .traditionalChinese:
+            "已閱讀並同意"
+        case .japanese:
+            "以下に同意します:"
+        case .korean:
+            "다음에 동의합니다:"
+        case .english:
+            "I have read and agree to the"
+        }
+    }
+
+    private var plainHeaderTitle: String {
+        switch step {
+        case .enterEmail:
+            switch localization.language {
+            case .simplifiedChinese:
+                "欢迎回来"
+            case .traditionalChinese:
+                "歡迎回來"
+            case .japanese:
+                "お帰りなさい"
+            case .korean:
+                "다시 오신 것을 환영합니다"
+            case .english:
+                "Welcome Back"
+            }
+        case .login:
+            switch localization.language {
+            case .simplifiedChinese:
+                "欢迎回来"
+            case .traditionalChinese:
+                "歡迎回來"
+            case .japanese:
+                "お帰りなさい"
+            case .korean:
+                "다시 오신 것을 환영합니다"
+            case .english:
+                "Welcome Back"
+            }
+        case .register:
+            switch localization.language {
+            case .simplifiedChinese:
+                "创建新账号"
+            case .traditionalChinese:
+                "建立新帳號"
+            case .japanese:
+                "新しいアカウントを作成"
+            case .korean:
+                "새 계정 만들기"
+            case .english:
+                "Create Account"
+            }
+        case .activate:
+            L("auth.login.activate")
+        }
+    }
+
+    private var plainHeaderSubtitle: String? {
+        switch step {
+        case .enterEmail:
+            switch localization.language {
+            case .simplifiedChinese:
+                "登录后即可使用 Typeflux Cloud 提供的语音识别和模型推理服务"
+            case .traditionalChinese:
+                "登入後即可使用 Typeflux Cloud 提供的語音辨識和模型推理服務"
+            case .japanese:
+                "サインインすると、Typeflux Cloud の音声認識とモデル推論サービスを利用できます"
+            case .korean:
+                "로그인하면 Typeflux Cloud가 제공하는 음성 인식 및 모델 추론 서비스를 사용할 수 있습니다"
+            case .english:
+                "Sign in to use Typeflux Cloud speech recognition and model inference services."
+            }
+        case .login:
+            switch localization.language {
+            case .simplifiedChinese:
+                "登录后即可使用 Typeflux Cloud 提供的语音识别和模型推理服务"
+            case .traditionalChinese:
+                "登入後即可使用 Typeflux Cloud 提供的語音辨識和模型推理服務"
+            case .japanese:
+                "サインインすると、Typeflux Cloud の音声認識とモデル推論サービスを利用できます"
+            case .korean:
+                "로그인하면 Typeflux Cloud가 제공하는 음성 인식 및 모델 추론 서비스를 사용할 수 있습니다"
+            case .english:
+                "Sign in to use Typeflux Cloud speech recognition and model inference services."
+            }
+        case .register, .activate:
+            nil
+        }
+    }
+
+    private var brandEyebrowColor: Color {
+        colorScheme == .dark ? StudioTheme.accent.opacity(0.92) : StudioTheme.accent.opacity(0.86)
+    }
+
+    private var headerSubtitleColor: Color {
+        if presentationStyle == .plain, colorScheme == .light {
+            return Color.black.opacity(0.58)
+        }
+        return StudioTheme.textSecondary
+    }
+
+    private var helperTextColor: Color {
+        colorScheme == .dark ? StudioTheme.textTertiary : Color.black.opacity(0.42)
+    }
+
+    private var policyTextColor: Color {
+        colorScheme == .dark ? StudioTheme.textSecondary : Color.black.opacity(0.5)
+    }
+
+    private var agreementSeparatorText: String {
+        switch localization.language {
+        case .simplifiedChinese, .traditionalChinese:
+            "和"
+        case .japanese:
+            "と"
+        case .korean:
+            "및"
+        case .english:
+            "and"
+        }
+    }
+
+    private var agreementTermsTitle: String {
+        switch localization.language {
+        case .simplifiedChinese:
+            "《用户协议》"
+        case .traditionalChinese:
+            "《使用者協議》"
+        case .japanese:
+            "利用規約"
+        case .korean:
+            "이용약관"
+        case .english:
+            "Terms of Service"
+        }
+    }
+
+    private var agreementPrivacyTitle: String {
+        switch localization.language {
+        case .simplifiedChinese:
+            "《隐私政策》"
+        case .traditionalChinese:
+            "《隱私政策》"
+        case .japanese:
+            "プライバシーポリシー"
+        case .korean:
+            "개인정보 처리방침"
+        case .english:
+            "Privacy Policy"
+        }
     }
 
     // MARK: - Actions
@@ -362,6 +732,7 @@ struct LoginView: View {
 // MARK: - Login Text Field
 
 private struct LoginTextField: View {
+    @Environment(\.colorScheme) private var colorScheme
     let placeholder: String
     @Binding var text: String
     let icon: String
@@ -388,15 +759,40 @@ private struct LoginTextField: View {
             }
         }
         .padding(.horizontal, 14)
-        .frame(height: 40)
+        .frame(height: 46)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .fill(StudioTheme.surfaceMuted),
+                .fill(fieldBackgroundColor),
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+                .stroke(fieldBorderColor, lineWidth: StudioTheme.BorderWidth.thin),
         )
+        .shadow(color: fieldShadowColor, radius: fieldShadowRadius, x: 0, y: fieldShadowY)
         .opacity(isDisabled ? 0.6 : 1)
+    }
+
+    private var fieldBackgroundColor: Color {
+        colorScheme == .dark
+            ? StudioTheme.surfaceMuted
+            : Color.white.opacity(0.92)
+    }
+
+    private var fieldBorderColor: Color {
+        colorScheme == .dark
+            ? StudioTheme.border
+            : Color.black.opacity(0.10)
+    }
+
+    private var fieldShadowColor: Color {
+        colorScheme == .dark ? .clear : Color.black.opacity(0.03)
+    }
+
+    private var fieldShadowRadius: CGFloat {
+        colorScheme == .dark ? 0 : 10
+    }
+
+    private var fieldShadowY: CGFloat {
+        colorScheme == .dark ? 0 : 3
     }
 }

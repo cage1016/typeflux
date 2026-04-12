@@ -31,6 +31,10 @@ enum STTProvider: String, CaseIterable, Codable {
         .doubaoRealtime,
     ]
 
+    static let onboardingDisplayOrder: [STTProvider] = settingsDisplayOrder.filter {
+        $0 != .typefluxOfficial
+    }
+
     var displayName: String {
         switch self {
         case .freeModel:

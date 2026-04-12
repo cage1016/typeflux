@@ -103,6 +103,7 @@ struct OnboardingView: View {
             }
 
             footerBar
+                .frame(maxWidth: min(canvasWidth(for: viewModel.currentStep), size.width - 44))
                 .padding(.horizontal, 22)
                 .padding(.bottom, 20)
         }
@@ -210,43 +211,33 @@ struct OnboardingView: View {
         VStack {
             Spacer(minLength: 0)
 
-            VStack(alignment: .leading, spacing: 22) {
-                editorialStepHeader(
-                    eyebrow: stepEyebrow(for: .account),
-                    title: L("onboarding.account.title"),
-                    subtitle: L("onboarding.account.subtitle"),
-                    alignCenter: false,
-                )
+            VStack(alignment: .center, spacing: 28) {
+                if authState.isLoggedIn {
+                    editorialStepHeader(
+                        eyebrow: stepEyebrow(for: .account),
+                        title: L("onboarding.account.title"),
+                        subtitle: L("onboarding.account.subtitle"),
+                        alignCenter: true,
+                        showStepCounter: false,
+                    )
+                }
 
                 VStack(spacing: 18) {
                     if authState.isLoggedIn {
                         signedInAccountCard
                     } else {
-                        LoginView {
+                        LoginView(presentationStyle: .plain) {
                             viewModel.useCloudAccountModelsAndContinue()
                         }
+                        .padding(.top, 8)
+                        .padding(.bottom, 6)
                         .frame(maxWidth: .infinity)
-                        .frame(minHeight: 500)
-                        .clipShape(.rect(cornerRadius: 28))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(onboardingSubtleBorder, lineWidth: 1),
-                        )
                     }
-
-                    Button {
-                        viewModel.continueWithoutCloudAccount()
-                    } label: {
-                        Text(L("onboarding.account.skip"))
-                            .font(.studioBody(12))
-                            .foregroundStyle(onboardingTertiaryText)
-                    }
-                    .buttonStyle(.plain)
                 }
-                .frame(maxWidth: 440)
+                .frame(maxWidth: 460)
                 .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: 660, alignment: .center)
             .frame(maxWidth: .infinity)
 
             Spacer(minLength: 0)
@@ -350,7 +341,7 @@ struct OnboardingView: View {
             HStack(alignment: .top, spacing: 18) {
                 VStack(spacing: 10) {
                     ForEach(
-                        STTProvider.settingsDisplayOrder.filter { provider in
+                        STTProvider.onboardingDisplayOrder.filter { provider in
                             provider != .freeModel || !FreeSTTModelRegistry.suggestedModelNames.isEmpty
                         },
                         id: \.self
@@ -428,21 +419,6 @@ struct OnboardingView: View {
 
             HStack(alignment: .top, spacing: 18) {
                 VStack(spacing: 10) {
-                    let pinnedProvider = LLMRemoteProvider.onboardingPinnedProvider
-                    let isPinnedSelected = viewModel.llmProvider == .openAICompatible
-                        && viewModel.llmRemoteProvider == pinnedProvider
-                    modelProviderCard(
-                        providerID: pinnedProvider.studioProviderID,
-                        title: pinnedProvider.displayName,
-                        description: L("settings.models.card.\(pinnedProvider.rawValue).summary"),
-                        badge: L("settings.models.badge.official"),
-                        isSelected: isPinnedSelected,
-                    ) {
-                        withAnimation(.easeOut(duration: 0.18)) {
-                            viewModel.selectLLMRemoteProvider(pinnedProvider)
-                        }
-                    }
-
                     if !FreeLLMModelRegistry.suggestedModelNames.isEmpty {
                         ForEach(
                             LLMRemoteProvider.settingsDisplayOrder
@@ -1598,7 +1574,11 @@ struct OnboardingView: View {
 
             Spacer()
 
-            if viewModel.isSkippable {
+            if viewModel.currentStep == .account {
+                footerTertiaryButton(title: L("onboarding.account.skip")) {
+                    viewModel.continueWithoutCloudAccount()
+                }
+            } else if viewModel.isSkippable {
                 footerTertiaryButton(title: L("onboarding.action.skip")) {
                     viewModel.skip()
                 }
@@ -1619,13 +1599,13 @@ struct OnboardingView: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(onboardingFooterSurface),
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(onboardingBorder, lineWidth: 1),
         )
     }
@@ -1695,6 +1675,7 @@ struct OnboardingView: View {
         subtitle: String,
         alignCenter: Bool,
         trailing: AnyView? = nil,
+        showStepCounter: Bool = true,
     ) -> some View {
         Group {
             if alignCenter {
@@ -1721,7 +1702,9 @@ struct OnboardingView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    stepCounterPill
+                    if showStepCounter {
+                        stepCounterPill
+                    }
                 }
             } else {
                 HStack(alignment: .top) {
@@ -1749,7 +1732,9 @@ struct OnboardingView: View {
 
                     HStack(spacing: 10) {
                         trailing
-                        stepCounterPill
+                        if showStepCounter {
+                            stepCounterPill
+                        }
                     }
                 }
             }

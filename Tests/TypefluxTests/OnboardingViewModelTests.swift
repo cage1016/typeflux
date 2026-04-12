@@ -79,6 +79,26 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testInitialSTTProviderFallsBackWhenTypefluxCloudIsHiddenInOnboarding() {
+        store.sttProvider = .typefluxOfficial
+
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        XCTAssertEqual(viewModel.sttProvider, .whisperAPI)
+    }
+
+    @MainActor
+    func testInitialLLMProviderFallsBackWhenTypefluxCloudIsHiddenInOnboarding() {
+        store.llmProvider = .openAICompatible
+        store.llmRemoteProvider = .typefluxCloud
+
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        XCTAssertEqual(viewModel.llmProvider, .openAICompatible)
+        XCTAssertEqual(viewModel.llmRemoteProvider, .custom)
+    }
+
+    @MainActor
     private func makeLoggedInAuthState() -> AuthState {
         let storedToken = (
             token: "token",

@@ -46,9 +46,8 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         .custom,
     ]
 
-    static let onboardingPinnedProvider: LLMRemoteProvider = .typefluxCloud
     static let onboardingDisplayOrder: [LLMRemoteProvider] = settingsDisplayOrder.filter {
-        $0 != .freeModel && $0 != onboardingPinnedProvider
+        $0 != .freeModel && $0 != .typefluxCloud
     }
 
     var displayName: String {
