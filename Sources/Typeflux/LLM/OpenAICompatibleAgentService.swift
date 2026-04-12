@@ -7,7 +7,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         self.settingsStore = settingsStore
     }
 
-    private func resolveConnection(for config: SettingsStore.TextLLMConfiguration) async throws -> ResolvedLLMConnection {
+    func resolveConnection(for config: SettingsStore.TextLLMConfiguration) async throws -> ResolvedLLMConnection {
         if config.provider == .typefluxCloud {
             let token = await MainActor.run { AuthState.shared.accessToken }
             guard let token else {
@@ -28,6 +28,13 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         )
     }
 
+    private func headers(
+        for connection: ResolvedLLMConnection,
+        scenario: TypefluxCloudScenario,
+    ) -> [String: String] {
+        connection.headers(for: scenario)
+    }
+
     func runTool<T: Decodable & Sendable>(request: LLMAgentRequest, decoding type: T.Type) async throws -> T {
         guard !request.tools.isEmpty else {
             throw LLMAgentError.noToolsConfigured
@@ -35,6 +42,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
 
         let llmConfig = settingsStore.textLLMConfiguration()
         let connection = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = headers(for: connection, scenario: .askAnything)
         let effectiveSystemPrompt: String = {
             var prompt = PromptCatalog.appendUserEnvironmentContext(
                 to: request.systemPrompt,
@@ -53,7 +61,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
                 baseURL: connection.baseURL,
                 model: connection.model,
                 apiKey: connection.apiKey,
-                additionalHeaders: connection.additionalHeaders,
+                additionalHeaders: additionalHeaders,
                 request: LLMAgentRequest(
                     systemPrompt: effectiveSystemPrompt,
                     userPrompt: request.userPrompt,
@@ -74,6 +82,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
 
         let llmConfig = settingsStore.textLLMConfiguration()
         let connection = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = headers(for: connection, scenario: .askAnything)
         let effectiveSystemPrompt: String = {
             var prompt = PromptCatalog.appendUserEnvironmentContext(
                 to: request.systemPrompt,
@@ -92,7 +101,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
                 baseURL: connection.baseURL,
                 model: connection.model,
                 apiKey: connection.apiKey,
-                additionalHeaders: connection.additionalHeaders,
+                additionalHeaders: additionalHeaders,
                 request: LLMAgentRequest(
                     systemPrompt: effectiveSystemPrompt,
                     userPrompt: request.userPrompt,

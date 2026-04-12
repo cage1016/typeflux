@@ -7,12 +7,8 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
         config: LLMCallConfig,
     ) async throws -> AgentTurnResult {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try LLMConnectionResolver.resolve(
-            provider: llmConfig.provider,
-            baseURL: llmConfig.baseURL,
-            model: llmConfig.model,
-            apiKey: llmConfig.apiKey,
-        )
+        let connection = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = connection.headers(for: .askAnything)
 
         return try await RequestRetry.perform(operationName: "LLM multi-turn complete") {
             switch connection.provider.apiStyle {
@@ -21,7 +17,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
                     baseURL: connection.baseURL,
                     model: connection.model,
                     apiKey: connection.apiKey,
-                    additionalHeaders: connection.additionalHeaders,
+                    additionalHeaders: additionalHeaders,
                     messages: messages,
                     tools: tools,
                     config: config,
@@ -31,7 +27,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
                     baseURL: connection.baseURL,
                     model: connection.model,
                     apiKey: connection.apiKey,
-                    additionalHeaders: connection.additionalHeaders,
+                    additionalHeaders: additionalHeaders,
                     messages: messages,
                     tools: tools,
                     config: config,
@@ -41,7 +37,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
                     baseURL: connection.baseURL,
                     model: connection.model,
                     apiKey: connection.apiKey,
-                    additionalHeaders: connection.additionalHeaders,
+                    additionalHeaders: additionalHeaders,
                     messages: messages,
                     tools: tools,
                     config: config,

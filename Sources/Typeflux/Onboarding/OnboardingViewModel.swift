@@ -321,7 +321,7 @@ final class OnboardingViewModel: ObservableObject {
                             baseURL: connection.baseURL,
                             model: connection.model,
                             apiKey: connection.apiKey,
-                            additionalHeaders: connection.additionalHeaders,
+                            additionalHeaders: connection.headers(for: .modelSetup),
                         )
                     }
                 }

@@ -512,7 +512,17 @@ extension WorkflowController {
             saveHistoryRecord(record)
             logPipelineEvent("transcription-started", for: record)
 
-            let transcribedText = try await sttRouter.transcribeStream(audioFile: audioFile) { [weak self] snapshot in
+            let cloudScenario: TypefluxCloudScenario = switch recordingIntent {
+            case .dictation:
+                .voiceInput
+            case .askSelection:
+                .askAnything
+            }
+
+            let transcribedText = try await sttRouter.transcribeStream(
+                audioFile: audioFile,
+                scenario: cloudScenario,
+            ) { [weak self] snapshot in
                 guard let self, !snapshot.text.isEmpty else { return }
                 guard !shouldKeepProcessingCapsule else { return }
                 await MainActor.run {

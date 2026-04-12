@@ -61,6 +61,29 @@ private final class MockRecordingPrewarmingTranscriber: RecordingPrewarmingTrans
     }
 }
 
+private final class MockScenarioAwareTranscriber: TypefluxCloudScenarioAwareTranscriber {
+    var resultToReturn: String = "transcribed"
+    var transcribeCallCount = 0
+    var lastScenario: TypefluxCloudScenario?
+
+    func transcribe(audioFile _: AudioFile, scenario: TypefluxCloudScenario) async throws -> String {
+        transcribeCallCount += 1
+        lastScenario = scenario
+        return resultToReturn
+    }
+
+    func transcribeStream(
+        audioFile _: AudioFile,
+        scenario: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> String {
+        transcribeCallCount += 1
+        lastScenario = scenario
+        await onUpdate(TranscriptionSnapshot(text: resultToReturn, isFinal: true))
+        return resultToReturn
+    }
+}
+
 final class STTRouterTests: XCTestCase {
     private var defaults: UserDefaults!
     private var settings: SettingsStore!
@@ -337,5 +360,31 @@ final class STTRouterTests: XCTestCase {
 
         // Should not crash or have side effects.
         await router.prepareForRecording()
+    }
+
+    func testRoutesTypefluxOfficialWithProvidedBusinessScenario() async throws {
+        settings.sttProvider = .typefluxOfficial
+        let scenarioAware = MockScenarioAwareTranscriber()
+        let router = STTRouter(
+            settingsStore: settings,
+            whisper: whisper,
+            freeSTT: freeSTT,
+            appleSpeech: appleSpeech,
+            localModel: localModel,
+            multimodal: multimodal,
+            aliCloud: aliCloud,
+            doubaoRealtime: doubaoRealtime,
+            groq: groq,
+            typefluxOfficial: scenarioAware,
+        )
+
+        let result = try await router.transcribe(
+            audioFile: dummyAudioFile(),
+            scenario: .askAnything,
+        )
+
+        XCTAssertEqual(result, "transcribed")
+        XCTAssertEqual(scenarioAware.lastScenario, .askAnything)
+        XCTAssertEqual(scenarioAware.transcribeCallCount, 1)
     }
 }

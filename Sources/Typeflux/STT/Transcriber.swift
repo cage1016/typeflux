@@ -18,6 +18,15 @@ protocol RecordingPrewarmingTranscriber: Transcriber {
     func cancelPreparedRecording() async
 }
 
+protocol TypefluxCloudScenarioAwareTranscriber: Transcriber {
+    func transcribe(audioFile: AudioFile, scenario: TypefluxCloudScenario) async throws -> String
+    func transcribeStream(
+        audioFile: AudioFile,
+        scenario: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> String
+}
+
 extension Transcriber {
     func transcribeStream(
         audioFile: AudioFile,
@@ -26,6 +35,27 @@ extension Transcriber {
         let text = try await transcribe(audioFile: audioFile)
         await onUpdate(TranscriptionSnapshot(text: text, isFinal: true))
         return text
+    }
+}
+
+extension TypefluxCloudScenarioAwareTranscriber {
+    func transcribe(audioFile: AudioFile, scenario: TypefluxCloudScenario) async throws -> String {
+        try await transcribeStream(audioFile: audioFile, scenario: scenario) { _ in }
+    }
+
+    func transcribe(audioFile: AudioFile) async throws -> String {
+        try await transcribe(audioFile: audioFile, scenario: .voiceInput)
+    }
+
+    func transcribeStream(
+        audioFile: AudioFile,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> String {
+        try await transcribeStream(
+            audioFile: audioFile,
+            scenario: .voiceInput,
+            onUpdate: onUpdate,
+        )
     }
 }
 
@@ -65,8 +95,11 @@ final class STTRouter {
         self.typefluxOfficial = typefluxOfficial
     }
 
-    func transcribe(audioFile: AudioFile) async throws -> String {
-        try await transcribeStream(audioFile: audioFile) { _ in }
+    func transcribe(
+        audioFile: AudioFile,
+        scenario: TypefluxCloudScenario = .voiceInput,
+    ) async throws -> String {
+        try await transcribeStream(audioFile: audioFile, scenario: scenario) { _ in }
     }
 
     func prepareForRecording() async {
@@ -93,6 +126,7 @@ final class STTRouter {
 
     func transcribeStream(
         audioFile: AudioFile,
+        scenario: TypefluxCloudScenario = .voiceInput,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
         switch settingsStore.sttProvider {
@@ -200,7 +234,14 @@ final class STTRouter {
         case .typefluxOfficial:
             do {
                 return try await RequestRetry.perform(operationName: "Typeflux Official STT request") { [self] in
-                    try await typefluxOfficial.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+                    if let scenarioAware = typefluxOfficial as? TypefluxCloudScenarioAwareTranscriber {
+                        return try await scenarioAware.transcribeStream(
+                            audioFile: audioFile,
+                            scenario: scenario,
+                            onUpdate: onUpdate,
+                        )
+                    }
+                    return try await typefluxOfficial.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
                 }
             } catch {
                 NetworkDebugLogger.logError(context: "Typeflux Official STT failed", error: error)

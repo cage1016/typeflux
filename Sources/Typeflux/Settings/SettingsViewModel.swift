@@ -1788,7 +1788,7 @@ final class StudioViewModel: ObservableObject {
                             baseURL: connection.baseURL,
                             model: connection.model,
                             apiKey: connection.apiKey,
-                            additionalHeaders: connection.additionalHeaders,
+                            additionalHeaders: connection.headers(for: .modelSetup),
                         )
                         if !preview.isEmpty {
                             firstTokenDate = Date()

@@ -4,15 +4,12 @@ import os
 
 // MARK: - Main Transcriber
 
-final class TypefluxOfficialTranscriber: Transcriber {
+final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber {
     private let logger = Logger(subsystem: "dev.typeflux", category: "TypefluxOfficialTranscriber")
-
-    func transcribe(audioFile: AudioFile) async throws -> String {
-        try await transcribeStream(audioFile: audioFile) { _ in }
-    }
 
     func transcribeStream(
         audioFile: AudioFile,
+        scenario: TypefluxCloudScenario,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
         let token = await MainActor.run { AuthState.shared.accessToken }
@@ -21,7 +18,12 @@ final class TypefluxOfficialTranscriber: Transcriber {
         }
 
         let pcmData = try TypefluxOfficialAudioConverter.convert(url: audioFile.fileURL)
-        return try await TypefluxOfficialASRSession.run(pcmData: pcmData, token: token, onUpdate: onUpdate)
+        return try await TypefluxOfficialASRSession.run(
+            pcmData: pcmData,
+            token: token,
+            scenario: scenario,
+            onUpdate: onUpdate,
+        )
     }
 
     static func testConnection() async throws -> String {
@@ -31,7 +33,11 @@ final class TypefluxOfficialTranscriber: Transcriber {
         }
 
         let pcmData = RemoteSTTTestAudio.pcm16MonoSilence()
-        return try await TypefluxOfficialASRSession.run(pcmData: pcmData, token: token) { _ in }
+        return try await TypefluxOfficialASRSession.run(
+            pcmData: pcmData,
+            token: token,
+            scenario: .modelSetup,
+        ) { _ in }
     }
 }
 
@@ -146,20 +152,50 @@ private enum TypefluxOfficialAudioConverter {
     }
 }
 
+enum TypefluxOfficialASRRequestFactory {
+    static func makeWebSocketRequest(
+        apiBaseURL: String,
+        token: String,
+        scenario: TypefluxCloudScenario,
+    ) throws -> URLRequest {
+        let wsScheme = apiBaseURL.hasPrefix("https") ? "wss" : "ws"
+        let host = apiBaseURL
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+        let urlString = "\(wsScheme)://\(host)/api/v1/asr/ws/default"
+
+        guard let url = URL(string: urlString) else {
+            throw TypefluxOfficialASRError.connectionFailed("Invalid WebSocket URL: \(urlString)")
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        TypefluxCloudRequestHeaders.applyScenario(scenario, to: &request)
+        return request
+    }
+}
+
 // MARK: - WebSocket ASR Session
 
 private actor TypefluxOfficialASRSession {
     static func run(
         pcmData: Data,
         token: String,
+        scenario: TypefluxCloudScenario,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
-        let session = TypefluxOfficialASRSession(pcmData: pcmData, token: token, onUpdate: onUpdate)
+        let session = TypefluxOfficialASRSession(
+            pcmData: pcmData,
+            token: token,
+            scenario: scenario,
+            onUpdate: onUpdate,
+        )
         return try await session.execute()
     }
 
     private let pcmData: Data
     private let token: String
+    private let scenario: TypefluxCloudScenario
     private let onUpdate: @Sendable (TranscriptionSnapshot) async -> Void
     private let logger = Logger(subsystem: "dev.typeflux", category: "TypefluxOfficialASRSession")
 
@@ -171,28 +207,21 @@ private actor TypefluxOfficialASRSession {
     private init(
         pcmData: Data,
         token: String,
+        scenario: TypefluxCloudScenario,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) {
         self.pcmData = pcmData
         self.token = token
+        self.scenario = scenario
         self.onUpdate = onUpdate
     }
 
     private func execute() async throws -> String {
-        let baseURL = AppServerConfiguration.apiBaseURL
-        let wsScheme = baseURL.hasPrefix("https") ? "wss" : "ws"
-        let host = baseURL
-            .replacingOccurrences(of: "https://", with: "")
-            .replacingOccurrences(of: "http://", with: "")
-        let urlString = "\(wsScheme)://\(host)/api/v1/asr/ws/default"
-
-        guard let url = URL(string: urlString) else {
-            throw TypefluxOfficialASRError.connectionFailed("Invalid WebSocket URL: \(urlString)")
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
+        let request = try TypefluxOfficialASRRequestFactory.makeWebSocketRequest(
+            apiBaseURL: AppServerConfiguration.apiBaseURL,
+            token: token,
+            scenario: scenario,
+        )
         let session = URLSession(configuration: .default)
         let socketTask = session.webSocketTask(with: request)
         socketTask.resume()

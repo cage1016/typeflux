@@ -210,6 +210,36 @@ extension LLMConnectionResolverTests {
         XCTAssertEqual(connection.model, "llama3")
     }
 
+    func testTypefluxCloudHeadersIncludeScenario() {
+        let connection = ResolvedLLMConnection(
+            provider: .typefluxCloud,
+            baseURL: URL(string: "https://api.typeflux.dev/api/v1")!,
+            model: "default",
+            apiKey: "token",
+            additionalHeaders: ["x-request-id": "req-1"],
+        )
+
+        let headers = connection.headers(for: .askAnything)
+
+        XCTAssertEqual(headers["x-request-id"], "req-1")
+        XCTAssertEqual(headers[TypefluxCloudRequestHeaders.scenarioField], TypefluxCloudScenario.askAnything.rawValue)
+    }
+
+    func testNonTypefluxCloudHeadersDoNotInjectScenario() {
+        let connection = ResolvedLLMConnection(
+            provider: .openAI,
+            baseURL: URL(string: "https://api.openai.com/v1")!,
+            model: "gpt-4.1",
+            apiKey: "sk-test",
+            additionalHeaders: ["x-request-id": "req-1"],
+        )
+
+        let headers = connection.headers(for: .askAnything)
+
+        XCTAssertEqual(headers["x-request-id"], "req-1")
+        XCTAssertNil(headers[TypefluxCloudRequestHeaders.scenarioField])
+    }
+
     // MARK: - Free model whitespace handling
 
     func testFreeModelThrowsForWhitespaceOnlyModel() {

@@ -142,6 +142,13 @@ final class OpenAICompatibleLLMService: LLMService {
         )
     }
 
+    private func headers(
+        for connection: ResolvedLLMConnection,
+        scenario: TypefluxCloudScenario,
+    ) -> [String: String] {
+        connection.headers(for: scenario)
+    }
+
     func streamRewrite(request rewriteRequest: LLMRewriteRequest) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -159,6 +166,7 @@ final class OpenAICompatibleLLMService: LLMService {
     func complete(systemPrompt: String, userPrompt: String) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
         let connection = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = headers(for: connection, scenario: .askAnything)
         let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: systemPrompt,
             appLanguage: settingsStore.appLanguage,
@@ -169,7 +177,7 @@ final class OpenAICompatibleLLMService: LLMService {
                 baseURL: connection.baseURL,
                 model: connection.model,
                 apiKey: connection.apiKey,
-                additionalHeaders: connection.additionalHeaders,
+                additionalHeaders: additionalHeaders,
                 systemPrompt: effectiveSystemPrompt,
                 userPrompt: userPrompt,
                 schema: nil,
@@ -180,6 +188,7 @@ final class OpenAICompatibleLLMService: LLMService {
     func completeJSON(systemPrompt: String, userPrompt: String, schema: LLMJSONSchema) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
         let connection = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = headers(for: connection, scenario: .automaticVocabulary)
         let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: systemPrompt,
             appLanguage: settingsStore.appLanguage,
@@ -190,7 +199,7 @@ final class OpenAICompatibleLLMService: LLMService {
                 baseURL: connection.baseURL,
                 model: connection.model,
                 apiKey: connection.apiKey,
-                additionalHeaders: connection.additionalHeaders,
+                additionalHeaders: additionalHeaders,
                 systemPrompt: effectiveSystemPrompt,
                 userPrompt: userPrompt,
                 schema: schema,
@@ -204,6 +213,7 @@ final class OpenAICompatibleLLMService: LLMService {
     ) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
         let connection = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = headers(for: connection, scenario: .textRewrite)
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
         var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
@@ -222,7 +232,7 @@ final class OpenAICompatibleLLMService: LLMService {
             baseURL: connection.baseURL,
             model: connection.model,
             apiKey: connection.apiKey,
-            additionalHeaders: connection.additionalHeaders,
+            additionalHeaders: additionalHeaders,
             systemPrompt: effectiveSystemPrompt,
             userPrompt: prompts.user,
             continuation: continuation,
