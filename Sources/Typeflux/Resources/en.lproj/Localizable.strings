@@ -822,6 +822,7 @@
 "auth.error.passwordTooWeak" = "Password must include uppercase, lowercase, and a number.";
 "auth.error.codeRequired" = "Please enter the activation code.";
 "auth.error.resetCodeRequired" = "Please enter the reset code.";
+"auth.error.policyAgreementRequired" = "Please accept the Terms of Service and Privacy Policy first.";
 "auth.error.unknown" = "An unknown error occurred.";
 "auth.error.invalidResponse" = "Invalid server response.";
 "auth.error.unauthorized" = "Session expired. Please sign in again.";

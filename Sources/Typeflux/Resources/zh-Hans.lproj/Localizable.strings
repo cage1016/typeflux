@@ -822,6 +822,7 @@
 "auth.error.passwordTooWeak" = "密码必须包含大写字母、小写字母和数字。";
 "auth.error.codeRequired" = "请输入激活码。";
 "auth.error.resetCodeRequired" = "请输入重置码。";
+"auth.error.policyAgreementRequired" = "请先同意《用户协议》和《隐私政策》。";
 "auth.error.unknown" = "发生了未知错误。";
 "auth.error.invalidResponse" = "服务器响应无效。";
 "auth.error.unauthorized" = "登录已过期，请重新登录。";

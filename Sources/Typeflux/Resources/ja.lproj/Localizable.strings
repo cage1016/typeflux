@@ -816,6 +816,7 @@
 "auth.error.passwordTooWeak" = "パスワードには大文字・小文字・数字を含めてください。";
 "auth.error.codeRequired" = "アクティベーションコードを入力してください。";
 "auth.error.resetCodeRequired" = "リセットコードを入力してください。";
+"auth.error.policyAgreementRequired" = "先に利用規約とプライバシーポリシーに同意してください。";
 "auth.error.unknown" = "不明なエラーが発生しました。";
 "auth.error.invalidResponse" = "サーバーの応答が無効です。";
 "auth.error.unauthorized" = "セッションが期限切れです。再度サインインしてください。";

@@ -1,6 +1,20 @@
 import AuthenticationServices
 import SwiftUI
 
+enum LoginGooglePreflight {
+    static func errorMessage(
+        for step: LoginView.Step,
+        hasAcceptedPolicies: Bool,
+        localization: AppLocalization = .shared
+    ) -> String? {
+        guard step == .enterEmail, !hasAcceptedPolicies else {
+            return nil
+        }
+
+        return localization.string("auth.error.policyAgreementRequired")
+    }
+}
+
 struct LoginView: View {
     enum PresentationStyle {
         case card
@@ -1033,6 +1047,14 @@ struct LoginView: View {
 
     private func performGoogleLogin() {
         guard !googleClientID.isEmpty else { return }
+        if let policyError = LoginGooglePreflight.errorMessage(
+            for: step,
+            hasAcceptedPolicies: hasAcceptedPolicies
+        ) {
+            statusMessage = nil
+            errorMessage = policyError
+            return
+        }
         clearMessages()
         isGoogleLoading = true
 

@@ -820,6 +820,7 @@
 "auth.error.passwordTooWeak" = "密碼必須包含大寫字母、小寫字母和數字。";
 "auth.error.codeRequired" = "請輸入啟用碼。";
 "auth.error.resetCodeRequired" = "請輸入重設碼。";
+"auth.error.policyAgreementRequired" = "請先同意《使用者協議》和《隱私政策》。";
 "auth.error.unknown" = "發生了未知錯誤。";
 "auth.error.invalidResponse" = "伺服器回應無效。";
 "auth.error.unauthorized" = "登入已過期，請重新登入。";
