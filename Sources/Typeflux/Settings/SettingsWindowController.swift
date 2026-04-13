@@ -96,10 +96,6 @@ final class SettingsWindowController: NSObject {
         AuthState.shared.refreshProfileIfNeeded()
     }
 
-    func close() {
-        window?.close()
-    }
-
     private func refreshAppearance() {
         guard let settingsStore else { return }
         window?.appearance = AppAppearance.nsAppearance(for: settingsStore.appearanceMode)

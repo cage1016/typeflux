@@ -250,7 +250,6 @@ struct AccountView: View {
     private func handlePasswordChangeRelogin() {
         authState.logout()
         passwordChangeFlow.dismiss()
-        SettingsWindowController.shared.close()
         LoginWindowController.shared.show()
     }
 }
