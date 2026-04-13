@@ -4,8 +4,8 @@ import SwiftUI
 @MainActor
 final class LoginWindowController: NSObject {
     static let shared = LoginWindowController()
+    static let defaultWindowSize = NSSize(width: 520, height: 620)
 
-    private let windowSize = NSSize(width: 520, height: 480)
     private var window: NSWindow?
     private var hostingView: NSHostingView<LoginView>?
     private var appearanceObserver: NSObjectProtocol?
@@ -33,7 +33,7 @@ final class LoginWindowController: NSObject {
             return
         }
 
-        let contentRect = NSRect(origin: .zero, size: windowSize)
+        let contentRect = NSRect(origin: .zero, size: Self.defaultWindowSize)
         let window = NSWindow(
             contentRect: contentRect,
             styleMask: [.titled, .closable],
@@ -58,8 +58,8 @@ final class LoginWindowController: NSObject {
         window.backgroundColor = NSColor(StudioTheme.windowBackground)
         window.contentView = hosting
         // Lock the window to a fixed size (no resizing)
-        window.minSize = windowSize
-        window.maxSize = windowSize
+        window.minSize = Self.defaultWindowSize
+        window.maxSize = Self.defaultWindowSize
         window.center()
         window.isReleasedWhenClosed = false
         window.delegate = self

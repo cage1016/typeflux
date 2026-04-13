@@ -69,39 +69,42 @@ struct LoginView: View {
     }
 
     private var cardBody: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            plainHeader
-                .padding(.bottom, 10)
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 16) {
+                plainHeader
+                    .padding(.bottom, 10)
 
-            formContent
+                formContent
 
-            if showsPolicyAgreement {
-                policyAgreementSection
-            }
-
-            if step != .enterEmail {
-                Divider()
-                    .overlay(loginCardDivider)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        goBack()
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: StudioTheme.Typography.caption, weight: .medium))
-                        Text(L("auth.login.back"))
-                            .font(.studioBody(StudioTheme.Typography.body))
-                    }
-                    .foregroundStyle(StudioTheme.textSecondary)
+                if showsPolicyAgreement {
+                    policyAgreementSection
                 }
-                .buttonStyle(.plain)
+
+                if step != .enterEmail {
+                    Divider()
+                        .overlay(loginCardDivider)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            goBack()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: StudioTheme.Typography.caption, weight: .medium))
+                            Text(L("auth.login.back"))
+                                .font(.studioBody(StudioTheme.Typography.body))
+                        }
+                        .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .padding(.top, 40)
+            .padding(.bottom, 28)
+            .frame(maxWidth: 460)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .padding(.top, 40)
-        .padding(.bottom, 28)
-        .frame(maxWidth: 460)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(StudioTheme.windowBackground)
     }
