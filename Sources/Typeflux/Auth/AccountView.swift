@@ -4,7 +4,7 @@ struct AccountView: View {
     @ObservedObject var authState: AuthState
     let onLogout: () -> Void
     @ObservedObject private var localization = AppLocalization.shared
-    @State private var isPasswordDialogPresented = false
+    @State private var passwordChangeFlow = PasswordChangeFlow()
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
@@ -19,8 +19,26 @@ struct AccountView: View {
         .onAppear {
             Task { await AuthState.shared.refreshTokenIfNeeded() }
         }
-        .sheet(isPresented: $isPasswordDialogPresented) {
-            ChangePasswordSheet(authState: authState, onPasswordChanged: onLogout)
+        .sheet(
+            item: Binding(
+                get: { passwordChangeFlow.activeDialog },
+                set: { dialog in
+                    if dialog == nil {
+                        passwordChangeFlow.dismiss()
+                    }
+                },
+            ),
+        ) { dialog in
+            switch dialog {
+            case .form:
+                ChangePasswordSheet(authState: authState) {
+                    passwordChangeFlow.showSuccessConfirmation()
+                }
+            case .successConfirmation:
+                PasswordChangeSuccessSheet {
+                    handlePasswordChangeRelogin()
+                }
+            }
         }
     }
 
@@ -108,7 +126,7 @@ struct AccountView: View {
                     systemImage: "key",
                     variant: .secondary
                 ) {
-                    isPasswordDialogPresented = true
+                    passwordChangeFlow.presentForm()
                 }
             }
         }
@@ -228,6 +246,13 @@ struct AccountView: View {
             LoginWindowController.shared.show()
         }
     }
+
+    private func handlePasswordChangeRelogin() {
+        authState.logout()
+        passwordChangeFlow.dismiss()
+        SettingsWindowController.shared.close()
+        LoginWindowController.shared.show()
+    }
 }
 
 private struct ChangePasswordSheet: View {
@@ -239,7 +264,6 @@ private struct ChangePasswordSheet: View {
     @State private var newPassword = ""
     @State private var confirmNewPassword = ""
     @State private var isChangingPassword = false
-    @State private var changePasswordMessage: String?
     @State private var changePasswordError: String?
 
     var body: some View {
@@ -280,12 +304,6 @@ private struct ChangePasswordSheet: View {
                 )
             }
 
-            if let changePasswordMessage {
-                Text(changePasswordMessage)
-                    .font(.studioBody(StudioTheme.Typography.caption))
-                    .foregroundStyle(StudioTheme.accent)
-            }
-
             if let changePasswordError {
                 Text(changePasswordError)
                     .font(.studioBody(StudioTheme.Typography.caption))
@@ -324,7 +342,6 @@ private struct ChangePasswordSheet: View {
     }
 
     private func changePassword() {
-        changePasswordMessage = nil
         changePasswordError = nil
 
         if authState.userProfile?.canChangePassword == true, currentPassword.isEmpty {
@@ -358,13 +375,10 @@ private struct ChangePasswordSheet: View {
                 )
                 await MainActor.run {
                     isChangingPassword = false
-                    changePasswordMessage = L("auth.account.passwordChanged")
                     currentPassword = ""
                     newPassword = ""
                     confirmNewPassword = ""
-                    authState.logout()
                     onPasswordChanged()
-                    dismiss()
                 }
             } catch {
                 await MainActor.run {
@@ -383,5 +397,39 @@ private struct ChangePasswordSheet: View {
         let hasLowercase = candidate.rangeOfCharacter(from: .lowercaseLetters) != nil
         let hasDigit = candidate.rangeOfCharacter(from: .decimalDigits) != nil
         return hasUppercase && hasLowercase && hasDigit ? nil : L("auth.error.passwordTooWeak")
+    }
+}
+
+private struct PasswordChangeSuccessSheet: View {
+    let onRelogin: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                Text(L("auth.account.passwordChangeSuccessTitle"))
+                    .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
+                    .foregroundStyle(StudioTheme.textPrimary)
+
+                Text(L("auth.account.passwordChanged"))
+                    .font(.studioBody(StudioTheme.Typography.body))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack {
+                Spacer()
+
+                StudioButton(
+                    title: L("auth.account.relogin"),
+                    systemImage: "arrow.clockwise.circle",
+                    variant: .primary
+                ) {
+                    onRelogin()
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+        .interactiveDismissDisabled()
     }
 }
