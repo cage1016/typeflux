@@ -20,7 +20,12 @@ import Foundation
 @MainActor
 struct GoogleOAuthService {
     /// Initiates the Google sign-in flow and returns a Google ID token on success.
-    static func signIn(clientID: String) async throws -> String {
+    ///
+    /// - Parameters:
+    ///   - clientID: Google OAuth 2.0 Client ID. Use an **iOS-type** client for best results
+    ///     (no secret required). Desktop-type clients require `clientSecret`.
+    ///   - clientSecret: Required only for Desktop-type OAuth clients. Leave nil for iOS-type clients.
+    static func signIn(clientID: String, clientSecret: String? = nil) async throws -> String {
         let scheme = reverseScheme(for: clientID)
         let redirectURI = "\(scheme):/"
         let (codeVerifier, codeChallenge) = makePKCE()
@@ -42,6 +47,7 @@ struct GoogleOAuthService {
             code: code,
             codeVerifier: codeVerifier,
             clientID: clientID,
+            clientSecret: clientSecret,
             redirectURI: redirectURI
         )
     }
@@ -101,6 +107,7 @@ struct GoogleOAuthService {
         code: String,
         codeVerifier: String,
         clientID: String,
+        clientSecret: String?,
         redirectURI: String
     ) async throws -> String {
         var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!)
@@ -108,15 +115,19 @@ struct GoogleOAuthService {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let params: [String: String] = [
+        var params: [String: String] = [
             "code": code,
             "client_id": clientID,
             "redirect_uri": redirectURI,
             "grant_type": "authorization_code",
             "code_verifier": codeVerifier,
         ]
+        // Desktop-type OAuth clients require client_secret; iOS-type clients do not.
+        if let secret = clientSecret, !secret.isEmpty {
+            params["client_secret"] = secret
+        }
         request.httpBody = params
-            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }
+            .map { "\($0.key)=\(formEncode($0.value))" }
             .joined(separator: "&")
             .data(using: .utf8)
 
@@ -139,6 +150,14 @@ struct GoogleOAuthService {
             throw GoogleAuthError.missingIDToken
         }
         return idToken
+    }
+
+    /// Percent-encodes a value for use in an application/x-www-form-urlencoded body.
+    /// Uses only unreserved characters (RFC 3986) to avoid ambiguity — in particular,
+    /// `+` is encoded as `%2B` rather than left as-is, which would be misread as a space.
+    private static func formEncode(_ value: String) -> String {
+        let unreserved = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        return value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? value
     }
 
     private static func makePKCE() -> (verifier: String, challenge: String) {

@@ -34,6 +34,7 @@ struct LoginView: View {
     @State private var resendCooldownRemaining = 0
     @State private var isGoogleLoading = false
     private let googleClientID = AppServerConfiguration.googleOAuthClientID
+    private let googleClientSecret = AppServerConfiguration.googleOAuthClientSecret
     @ObservedObject private var localization = AppLocalization.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1037,7 +1038,10 @@ struct LoginView: View {
 
         Task {
             do {
-                let idToken = try await GoogleOAuthService.signIn(clientID: googleClientID)
+                let idToken = try await GoogleOAuthService.signIn(
+                    clientID: googleClientID,
+                    clientSecret: googleClientSecret.isEmpty ? nil : googleClientSecret
+                )
                 let response = try await AuthAPIService.loginWithGoogle(idToken: idToken)
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
