@@ -26,6 +26,10 @@ final class StudioModelsTests: XCTestCase {
         }
     }
 
+    func testPersonasSectionUsesOutlineSidebarIcon() {
+        XCTAssertEqual(StudioSection.personas.iconName, "person.crop.rectangle.stack")
+    }
+
     func testStudioSectionEyebrowsAreNonEmpty() {
         for section in StudioSection.allCases {
             XCTAssertFalse(section.eyebrow.isEmpty, "\(section) eyebrow should not be empty")

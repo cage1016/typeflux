@@ -41,7 +41,7 @@ enum StudioSection: String, CaseIterable, Identifiable {
         switch self {
         case .home: "house.fill"
         case .models: "cpu"
-        case .personas: "face.smiling"
+        case .personas: "person.crop.rectangle.stack"
         case .vocabulary: "text.book.closed"
         case .history: "clock.arrow.circlepath"
         case .agent: "puzzlepiece.extension"
