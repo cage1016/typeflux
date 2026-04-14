@@ -8,14 +8,15 @@ let package = Package(
         .macOS(.v13),
     ],
     products: [
-        .executable(name: "Typeflux", targets: ["Typeflux"]),
+        .library(name: "TypefluxKit", targets: ["Typeflux"]),
+        .executable(name: "Typeflux", targets: ["TypefluxCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-markdown.git", from: "0.3.0"),
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.9.0"),
     ],
     targets: [
-        .executableTarget(
+        .target(
             name: "Typeflux",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
@@ -31,6 +32,13 @@ let package = Package(
             linkerSettings: [
                 .linkedLibrary("sqlite3"),
             ],
+        ),
+        .executableTarget(
+            name: "TypefluxCLI",
+            dependencies: [
+                "Typeflux",
+            ],
+            path: "Sources/TypefluxCLI",
         ),
         .testTarget(
             name: "TypefluxTests",

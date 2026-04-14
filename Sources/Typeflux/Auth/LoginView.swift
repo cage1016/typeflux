@@ -15,6 +15,18 @@ enum LoginGooglePreflight {
     }
 }
 
+enum LoginApplePreflight {
+    static func errorMessage(
+        availability: AppleSignInService.Availability = AppleSignInService.currentAvailability()
+    ) -> String? {
+        guard case .unavailable(let description) = availability else {
+            return nil
+        }
+
+        return description
+    }
+}
+
 enum SocialLoginProvider: Hashable {
     case google
     case github
@@ -24,11 +36,14 @@ enum SocialLoginProvider: Hashable {
 enum SocialLoginLayout {
     static func enabledProviders(
         googleClientID: String,
-        githubClientID: String
+        githubClientID: String,
+        includeApple: Bool = true
     ) -> [SocialLoginProvider] {
         var providers: [SocialLoginProvider] = []
 
-        providers.append(.apple)
+        if includeApple {
+            providers.append(.apple)
+        }
         if !googleClientID.isEmpty {
             providers.append(.google)
         }
@@ -291,8 +306,13 @@ struct LoginView: View {
     private var socialLoginProviders: [SocialLoginProvider] {
         SocialLoginLayout.enabledProviders(
             googleClientID: googleClientID,
-            githubClientID: githubClientID
+            githubClientID: githubClientID,
+            includeApple: appleLoginErrorMessage == nil
         )
+    }
+
+    private var appleLoginErrorMessage: String? {
+        LoginApplePreflight.errorMessage()
     }
 
     private var socialLoginButtonsRow: some View {
@@ -1205,6 +1225,11 @@ struct LoginView: View {
         if !hasAcceptedPolicies, step == .enterEmail {
             statusMessage = nil
             errorMessage = AppLocalization.shared.string("auth.error.policyAgreementRequired")
+            return
+        }
+        if let appleLoginErrorMessage {
+            statusMessage = nil
+            errorMessage = appleLoginErrorMessage
             return
         }
         clearMessages()

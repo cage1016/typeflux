@@ -46,25 +46,59 @@ if [[ -z "${DEV_CODESIGN_IDENTITY:-}" ]] && command -v security >/dev/null 2>&1;
 fi
 
 ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
+PROVISIONING_PROFILE="${DEV_PROVISIONING_PROFILE:-}"
 
-# Ad-hoc signing: entitlements are embedded but Sign In with Apple will not
-# work at runtime — Apple's servers reject tokens from ad-hoc-signed binaries.
-# Use a real Apple Development identity (DEV_CODESIGN_IDENTITY) for full functionality.
+use_apple_sign_in_entitlements=false
+if [[ -n "$PROVISIONING_PROFILE" ]]; then
+  if [[ -f "$PROVISIONING_PROFILE" ]]; then
+    cp "$PROVISIONING_PROFILE" "$APP_DIR/Contents/embedded.provisionprofile"
+    use_apple_sign_in_entitlements=true
+  else
+    echo "Warning: DEV_PROVISIONING_PROFILE does not exist: $PROVISIONING_PROFILE"
+    rm -f "$APP_DIR/Contents/embedded.provisionprofile"
+  fi
+else
+  rm -f "$APP_DIR/Contents/embedded.provisionprofile"
+fi
+
+# Sign In with Apple on manually assembled macOS app bundles requires both:
+# 1. A real Apple Development identity
+# 2. A matching macOS provisioning profile embedded at Contents/embedded.provisionprofile
+# Without the provisioning profile, AMFI rejects the app at launch if restricted
+# entitlements are present. In that case we keep the app launchable and disable
+# Sign In with Apple for the dev build.
 if [[ -z "${DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - --identifier "dev.typeflux" \
-    --entitlements "$ENTITLEMENTS" "$APP_DIR"
+  if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+    codesign --force --deep --sign - --identifier "dev.typeflux" \
+      --entitlements "$ENTITLEMENTS" "$APP_DIR"
+  else
+    codesign --force --deep --sign - --identifier "dev.typeflux" "$APP_DIR"
+  fi
 fi
 
 # If you want a fully stable identity across machines and clean TCC behavior,
 # provide an explicit signing identity instead of the fallback dev signature.
-# Sign In with Apple REQUIRES a real Apple Development identity:
+# Sign In with Apple REQUIRES both a real Apple Development identity and a
+# matching macOS provisioning profile:
+#   DEV_PROVISIONING_PROFILE="/path/to/profile.provisionprofile" \
 #   DEV_CODESIGN_IDENTITY="Apple Development: Your Name (...)" ./scripts/run_dev_app.sh
 if [[ -n "${DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign "$DEV_CODESIGN_IDENTITY" \
-    --entitlements "$ENTITLEMENTS" "$APP_DIR"
+  if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+    codesign --force --deep --sign "$DEV_CODESIGN_IDENTITY" \
+      --entitlements "$ENTITLEMENTS" "$APP_DIR"
+  else
+    codesign --force --deep --sign "$DEV_CODESIGN_IDENTITY" "$APP_DIR"
+  fi
   echo "Signed with stable identity: $DEV_CODESIGN_IDENTITY"
 else
-  echo "Warning: using ad-hoc signing. Sign In with Apple requires a real Apple Development identity."
+  echo "Warning: using ad-hoc signing. Sign In with Apple requires a real Apple Development identity and matching provisioning profile."
+fi
+
+if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+  echo "Embedded provisioning profile: $PROVISIONING_PROFILE"
+else
+  echo "Warning: Sign In with Apple is disabled for this dev build."
+  echo "Warning: To enable it, provide DEV_PROVISIONING_PROFILE with a matching macOS provisioning profile."
 fi
 
 open "$APP_DIR"

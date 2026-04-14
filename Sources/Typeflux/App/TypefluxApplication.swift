@@ -1,13 +1,17 @@
 import AppKit
 import ApplicationServices
 
-DevLauncher.relaunchAsAppBundleIfNeeded()
+public enum TypefluxApplication {
+    public static func run() {
+        DevLauncher.relaunchAsAppBundleIfNeeded()
 
-let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.setActivationPolicy(.accessory)
-app.run()
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.accessory)
+        app.run()
+    }
+}
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appCoordinator: AppCoordinator?

@@ -58,27 +58,47 @@ final class LoginViewPolicyGuardTests: XCTestCase {
         XCTAssertEqual(errorMessage, "请先同意《用户协议》和《隐私政策》。")
     }
 
+    func testAppleLoginPreflightSurfacesUnavailableConfigurationMessage() {
+        let errorMessage = LoginApplePreflight.errorMessage(
+            availability: .unavailable("Apple Sign In is unavailable in this build.")
+        )
+
+        XCTAssertEqual(errorMessage, "Apple Sign In is unavailable in this build.")
+    }
+
+    func testAppleLoginPreflightAllowsAttemptWhenAvailabilityIsUnknown() {
+        XCTAssertNil(LoginApplePreflight.errorMessage(availability: .unknown))
+    }
+
+    func testAppleLoginPreflightAllowsAttemptWhenAvailable() {
+        XCTAssertNil(LoginApplePreflight.errorMessage(availability: .available))
+    }
+
     func testSocialLoginLayoutIncludesProvidersInStableOrder() {
         let providers = SocialLoginLayout.enabledProviders(
             googleClientID: "google-client",
-            githubClientID: "github-client"
+            githubClientID: "github-client",
+            includeApple: true
         )
 
-        XCTAssertEqual(providers, [.google, .github])
+        XCTAssertEqual(providers, [.apple, .google, .github])
     }
 
     func testSocialLoginLayoutOmitsUnavailableProviders() {
         let googleOnly = SocialLoginLayout.enabledProviders(
             googleClientID: "google-client",
-            githubClientID: ""
+            githubClientID: "",
+            includeApple: false
         )
         let githubOnly = SocialLoginLayout.enabledProviders(
             googleClientID: "",
-            githubClientID: "github-client"
+            githubClientID: "github-client",
+            includeApple: false
         )
         let none = SocialLoginLayout.enabledProviders(
             googleClientID: "",
-            githubClientID: ""
+            githubClientID: "",
+            includeApple: false
         )
 
         XCTAssertEqual(googleOnly, [.google])
