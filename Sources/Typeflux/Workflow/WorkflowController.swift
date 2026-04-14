@@ -9,14 +9,13 @@ final class WorkflowController {
     static let tapToLockThreshold: TimeInterval = 0.22
     static let minimumRecordingDuration: TimeInterval = 0.35
     static let selectionRestoreDelayMicroseconds: useconds_t = 120_000
-    static let automaticVocabularyObservationWindow: TimeInterval = 30
+    static let automaticVocabularyObservationWindow: TimeInterval = 60
     static let automaticVocabularyPollInterval: Duration = .seconds(1)
-    static let automaticVocabularyStartupDelay: Duration = .milliseconds(350)
+    static let automaticVocabularyStartupDelay: Duration = .milliseconds(600)
     static let automaticVocabularyBaselineRetryDelay: Duration = .milliseconds(400)
-    static let automaticVocabularyBaselineRetryCount = 3
-    static let automaticVocabularySettleDelay: TimeInterval = 2.5
-    // Each voice-input session may trigger at most one LLM evaluation for auto vocabulary.
-    static let automaticVocabularyMaxAnalysesPerSession = 1
+    static let automaticVocabularyBaselineRetryCount = 6
+    static let automaticVocabularyIdleSettleDelay: TimeInterval = 8
+    static let automaticVocabularyEditRatioLimit: Double = 0.6
     static let localModelPreheatDebounce: Duration = .milliseconds(180)
     static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 120
     static let recordingStartCueLeadIn: Duration = .milliseconds(60)

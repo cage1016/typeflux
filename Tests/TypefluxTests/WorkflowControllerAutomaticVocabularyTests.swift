@@ -111,6 +111,151 @@ final class WorkflowControllerAutomaticVocabularyTests: XCTestCase {
         XCTAssertEqual(llmService.completeJSONCallCount, 0)
     }
 
+    // MARK: - runAutomaticVocabularyAnalysis orchestration paths
+
+    func testRunAnalysisSmallRewriteReachesLLM() async {
+        let llmService = MockWorkflowLLMService(stubbedJSON: #"{"terms":["PRDPlus"]}"#)
+        let controller = makeWorkflowController(llmService: llmService)
+
+        await controller.runAutomaticVocabularyAnalysis(
+            insertedText: "please review the prddraft text",
+            baselineText: "please review the prddraft text",
+            finalText: "please review the PRDPlus text",
+        )
+
+        XCTAssertEqual(llmService.completeJSONCallCount, 1)
+        XCTAssertTrue(VocabularyStore.activeTerms().contains("PRDPlus"))
+        if let entry = VocabularyStore.load().first(where: { $0.term == "PRDPlus" }) {
+            _ = VocabularyStore.remove(id: entry.id)
+        }
+    }
+
+    func testRunAnalysisLargeRewriteIsAbandoned() async {
+        let llmService = MockWorkflowLLMService()
+        let controller = makeWorkflowController(llmService: llmService)
+
+        await controller.runAutomaticVocabularyAnalysis(
+            insertedText: "hello world",
+            baselineText: "hello world",
+            finalText: "this is a completely different sentence written by the user instead",
+        )
+
+        XCTAssertEqual(llmService.completeJSONCallCount, 0)
+    }
+
+    func testRunAnalysisSkipsWhenFinalEqualsBaseline() async {
+        let llmService = MockWorkflowLLMService()
+        let controller = makeWorkflowController(llmService: llmService)
+
+        await controller.runAutomaticVocabularyAnalysis(
+            insertedText: "hello world",
+            baselineText: "hello world",
+            finalText: "hello world",
+        )
+
+        XCTAssertEqual(llmService.completeJSONCallCount, 0)
+    }
+
+    func testRunAnalysisSkipsInitialInsertionEvenIfBaselineWasStale() async {
+        // Stale baseline scenario: baseline was captured before AX reflected the
+        // insertion, so the observed "change" is literally our dictation output.
+        // Must NOT reach the LLM.
+        let llmService = MockWorkflowLLMService()
+        let controller = makeWorkflowController(llmService: llmService)
+
+        await controller.runAutomaticVocabularyAnalysis(
+            insertedText: "SeedASR Doubao",
+            baselineText: "",
+            finalText: "SeedASR Doubao",
+        )
+
+        XCTAssertEqual(llmService.completeJSONCallCount, 0)
+    }
+
+    func testRunAnalysisSkipsWhenLLMReturnsEmpty() async {
+        let llmService = MockWorkflowLLMService(stubbedJSON: #"{"terms":[]}"#)
+        let controller = makeWorkflowController(llmService: llmService)
+
+        await controller.runAutomaticVocabularyAnalysis(
+            insertedText: "please check the apidoc",
+            baselineText: "please check the apidoc",
+            finalText: "please check the OpenAPI",
+        )
+
+        XCTAssertEqual(llmService.completeJSONCallCount, 1)
+    }
+
+    // MARK: - Baseline retry with expected substring
+
+    func testBaselineRetryReturnsImmediatelyWhenExpectedSubstringPresent() async {
+        let textInjector = MockWorkflowTextInjector(snapshots: [
+            CurrentInputTextSnapshot(
+                processID: 1,
+                processName: "Notes",
+                bundleIdentifier: "com.apple.Notes",
+                role: "AXTextArea",
+                text: "please check the prddraft text",
+                isEditable: true,
+                isFocusedTarget: true,
+                failureReason: nil,
+            ),
+        ])
+        let controller = makeWorkflowController(textInjector: textInjector)
+
+        let start = Date()
+        let snapshot = await controller.readAutomaticVocabularyBaselineWithRetry(
+            expectedSubstring: "prddraft",
+        )
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertEqual(snapshot.text, "please check the prddraft text")
+        XCTAssertLessThan(elapsed, 0.2, "should not sleep when the first snapshot already contains the inserted text")
+    }
+
+    func testBaselineRetryWaitsUntilInsertedSubstringAppears() async {
+        let textInjector = MockWorkflowTextInjector(snapshots: [
+            // First two reads return the pre-insertion state (AX hasn't caught up).
+            CurrentInputTextSnapshot(
+                processID: 1,
+                processName: "Notes",
+                bundleIdentifier: "com.apple.Notes",
+                role: "AXTextArea",
+                text: "please check the ",
+                isEditable: true,
+                isFocusedTarget: true,
+                failureReason: nil,
+            ),
+            CurrentInputTextSnapshot(
+                processID: 1,
+                processName: "Notes",
+                bundleIdentifier: "com.apple.Notes",
+                role: "AXTextArea",
+                text: "please check the ",
+                isEditable: true,
+                isFocusedTarget: true,
+                failureReason: nil,
+            ),
+            // Third read finally shows the inserted text.
+            CurrentInputTextSnapshot(
+                processID: 1,
+                processName: "Notes",
+                bundleIdentifier: "com.apple.Notes",
+                role: "AXTextArea",
+                text: "please check the prddraft text",
+                isEditable: true,
+                isFocusedTarget: true,
+                failureReason: nil,
+            ),
+        ])
+        let controller = makeWorkflowController(textInjector: textInjector)
+
+        let snapshot = await controller.readAutomaticVocabularyBaselineWithRetry(
+            expectedSubstring: "prddraft",
+        )
+
+        XCTAssertEqual(snapshot.text, "please check the prddraft text")
+    }
+
     private func makeWorkflowController(
         textInjector: TextInjector = MockWorkflowTextInjector(),
         llmService: LLMService = MockWorkflowLLMService(),
@@ -205,6 +350,11 @@ private final class MockWorkflowTextInjector: TextInjector {
 private final class MockWorkflowLLMService: LLMService, @unchecked Sendable {
     private let queue = DispatchQueue(label: "MockWorkflowLLMService")
     private var callCount = 0
+    private var stubbedJSON: String
+
+    init(stubbedJSON: String = #"{"terms":[]}"#) {
+        self.stubbedJSON = stubbedJSON
+    }
 
     var completeJSONCallCount: Int {
         queue.sync { callCount }
@@ -224,7 +374,7 @@ private final class MockWorkflowLLMService: LLMService, @unchecked Sendable {
         queue.sync {
             callCount += 1
         }
-        return #"{"terms":[]}"#
+        return stubbedJSON
     }
 }
 

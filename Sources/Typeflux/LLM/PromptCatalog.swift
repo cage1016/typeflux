@@ -335,6 +335,10 @@ enum PromptCatalog {
             - not a large text span
             - not more than 3 English words
             - not more than 8 Chinese characters unless it is clearly a fixed technical term
+            Minimum length requirements (reject anything shorter):
+            - English / Latin / alphanumeric terms must be at least 4 characters and contain letters (e.g. "GPT4", "LLM4", "Rust" OK; "AI", "UI", "Go", "123", "X" rejected).
+            - Chinese terms must contain at least 2 Han characters (e.g. "向量", "推理" OK; single-character terms rejected).
+            - Mixed terms containing any Han character must still be at least 2 characters total.
             Good examples:
             - PRDPlus
             - SeedASR

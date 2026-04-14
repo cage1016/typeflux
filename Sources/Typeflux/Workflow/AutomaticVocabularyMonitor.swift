@@ -8,16 +8,14 @@ struct AutomaticVocabularyChange: Equatable {
 
 struct AutomaticVocabularyObservationState: Equatable {
     let sessionStartedAt: Date
-    var settledText: String
+    let baselineText: String
     var latestObservedText: String
     var lastChangedAt: Date?
-    var lastAnalyzedText: String?
-    var analysisCount: Int
 }
 
-struct AutomaticVocabularyPendingAnalysis: Equatable {
-    let previousStableText: String
-    let updatedText: String
+enum AutomaticVocabularySessionExit: Equatable {
+    case settled
+    case deadlineReached
 }
 
 enum AutomaticVocabularyMonitor {
@@ -120,11 +118,9 @@ enum AutomaticVocabularyMonitor {
     ) -> AutomaticVocabularyObservationState {
         AutomaticVocabularyObservationState(
             sessionStartedAt: startedAt,
-            settledText: baselineText,
+            baselineText: baselineText,
             latestObservedText: baselineText,
             lastChangedAt: nil,
-            lastAnalyzedText: nil,
-            analysisCount: 0,
         )
     }
 
@@ -139,33 +135,83 @@ enum AutomaticVocabularyMonitor {
         return true
     }
 
-    static func pendingAnalysis(
+    static func shouldTriggerAnalysis(
         state: AutomaticVocabularyObservationState,
         now: Date,
-        settleDelay: TimeInterval,
-        maxAnalyses: Int,
-    ) -> AutomaticVocabularyPendingAnalysis? {
-        guard state.analysisCount < maxAnalyses else { return nil }
-        guard let lastChangedAt = state.lastChangedAt else { return nil }
-        guard now.timeIntervalSince(lastChangedAt) >= settleDelay else { return nil }
-        guard state.latestObservedText != state.settledText else { return nil }
-        guard state.latestObservedText != state.lastAnalyzedText else { return nil }
-
-        return AutomaticVocabularyPendingAnalysis(
-            previousStableText: state.settledText,
-            updatedText: state.latestObservedText,
-        )
+        idleSettleDelay: TimeInterval,
+    ) -> Bool {
+        guard let lastChangedAt = state.lastChangedAt else { return false }
+        guard state.latestObservedText != state.baselineText else { return false }
+        return now.timeIntervalSince(lastChangedAt) >= idleSettleDelay
     }
 
-    static func markAnalysisCompleted(
-        for stableText: String,
-        state: inout AutomaticVocabularyObservationState,
-    ) {
-        state.settledText = stableText
-        state.latestObservedText = stableText
-        state.lastChangedAt = nil
-        state.lastAnalyzedText = stableText
-        state.analysisCount += 1
+    /// Levenshtein-based ratio that measures how much the observed text has
+    /// diverged from the baseline relative to the length of the originally inserted
+    /// text. A value of 0 means the baseline and final text are identical; a value
+    /// of 1 means the total edit distance is as large as the whole insertion.
+    ///
+    /// Returns the sentinel value `1` (enough to trip any sane cutoff) when either
+    /// side exceeds `maxLengthForExactComputation` — this is the O(n²) safety
+    /// bailout from the spec: we refuse to diff very long texts and abandon the
+    /// session, since users editing multi-thousand-character prose are almost
+    /// certainly not doing targeted vocabulary corrections.
+    static func editRatio(
+        inserted: String,
+        baseline: String,
+        final: String,
+        maxLengthForExactComputation: Int = 2000,
+    ) -> Double {
+        let insertedNorm = normalize(inserted)
+        guard !insertedNorm.isEmpty else { return 0 }
+        let baselineNorm = normalize(baseline)
+        let finalNorm = normalize(final)
+        if baselineNorm == finalNorm { return 0 }
+        if max(baselineNorm.count, finalNorm.count) > maxLengthForExactComputation {
+            return 1
+        }
+        let distance = levenshteinDistance(Array(baselineNorm), Array(finalNorm))
+        return Double(distance) / Double(insertedNorm.count)
+    }
+
+    /// True when the cumulative edit between baseline and final observed text
+    /// exceeds the configured fraction of the inserted text. A ratio above the
+    /// limit means the user rewrote a volume of content comparable to (or larger
+    /// than) the dictation itself, in which case vocabulary analysis is noise.
+    static func isEditTooLarge(
+        inserted: String,
+        baseline: String,
+        final: String,
+        ratioLimit: Double,
+        maxLengthForExactComputation: Int = 2000,
+    ) -> Bool {
+        editRatio(
+            inserted: inserted,
+            baseline: baseline,
+            final: final,
+            maxLengthForExactComputation: maxLengthForExactComputation,
+        ) > ratioLimit
+    }
+
+    /// True when the detected change is effectively just the originally inserted
+    /// text (e.g. baseline was captured before AX reflected the insertion). These
+    /// must be filtered out so we do not waste an LLM call on our own dictation
+    /// output. Uses two conservative signals:
+    ///   1. Normalized equality between the new fragment and the inserted text.
+    ///   2. Every candidate term is drawn from the inserted text's tokens.
+    /// A substring/contains check is deliberately NOT used — legitimate follow-up
+    /// edits like appending "SeedASR" to an inserted "Doubao" produce a new
+    /// fragment that contains the insertion but introduces brand-new tokens.
+    static func changeIsJustInitialInsertion(
+        change: AutomaticVocabularyChange,
+        insertedText: String,
+    ) -> Bool {
+        let normalizedInserted = normalize(insertedText)
+        guard !normalizedInserted.isEmpty else { return false }
+        let normalizedNew = normalize(change.newFragment)
+        if normalizedNew == normalizedInserted { return true }
+        let insertedTokens = Set(tokenize(insertedText).map(normalize))
+        guard !insertedTokens.isEmpty else { return false }
+        return change.candidateTerms.allSatisfy { insertedTokens.contains(normalize($0)) }
     }
 
     private static func tokenize(_ text: String) -> [String] {
@@ -187,13 +233,36 @@ enum AutomaticVocabularyMonitor {
 
     private static func isValidLatinOrNumberToken(_ token: String) -> Bool {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= 2, trimmed.count <= 32 else { return false }
-        return trimmed.rangeOfCharacter(from: .letters) != nil || trimmed.rangeOfCharacter(from: .decimalDigits) != nil
+        guard trimmed.count >= 4, trimmed.count <= 32 else { return false }
+        return trimmed.rangeOfCharacter(from: .letters) != nil
     }
 
     private static func isValidHanToken(_ token: String) -> Bool {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.count >= 2 && trimmed.count <= 12
+    }
+
+    private static func levenshteinDistance(_ lhs: [Character], _ rhs: [Character]) -> Int {
+        if lhs.isEmpty { return rhs.count }
+        if rhs.isEmpty { return lhs.count }
+
+        var previous = Array(0 ... rhs.count)
+        var current = Array(repeating: 0, count: rhs.count + 1)
+
+        for i in 1 ... lhs.count {
+            current[0] = i
+            for j in 1 ... rhs.count {
+                let cost = lhs[i - 1] == rhs[j - 1] ? 0 : 1
+                current[j] = Swift.min(
+                    previous[j] + 1,
+                    current[j - 1] + 1,
+                    previous[j - 1] + cost,
+                )
+            }
+            swap(&previous, &current)
+        }
+
+        return previous[rhs.count]
     }
 
     private static func normalize(_ term: String) -> String {
@@ -209,7 +278,7 @@ enum AutomaticVocabularyMonitor {
 
     private static func isValidAcceptedTerm(_ term: String) -> Bool {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= 2, trimmed.count <= 40 else { return false }
+        guard trimmed.count <= 40 else { return false }
         guard !trimmed.contains(where: \.isNewline) else { return false }
 
         let normalized = trimmed.lowercased()
@@ -222,9 +291,13 @@ enum AutomaticVocabularyMonitor {
             return false
         }
 
-        return trimmed.rangeOfCharacter(from: .letters) != nil
-            || trimmed.rangeOfCharacter(from: .decimalDigits) != nil
-            || trimmed.unicodeScalars.contains(where: { (0x4E00 ... 0x9FFF).contains($0.value) })
+        let hasHan = trimmed.unicodeScalars.contains { (0x4E00 ... 0x9FFF).contains($0.value) }
+        if hasHan {
+            return trimmed.count >= 2
+        }
+
+        guard trimmed.rangeOfCharacter(from: .letters) != nil else { return false }
+        return trimmed.count >= 4
     }
 
     private static func extractJSONObjectOrArray(from response: String) -> String? {
