@@ -3,3 +3,5 @@
 .swiftpm/
 coverage-report/
 coverage.lcov
+.xcode-derived/
+.xcode-app-derived/
