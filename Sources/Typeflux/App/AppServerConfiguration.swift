@@ -22,4 +22,10 @@ enum AppServerConfiguration {
     static var googleOAuthClientSecret: String {
         ProcessInfo.processInfo.environment["GOOGLE_OAUTH_CLIENT_SECRET"] ?? ""
     }
+
+    /// GitHub OAuth App client ID from https://github.com/settings/developers.
+    /// When empty, GitHub Sign-In is disabled in the login UI.
+    static var githubOAuthClientID: String {
+        ProcessInfo.processInfo.environment["GITHUB_OAUTH_CLIENT_ID"] ?? ""
+    }
 }

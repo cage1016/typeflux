@@ -68,6 +68,10 @@ struct AuthAPIService {
         try await post(path: "/api/v1/auth/oauth/google", body: OAuthRequest(idToken: idToken))
     }
 
+    static func loginWithGitHub(accessToken: String) async throws -> LoginResponse {
+        try await post(path: "/api/v1/auth/oauth/github", body: OAuthRequest(idToken: accessToken))
+    }
+
     // MARK: - Networking Helpers
 
     private static func post<Body: Encodable, Response: Decodable>(

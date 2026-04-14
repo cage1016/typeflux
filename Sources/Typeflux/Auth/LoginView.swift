@@ -47,8 +47,10 @@ struct LoginView: View {
     @State private var previousStepBeforeActivate: Step = .register
     @State private var resendCooldownRemaining = 0
     @State private var isGoogleLoading = false
+    @State private var isGitHubLoading = false
     private let googleClientID = AppServerConfiguration.googleOAuthClientID
     private let googleClientSecret = AppServerConfiguration.googleOAuthClientSecret
+    private let githubClientID = AppServerConfiguration.githubOAuthClientID
     @ObservedObject private var localization = AppLocalization.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -240,6 +242,11 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
             if !googleClientID.isEmpty {
                 googleSignInButton
+            }
+            if !githubClientID.isEmpty {
+                githubSignInButton
+            }
+            if !googleClientID.isEmpty || !githubClientID.isEmpty {
                 orDivider
             }
 
@@ -286,7 +293,36 @@ struct LoginView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isLoading || isGoogleLoading)
+        .disabled(isLoading || isGoogleLoading || isGitHubLoading)
+    }
+
+    private var githubSignInButton: some View {
+        Button(action: performGitHubLogin) {
+            HStack(spacing: 10) {
+                if isGitHubLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    GitHubLogoMark()
+                        .frame(width: 18, height: 18)
+                    Text(L("auth.login.continueWithGitHub"))
+                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
+            .foregroundStyle(githubButtonTextColor)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                    .fill(githubButtonFillColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                    .stroke(githubButtonStrokeColor, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading || isGoogleLoading || isGitHubLoading)
     }
 
     private var orDivider: some View {
@@ -318,6 +354,18 @@ struct LoginView: View {
 
     private var googleButtonStrokeColor: Color {
         colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
+    }
+
+    private var githubButtonFillColor: Color {
+        colorScheme == .dark ? Color(red: 0.14, green: 0.14, blue: 0.14) : Color(red: 0.13, green: 0.13, blue: 0.13)
+    }
+
+    private var githubButtonTextColor: Color {
+        Color.white
+    }
+
+    private var githubButtonStrokeColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.10) : Color.clear
     }
 
     private var loginForm: some View {
@@ -1085,6 +1133,40 @@ struct LoginView: View {
         }
     }
 
+    private func performGitHubLogin() {
+        guard !githubClientID.isEmpty else { return }
+        if !hasAcceptedPolicies, step == .enterEmail {
+            statusMessage = nil
+            errorMessage = AppLocalization.shared.string("auth.error.policyAgreementRequired")
+            return
+        }
+        clearMessages()
+        isGitHubLoading = true
+
+        Task {
+            do {
+                let accessToken = try await GitHubOAuthService.signIn(clientID: githubClientID)
+                let response = try await AuthAPIService.loginWithGitHub(accessToken: accessToken)
+                await authState.handleLoginSuccess(
+                    token: response.accessToken,
+                    expiresAt: response.expiresAt,
+                    refreshToken: response.refreshToken
+                )
+                isGitHubLoading = false
+                onDismiss()
+            } catch {
+                isGitHubLoading = false
+                // ASWebAuthenticationSession cancellation produces a specific error; suppress it silently.
+                let nsError = error as NSError
+                if nsError.domain == ASWebAuthenticationSessionErrorDomain,
+                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                    return
+                }
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     private func goBack() {
         clearMessages()
         switch step {
@@ -1186,5 +1268,14 @@ private struct GoogleLogoMark: View {
                 .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
         }
         .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+    }
+}
+
+/// A simple GitHub Octocat-inspired mark used on the sign-in button.
+private struct GitHubLogoMark: View {
+    var body: some View {
+        Image(systemName: "cat.fill")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Color.white)
     }
 }
