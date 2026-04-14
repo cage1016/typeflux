@@ -120,6 +120,16 @@ struct OAuthRequest: Encodable {
     }
 }
 
+struct GitHubOAuthRequest: Encodable {
+    let code: String
+    let codeVerifier: String
+
+    enum CodingKeys: String, CodingKey {
+        case code
+        case codeVerifier = "code_verifier"
+    }
+}
+
 // MARK: - Refresh Token
 
 struct RefreshRequest: Encodable {

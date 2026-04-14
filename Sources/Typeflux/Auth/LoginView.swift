@@ -15,6 +15,29 @@ enum LoginGooglePreflight {
     }
 }
 
+enum SocialLoginProvider: Hashable {
+    case google
+    case github
+}
+
+enum SocialLoginLayout {
+    static func enabledProviders(
+        googleClientID: String,
+        githubClientID: String
+    ) -> [SocialLoginProvider] {
+        var providers: [SocialLoginProvider] = []
+
+        if !googleClientID.isEmpty {
+            providers.append(.google)
+        }
+        if !githubClientID.isEmpty {
+            providers.append(.github)
+        }
+
+        return providers
+    }
+}
+
 struct LoginView: View {
     enum PresentationStyle {
         case card
@@ -240,13 +263,8 @@ struct LoginView: View {
 
     private var enterEmailForm: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
-            if !googleClientID.isEmpty {
-                googleSignInButton
-            }
-            if !githubClientID.isEmpty {
-                githubSignInButton
-            }
-            if !googleClientID.isEmpty || !githubClientID.isEmpty {
+            if !socialLoginProviders.isEmpty {
+                socialLoginButtonsRow
                 orDivider
             }
 
@@ -267,62 +285,90 @@ struct LoginView: View {
         }
     }
 
-    private var googleSignInButton: some View {
-        Button(action: performGoogleLogin) {
-            HStack(spacing: 10) {
-                if isGoogleLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    GoogleLogoMark()
-                        .frame(width: 18, height: 18)
-                    Text(L("auth.login.continueWithGoogle"))
-                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 46)
-            .foregroundStyle(googleButtonTextColor)
-            .background(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(googleButtonFillColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .stroke(googleButtonStrokeColor, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(isLoading || isGoogleLoading || isGitHubLoading)
+    private var socialLoginProviders: [SocialLoginProvider] {
+        SocialLoginLayout.enabledProviders(
+            googleClientID: googleClientID,
+            githubClientID: githubClientID
+        )
     }
 
-    private var githubSignInButton: some View {
-        Button(action: performGitHubLogin) {
-            HStack(spacing: 10) {
-                if isGitHubLoading {
+    private var socialLoginButtonsRow: some View {
+        HStack(spacing: StudioTheme.Spacing.medium) {
+            ForEach(socialLoginProviders, id: \.self) { provider in
+                socialLoginButton(for: provider)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func socialLoginButton(for provider: SocialLoginProvider) -> some View {
+        Button(action: action(for: provider)) {
+            ZStack {
+                if isLoadingProvider(provider) {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    GitHubLogoMark()
-                        .frame(width: 18, height: 18)
-                    Text(L("auth.login.continueWithGitHub"))
-                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                    socialLoginIcon(for: provider)
+                        .frame(width: 22, height: 22)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 46)
-            .foregroundStyle(githubButtonTextColor)
+            .frame(width: socialButtonSize, height: socialButtonSize)
+            .foregroundStyle(socialButtonTextColor(for: provider))
             .background(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(githubButtonFillColor)
+                Circle()
+                    .fill(socialButtonFillColor(for: provider))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .stroke(githubButtonStrokeColor, lineWidth: 1)
+                Circle()
+                    .stroke(socialButtonStrokeColor(for: provider), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
         .disabled(isLoading || isGoogleLoading || isGitHubLoading)
+        .help(socialLoginAccessibilityLabel(for: provider))
+        .accessibilityLabel(socialLoginAccessibilityLabel(for: provider))
+    }
+
+    @ViewBuilder
+    private func socialLoginIcon(for provider: SocialLoginProvider) -> some View {
+        switch provider {
+        case .google:
+            GoogleLogoMark()
+        case .github:
+            GitHubLogoMark()
+        }
+    }
+
+    private func action(for provider: SocialLoginProvider) -> () -> Void {
+        switch provider {
+        case .google:
+            performGoogleLogin
+        case .github:
+            performGitHubLogin
+        }
+    }
+
+    private func isLoadingProvider(_ provider: SocialLoginProvider) -> Bool {
+        switch provider {
+        case .google:
+            isGoogleLoading
+        case .github:
+            isGitHubLoading
+        }
+    }
+
+    private func socialLoginAccessibilityLabel(for provider: SocialLoginProvider) -> String {
+        switch provider {
+        case .google:
+            L("auth.login.continueWithGoogle")
+        case .github:
+            L("auth.login.continueWithGitHub")
+        }
+    }
+
+    private var socialButtonSize: CGFloat {
+        52
     }
 
     private var orDivider: some View {
@@ -344,28 +390,33 @@ struct LoginView: View {
         colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.10)
     }
 
-    private var googleButtonFillColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.07) : Color.white
+    private func socialButtonFillColor(for provider: SocialLoginProvider) -> Color {
+        switch provider {
+        case .google:
+            return colorScheme == .dark ? Color.white.opacity(0.07) : Color.white
+        case .github:
+            return colorScheme == .dark
+                ? Color(red: 0.14, green: 0.14, blue: 0.14)
+                : Color(red: 0.13, green: 0.13, blue: 0.13)
+        }
     }
 
-    private var googleButtonTextColor: Color {
-        colorScheme == .dark ? StudioTheme.textPrimary : Color.black.opacity(0.80)
+    private func socialButtonTextColor(for provider: SocialLoginProvider) -> Color {
+        switch provider {
+        case .google:
+            return colorScheme == .dark ? StudioTheme.textPrimary : Color.black.opacity(0.80)
+        case .github:
+            return Color.white
+        }
     }
 
-    private var googleButtonStrokeColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
-    }
-
-    private var githubButtonFillColor: Color {
-        colorScheme == .dark ? Color(red: 0.14, green: 0.14, blue: 0.14) : Color(red: 0.13, green: 0.13, blue: 0.13)
-    }
-
-    private var githubButtonTextColor: Color {
-        Color.white
-    }
-
-    private var githubButtonStrokeColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.10) : Color.clear
+    private func socialButtonStrokeColor(for provider: SocialLoginProvider) -> Color {
+        switch provider {
+        case .google:
+            return colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
+        case .github:
+            return colorScheme == .dark ? Color.white.opacity(0.10) : Color.clear
+        }
     }
 
     private var loginForm: some View {
@@ -1145,8 +1196,11 @@ struct LoginView: View {
 
         Task {
             do {
-                let accessToken = try await GitHubOAuthService.signIn(clientID: githubClientID)
-                let response = try await AuthAPIService.loginWithGitHub(accessToken: accessToken)
+                let authorization = try await GitHubOAuthService.signIn(clientID: githubClientID)
+                let response = try await AuthAPIService.loginWithGitHub(
+                    code: authorization.code,
+                    codeVerifier: authorization.codeVerifier
+                )
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,

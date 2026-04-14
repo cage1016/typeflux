@@ -3,9 +3,28 @@ import Foundation
 enum AppServerConfiguration {
     private static let defaultBaseURL = "https://typeflux.gulu.ai"
     private static let defaultGoogleOAuthClientID = "567492048493-bh84p3mfjfjimsfvga7pil3cc373d389.apps.googleusercontent.com"
+    private static let defaultGithubOAuthClientID = "Ov23lidqnPDEOAvE8RvH"
+
+    private static func configuredValue(
+        environmentKey: String,
+        infoPlistKey: String,
+        default defaultValue: String
+    ) -> String {
+        if let value = ProcessInfo.processInfo.environment[environmentKey], !value.isEmpty {
+            return value
+        }
+        if let value = Bundle.main.object(forInfoDictionaryKey: infoPlistKey) as? String, !value.isEmpty {
+            return value
+        }
+        return defaultValue
+    }
 
     static var apiBaseURL: String {
-        ProcessInfo.processInfo.environment["TYPEFLUX_API_URL"] ?? defaultBaseURL
+        configuredValue(
+            environmentKey: "TYPEFLUX_API_URL",
+            infoPlistKey: "TYPEFLUX_API_URL",
+            default: defaultBaseURL
+        )
     }
 
     /// Google OAuth 2.0 Client ID from Google Cloud Console.
@@ -13,19 +32,32 @@ enum AppServerConfiguration {
     /// Desktop-type clients also work but require GOOGLE_OAUTH_CLIENT_SECRET as well.
     /// When empty, Google Sign-In is disabled in the login UI.
     static var googleOAuthClientID: String {
-        ProcessInfo.processInfo.environment["GOOGLE_OAUTH_CLIENT_ID"] ?? defaultGoogleOAuthClientID
+        configuredValue(
+            environmentKey: "GOOGLE_OAUTH_CLIENT_ID",
+            infoPlistKey: "GOOGLE_OAUTH_CLIENT_ID",
+            default: defaultGoogleOAuthClientID
+        )
     }
 
     /// Google OAuth 2.0 Client Secret — only required for Desktop-type clients.
     /// iOS-type clients are public clients and do not need a secret.
     /// Leave empty (default) when using an iOS-type client ID.
     static var googleOAuthClientSecret: String {
-        ProcessInfo.processInfo.environment["GOOGLE_OAUTH_CLIENT_SECRET"] ?? ""
+        configuredValue(
+            environmentKey: "GOOGLE_OAUTH_CLIENT_SECRET",
+            infoPlistKey: "GOOGLE_OAUTH_CLIENT_SECRET",
+            default: ""
+        )
     }
 
     /// GitHub OAuth App client ID from https://github.com/settings/developers.
     /// When empty, GitHub Sign-In is disabled in the login UI.
     static var githubOAuthClientID: String {
-        ProcessInfo.processInfo.environment["GITHUB_OAUTH_CLIENT_ID"] ?? ""
+        configuredValue(
+            environmentKey: "GITHUB_OAUTH_CLIENT_ID",
+            infoPlistKey: "GITHUB_OAUTH_CLIENT_ID",
+            default: defaultGithubOAuthClientID
+        )
     }
+
 }

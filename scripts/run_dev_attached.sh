@@ -35,6 +35,19 @@ cp "$ROOT_DIR/app/Typeflux.icns" "$APP_DIR/Contents/Resources/Typeflux.icns"
 rm -rf "$APP_DIR/Contents/Resources/Typeflux_Typeflux.bundle"
 cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/Typeflux_Typeflux.bundle"
 
+set_plist_value() {
+  local key="$1"
+  local value="$2"
+  /usr/libexec/PlistBuddy -c "Delete :$key" "$APP_DIR/Contents/Info.plist" >/dev/null 2>&1 || true
+  /usr/libexec/PlistBuddy -c "Add :$key string $value" "$APP_DIR/Contents/Info.plist"
+}
+
+for key in TYPEFLUX_API_URL GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GITHUB_OAUTH_CLIENT_ID; do
+  if [[ -n "${!key:-}" ]]; then
+    set_plist_value "$key" "${!key}"
+  fi
+done
+
 chmod +x "$APP_EXEC"
 
 # SwiftPM debug builds may carry a transient ad-hoc signature with a generated
