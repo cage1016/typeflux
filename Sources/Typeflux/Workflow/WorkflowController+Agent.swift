@@ -31,6 +31,8 @@ extension WorkflowController {
     ///
     /// - Phase 1: A single LLM tool call that routes the request to `answer_text`, `edit_text`,
     ///   or `run_agent`. Simple requests are resolved immediately with no job recording overhead.
+    ///   If the model returns plain text (clarification question) instead of a tool call,
+    ///   a clarification dialog is shown and the user can reply via voice to continue.
     ///
     /// - Phase 2 (conditional): Triggered only when Phase 1 returns `run_agent`. Runs the full
     ///   `AgentLoop` with MCP tools and job recording, using the clarified instruction from Phase 1.
@@ -48,58 +50,97 @@ extension WorkflowController {
         let jobRecorder = AgentJobRecorder(store: agentJobStore, jobID: jobID)
         await jobRecorder.beginJob(userPrompt: spokenInstruction, selectedText: selectedText)
 
-        // Phase 1: single LLM tool call that routes to answer_text, edit_text, or run_agent.
-        let phase1Result: Phase1RouterResult
-        do {
-            phase1Result = try await runPhase1Router(
-                selectedText: selectedText,
-                spokenInstruction: spokenInstruction,
-                personaPrompt: personaPrompt,
-                appSystemContext: appSystemContext,
-                llmService: llmService,
-            )
-        } catch is CancellationError {
-            await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
-            throw CancellationError()
-        } catch {
-            await jobRecorder.markFailed(error: error)
-            throw error
-        }
+        // Phase 1 retry loop: if the model asks for clarification, show the dialog and retry.
+        var clarificationTurns: [(modelText: String, userReply: String)] = []
+        while true {
+            let phase1Result: Phase1RouterResult
+            do {
+                phase1Result = try await runPhase1Router(
+                    selectedText: selectedText,
+                    spokenInstruction: spokenInstruction,
+                    personaPrompt: personaPrompt,
+                    appSystemContext: appSystemContext,
+                    llmService: llmService,
+                    clarificationTurns: clarificationTurns,
+                )
+            } catch is CancellationError {
+                await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
+                throw CancellationError()
+            } catch LLMAgentError.textResponse(let modelText) {
+                // The model returned a clarification question instead of a tool call.
+                // Show the clarification dialog and wait for the user's voice reply.
+                let userReply: String
+                do {
+                    userReply = try await showClarificationAndWaitForReply(
+                        modelResponse: modelText,
+                        question: spokenInstruction,
+                        selectedText: selectedText,
+                    )
+                } catch {
+                    await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
+                    throw CancellationError()
+                }
+                clarificationTurns.append((modelText: modelText, userReply: userReply))
+                continue
+            } catch {
+                await jobRecorder.markFailed(error: error)
+                throw error
+            }
 
-        // Record Phase 1 as step 0 in all cases.
-        let phase1ResultContent: String = switch phase1Result.decision {
-        case let .answer(text): text
-        case let .edit(text): text
-        case .runAgent: ""
-        }
-        await jobRecorder.addPhase1Step(
-            toolCallName: phase1Result.toolCallName,
-            toolCallArgumentsJSON: phase1Result.toolCallArgumentsJSON,
-            resultContent: phase1ResultContent,
-            durationMs: phase1Result.durationMs,
-        )
-
-        switch phase1Result.decision {
-        case let .answer(text):
-            await jobRecorder.completeWithPhase1Result(resultText: text, outcomeType: "answer_text")
-            scheduleJobTitle(for: jobRecorder.recordedJobID)
-            return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: .answer(text))
-        case let .edit(text):
-            await jobRecorder.completeWithPhase1Result(resultText: text, outcomeType: "edit_text")
-            scheduleJobTitle(for: jobRecorder.recordedJobID)
-            return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: .edit(text))
-        case let .runAgent(detailedInstruction):
-            // Phase 2: full agent loop continues in the same job; steps start at index 1.
-            let result = try await runPhase2AgentLoop(
-                selectedText: selectedText,
-                spokenInstruction: spokenInstruction,
-                detailedInstruction: detailedInstruction,
-                personaPrompt: personaPrompt,
-                appSystemContext: appSystemContext,
-                llmService: llmService,
-                jobRecorder: jobRecorder,
+            // Phase 1 succeeded — record step 0 and dispatch.
+            let phase1ResultContent: String = switch phase1Result.decision {
+            case let .answer(text): text
+            case let .edit(text): text
+            case .runAgent: ""
+            }
+            await jobRecorder.addPhase1Step(
+                toolCallName: phase1Result.toolCallName,
+                toolCallArgumentsJSON: phase1Result.toolCallArgumentsJSON,
+                resultContent: phase1ResultContent,
+                durationMs: phase1Result.durationMs,
             )
-            return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: result)
+
+            switch phase1Result.decision {
+            case let .answer(text):
+                await jobRecorder.completeWithPhase1Result(resultText: text, outcomeType: "answer_text")
+                scheduleJobTitle(for: jobRecorder.recordedJobID)
+                return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: .answer(text))
+            case let .edit(text):
+                await jobRecorder.completeWithPhase1Result(resultText: text, outcomeType: "edit_text")
+                scheduleJobTitle(for: jobRecorder.recordedJobID)
+                return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: .edit(text))
+            case let .runAgent(detailedInstruction):
+                // Phase 2: full agent loop continues in the same job; steps start at index 1.
+                let result = try await runPhase2AgentLoop(
+                    selectedText: selectedText,
+                    spokenInstruction: spokenInstruction,
+                    detailedInstruction: detailedInstruction,
+                    personaPrompt: personaPrompt,
+                    appSystemContext: appSystemContext,
+                    llmService: llmService,
+                    jobRecorder: jobRecorder,
+                )
+                return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: result)
+            }
+        }
+    }
+
+    // MARK: - Clarification dialog
+
+    /// Shows the clarification dialog and suspends until the user records a voice reply or dismisses.
+    /// Throws `CancellationError` if the user closes the dialog without replying.
+    private func showClarificationAndWaitForReply(
+        modelResponse: String,
+        question: String,
+        selectedText: String?,
+    ) async throws -> String {
+        return try await withCheckedThrowingContinuation { continuation in
+            pendingClarificationContinuation = continuation
+            agentClarificationWindowController.show(
+                question: question,
+                selectedText: selectedText,
+                modelResponse: modelResponse,
+            )
         }
     }
 
@@ -111,14 +152,24 @@ extension WorkflowController {
         personaPrompt: String?,
         appSystemContext: AppSystemContext?,
         llmService: OpenAICompatibleAgentService,
+        clarificationTurns: [(modelText: String, userReply: String)] = [],
     ) async throws -> Phase1RouterResult {
         let systemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: AgentPromptCatalog.routerSystemPrompt(personaPrompt: personaPrompt),
             appLanguage: settingsStore.appLanguage,
         )
+
+        // Append clarification history to the instruction so the model has full context.
+        var instruction = spokenInstruction
+        if !clarificationTurns.isEmpty {
+            instruction += clarificationTurns.map { turn in
+                "\n\n[Assistant asked for clarification]: \(turn.modelText)\n[User replied]: \(turn.userReply)"
+            }.joined()
+        }
+
         let userPrompt = AgentPromptCatalog.routerUserPrompt(
             selectedText: selectedText,
-            instruction: spokenInstruction,
+            instruction: instruction,
         )
         let tools = [AnswerTextTool().definition, EditTextTool().definition, RunAgentTool().definition]
 
@@ -143,9 +194,9 @@ extension WorkflowController {
             let text = parseStringField("replacement", from: toolCall.argumentsJSON) ?? ""
             decision = .edit(text)
         case BuiltinAgentToolName.runAgent.rawValue:
-            let instruction = parseStringField("detailed_instruction", from: toolCall.argumentsJSON)
+            let resolvedInstruction = parseStringField("detailed_instruction", from: toolCall.argumentsJSON)
                 ?? spokenInstruction
-            decision = .runAgent(detailedInstruction: instruction)
+            decision = .runAgent(detailedInstruction: resolvedInstruction)
         default:
             throw AgentError.invalidAgentState(reason: "Unexpected Phase 1 tool: \(toolCall.name)")
         }

@@ -32,6 +32,7 @@ enum LLMAgentError: LocalizedError, Equatable {
     case unsupportedProvider
     case noToolsConfigured
     case missingToolCall
+    case textResponse(text: String)
     case unexpectedToolName(expected: String?, actual: String)
     case invalidToolArguments
 
@@ -43,6 +44,8 @@ enum LLMAgentError: LocalizedError, Equatable {
             return "No agent tools were configured."
         case .missingToolCall:
             return "The model did not return a tool call."
+        case .textResponse:
+            return "The model returned a text response instead of a tool call."
         case let .unexpectedToolName(expected, actual):
             if let expected {
                 return "Unexpected tool call '\(actual)'; expected '\(expected)'."

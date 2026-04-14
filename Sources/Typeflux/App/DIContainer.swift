@@ -12,6 +12,7 @@ final class DIContainer {
     let audioRecorder: AudioRecorder
     let overlayController: OverlayController
     let askAnswerWindowController: AskAnswerWindowController
+    let agentClarificationWindowController: AgentClarificationWindowController
     let soundEffectPlayer: SoundEffectPlayer
     let clipboard: ClipboardService
     let textInjector: TextInjector
@@ -35,6 +36,7 @@ final class DIContainer {
         overlayController = OverlayController(appState: appState)
         clipboard = SystemClipboardService()
         askAnswerWindowController = AskAnswerWindowController(clipboard: clipboard, settingsStore: settingsStore)
+        agentClarificationWindowController = AgentClarificationWindowController(settingsStore: settingsStore)
         soundEffectPlayer = SoundEffectPlayer(settingsStore: settingsStore)
         textInjector = AXTextInjector(settingsStore: settingsStore)
         Logger(subsystem: "dev.typeflux", category: "DIContainer").debug("DIContainer initialized — Logger test message")

@@ -186,4 +186,44 @@ enum LLMAgentResponseSupport {
 
         return nil
     }
+
+    // MARK: - Text content extraction (for when model responds with text instead of a tool call)
+
+    static func extractOpenAICompatibleText(from data: Data) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choice = (object["choices"] as? [[String: Any]])?.first,
+              let message = choice["message"] as? [String: Any],
+              let content = message["content"] as? String
+        else {
+            return nil
+        }
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    static func extractAnthropicText(from data: Data) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = object["content"] as? [[String: Any]],
+              let textBlock = content.first(where: { ($0["type"] as? String) == "text" }),
+              let text = textBlock["text"] as? String
+        else {
+            return nil
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    static func extractGeminiText(from data: Data) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = object["candidates"] as? [[String: Any]],
+              let content = candidates.first?["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]]
+        else {
+            return nil
+        }
+        let textParts = parts.compactMap { $0["text"] as? String }
+        let combined = textParts.joined(separator: " ")
+        let trimmed = combined.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }

@@ -265,6 +265,9 @@ enum RemoteAgentClient {
 
         let data = try await RemoteLLMClient.performJSONRequest(urlRequest)
         guard let toolCall = LLMAgentResponseSupport.extractOpenAICompatibleToolCall(from: data) else {
+            if let text = LLMAgentResponseSupport.extractOpenAICompatibleText(from: data) {
+                throw LLMAgentError.textResponse(text: text)
+            }
             throw LLMAgentError.missingToolCall
         }
         return toolCall
@@ -298,6 +301,9 @@ enum RemoteAgentClient {
 
         let data = try await RemoteLLMClient.performJSONRequest(urlRequest)
         guard let toolCall = LLMAgentResponseSupport.extractAnthropicToolCall(from: data) else {
+            if let text = LLMAgentResponseSupport.extractAnthropicText(from: data) {
+                throw LLMAgentError.textResponse(text: text)
+            }
             throw LLMAgentError.missingToolCall
         }
         return toolCall
@@ -338,6 +344,9 @@ enum RemoteAgentClient {
 
         let data = try await RemoteLLMClient.performJSONRequest(urlRequest)
         guard let toolCall = LLMAgentResponseSupport.extractGeminiToolCall(from: data) else {
+            if let text = LLMAgentResponseSupport.extractGeminiText(from: data) {
+                throw LLMAgentError.textResponse(text: text)
+            }
             throw LLMAgentError.missingToolCall
         }
         return toolCall

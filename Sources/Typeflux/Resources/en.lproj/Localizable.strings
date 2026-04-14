@@ -847,3 +847,9 @@
 "auth.account.relogin" = "Sign In Again";
 "auth.account.signedOutTitle" = "Not Signed In";
 "auth.account.signedOutSubtitle" = "Sign in to sync your account and manage your session.";
+
+"agent.clarification.windowTitle" = "Agent Clarification";
+"agent.clarification.assistantSectionTitle" = "Assistant";
+"agent.clarification.hotkeyHint" = "Press and hold your hotkey to record a reply";
+"agent.clarification.recordingHint" = "Recording... release hotkey when done";
+"agent.clarification.transcribingHint" = "Processing your reply...";

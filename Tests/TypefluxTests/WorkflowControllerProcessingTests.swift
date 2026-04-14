@@ -133,6 +133,9 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 clipboard: MockClipboardService(),
                 settingsStore: settingsStore,
             ),
+            agentClarificationWindowController: AgentClarificationWindowController(
+                settingsStore: settingsStore,
+            ),
             soundEffectPlayer: SoundEffectPlayer(settingsStore: settingsStore),
         )
     }

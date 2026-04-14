@@ -66,6 +66,7 @@ final class WorkflowController {
     let mcpRegistry: MCPRegistry
     let overlayController: OverlayController
     let askAnswerWindowController: AskAnswerWindowController
+    let agentClarificationWindowController: AgentClarificationWindowController
     let soundEffectPlayer: SoundEffectPlayer
     let sleep: @Sendable (Duration) async -> Void
 
@@ -90,6 +91,10 @@ final class WorkflowController {
     var personaPickerItems: [PersonaPickerEntry] = []
     var personaPickerSelectedIndex = 0
     var personaPickerMode: PersonaPickerMode = .switchDefault
+
+    // Clarification mode: set when the agent workflow is paused waiting for a user voice reply.
+    var pendingClarificationContinuation: CheckedContinuation<String, Error>?
+    var isClarificationRecording = false
 
     struct PersonaPickerEntry {
         let id: UUID?
@@ -123,6 +128,7 @@ final class WorkflowController {
         mcpRegistry: MCPRegistry,
         overlayController: OverlayController,
         askAnswerWindowController: AskAnswerWindowController,
+        agentClarificationWindowController: AgentClarificationWindowController,
         soundEffectPlayer: SoundEffectPlayer,
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
@@ -143,6 +149,7 @@ final class WorkflowController {
         self.mcpRegistry = mcpRegistry
         self.overlayController = overlayController
         self.askAnswerWindowController = askAnswerWindowController
+        self.agentClarificationWindowController = agentClarificationWindowController
         self.soundEffectPlayer = soundEffectPlayer
         self.sleep = sleep
         self.overlayController.setRecordingActionHandlers(
@@ -172,6 +179,9 @@ final class WorkflowController {
             onConfirm: { [weak self] in self?.confirmPersonaSelection() },
             onCancel: { [weak self] in self?.dismissPersonaPicker() },
         )
+        self.agentClarificationWindowController.onDismiss = { [weak self] in
+            self?.dismissClarification()
+        }
     }
 
     func presentAskAnswer(question: String, selectedText: String?, answerMarkdown: String) {
@@ -268,6 +278,7 @@ final class WorkflowController {
         hotkeyService.stop()
         dismissPersonaPicker()
         askAnswerWindowController.dismiss()
+        agentClarificationWindowController.dismiss()
         cancelRecording()
         cancelCurrentProcessing(resetUI: true, reason: L("workflow.cancel.stopping"))
         automaticVocabularyObservationTask?.cancel()
@@ -375,6 +386,15 @@ final class WorkflowController {
                 overlayController.dismiss(after: 3.0)
                 ErrorLogStore.shared.log(msg)
             }
+            return
+        }
+
+        // If the agent is waiting for a clarification reply, intercept the hotkey press
+        // to start a clarification recording instead of cancelling the agent session.
+        if pendingClarificationContinuation != nil {
+            guard !isRecording else { return }
+            isClarificationRecording = true
+            Task { [weak self] in await self?.beginClarificationRecording() }
             return
         }
 
@@ -567,6 +587,12 @@ final class WorkflowController {
             return
         }
 
+        // If in clarification recording mode, finish the clarification recording.
+        if isClarificationRecording {
+            finishClarificationRecording()
+            return
+        }
+
         guard recordingMode == .holdToTalk else { return }
 
         let pressDuration = Date().timeIntervalSince(hotkeyPressedAt ?? Date.distantPast)
@@ -608,6 +634,69 @@ final class WorkflowController {
             guard let self else { return }
             await finishRecordingAndProcess(recordingStoppedAt: recordingStoppedAt)
         }
+    }
+
+    // MARK: - Clarification recording
+
+    func beginClarificationRecording() async {
+        isRecording = true
+        agentClarificationWindowController.updateRecordingState(.recording)
+        NSLog("[Workflow] Clarification recording started")
+
+        do {
+            try audioRecorder.start(
+                levelHandler: { _ in },
+                audioBufferHandler: nil,
+            )
+        } catch {
+            isRecording = false
+            isClarificationRecording = false
+            agentClarificationWindowController.updateRecordingState(.waitingForReply)
+            NSLog("[Workflow] Clarification recording failed to start: \(error)")
+        }
+    }
+
+    func finishClarificationRecording() {
+        guard isRecording, isClarificationRecording else { return }
+        isRecording = false
+        isClarificationRecording = false
+        agentClarificationWindowController.updateRecordingState(.transcribing)
+        NSLog("[Workflow] Clarification recording stopped, transcribing")
+
+        Task { [weak self] in
+            guard let self else { return }
+            guard let audioFile = try? audioRecorder.stop() else {
+                agentClarificationWindowController.updateRecordingState(.waitingForReply)
+                return
+            }
+
+            do {
+                let transcript = try await sttRouter.transcribe(audioFile: audioFile)
+                let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    agentClarificationWindowController.updateRecordingState(.waitingForReply)
+                    return
+                }
+                resumeClarificationWithReply(trimmed)
+            } catch {
+                NSLog("[Workflow] Clarification transcription failed: \(error)")
+                agentClarificationWindowController.updateRecordingState(.waitingForReply)
+            }
+        }
+    }
+
+    func resumeClarificationWithReply(_ reply: String) {
+        guard let continuation = pendingClarificationContinuation else { return }
+        pendingClarificationContinuation = nil
+        agentClarificationWindowController.dismiss()
+        continuation.resume(returning: reply)
+    }
+
+    func dismissClarification() {
+        guard let continuation = pendingClarificationContinuation else { return }
+        pendingClarificationContinuation = nil
+        agentClarificationWindowController.dismiss()
+        continuation.resume(throwing: CancellationError())
     }
 }
 

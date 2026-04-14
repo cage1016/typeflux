@@ -154,6 +154,9 @@ final class WorkflowControllerAutomaticVocabularyTests: XCTestCase {
                 clipboard: MockClipboardService(),
                 settingsStore: settingsStore,
             ),
+            agentClarificationWindowController: AgentClarificationWindowController(
+                settingsStore: settingsStore,
+            ),
             soundEffectPlayer: SoundEffectPlayer(settingsStore: settingsStore),
         )
     }

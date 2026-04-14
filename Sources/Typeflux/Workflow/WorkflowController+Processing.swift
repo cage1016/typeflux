@@ -1221,6 +1221,9 @@ extension WorkflowController {
     }
 
     func cancelCurrentProcessing(resetUI: Bool, reason: String) {
+        // If the agent is waiting for a clarification reply, cancel it too.
+        dismissClarification()
+
         processingSessionID = UUID()
         processingTask?.cancel()
         processingTask = nil

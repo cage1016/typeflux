@@ -25,6 +25,7 @@ final class AppCoordinator {
             mcpRegistry: di.mcpRegistry,
             overlayController: di.overlayController,
             askAnswerWindowController: di.askAnswerWindowController,
+            agentClarificationWindowController: di.agentClarificationWindowController,
             soundEffectPlayer: di.soundEffectPlayer,
         )
         self.workflowController = workflowController

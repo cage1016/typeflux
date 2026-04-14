@@ -841,3 +841,9 @@
 "auth.account.relogin" = "再度サインイン";
 "auth.account.signedOutTitle" = "未サインイン";
 "auth.account.signedOutSubtitle" = "サインインすると、アカウント情報の確認と現在のセッション管理ができます。";
+
+"agent.clarification.windowTitle" = "アシスタントの確認";
+"agent.clarification.assistantSectionTitle" = "アシスタント";
+"agent.clarification.hotkeyHint" = "ホットキーを押し続けて返答を録音";
+"agent.clarification.recordingHint" = "録音中... 完了したらホットキーを離してください";
+"agent.clarification.transcribingHint" = "返答を処理中...";
