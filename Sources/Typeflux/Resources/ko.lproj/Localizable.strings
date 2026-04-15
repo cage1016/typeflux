@@ -75,6 +75,7 @@
 "settings.mute.subtitle" = "녹음하는 동안 일시적으로 시스템 출력을 음소거하여 피드백이나 시스템 사운드가 마이크에 새는 것을 줄입니다.";
 "settings.permissions" = "권한";
 "settings.advanced" = "고급";
+"settings.advanced.button" = "고급 설정";
 "settings.advanced.soundEffects.title" = "음향 효과 활성화";
 "settings.advanced.soundEffects.subtitle" = "워크플로 피드백을 기록하는 동안 시작, 완료 및 오류 소리를 재생합니다.";
 "settings.advanced.autoUpdate.title" = "자동 업데이트";

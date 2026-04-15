@@ -81,6 +81,7 @@ struct StudioView: View {
     @State private var showingClearAllJobsConfirmation = false
     @State private var showingClearHistoryConfirmation = false
     @State private var agentConfigurationTab: AgentConfigurationTab = .general
+    @State private var isAdvancedSettingsExpanded = false
     @ObservedObject private var localization = AppLocalization.shared
     @ObservedObject private var authState = AuthState.shared
 
@@ -1256,129 +1257,146 @@ struct StudioView: View {
                 }
             }
 
-            StudioSectionTitle(title: L("settings.advanced"))
+            HStack {
+                StudioSectionTitle(title: L("settings.advanced"))
 
-            StudioCard {
-                VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
-                    StudioSettingRow(
-                        title: L("settings.advanced.localOptimization.title"),
-                        subtitle: L("settings.advanced.localOptimization.subtitle"),
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.localOptimizationEnabled },
-                                set: viewModel.setLocalOptimizationEnabled,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
+                Spacer()
 
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("settings.advanced.soundEffects.title"),
-                        subtitle: L("settings.advanced.soundEffects.subtitle"),
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.soundEffectsEnabled },
-                                set: viewModel.setSoundEffectsEnabled,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
-
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("settings.advanced.personaHotkeyApply.title"),
-                        subtitle: L("settings.advanced.personaHotkeyApply.subtitle"),
-                        badge: "Beta",
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.personaHotkeyAppliesToSelection },
-                                set: viewModel.setPersonaHotkeyAppliesToSelection,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
-
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("settings.advanced.autoVocabulary.title"),
-                        subtitle: L("settings.advanced.autoVocabulary.subtitle"),
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.automaticVocabularyCollectionEnabled },
-                                set: viewModel.setAutomaticVocabularyCollectionEnabled,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
-
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("settings.advanced.autoUpdate.title"),
-                        subtitle: L("settings.advanced.autoUpdate.subtitle"),
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.autoUpdateEnabled },
-                                set: viewModel.setAutoUpdateEnabled,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
-
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("settings.models.appleFallback"),
-                        subtitle: L("settings.models.appleFallback.detail"),
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.appleSpeechFallback },
-                                set: viewModel.setAppleSpeechFallback,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                    }
-
-                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                    StudioSettingRow(
-                        title: L("settings.advanced.agentFramework.title"),
-                        subtitle: L("settings.advanced.agentFramework.subtitle"),
-                        badge: "Beta",
-                    ) {
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { viewModel.agentFrameworkEnabled },
-                                set: viewModel.setAgentFrameworkEnabled,
-                            ),
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
+                StudioButton(
+                    title: L("settings.advanced.button"),
+                    systemImage: isAdvancedSettingsExpanded ? "chevron.up" : "chevron.down",
+                    variant: .secondary,
+                ) {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        isAdvancedSettingsExpanded.toggle()
                     }
                 }
+            }
+
+            if isAdvancedSettingsExpanded {
+                StudioCard {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                        StudioSettingRow(
+                            title: L("settings.advanced.localOptimization.title"),
+                            subtitle: L("settings.advanced.localOptimization.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.localOptimizationEnabled },
+                                    set: viewModel.setLocalOptimizationEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
+                            title: L("settings.advanced.soundEffects.title"),
+                            subtitle: L("settings.advanced.soundEffects.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.soundEffectsEnabled },
+                                    set: viewModel.setSoundEffectsEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
+                            title: L("settings.advanced.personaHotkeyApply.title"),
+                            subtitle: L("settings.advanced.personaHotkeyApply.subtitle"),
+                            badge: "Beta",
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.personaHotkeyAppliesToSelection },
+                                    set: viewModel.setPersonaHotkeyAppliesToSelection,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
+                            title: L("settings.advanced.autoVocabulary.title"),
+                            subtitle: L("settings.advanced.autoVocabulary.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.automaticVocabularyCollectionEnabled },
+                                    set: viewModel.setAutomaticVocabularyCollectionEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
+                            title: L("settings.advanced.autoUpdate.title"),
+                            subtitle: L("settings.advanced.autoUpdate.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.autoUpdateEnabled },
+                                    set: viewModel.setAutoUpdateEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
+                            title: L("settings.models.appleFallback"),
+                            subtitle: L("settings.models.appleFallback.detail"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.appleSpeechFallback },
+                                    set: viewModel.setAppleSpeechFallback,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
+                            title: L("settings.advanced.agentFramework.title"),
+                            subtitle: L("settings.advanced.agentFramework.subtitle"),
+                            badge: "Beta",
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.agentFrameworkEnabled },
+                                    set: viewModel.setAgentFrameworkEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
