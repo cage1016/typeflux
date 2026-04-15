@@ -3608,9 +3608,39 @@ struct StudioView: View {
                 }
 
             case .googleCloud:
-                Text(L("settings.models.googleCloud.cloudGatewayHint"))
-                    .font(.studioBody(StudioTheme.Typography.caption))
-                    .foregroundStyle(StudioTheme.textSecondary)
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                    StudioTextInputCard(
+                        label: L("settings.models.googleCloud.projectID"), placeholder: "my-gcp-project",
+                        text: Binding(
+                            get: { viewModel.googleCloudProjectID },
+                            set: viewModel.setGoogleCloudProjectID,
+                        ),
+                    )
+                    StudioTextInputCard(
+                        label: L("common.apiKey"), placeholder: "AIza...",
+                        text: Binding(
+                            get: { viewModel.googleCloudAPIKey },
+                            set: viewModel.setGoogleCloudAPIKey,
+                        ),
+                        secure: true,
+                    ) {
+                        if let url = sttProviderAPIKeyURL(.googleCloud) {
+                            apiKeyHelpButton(url: url)
+                        }
+                    }
+                    StudioSuggestedTextInputCard(
+                        label: L("common.model"),
+                        placeholder: GoogleCloudSpeechDefaults.model,
+                        text: Binding(
+                            get: { viewModel.googleCloudModel },
+                            set: viewModel.setGoogleCloudModel,
+                        ),
+                        suggestions: GoogleCloudSpeechDefaults.suggestedModels,
+                    )
+                    Text(L("settings.models.googleCloud.directHint"))
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
 
             case .groqSTT:
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
@@ -4091,7 +4121,8 @@ struct StudioView: View {
         case .doubaoRealtime:
             !viewModel.doubaoAppID.isEmpty && !viewModel.doubaoAccessToken.isEmpty
         case .googleCloud:
-            authState.isLoggedIn
+            !viewModel.googleCloudProjectID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !viewModel.googleCloudAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .groqSTT:
             !viewModel.groqSTTAPIKey.isEmpty
         case .typefluxOfficial:
@@ -4357,7 +4388,9 @@ struct StudioView: View {
             URL(string: "https://bailian.console.aliyun.com?tab=model#/api-key")
         case .multimodalLLM:
             URL(string: "https://platform.openai.com/api-keys")
-        case .doubaoRealtime, .googleCloud, .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
+        case .googleCloud:
+            URL(string: "https://console.cloud.google.com/apis/credentials")
+        case .doubaoRealtime, .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
             nil
         }
     }
@@ -4433,7 +4466,7 @@ struct StudioView: View {
         case .doubaoRealtime:
             L("settings.models.doubao.productName")
         case .googleCloud:
-            L("settings.models.googleCloud.streaming")
+            viewModel.googleCloudModel.isEmpty ? GoogleCloudSpeechDefaults.model : viewModel.googleCloudModel
         case .groqSTT:
             viewModel.groqSTTModel.isEmpty
                 ? OpenAIAudioModelCatalog.groqWhisperModels[0] : viewModel.groqSTTModel

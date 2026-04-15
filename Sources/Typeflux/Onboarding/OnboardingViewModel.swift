@@ -50,6 +50,9 @@ final class OnboardingViewModel: ObservableObject {
     @Published var doubaoAppID: String
     @Published var doubaoAccessToken: String
     @Published var doubaoResourceID: String
+    @Published var googleCloudProjectID: String
+    @Published var googleCloudAPIKey: String
+    @Published var googleCloudModel: String
     @Published var groqSTTAPIKey: String
     @Published var groqSTTModel: String
 
@@ -108,6 +111,9 @@ final class OnboardingViewModel: ObservableObject {
         doubaoAppID = settingsStore.doubaoAppID
         doubaoAccessToken = settingsStore.doubaoAccessToken
         doubaoResourceID = settingsStore.doubaoResourceID
+        googleCloudProjectID = settingsStore.googleCloudProjectID
+        googleCloudAPIKey = settingsStore.googleCloudAPIKey
+        googleCloudModel = settingsStore.googleCloudModel
         groqSTTAPIKey = settingsStore.groqSTTAPIKey
         groqSTTModel = settingsStore.groqSTTModel
 
@@ -247,6 +253,10 @@ final class OnboardingViewModel: ObservableObject {
         let doubaoID = doubaoAppID
         let doubaoToken = doubaoAccessToken
         let doubaoResource = doubaoResourceID
+        let googleProjectID = googleCloudProjectID
+        let googleAPIKey = googleCloudAPIKey
+        let googleModel = googleCloudModel
+        let language = appLanguage
         let groqKey = groqSTTAPIKey
         let groqModel = groqSTTModel
         let freeModel = freeSTTModel
@@ -278,7 +288,12 @@ final class OnboardingViewModel: ObservableObject {
                             resourceID: doubaoResource,
                         )
                     case .googleCloud:
-                        preview = try await GoogleCloudSpeechTranscriber.testConnection()
+                        preview = try await GoogleCloudSpeechTranscriber.testConnection(
+                            projectID: googleProjectID,
+                            apiKey: googleAPIKey,
+                            model: googleModel,
+                            appLanguage: language,
+                        )
                     case .groq:
                         let effectiveModel = groqModel.isEmpty
                             ? OpenAIAudioModelCatalog.groqWhisperModels[0] : groqModel
@@ -443,7 +458,9 @@ final class OnboardingViewModel: ObservableObject {
                 settingsStore.doubaoAccessToken = doubaoAccessToken
                 settingsStore.doubaoResourceID = doubaoResourceID
             case .googleCloud:
-                break
+                settingsStore.googleCloudProjectID = googleCloudProjectID
+                settingsStore.googleCloudAPIKey = googleCloudAPIKey
+                settingsStore.googleCloudModel = googleCloudModel
             case .groq:
                 settingsStore.groqSTTAPIKey = groqSTTAPIKey
                 settingsStore.groqSTTModel = groqSTTModel

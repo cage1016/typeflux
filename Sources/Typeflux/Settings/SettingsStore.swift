@@ -288,6 +288,21 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "stt.doubao.resourceID") }
     }
 
+    var googleCloudProjectID: String {
+        get { defaults.string(forKey: "stt.google.projectID") ?? "" }
+        set { defaults.set(newValue, forKey: "stt.google.projectID") }
+    }
+
+    var googleCloudAPIKey: String {
+        get { defaults.string(forKey: "stt.google.apiKey") ?? "" }
+        set { defaults.set(newValue, forKey: "stt.google.apiKey") }
+    }
+
+    var googleCloudModel: String {
+        get { defaults.string(forKey: "stt.google.model") ?? GoogleCloudSpeechDefaults.model }
+        set { defaults.set(newValue, forKey: "stt.google.model") }
+    }
+
     var groqSTTAPIKey: String {
         get { defaults.string(forKey: "stt.groq.apiKey") ?? "" }
         set { defaults.set(newValue, forKey: "stt.groq.apiKey") }

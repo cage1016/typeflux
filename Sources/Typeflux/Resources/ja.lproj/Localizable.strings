@@ -556,7 +556,7 @@
 "settings.models.overview.multimodal" = "音声はマルチモーダル モデルに直接送信され、1 回の通話で文字起こしとペルソナの書き換えが行われます。";
 "settings.models.overview.aliCloud" = "音声認識は、WebSocket 経由で Alibaba Cloud DashScope にリアルタイムでストリーミングされます。";
 "settings.models.overview.doubao" = "音声認識は、ByteDance WebSocket 経由で Doubao Speech Recognition 2.0 にリアルタイムでストリーミングされます。";
-"settings.models.overview.googleCloud" = "音声認識は Typeflux Cloud 経由で Google Cloud Speech-to-Text にリアルタイムでストリーミングされます。";
+"settings.models.overview.googleCloud" = "音声認識は Google Cloud Speech-to-Text に直接リアルタイムでストリーミングされます。";
 "settings.models.overview.groq" = "音声認識は、Groq の高速推論エンドポイントが Whisper モデルを使用して処理します。";
 "settings.models.overview.typefluxOfficial" = "音声認識は Typeflux の内蔵サービスで処理されます。";
 "settings.models.overview.typefluxCloud" = "テキストの書き直しと編集は Typeflux の内蔵 LLM サービスで処理されます。";
@@ -593,10 +593,12 @@
 "settings.models.routing.multimodal" = "マルチモーダル LLM は完全な転写パイプラインを処理します。ペルソナがアクティブな場合、書き換えは同じ呼び出しに組み込まれます。";
 "settings.models.routing.aliCloud" = "Alibaba Cloud DashScope は、WebSocket 経由でリアルタイム ストリーミング ASR を処理します。";
 "settings.models.routing.doubao" = "Doubao Speech Recognition 2.0 は、ByteDance のバイナリ WebSocket プロトコルを介してリアルタイム ストリーミング ASR を処理します。";
-"settings.models.routing.googleCloud" = "Google Cloud Speech-to-Text は Typeflux ゲートウェイ経由でリアルタイム ストリーミング ASR を処理します。";
+"settings.models.routing.googleCloud" = "Google Cloud Speech-to-Text はこの Mac から直接リアルタイム ストリーミング ASR を処理します。";
 "settings.models.routing.groq" = "Groq は、Whisper 互換の文字起こしエンドポイントを使用した高速推論でディクテーションを処理します。";
 "settings.models.googleCloud.streaming" = "StreamingRecognize";
-"settings.models.googleCloud.cloudGatewayHint" = "Typeflux Cloud 経由で Google Cloud Speech-to-Text を使用します。Typeflux にサインインすると、このリアルタイムモデルをテストして使用できます。";
+"settings.models.googleCloud.projectID" = "Project ID";
+"settings.models.googleCloud.directHint" = "Google Cloud Speech-to-Text v2 StreamingRecognize を直接使用します。Google Cloud で Speech-to-Text API を有効にし、このプロジェクト用の API Key を作成してください。";
+"settings.models.googleCloud.cloudGatewayHint" = "Project ID と API Key を使って Google Cloud Speech-to-Text v2 StreamingRecognize を直接呼び出します。";
 "settings.models.useGoogleCloud" = "Google を使用";
 "settings.models.routing.typefluxOfficial" = "Typeflux 公式は内蔵の音声認識サービスでディクテーションを処理します。";
 "settings.models.routing.typefluxCloud" = "Typeflux Cloud は内蔵の LLM サービスで書き直しと編集のリクエストを処理します。";

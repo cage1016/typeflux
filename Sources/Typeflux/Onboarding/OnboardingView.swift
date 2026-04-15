@@ -402,9 +402,7 @@ struct OnboardingView: View {
         case .doubaoRealtime:
             doubaoConfigFields
         case .googleCloud:
-            Text(L("settings.models.googleCloud.cloudGatewayHint"))
-                .font(.studioBody(StudioTheme.Typography.caption))
-                .foregroundStyle(onboardingSecondaryText)
+            googleCloudConfigFields
         case .groq:
             groqSTTConfigFields
         case .appleSpeech, .typefluxOfficial:
@@ -666,6 +664,34 @@ struct OnboardingView: View {
                     text: $viewModel.doubaoAccessToken,
                     secure: true,
                 )
+            }
+        }
+    }
+
+    private var googleCloudConfigFields: some View {
+        onboardingConfigCard {
+            VStack(spacing: 12) {
+                StudioTextInputCard(
+                    label: L("settings.models.googleCloud.projectID"),
+                    placeholder: "my-gcp-project",
+                    text: $viewModel.googleCloudProjectID,
+                )
+                StudioTextInputCard(
+                    label: L("common.apiKey"),
+                    placeholder: "AIza...",
+                    text: $viewModel.googleCloudAPIKey,
+                    secure: true,
+                )
+                StudioSuggestedTextInputCard(
+                    label: L("common.model"),
+                    placeholder: GoogleCloudSpeechDefaults.model,
+                    text: $viewModel.googleCloudModel,
+                    suggestions: GoogleCloudSpeechDefaults.suggestedModels,
+                )
+                Text(L("settings.models.googleCloud.directHint"))
+                    .font(.studioBody(12))
+                    .foregroundStyle(onboardingSecondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -936,9 +962,11 @@ struct OnboardingView: View {
             URL(string: "https://bailian.console.aliyun.com/")
         case .doubaoRealtime:
             URL(string: "https://console.volcengine.com/speech/service/asr")
+        case .googleCloud:
+            URL(string: "https://console.cloud.google.com/apis/credentials")
         case .multimodalLLM:
             URL(string: "https://platform.openai.com/api-keys")
-        case .googleCloud, .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
+        case .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
             nil
         }
     }

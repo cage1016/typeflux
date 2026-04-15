@@ -86,6 +86,9 @@ final class StudioViewModel: ObservableObject {
     @Published var doubaoAppID: String
     @Published var doubaoAccessToken: String
     @Published var doubaoResourceID: String
+    @Published var googleCloudProjectID: String
+    @Published var googleCloudAPIKey: String
+    @Published var googleCloudModel: String
     @Published var groqSTTAPIKey: String
     @Published var groqSTTModel: String
 
@@ -258,6 +261,9 @@ final class StudioViewModel: ObservableObject {
         doubaoAppID = settingsStore.doubaoAppID
         doubaoAccessToken = settingsStore.doubaoAccessToken
         doubaoResourceID = settingsStore.doubaoResourceID
+        googleCloudProjectID = settingsStore.googleCloudProjectID
+        googleCloudAPIKey = settingsStore.googleCloudAPIKey
+        googleCloudModel = settingsStore.googleCloudModel
         groqSTTAPIKey = settingsStore.groqSTTAPIKey
         groqSTTModel = settingsStore.groqSTTModel
         localSTTModel = settingsStore.localSTTModel
@@ -625,7 +631,7 @@ final class StudioViewModel: ObservableObject {
             case .doubaoRealtime:
                 "Streaming audio to Doubao Speech Recognition 2.0 over WebSocket."
             case .googleCloud:
-                "Streaming audio to Google Cloud Speech-to-Text through the Typeflux ASR gateway."
+                "Streaming audio directly to Google Cloud Speech-to-Text over gRPC."
             case .groq:
                 "Streaming audio to Groq for ultra-fast Whisper transcription."
             case .typefluxOfficial:
@@ -977,6 +983,18 @@ final class StudioViewModel: ObservableObject {
 
     func setDoubaoResourceID(_ value: String) {
         doubaoResourceID = value; sttConnectionTestState = .idle
+    }
+
+    func setGoogleCloudProjectID(_ value: String) {
+        googleCloudProjectID = value; sttConnectionTestState = .idle
+    }
+
+    func setGoogleCloudAPIKey(_ value: String) {
+        googleCloudAPIKey = value; sttConnectionTestState = .idle
+    }
+
+    func setGoogleCloudModel(_ value: String) {
+        googleCloudModel = value; sttConnectionTestState = .idle
     }
 
     func setGroqSTTAPIKey(_ value: String) {
@@ -1755,7 +1773,9 @@ final class StudioViewModel: ObservableObject {
             settingsStore.doubaoAccessToken = doubaoAccessToken
             settingsStore.doubaoResourceID = doubaoResourceID
         case .googleCloud:
-            break
+            settingsStore.googleCloudProjectID = googleCloudProjectID
+            settingsStore.googleCloudAPIKey = googleCloudAPIKey
+            settingsStore.googleCloudModel = googleCloudModel
         case .groqSTT:
             settingsStore.groqSTTAPIKey = groqSTTAPIKey
             settingsStore.groqSTTModel = groqSTTModel
@@ -1912,6 +1932,10 @@ final class StudioViewModel: ObservableObject {
         let capturedDoubaoAppID = doubaoAppID
         let capturedDoubaoAccessToken = doubaoAccessToken
         let capturedDoubaoResourceID = doubaoResourceID
+        let capturedGoogleProjectID = googleCloudProjectID
+        let capturedGoogleAPIKey = googleCloudAPIKey
+        let capturedGoogleModel = googleCloudModel
+        let capturedAppLanguage = appLanguage
         let capturedGroqSTTAPIKey = groqSTTAPIKey
         let capturedGroqSTTModel = groqSTTModel
 
@@ -1945,7 +1969,12 @@ final class StudioViewModel: ObservableObject {
                             resourceID: capturedDoubaoResourceID,
                         )
                     case .googleCloud:
-                        preview = try await GoogleCloudSpeechTranscriber.testConnection()
+                        preview = try await GoogleCloudSpeechTranscriber.testConnection(
+                            projectID: capturedGoogleProjectID,
+                            apiKey: capturedGoogleAPIKey,
+                            model: capturedGoogleModel,
+                            appLanguage: capturedAppLanguage,
+                        )
                     case .groqSTT:
                         preview = try await WhisperAPITranscriber.testConnection(
                             baseURL: "https://api.groq.com/openai/v1",

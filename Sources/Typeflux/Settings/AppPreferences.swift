@@ -4,6 +4,11 @@ enum AliCloudASRDefaults {
     static let model = "fun-asr-realtime"
 }
 
+enum GoogleCloudSpeechDefaults {
+    static let model = "long"
+    static let suggestedModels = ["long", "short", "latest_long", "latest_short", "chirp", "chirp_2", "chirp_3"]
+}
+
 enum ExperimentalFeatureFlags {
     /// Keep OpenAI Realtime STT behind an explicit flag until the feature is production ready.
     static let openAIRealtimeSTTEnabled = false

@@ -14,6 +14,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-markdown.git", from: "0.3.0"),
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.9.0"),
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.28.2"),
+        .package(url: "https://github.com/grpc/grpc-swift.git", from: "1.26.0"),
     ],
     targets: [
         .target(
@@ -21,6 +23,8 @@ let package = Package(
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "WhisperKit", package: "WhisperKit"),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+                .product(name: "GRPC", package: "grpc-swift"),
             ],
             path: "Sources/Typeflux",
             exclude: [

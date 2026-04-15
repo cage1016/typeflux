@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package google.cloud.speech.v2;
+
+service Speech {
+  rpc StreamingRecognize(stream StreamingRecognizeRequest)
+      returns (stream StreamingRecognizeResponse);
+}
+
+message AutoDetectDecodingConfig {}
+
+message ExplicitDecodingConfig {
+  enum AudioEncoding {
+    AUDIO_ENCODING_UNSPECIFIED = 0;
+    LINEAR16 = 1;
+    MULAW = 2;
+    ALAW = 3;
+  }
+
+  AudioEncoding encoding = 1;
+  int32 sample_rate_hertz = 2;
+  int32 audio_channel_count = 3;
+}
+
+message RecognitionConfig {
+  oneof decoding_config {
+    AutoDetectDecodingConfig auto_decoding_config = 7;
+    ExplicitDecodingConfig explicit_decoding_config = 8;
+  }
+
+  string model = 9;
+  repeated string language_codes = 10;
+}
+
+message StreamingRecognitionFeatures {
+  bool enable_voice_activity_events = 1;
+  bool interim_results = 2;
+}
+
+message StreamingRecognitionConfig {
+  RecognitionConfig config = 1;
+  StreamingRecognitionFeatures streaming_features = 2;
+}
+
+message StreamingRecognizeRequest {
+  string recognizer = 3;
+
+  oneof streaming_request {
+    StreamingRecognitionConfig streaming_config = 6;
+    bytes audio = 5;
+  }
+}
+
+message SpeechRecognitionAlternative {
+  string transcript = 1;
+  float confidence = 2;
+}
+
+message StreamingRecognitionResult {
+  repeated SpeechRecognitionAlternative alternatives = 1;
+  bool is_final = 2;
+  float stability = 3;
+  int32 channel_tag = 5;
+  string language_code = 6;
+}
+
+message StreamingRecognizeResponse {
+  enum SpeechEventType {
+    SPEECH_EVENT_TYPE_UNSPECIFIED = 0;
+    END_OF_SINGLE_UTTERANCE = 1;
+    SPEECH_ACTIVITY_BEGIN = 2;
+    SPEECH_ACTIVITY_END = 3;
+  }
+
+  repeated StreamingRecognitionResult results = 6;
+  SpeechEventType speech_event_type = 3;
+}

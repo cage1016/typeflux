@@ -96,43 +96,6 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
     }
 }
 
-final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber {
-    func transcribeStream(
-        audioFile: AudioFile,
-        scenario: TypefluxCloudScenario,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
-    ) async throws -> String {
-        let token = await MainActor.run { AuthState.shared.accessToken }
-        guard let token, !token.isEmpty else {
-            throw TypefluxOfficialASRError.notLoggedIn
-        }
-
-        let pcmData = try CloudASRAudioConverter.convert(url: audioFile.fileURL)
-        return try await TypefluxOfficialASRSession.run(
-            pcmData: pcmData,
-            token: token,
-            scenario: scenario,
-            provider: "google",
-            onUpdate: onUpdate,
-        )
-    }
-
-    static func testConnection() async throws -> String {
-        let token = await MainActor.run { AuthState.shared.accessToken }
-        guard let token, !token.isEmpty else {
-            throw TypefluxOfficialASRError.notLoggedIn
-        }
-
-        let pcmData = RemoteSTTTestAudio.pcm16MonoSilence()
-        return try await TypefluxOfficialASRSession.run(
-            pcmData: pcmData,
-            token: token,
-            scenario: .modelSetup,
-            provider: "google",
-        ) { _ in }
-    }
-}
-
 // MARK: - Errors
 
 enum TypefluxOfficialASRError: LocalizedError {

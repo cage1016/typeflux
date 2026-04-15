@@ -556,7 +556,7 @@
 "settings.models.overview.multimodal" = "오디오는 한 번의 호출로 전사 및 페르소나 재작성을 통해 다중 모드 모델로 직접 전송됩니다.";
 "settings.models.overview.aliCloud" = "음성 인식은 WebSocket을 통해 Alibaba Cloud DashScope로 실시간 스트리밍됩니다.";
 "settings.models.overview.doubao" = "음성 인식은 ByteDance WebSocket을 통해 Doubao Speech Recognition 2.0으로 실시간 스트리밍됩니다.";
-"settings.models.overview.googleCloud" = "음성 인식은 Typeflux Cloud를 통해 Google Cloud Speech-to-Text로 실시간 스트리밍됩니다.";
+"settings.models.overview.googleCloud" = "음성 인식은 Google Cloud Speech-to-Text로 직접 실시간 스트리밍됩니다.";
 "settings.models.overview.groq" = "음성 인식은 Groq의 고속 추론 엔드포인트가 Whisper 모델을 사용하여 처리합니다.";
 "settings.models.overview.typefluxOfficial" = "음성 인식은 Typeflux 내장 서비스로 처리됩니다.";
 "settings.models.overview.typefluxCloud" = "텍스트 재작성과 편집은 Typeflux 내장 LLM 서비스로 처리됩니다.";
@@ -593,10 +593,12 @@
 "settings.models.routing.multimodal" = "다중 모드 LLM은 전체 전사 파이프라인을 처리합니다. 페르소나가 활성화되면 다시 쓰기가 동일한 호출로 통합됩니다.";
 "settings.models.routing.aliCloud" = "Alibaba Cloud DashScope는 WebSocket을 통해 실시간 스트리밍 ASR을 처리합니다.";
 "settings.models.routing.doubao" = "Doubao Speech Recognition 2.0은 ByteDance의 바이너리 WebSocket 프로토콜을 통해 실시간 스트리밍 ASR을 처리합니다.";
-"settings.models.routing.googleCloud" = "Google Cloud Speech-to-Text는 Typeflux 게이트웨이를 통해 실시간 스트리밍 ASR을 처리합니다.";
+"settings.models.routing.googleCloud" = "Google Cloud Speech-to-Text는 이 Mac에서 직접 실시간 스트리밍 ASR을 처리합니다.";
 "settings.models.routing.groq" = "Groq는 Whisper 호환 전사 엔드포인트를 통한 고속 추론으로 받아쓰기를 처리합니다.";
 "settings.models.googleCloud.streaming" = "StreamingRecognize";
-"settings.models.googleCloud.cloudGatewayHint" = "Typeflux Cloud를 통해 Google Cloud Speech-to-Text를 사용합니다. Typeflux에 로그인하면 이 실시간 모델을 테스트하고 사용할 수 있습니다.";
+"settings.models.googleCloud.projectID" = "Project ID";
+"settings.models.googleCloud.directHint" = "Google Cloud Speech-to-Text v2 StreamingRecognize를 직접 사용합니다. Google Cloud에서 Speech-to-Text API를 사용 설정하고 이 프로젝트용 API Key를 만드세요.";
+"settings.models.googleCloud.cloudGatewayHint" = "Project ID와 API Key로 Google Cloud Speech-to-Text v2 StreamingRecognize를 직접 호출합니다.";
 "settings.models.useGoogleCloud" = "Google 사용";
 "settings.models.routing.typefluxOfficial" = "Typeflux 공식은 내장 음성 인식 서비스로 받아쓰기를 처리합니다.";
 "settings.models.routing.typefluxCloud" = "Typeflux Cloud는 내장 LLM 서비스로 재작성 및 편집 요청을 처리합니다.";
