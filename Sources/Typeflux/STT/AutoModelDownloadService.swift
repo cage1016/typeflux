@@ -32,8 +32,7 @@ private struct AutoModelState: Codable {
 
 /// Silently downloads and manages the device-appropriate local STT model in the background.
 ///
-/// - Apple Silicon Macs use WhisperKit (whisperkit-small).
-/// - Intel Macs use SenseVoice (sensevoice-small-coreml).
+/// - All Macs (both Apple Silicon and Intel) use SenseVoice (sensevoice-small-coreml).
 ///
 /// The service maintains its own state independently of the user's local model settings,
 /// so it never overwrites the user's manually configured model record.
@@ -137,29 +136,13 @@ final class AutoModelDownloadService {
 
     // MARK: - Device Detection
 
-    static func isAppleSilicon() -> Bool {
-        var value: Int32 = 0
-        var size = MemoryLayout<Int32>.size
-        sysctlbyname("hw.optional.arm64", &value, &size, nil, 0)
-        return value == 1
-    }
-
     static func recommendedConfiguration() -> LocalSTTConfiguration {
-        if isAppleSilicon() {
-            return LocalSTTConfiguration(
-                model: .whisperLocal,
-                modelIdentifier: LocalSTTModel.whisperLocal.defaultModelIdentifier,
-                downloadSource: .huggingFace,
-                autoSetup: true,
-            )
-        } else {
-            return LocalSTTConfiguration(
-                model: .senseVoiceSmall,
-                modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
-                downloadSource: .huggingFace,
-                autoSetup: true,
-            )
-        }
+        return LocalSTTConfiguration(
+            model: .senseVoiceSmall,
+            modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
+            downloadSource: .huggingFace,
+            autoSetup: true,
+        )
     }
 
     // MARK: - Download
