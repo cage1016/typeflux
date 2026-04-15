@@ -63,6 +63,7 @@ final class AutoModelDownloadService {
 
     private let modelManager: LocalModelManager
     private let settingsStore: SettingsStore
+    private let notificationService: LocalNotificationSending
 
     private var _readyConfig: LocalSTTConfiguration?
     private var _readyStoragePath: String?
@@ -73,9 +74,14 @@ final class AutoModelDownloadService {
     private static let stateDefaultsKey = "stt.autoModelDownload.state"
     private static let maxBackoffInterval: TimeInterval = 3 * 60 * 60 // 3 hours
 
-    init(modelManager: LocalModelManager, settingsStore: SettingsStore) {
+    init(
+        modelManager: LocalModelManager,
+        settingsStore: SettingsStore,
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
+    ) {
         self.modelManager = modelManager
         self.settingsStore = settingsStore
+        self.notificationService = notificationService
         NotificationCenter.default.addObserver(
             forName: .localOptimizationDidEnable,
             object: nil,
@@ -189,6 +195,7 @@ final class AutoModelDownloadService {
             completedState.completedStoragePath = storagePath
             completedState.nextRetryDate = nil
             saveState(completedState)
+            await notifyLocalModelReady()
 
         } catch {
             guard !Task.isCancelled else { return }
@@ -203,6 +210,14 @@ final class AutoModelDownloadService {
 
             scheduleRetry(after: Self.backoffInterval(for: failedState.attemptCount))
         }
+    }
+
+    private func notifyLocalModelReady() async {
+        await notificationService.sendLocalNotification(
+            title: L("notification.localModelReady.title"),
+            body: L("notification.localModelReady.body"),
+            identifier: "dev.typeflux.local-model-ready",
+        )
     }
 
     private func markReady(config: LocalSTTConfiguration, storagePath: String) {

@@ -20,6 +20,7 @@ final class DIContainer {
     let llmService: LLMService
     let llmAgentService: LLMAgentService
     let sttRouter: STTRouter
+    let notificationService: LocalNotificationSending
     let ollamaModelManager: OllamaLocalModelManager
     let localModelManager: LocalModelManager
     let autoModelDownloadService: AutoModelDownloadService
@@ -56,10 +57,12 @@ final class DIContainer {
             remote: OpenAICompatibleAgentService(settingsStore: settingsStore),
             ollama: OllamaAgentService(),
         )
+        notificationService = SystemLocalNotificationService.shared
         localModelManager = LocalModelManager()
         autoModelDownloadService = AutoModelDownloadService(
             modelManager: localModelManager,
             settingsStore: settingsStore,
+            notificationService: notificationService,
         )
         llmService = LLMRouter(
             settingsStore: settingsStore,

@@ -37,6 +37,7 @@ final class SettingsWindowController: NSObject {
         settingsStore: SettingsStore,
         historyStore: HistoryStore,
         initialSection: StudioSection = .settings,
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
     ) {
         self.settingsStore = settingsStore
@@ -58,6 +59,7 @@ final class SettingsWindowController: NSObject {
             historyStore: historyStore,
             initialSection: initialSection,
             onRetryHistory: onRetryHistory,
+            notificationService: notificationService,
         )
         AppLocalization.shared.setLanguage(viewModel.appLanguage)
         let view = StudioView(viewModel: viewModel)

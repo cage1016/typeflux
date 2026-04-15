@@ -1,6 +1,10 @@
 import Foundation
 
-final class OllamaLocalModelManager {
+protocol OllamaModelManaging {
+    func ensureModelReady(settingsStore: SettingsStore) async throws
+}
+
+final class OllamaLocalModelManager: OllamaModelManaging {
     private let commandRunner = ProcessCommandRunner()
     private let fileManager = FileManager.default
 

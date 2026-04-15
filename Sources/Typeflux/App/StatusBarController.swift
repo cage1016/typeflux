@@ -16,6 +16,7 @@ final class StatusBarController: NSObject {
     private let historyStore: HistoryStore
     private let agentJobStore: AgentJobStore
     private let autoModelDownloadService: AutoModelDownloadService?
+    private let notificationService: LocalNotificationSending
     private let onRetryHistory: (HistoryRecord) -> Void
     private let onOpenOnboarding: () -> Void
     private let onOpenAgentJobs: () -> Void
@@ -38,6 +39,7 @@ final class StatusBarController: NSObject {
         historyStore: HistoryStore,
         agentJobStore: AgentJobStore,
         autoModelDownloadService: AutoModelDownloadService? = nil,
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         onOpenOnboarding: @escaping () -> Void = {},
         onOpenAgentJobs: @escaping () -> Void = {},
@@ -48,6 +50,7 @@ final class StatusBarController: NSObject {
         self.historyStore = historyStore
         self.agentJobStore = agentJobStore
         self.autoModelDownloadService = autoModelDownloadService
+        self.notificationService = notificationService
         self.onRetryHistory = onRetryHistory
         self.onOpenOnboarding = onOpenOnboarding
         self.onOpenAgentJobs = onOpenAgentJobs
@@ -291,6 +294,7 @@ final class StatusBarController: NSObject {
                 settingsStore: settingsStore,
                 historyStore: historyStore,
                 initialSection: section,
+                notificationService: notificationService,
                 onRetryHistory: onRetryHistory,
             )
         }
@@ -309,6 +313,7 @@ final class StatusBarController: NSObject {
             settingsStore: settingsStore,
             historyStore: historyStore,
             initialSection: .history,
+            notificationService: notificationService,
             onRetryHistory: onRetryHistory,
         )
     }

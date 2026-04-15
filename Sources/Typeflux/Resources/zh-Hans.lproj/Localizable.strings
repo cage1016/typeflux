@@ -617,6 +617,8 @@
 "settings.models.localSTT.readyNamed" = "%@ 已就绪。";
 "settings.models.localSTT.prepareFailed" = "本地语音模型准备失败。";
 "settings.models.localSTT.deleted" = "模型文件已删除。";
+"notification.localModelReady.title" = "Typeflux";
+"notification.localModelReady.body" = "本地模型已就绪。";
 "settings.models.redownload" = "重新下载";
 "settings.models.deleteModelFiles" = "删除模型文件";
 "settings.models.redownloadDialog.title" = "重新下载 %@？";

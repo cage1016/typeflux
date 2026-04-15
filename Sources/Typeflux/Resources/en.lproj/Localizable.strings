@@ -617,6 +617,8 @@
 "settings.models.localSTT.readyNamed" = "%@ is ready.";
 "settings.models.localSTT.prepareFailed" = "Local speech model preparation failed.";
 "settings.models.localSTT.deleted" = "Model files deleted.";
+"notification.localModelReady.title" = "Typeflux";
+"notification.localModelReady.body" = "Local model is ready.";
 "settings.models.redownload" = "Re-download";
 "settings.models.deleteModelFiles" = "Delete Model Files";
 "settings.models.redownloadDialog.title" = "Re-download %@?";

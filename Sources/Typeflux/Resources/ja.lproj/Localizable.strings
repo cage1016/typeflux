@@ -615,6 +615,8 @@
 "settings.models.localSTT.readyNamed" = "%@ の準備ができました。";
 "settings.models.localSTT.prepareFailed" = "ローカル音声モデルの準備に失敗しました。";
 "settings.models.localSTT.deleted" = "モデルファイルが削除されました。";
+"notification.localModelReady.title" = "Typeflux";
+"notification.localModelReady.body" = "ローカルモデルの準備ができました。";
 "settings.models.redownload" = "再ダウンロード";
 "settings.models.deleteModelFiles" = "モデルファイルの削除";
 "settings.models.redownloadDialog.title" = "%@ を再ダウンロードしますか?";

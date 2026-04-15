@@ -164,8 +164,9 @@ final class StudioViewModel: ObservableObject {
     private let historyStore: HistoryStore
     private let historyStoreBox: HistoryStoreSendableBox
     let agentJobStore: AgentJobStore
-    private let modelManager: OllamaLocalModelManager
-    private let localModelManager: LocalModelManager
+    private let modelManager: OllamaModelManaging
+    private let localModelManager: LocalSTTModelManaging
+    private let notificationService: LocalNotificationSending
     private let audioDeviceManager: AudioDeviceManager
     private let onRetryHistory: (HistoryRecord) -> Void
     private let historyRefreshQueue = DispatchQueue(label: "typeflux.settings.history-refresh", qos: .userInitiated)
@@ -187,9 +188,10 @@ final class StudioViewModel: ObservableObject {
         initialSection: StudioSection,
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         agentJobStore: AgentJobStore = SQLiteAgentJobStore(),
-        modelManager: OllamaLocalModelManager = OllamaLocalModelManager(),
-        localModelManager: LocalModelManager = LocalModelManager(),
+        modelManager: OllamaModelManaging = OllamaLocalModelManager(),
+        localModelManager: LocalSTTModelManaging = LocalModelManager(),
         audioDeviceManager: AudioDeviceManager = AudioDeviceManager(),
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
     ) {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
@@ -197,6 +199,7 @@ final class StudioViewModel: ObservableObject {
         self.agentJobStore = agentJobStore
         self.modelManager = modelManager
         self.localModelManager = localModelManager
+        self.notificationService = notificationService
         self.audioDeviceManager = audioDeviceManager
         self.onRetryHistory = onRetryHistory
 
@@ -1536,6 +1539,7 @@ final class StudioViewModel: ObservableObject {
                 try await modelManager.ensureModelReady(settingsStore: settingsStore)
                 ollamaStatus = L("settings.models.ollama.ready")
                 showToast(L("settings.models.ollama.ready"))
+                await notifyLocalModelReady()
             } catch {
                 ollamaStatus = L("common.failedWithReason", error.localizedDescription)
                 showToast(L("settings.models.ollama.prepareFailed"))
@@ -1588,6 +1592,7 @@ final class StudioViewModel: ObservableObject {
                 isLocalSTTPrepared = true
                 refreshLocalSTTPreparedState()
                 showToast(L("settings.models.localSTT.ready"))
+                await notifyLocalModelReady()
             } catch {
                 localSTTStatus = L("common.failedWithReason", error.localizedDescription)
                 localSTTPreparationDetail = L("settings.models.localSTT.prepareFailed")
@@ -2093,6 +2098,14 @@ final class StudioViewModel: ObservableObject {
                 toastMessage = nil
             }
         }
+    }
+
+    private func notifyLocalModelReady() async {
+        await notificationService.sendLocalNotification(
+            title: L("notification.localModelReady.title"),
+            body: L("notification.localModelReady.body"),
+            identifier: "dev.typeflux.local-model-ready",
+        )
     }
 
     private func refreshLocalSTTStoragePath() {

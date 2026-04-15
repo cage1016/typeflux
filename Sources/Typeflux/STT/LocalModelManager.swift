@@ -43,7 +43,19 @@ struct LocalSTTConfiguration: Equatable {
     }
 }
 
-final class LocalModelManager {
+protocol LocalSTTModelManaging {
+    func prepareModel(
+        settingsStore: SettingsStore,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws
+
+    func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo?
+    func isModelDownloaded(_ model: LocalSTTModel) -> Bool
+    func deleteModelFiles(_ model: LocalSTTModel) throws
+    func storagePath(for configuration: LocalSTTConfiguration) -> String
+}
+
+final class LocalModelManager: LocalSTTModelManaging {
     private let fileManager: FileManager
     private let sherpaOnnxInstaller: SherpaOnnxModelInstalling
     private let encoder = JSONEncoder()

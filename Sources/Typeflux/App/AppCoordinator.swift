@@ -36,6 +36,7 @@ final class AppCoordinator {
             historyStore: di.historyStore,
             agentJobStore: di.agentJobStore,
             autoModelDownloadService: di.autoModelDownloadService,
+            notificationService: di.notificationService,
             onRetryHistory: { [weak self] record in
                 self?.workflowController?.retry(record: record)
             },
@@ -97,6 +98,7 @@ final class AppCoordinator {
             settingsStore: di.settingsStore,
             historyStore: di.historyStore,
             initialSection: .settings,
+            notificationService: di.notificationService,
             onRetryHistory: { [weak self] record in
                 self?.workflowController?.retry(record: record)
             },
