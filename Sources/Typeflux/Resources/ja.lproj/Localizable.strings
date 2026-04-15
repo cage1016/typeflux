@@ -74,6 +74,7 @@
 "settings.mute.title" = "録音中にミュートする";
 "settings.mute.subtitle" = "録音中にシステム出力を一時的にミュートして、マイクに漏れるフィードバックやシステム音を軽減します。";
 "settings.permissions" = "権限";
+"settings.other" = "その他の設定";
 "settings.advanced" = "上級者向け";
 "settings.advanced.button" = "詳細設定";
 "settings.advanced.soundEffects.title" = "効果音を有効にする";

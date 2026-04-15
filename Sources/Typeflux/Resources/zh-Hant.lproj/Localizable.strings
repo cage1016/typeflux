@@ -74,6 +74,7 @@
 "settings.mute.title" = "錄音時靜音";
 "settings.mute.subtitle" = "錄音期間暫時靜音系統輸出，減少回聲或系統聲音進入麥克風。";
 "settings.permissions" = "權限";
+"settings.other" = "其他設定";
 "settings.advanced" = "進階";
 "settings.advanced.button" = "進階設定";
 "settings.advanced.soundEffects.title" = "啟用音效";

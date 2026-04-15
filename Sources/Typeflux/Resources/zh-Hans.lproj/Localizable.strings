@@ -74,6 +74,7 @@
 "settings.mute.title" = "录音时静音";
 "settings.mute.subtitle" = "录音期间临时静音系统输出，减少回声或系统声音串入麦克风。";
 "settings.permissions" = "权限";
+"settings.other" = "其它设置";
 "settings.advanced" = "高级";
 "settings.advanced.button" = "高级设置";
 "settings.advanced.soundEffects.title" = "启用声音特效";

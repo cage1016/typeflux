@@ -74,6 +74,7 @@
 "settings.mute.title" = "Mute During Recording";
 "settings.mute.subtitle" = "Temporarily mute the system output while recording to reduce feedback or system sounds leaking into the microphone.";
 "settings.permissions" = "Permissions";
+"settings.other" = "Other Settings";
 "settings.advanced" = "Advanced";
 "settings.advanced.button" = "Advanced Settings";
 "settings.advanced.soundEffects.title" = "Enable sound effects";

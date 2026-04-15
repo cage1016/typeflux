@@ -1257,20 +1257,73 @@ struct StudioView: View {
                 }
             }
 
+            StudioSectionTitle(title: L("settings.other"))
+
+            StudioCard {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                    StudioSettingRow(
+                        title: L("settings.advanced.soundEffects.title"),
+                        subtitle: L("settings.advanced.soundEffects.subtitle"),
+                    ) {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { viewModel.soundEffectsEnabled },
+                                set: viewModel.setSoundEffectsEnabled,
+                            ),
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    StudioSettingRow(
+                        title: L("settings.advanced.autoVocabulary.title"),
+                        subtitle: L("settings.advanced.autoVocabulary.subtitle"),
+                    ) {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { viewModel.automaticVocabularyCollectionEnabled },
+                                set: viewModel.setAutomaticVocabularyCollectionEnabled,
+                            ),
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+
+                    Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                    StudioSettingRow(
+                        title: L("settings.advanced.autoUpdate.title"),
+                        subtitle: L("settings.advanced.autoUpdate.subtitle"),
+                    ) {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { viewModel.autoUpdateEnabled },
+                                set: viewModel.setAutoUpdateEnabled,
+                            ),
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+                }
+            }
+
             HStack {
-                StudioSectionTitle(title: L("settings.advanced"))
-
                 Spacer()
-
                 StudioButton(
                     title: L("settings.advanced.button"),
                     systemImage: isAdvancedSettingsExpanded ? "chevron.up" : "chevron.down",
-                    variant: .secondary,
+                    variant: .ghost,
                 ) {
                     withAnimation(.easeInOut(duration: 0.18)) {
                         isAdvancedSettingsExpanded.toggle()
                     }
                 }
+                Spacer()
             }
 
             if isAdvancedSettingsExpanded {
@@ -1285,23 +1338,6 @@ struct StudioView: View {
                                 isOn: Binding(
                                     get: { viewModel.localOptimizationEnabled },
                                     set: viewModel.setLocalOptimizationEnabled,
-                                ),
-                            )
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                        }
-
-                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                        StudioSettingRow(
-                            title: L("settings.advanced.soundEffects.title"),
-                            subtitle: L("settings.advanced.soundEffects.subtitle"),
-                        ) {
-                            Toggle(
-                                "",
-                                isOn: Binding(
-                                    get: { viewModel.soundEffectsEnabled },
-                                    set: viewModel.setSoundEffectsEnabled,
                                 ),
                             )
                             .labelsHidden()
@@ -1329,31 +1365,15 @@ struct StudioView: View {
                         Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                         StudioSettingRow(
-                            title: L("settings.advanced.autoVocabulary.title"),
-                            subtitle: L("settings.advanced.autoVocabulary.subtitle"),
+                            title: L("settings.advanced.agentFramework.title"),
+                            subtitle: L("settings.advanced.agentFramework.subtitle"),
+                            badge: "Beta",
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
-                                    get: { viewModel.automaticVocabularyCollectionEnabled },
-                                    set: viewModel.setAutomaticVocabularyCollectionEnabled,
-                                ),
-                            )
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                        }
-
-                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                        StudioSettingRow(
-                            title: L("settings.advanced.autoUpdate.title"),
-                            subtitle: L("settings.advanced.autoUpdate.subtitle"),
-                        ) {
-                            Toggle(
-                                "",
-                                isOn: Binding(
-                                    get: { viewModel.autoUpdateEnabled },
-                                    set: viewModel.setAutoUpdateEnabled,
+                                    get: { viewModel.agentFrameworkEnabled },
+                                    set: viewModel.setAgentFrameworkEnabled,
                                 ),
                             )
                             .labelsHidden()
@@ -1371,24 +1391,6 @@ struct StudioView: View {
                                 isOn: Binding(
                                     get: { viewModel.appleSpeechFallback },
                                     set: viewModel.setAppleSpeechFallback,
-                                ),
-                            )
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                        }
-
-                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
-
-                        StudioSettingRow(
-                            title: L("settings.advanced.agentFramework.title"),
-                            subtitle: L("settings.advanced.agentFramework.subtitle"),
-                            badge: "Beta",
-                        ) {
-                            Toggle(
-                                "",
-                                isOn: Binding(
-                                    get: { viewModel.agentFrameworkEnabled },
-                                    set: viewModel.setAgentFrameworkEnabled,
                                 ),
                             )
                             .labelsHidden()
