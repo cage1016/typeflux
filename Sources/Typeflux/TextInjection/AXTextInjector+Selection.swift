@@ -105,27 +105,6 @@ extension AXTextInjector {
         return systemFocusedElement()
     }
 
-    func readSelectedTextWithTimeout(milliseconds: Int) -> (text: String, context: SelectionContext)? {
-        final class Box: @unchecked Sendable {
-            var value: (text: String, context: SelectionContext)?
-        }
-
-        let box = Box()
-        let semaphore = DispatchSemaphore(value: 0)
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            box.value = self.readSelectedText()
-            semaphore.signal()
-        }
-
-        let timeout = DispatchTime.now() + .milliseconds(milliseconds)
-        guard semaphore.wait(timeout: timeout) != .timedOut else {
-            return nil
-        }
-
-        return box.value
-    }
-
     func readSelectedText() -> (text: String, context: SelectionContext)? {
         guard let element = focusedElement() else {
             return nil

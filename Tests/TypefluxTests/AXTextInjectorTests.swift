@@ -2,6 +2,35 @@
 import XCTest
 
 final class AXTextInjectorTests: XCTestCase {
+    private final class InjectorBox: @unchecked Sendable {
+        let value = AXTextInjector()
+    }
+
+    func testPerformAXReadOnMainActorRunsClosureOnMainThread() async {
+        let injector = AXTextInjector()
+
+        let isMainThread = await injector.performAXReadOnMainActor {
+            Thread.isMainThread
+        }
+
+        XCTAssertTrue(isMainThread)
+    }
+
+    func testPerformAXOperationOnMainThreadRunsClosureOnMainThreadFromBackgroundQueue() async {
+        let injector = InjectorBox()
+
+        let isMainThread = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let value = injector.value.performAXOperationOnMainThread {
+                    Thread.isMainThread
+                }
+                continuation.resume(returning: value)
+            }
+        }
+
+        XCTAssertTrue(isMainThread)
+    }
+
     func testShouldPreferEditableDescendantForWindowWhenCaretRangeExists() {
         let candidate = AXTextInjector.FocusResolutionCandidate(
             role: "AXGroup",

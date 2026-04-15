@@ -102,7 +102,6 @@ final class AXTextInjector: TextInjector {
     static let axWriteVerificationPollIntervalMicroseconds: useconds_t = 120_000
     static let axWriteVerificationAttempts = 4
     static let focusRestoreDelayMicroseconds: useconds_t = 250_000
-    static let selectedTextTimeoutMilliseconds = 200
     static let copySelectionTimeoutMilliseconds = 180
     static let copyShortcutKeyCode: CGKeyCode = 8
     static let selectionContextLifetime: TimeInterval = 180
@@ -195,7 +194,33 @@ final class AXTextInjector: TextInjector {
         self.settingsStore = settingsStore
     }
 
+    func performAXReadOnMainActor<T: Sendable>(
+        _ body: @escaping @MainActor () -> T,
+    ) async -> T {
+        await MainActor.run {
+            body()
+        }
+    }
+
+    func performAXOperationOnMainThread<T>(
+        _ body: () throws -> T,
+    ) rethrows -> T {
+        if Thread.isMainThread {
+            return try body()
+        }
+
+        return try DispatchQueue.main.sync {
+            try body()
+        }
+    }
+
     func getSelectionSnapshot() async -> TextSelectionSnapshot {
+        await performAXReadOnMainActor {
+            self.readSelectionSnapshot()
+        }
+    }
+
+    func readSelectionSnapshot() -> TextSelectionSnapshot {
         guard AXIsProcessTrusted() else {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
@@ -222,7 +247,7 @@ final class AXTextInjector: TextInjector {
         let bundleIdentifier = frontmostApplicationBundleIdentifier()
         logger.debug("getSelectionSnapshot — app: \(processName ?? "?", privacy: .public) (pid: \(processID.map(String.init) ?? "?", privacy: .public))")
 
-        if let result = readSelectedTextWithTimeout(milliseconds: Self.selectedTextTimeoutMilliseconds) {
+        if let result = readSelectedText() {
             // Compute editability from the SAME element that produced the text,
             // avoiding a race where a second focusedElement() call returns a different element.
             let editability = isLikelyEditable(element: result.context.element)
@@ -304,11 +329,15 @@ final class AXTextInjector: TextInjector {
     }
 
     func insert(text: String) throws {
-        try setText(text, replaceSelection: false)
+        try performAXOperationOnMainThread {
+            try self.setText(text, replaceSelection: false)
+        }
     }
 
     func currentInputTextSnapshot() async -> CurrentInputTextSnapshot {
-        readCurrentInputTextSnapshot()
+        await performAXReadOnMainActor {
+            self.readCurrentInputTextSnapshot()
+        }
     }
 
     func readCurrentInputTextSnapshot() -> CurrentInputTextSnapshot {
@@ -426,7 +455,9 @@ final class AXTextInjector: TextInjector {
     }
 
     func replaceSelection(text: String) throws {
-        try setText(text, replaceSelection: true)
+        try performAXOperationOnMainThread {
+            try self.setText(text, replaceSelection: true)
+        }
     }
 
     func selectionContextSummary(_ context: SelectionContext?) -> String {
