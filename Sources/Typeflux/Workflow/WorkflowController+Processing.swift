@@ -1117,18 +1117,20 @@ extension WorkflowController {
                 }
             },
             onLLMStart: { [weak self] in
+                guard let self else { return }
                 await MainActor.run {
-                    if self?.processingSessionID == sessionID {
-                        self?.overlayController.transitionToLLMPhase()
+                    if self.processingSessionID == sessionID {
+                        self.overlayController.transitionToLLMPhase()
                     }
                 }
             },
             onLLMChunk: { [weak self] chunk in
+                guard let self else { return }
                 llmBuffer.append(chunk)
                 let current = llmBuffer.text
                 await MainActor.run {
-                    if self?.processingSessionID == sessionID {
-                        self?.overlayController.updateStreamingText(current)
+                    if self.processingSessionID == sessionID {
+                        self.overlayController.updateStreamingText(current)
                     }
                 }
             },
