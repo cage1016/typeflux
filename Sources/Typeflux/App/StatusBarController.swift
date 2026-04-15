@@ -15,6 +15,7 @@ final class StatusBarController: NSObject {
     private let settingsStore: SettingsStore
     private let historyStore: HistoryStore
     private let agentJobStore: AgentJobStore
+    private let autoModelDownloadService: AutoModelDownloadService?
     private let onRetryHistory: (HistoryRecord) -> Void
     private let onOpenOnboarding: () -> Void
     private let onOpenAgentJobs: () -> Void
@@ -27,6 +28,7 @@ final class StatusBarController: NSObject {
     private var agentJobObserver: NSObjectProtocol?
     private var agentSettingsObserver: NSObjectProtocol?
     private var autoUpdateStateObserver: NSObjectProtocol?
+    private var autoModelDownloadObserver: NSObjectProtocol?
     private var runningJobDurationTimer: Timer?
     private var runningAgentJobs: [AgentJob] = []
 
@@ -35,6 +37,7 @@ final class StatusBarController: NSObject {
         settingsStore: SettingsStore,
         historyStore: HistoryStore,
         agentJobStore: AgentJobStore,
+        autoModelDownloadService: AutoModelDownloadService? = nil,
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         onOpenOnboarding: @escaping () -> Void = {},
         onOpenAgentJobs: @escaping () -> Void = {},
@@ -44,6 +47,7 @@ final class StatusBarController: NSObject {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
         self.agentJobStore = agentJobStore
+        self.autoModelDownloadService = autoModelDownloadService
         self.onRetryHistory = onRetryHistory
         self.onOpenOnboarding = onOpenOnboarding
         self.onOpenAgentJobs = onOpenAgentJobs
@@ -92,6 +96,15 @@ final class StatusBarController: NSObject {
                 self?.rebuildMenu()
             }
         }
+        autoModelDownloadObserver = NotificationCenter.default.addObserver(
+            forName: .autoModelDownloadStateDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.rebuildMenu()
+            }
+        }
         refreshRunningAgentJobs()
 
         appState.$status
@@ -121,6 +134,10 @@ final class StatusBarController: NSObject {
             NotificationCenter.default.removeObserver(agentSettingsObserver)
         }
         agentSettingsObserver = nil
+        if let autoModelDownloadObserver {
+            NotificationCenter.default.removeObserver(autoModelDownloadObserver)
+        }
+        autoModelDownloadObserver = nil
         stopRunningJobDurationTimer()
         cancellables.removeAll()
     }
@@ -170,6 +187,9 @@ final class StatusBarController: NSObject {
         appearanceItem.submenu = buildAppearanceMenu()
         menu.addItem(appearanceItem)
         menu.addItem(makeUpdateMenuItem())
+        if let downloadItem = makeAutoModelDownloadMenuItem() {
+            menu.addItem(downloadItem)
+        }
         menu.addItem(NSMenuItem.separator())
         menu.addItem(makeItem(title: L("menu.setupGuide"), action: #selector(openOnboarding)))
         menu.addItem(makeItem(title: L("menu.about"), action: #selector(openAbout)))
@@ -223,6 +243,22 @@ final class StatusBarController: NSObject {
         item.representedObject = mode.rawValue
         item.state = settingsStore.appearanceMode == mode ? .on : .off
         return item
+    }
+
+    /// Returns a menu item showing local model download progress, or nil when there is nothing to display.
+    private func makeAutoModelDownloadMenuItem() -> NSMenuItem? {
+        guard let service = autoModelDownloadService else { return nil }
+        if case .downloading(let progress) = service.status {
+            let percent = Int(progress * 100)
+            let item = NSMenuItem(
+                title: L("menu.downloadingLocalModel", percent),
+                action: nil,
+                keyEquivalent: "",
+            )
+            item.isEnabled = false
+            return item
+        }
+        return nil
     }
 
     private func makeItem(title: String, action: Selector, keyEquivalent: String = "") -> NSMenuItem {

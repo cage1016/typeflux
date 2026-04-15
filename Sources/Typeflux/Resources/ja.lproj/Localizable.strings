@@ -96,6 +96,7 @@
 "menu.checkForUpdates" = "アップデートを確認";
 "menu.downloadingUpdate" = "アップデートをダウンロード中…";
 "menu.installingUpdate" = "アップデートをインストール中…";
+"menu.downloadingLocalModel" = "ローカルモデルをダウンロード中… %d%%";
 "menu.quit" = "やめる";
 "menu.status.ready" = "準備完了";
 "menu.status.recording" = "録音中です…";
@@ -698,6 +699,9 @@
 "studio.subheading.agent" = "エージェント フレームワーク、MCP サーバー、およびツール統合を構成します。";
 "studio.search.agent" = "エージェント設定を検索...";
 "agent.beta.notice" = "エージェント機能は現在ベータ版です。安定性や動作は今後も変化していく可能性がありますので、ご使用の際はご留意ください。";
+
+"settings.advanced.localOptimization.title" = "ローカル最適化";
+"settings.advanced.localOptimization.subtitle" = "バックグラウンドでローカル音声認識モデルをダウンロードします。有効にすると音声認識が速くなり、オフラインでも使用できます。";
 
 "settings.advanced.agentFramework.title" = "エージェントフレームワークを有効にする";
 "settings.advanced.agentFramework.subtitle" = "「何でも質問」にはマルチターンのエージェント ループを使用します。ツールの呼び出しと MCP サーバーの統合をサポートします。";

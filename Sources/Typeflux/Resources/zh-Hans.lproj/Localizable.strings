@@ -96,6 +96,7 @@
 "menu.checkForUpdates" = "检查更新";
 "menu.downloadingUpdate" = "正在下载更新…";
 "menu.installingUpdate" = "正在安装更新…";
+"menu.downloadingLocalModel" = "正在下载本地模型… %d%%";
 "menu.quit" = "退出";
 "menu.status.ready" = "已就绪";
 "menu.status.recording" = "录音中…";
@@ -700,6 +701,9 @@
 "studio.subheading.agent" = "配置 Agent 框架、MCP 服务器和工具集成。";
 "studio.search.agent" = "搜索 Agent 设置...";
 "agent.beta.notice" = "当前 Agent 功能仍处于 Beta 阶段，稳定性和行为表现可能会持续调整，请知悉后使用。";
+
+"settings.advanced.localOptimization.title" = "本地优化";
+"settings.advanced.localOptimization.subtitle" = "在后台下载本地语音识别模型，启用后可加速语音识别速度，并支持离线使用。";
 
 "settings.advanced.agentFramework.title" = "启用 Agent 框架";
 "settings.advanced.agentFramework.subtitle" = "为「随便问」功能启用多轮 Agent 循环，支持工具调用和 MCP 服务器集成。";

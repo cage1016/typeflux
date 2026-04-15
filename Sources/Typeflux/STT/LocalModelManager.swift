@@ -34,6 +34,13 @@ struct LocalSTTConfiguration: Equatable {
         downloadSource = settingsStore.localSTTDownloadSource
         autoSetup = settingsStore.localSTTAutoSetup
     }
+
+    init(model: LocalSTTModel, modelIdentifier: String, downloadSource: ModelDownloadSource, autoSetup: Bool) {
+        self.model = model
+        self.modelIdentifier = modelIdentifier
+        self.downloadSource = downloadSource
+        self.autoSetup = autoSetup
+    }
 }
 
 final class LocalModelManager {
@@ -70,13 +77,31 @@ final class LocalModelManager {
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
     ) async throws {
         let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
+        let resultPath = try await downloadModelFilesOnly(configuration: configuration, onUpdate: onUpdate)
+        let record = LocalModelPreparedRecord(
+            model: configuration.model.rawValue,
+            modelIdentifier: configuration.modelIdentifier,
+            storagePath: resultPath,
+            source: configuration.downloadSource.rawValue,
+            preparedAt: Date(),
+        )
+        try savePreparedRecord(record, for: configuration.model)
+    }
+
+    /// Downloads model files for the given configuration without updating prepared.json.
+    /// Returns the resolved storage path on success.
+    @discardableResult
+    func downloadModelFilesOnly(
+        configuration: LocalSTTConfiguration,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
+    ) async throws -> String {
         let downloadBasePath = storagePath(for: configuration)
-        var storagePath = downloadBasePath
+        var resultPath = downloadBasePath
 
         onUpdate?(LocalSTTPreparationUpdate(
             message: L("localSTT.prepare.cleaningLegacyRuntime"),
             progress: 0.05,
-            storagePath: storagePath,
+            storagePath: resultPath,
             source: nil,
         ))
         try? cleanupLegacyPythonRuntime()
@@ -87,13 +112,13 @@ final class LocalModelManager {
 
         switch configuration.model {
         case .whisperLocal:
-            storagePath = try await prepareWhisperKit(
+            resultPath = try await prepareWhisperKit(
                 configuration: configuration,
                 downloadBasePath: downloadBasePath,
                 onUpdate: onUpdate,
             )
         case .senseVoiceSmall, .qwen3ASR:
-            storagePath = try await sherpaOnnxInstaller.prepareModel(
+            resultPath = try await sherpaOnnxInstaller.prepareModel(
                 configuration.model,
                 at: URL(fileURLWithPath: downloadBasePath, isDirectory: true),
             ) { update in
@@ -106,27 +131,25 @@ final class LocalModelManager {
             }
         }
 
-        // Create the storagePath directory so preparedModelInfo's fileExists check passes.
+        // Create the storagePath directory so file-existence checks pass.
         try fileManager.createDirectory(
-            at: URL(fileURLWithPath: storagePath, isDirectory: true),
+            at: URL(fileURLWithPath: resultPath, isDirectory: true),
             withIntermediateDirectories: true,
         )
-
-        let record = LocalModelPreparedRecord(
-            model: configuration.model.rawValue,
-            modelIdentifier: configuration.modelIdentifier,
-            storagePath: storagePath,
-            source: configuration.downloadSource.rawValue,
-            preparedAt: Date(),
-        )
-        try savePreparedRecord(record, for: configuration.model)
 
         onUpdate?(LocalSTTPreparationUpdate(
             message: L("localSTT.prepare.runtimeReady", configuration.model.displayName),
             progress: 1,
-            storagePath: storagePath,
+            storagePath: resultPath,
             source: configuration.downloadSource.displayName,
         ))
+
+        return resultPath
+    }
+
+    /// Returns true when the model files at storagePath are complete and usable.
+    func isStoragePathReady(_ storagePath: String, for model: LocalSTTModel) -> Bool {
+        isPreparedStoragePathValid(storagePath, for: model)
     }
 
     private func prepareWhisperKit(

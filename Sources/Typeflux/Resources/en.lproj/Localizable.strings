@@ -96,6 +96,7 @@
 "menu.checkForUpdates" = "Check for Updates";
 "menu.downloadingUpdate" = "Downloading Update…";
 "menu.installingUpdate" = "Installing Update…";
+"menu.downloadingLocalModel" = "Downloading Local Model… %d%%";
 "menu.quit" = "Quit";
 "menu.status.ready" = "Ready";
 "menu.status.recording" = "Recording in progress…";
@@ -700,6 +701,9 @@
 "studio.subheading.agent" = "Configure the Agent framework, MCP servers, and tool integrations.";
 "studio.search.agent" = "Search agent settings...";
 "agent.beta.notice" = "Agent features are currently in Beta. Stability and behavior may continue to change, so please keep this in mind when using them.";
+
+"settings.advanced.localOptimization.title" = "Local Optimization";
+"settings.advanced.localOptimization.subtitle" = "Download a local speech recognition model in the background. When enabled, voice recognition starts faster and works even without internet.";
 
 "settings.advanced.agentFramework.title" = "Enable Agent framework";
 "settings.advanced.agentFramework.subtitle" = "Use the multi-turn Agent loop for Ask Anything. Supports tool calling and MCP server integration.";

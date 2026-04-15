@@ -7,6 +7,7 @@ extension Notification.Name {
     )
     static let appearanceModeDidChange = Notification.Name("SettingsStore.appearanceModeDidChange")
     static let agentConfigurationDidChange = Notification.Name("SettingsStore.agentConfigurationDidChange")
+    static let localOptimizationDidEnable = Notification.Name("SettingsStore.localOptimizationDidEnable")
 }
 
 enum HistoryRetentionPolicy: String, CaseIterable, Identifiable {
@@ -444,6 +445,11 @@ final class SettingsStore {
     var useAppleSpeechFallback: Bool {
         get { defaults.object(forKey: "stt.appleSpeech.enabled") as? Bool ?? false }
         set { defaults.set(newValue, forKey: "stt.appleSpeech.enabled") }
+    }
+
+    var localOptimizationEnabled: Bool {
+        get { defaults.object(forKey: "stt.localOptimization.enabled") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "stt.localOptimization.enabled") }
     }
 
     var automaticVocabularyCollectionEnabled: Bool {

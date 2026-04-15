@@ -22,6 +22,7 @@ final class DIContainer {
     let sttRouter: STTRouter
     let ollamaModelManager: OllamaLocalModelManager
     let localModelManager: LocalModelManager
+    let autoModelDownloadService: AutoModelDownloadService
     let agentJobStore: AgentJobStore
     let agentExecutionRegistry: AgentExecutionRegistry
     let agentJobsWindowController: AgentJobsWindowController
@@ -56,6 +57,10 @@ final class DIContainer {
             ollama: OllamaAgentService(),
         )
         localModelManager = LocalModelManager()
+        autoModelDownloadService = AutoModelDownloadService(
+            modelManager: localModelManager,
+            settingsStore: settingsStore,
+        )
         llmService = LLMRouter(
             settingsStore: settingsStore,
             openAICompatible: OpenAICompatibleLLMService(settingsStore: settingsStore),
@@ -77,6 +82,7 @@ final class DIContainer {
                 modelOverride: { [settingsStore] in settingsStore.groqSTTModel },
             ),
             typefluxOfficial: TypefluxOfficialTranscriber(),
+            autoModelDownloadService: autoModelDownloadService,
         )
     }
 }

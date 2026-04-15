@@ -70,6 +70,7 @@ final class STTRouter {
     private let doubaoRealtime: Transcriber
     private let groq: Transcriber
     private let typefluxOfficial: Transcriber
+    private let autoModelDownloadService: AutoModelDownloadService?
 
     init(
         settingsStore: SettingsStore,
@@ -82,6 +83,7 @@ final class STTRouter {
         doubaoRealtime: Transcriber,
         groq: Transcriber,
         typefluxOfficial: Transcriber,
+        autoModelDownloadService: AutoModelDownloadService? = nil,
     ) {
         self.settingsStore = settingsStore
         self.whisper = whisper
@@ -93,6 +95,7 @@ final class STTRouter {
         self.doubaoRealtime = doubaoRealtime
         self.groq = groq
         self.typefluxOfficial = typefluxOfficial
+        self.autoModelDownloadService = autoModelDownloadService
     }
 
     func transcribe(
@@ -100,6 +103,24 @@ final class STTRouter {
         scenario: TypefluxCloudScenario = .voiceInput,
     ) async throws -> String {
         try await transcribeStream(audioFile: audioFile, scenario: scenario) { _ in }
+    }
+
+    // MARK: - Auto-model fallback
+
+    /// Attempts transcription with the silently downloaded local model.
+    /// Returns nil (rather than throwing) when the model is not ready, so callers can
+    /// continue to the next fallback without special-casing the "not available" state.
+    private func transcribeWithAutoModelIfReady(
+        audioFile: AudioFile,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async -> String? {
+        guard
+            settingsStore.localOptimizationEnabled,
+            let transcriber = autoModelDownloadService?.makeTranscriberIfReady()
+        else {
+            return nil
+        }
+        return try? await transcriber.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
     }
 
     func prepareForRecording() async {
@@ -137,6 +158,10 @@ final class STTRouter {
                 }
             } catch {
                 NetworkDebugLogger.logError(context: "Free STT failed", error: error)
+                if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                    NetworkDebugLogger.logMessage("Auto local model succeeded after free STT failure")
+                    return localResult
+                }
                 if settingsStore.useAppleSpeechFallback {
                     NetworkDebugLogger.logMessage("Falling back to Apple Speech after free STT failure")
                     return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -151,6 +176,10 @@ final class STTRouter {
                 }
             } catch {
                 NetworkDebugLogger.logError(context: "Remote STT failed", error: error)
+                if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                    NetworkDebugLogger.logMessage("Auto local model succeeded after remote STT failure")
+                    return localResult
+                }
                 if settingsStore.useAppleSpeechFallback {
                     NetworkDebugLogger.logMessage("Falling back to Apple Speech after remote STT failure")
                     return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -166,6 +195,10 @@ final class STTRouter {
                 return try await localModel.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
             } catch {
                 NetworkDebugLogger.logError(context: "Local STT failed", error: error)
+                if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                    NetworkDebugLogger.logMessage("Auto local model succeeded after local STT failure")
+                    return localResult
+                }
                 if settingsStore.useAppleSpeechFallback {
                     NetworkDebugLogger.logMessage("Falling back to Apple Speech after local STT failure")
                     return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -185,6 +218,10 @@ final class STTRouter {
                 }
             } catch {
                 NetworkDebugLogger.logError(context: "Alibaba Cloud ASR failed", error: error)
+                if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                    NetworkDebugLogger.logMessage("Auto local model succeeded after Alibaba Cloud ASR failure")
+                    return localResult
+                }
                 if settingsStore.useAppleSpeechFallback {
                     NetworkDebugLogger.logMessage("Falling back to Apple Speech after Alibaba Cloud ASR failure")
                     return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -199,6 +236,10 @@ final class STTRouter {
                 }
             } catch {
                 NetworkDebugLogger.logError(context: "Doubao realtime ASR failed", error: error)
+                if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                    NetworkDebugLogger.logMessage("Auto local model succeeded after Doubao realtime ASR failure")
+                    return localResult
+                }
                 if settingsStore.useAppleSpeechFallback {
                     NetworkDebugLogger.logMessage("Falling back to Apple Speech after Doubao realtime ASR failure")
                     return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -214,12 +255,20 @@ final class STTRouter {
                     }
                 } catch {
                     NetworkDebugLogger.logError(context: "Groq STT failed", error: error)
+                    if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                        NetworkDebugLogger.logMessage("Auto local model succeeded after Groq STT failure")
+                        return localResult
+                    }
                     if settingsStore.useAppleSpeechFallback {
                         NetworkDebugLogger.logMessage("Falling back to Apple Speech after Groq STT failure")
                         return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
                     }
                     throw error
                 }
+            }
+            if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                NetworkDebugLogger.logMessage("Auto local model used because Groq STT is not configured")
+                return localResult
             }
             if settingsStore.useAppleSpeechFallback {
                 NetworkDebugLogger.logMessage("Groq STT is not configured, using Apple Speech fallback")
@@ -232,6 +281,12 @@ final class STTRouter {
             )
 
         case .typefluxOfficial:
+            // Local model runs first when optimization is enabled — keeps Cloud load low
+            // and gives users faster, offline-capable transcription.
+            if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                NetworkDebugLogger.logMessage("Auto local model used for Typeflux Official request")
+                return localResult
+            }
             do {
                 return try await RequestRetry.perform(operationName: "Typeflux Official STT request") { [self] in
                     if let scenarioAware = typefluxOfficial as? TypefluxCloudScenarioAwareTranscriber {

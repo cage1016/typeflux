@@ -35,6 +35,7 @@ final class AppCoordinator {
             settingsStore: di.settingsStore,
             historyStore: di.historyStore,
             agentJobStore: di.agentJobStore,
+            autoModelDownloadService: di.autoModelDownloadService,
             onRetryHistory: { [weak self] record in
                 self?.workflowController?.retry(record: record)
             },
@@ -50,6 +51,7 @@ final class AppCoordinator {
         )
         statusBarController?.start()
         self.workflowController?.start()
+        di.autoModelDownloadService.triggerIfNeeded()
         AutoUpdater.shared.startAutoCheck(settingsStore: di.settingsStore)
         UsageStatsStore.shared.backfillIfNeeded(from: di.historyStore)
         Task { await AuthState.shared.refreshTokenIfNeeded() }

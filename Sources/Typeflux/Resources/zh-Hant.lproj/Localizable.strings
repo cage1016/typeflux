@@ -96,6 +96,7 @@
 "menu.checkForUpdates" = "檢查更新";
 "menu.downloadingUpdate" = "正在下載更新…";
 "menu.installingUpdate" = "正在安裝更新…";
+"menu.downloadingLocalModel" = "正在下載本地模型… %d%%";
 "menu.quit" = "結束";
 "menu.status.ready" = "已就緒";
 "menu.status.recording" = "錄音中…";
@@ -698,6 +699,9 @@
 "studio.subheading.agent" = "配置 Agent 框架、MCP 伺服器和工具整合。";
 "studio.search.agent" = "搜尋 Agent 設定...";
 "agent.beta.notice" = "目前 Agent 功能仍處於 Beta 階段，穩定性與行為表現可能會持續調整，請知悉後使用。";
+
+"settings.advanced.localOptimization.title" = "本地優化";
+"settings.advanced.localOptimization.subtitle" = "在背景下載本地語音識別模型，啟用後可加速語音識別速度，並支援離線使用。";
 
 "settings.advanced.agentFramework.title" = "啟用 Agent 框架";
 "settings.advanced.agentFramework.subtitle" = "為「隨便問」功能啟用多輪 Agent 迴圈，支援工具呼叫和 MCP 伺服器整合。";

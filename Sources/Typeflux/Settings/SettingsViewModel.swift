@@ -103,6 +103,7 @@ final class StudioViewModel: ObservableObject {
     @Published var localSTTPendingDelete: LocalSTTModel? = nil
     @Published var localSTTPendingRedownload: LocalSTTModel? = nil
 
+    @Published var localOptimizationEnabled: Bool
     @Published var appleSpeechFallback: Bool
     @Published var automaticVocabularyCollectionEnabled: Bool
     @Published var autoUpdateEnabled: Bool
@@ -259,6 +260,7 @@ final class StudioViewModel: ObservableObject {
         localSTTDownloadSource = settingsStore.localSTTDownloadSource
         localSTTAutoSetup = true
         localSTTStoragePath = ""
+        localOptimizationEnabled = settingsStore.localOptimizationEnabled
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         automaticVocabularyCollectionEnabled = settingsStore.automaticVocabularyCollectionEnabled
         autoUpdateEnabled = settingsStore.autoUpdateEnabled
@@ -992,6 +994,14 @@ final class StudioViewModel: ObservableObject {
 
     func setLocalSTTAutoSetup(_ value: Bool) {
         localSTTAutoSetup = value; settingsStore.localSTTAutoSetup = value
+    }
+
+    func setLocalOptimizationEnabled(_ value: Bool) {
+        localOptimizationEnabled = value
+        settingsStore.localOptimizationEnabled = value
+        if value {
+            NotificationCenter.default.post(name: .localOptimizationDidEnable, object: settingsStore)
+        }
     }
 
     func setAppleSpeechFallback(_ value: Bool) {
