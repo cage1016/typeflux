@@ -69,6 +69,10 @@ enum LocalSTTModel: String, CaseIterable, Codable {
     case senseVoiceSmall
     case qwen3ASR
 
+    static var displayOrder: [LocalSTTModel] {
+        [.senseVoiceSmall, .whisperLocal, .qwen3ASR]
+    }
+
     struct Specs {
         let summary: String
         let parameterValue: String
@@ -105,6 +109,15 @@ enum LocalSTTModel: String, CaseIterable, Codable {
             .huggingFace
         case .qwen3ASR:
             .huggingFace
+        }
+    }
+
+    var recommendationBadgeTitle: String? {
+        switch self {
+        case .senseVoiceSmall:
+            L("settings.models.recommended")
+        case .whisperLocal, .qwen3ASR:
+            nil
         }
     }
 

@@ -470,6 +470,7 @@
 "settings.models.activationMissingAPIKey.message" = "Add an API key for %@ before setting it as the default model.";
 "settings.models.active" = "Active";
 "settings.models.selected" = "Selected";
+"settings.models.recommended" = "Recommended";
 "settings.models.testConnection" = "Test Connection";
 "settings.models.testingConnection" = "Testing connection...";
 "settings.models.connectionTimeout" = "Connection timed out after %d seconds.";

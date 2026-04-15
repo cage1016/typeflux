@@ -7,38 +7,57 @@ struct SherpaOnnxModelLayout {
     let modelRootDirectory: String
     let requiredRelativePaths: [String]
 
-    static func layout(for model: LocalSTTModel) -> SherpaOnnxModelLayout? {
+    static func layout(
+        for model: LocalSTTModel,
+        downloadSource: ModelDownloadSource = .huggingFace,
+    ) -> SherpaOnnxModelLayout? {
         switch model {
         case .whisperLocal:
-            nil
+            return nil
         case .senseVoiceSmall:
-            SherpaOnnxModelLayout(
-                runtimeArchiveURL: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2")!,
-                runtimeRootDirectory: "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts",
-                modelArchiveURL: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2")!,
-                modelRootDirectory: "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
+            guard let modelRootDirectory = LocalModelDownloadCatalog.sherpaOnnxModelDirectoryName(for: model),
+                  let modelArchiveURL = LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(
+                    for: model,
+                    source: downloadSource,
+                  )
+            else {
+                return nil
+            }
+            return SherpaOnnxModelLayout(
+                runtimeArchiveURL: LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: downloadSource),
+                runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
+                modelArchiveURL: modelArchiveURL,
+                modelRootDirectory: modelRootDirectory,
                 requiredRelativePaths: [
-                    "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline",
-                    "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/libsherpa-onnx-c-api.dylib",
-                    "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/libonnxruntime.dylib",
-                    "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx",
-                    "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt",
+                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
+                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
+                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libonnxruntime.dylib",
+                    "\(modelRootDirectory)/model.int8.onnx",
+                    "\(modelRootDirectory)/tokens.txt",
                 ],
             )
         case .qwen3ASR:
-            SherpaOnnxModelLayout(
-                runtimeArchiveURL: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2")!,
-                runtimeRootDirectory: "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts",
-                modelArchiveURL: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2")!,
-                modelRootDirectory: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25",
+            guard let modelRootDirectory = LocalModelDownloadCatalog.sherpaOnnxModelDirectoryName(for: model),
+                  let modelArchiveURL = LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(
+                    for: model,
+                    source: downloadSource,
+                  )
+            else {
+                return nil
+            }
+            return SherpaOnnxModelLayout(
+                runtimeArchiveURL: LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: downloadSource),
+                runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
+                modelArchiveURL: modelArchiveURL,
+                modelRootDirectory: modelRootDirectory,
                 requiredRelativePaths: [
-                    "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline",
-                    "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/libsherpa-onnx-c-api.dylib",
-                    "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/libonnxruntime.dylib",
-                    "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx",
-                    "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/encoder.int8.onnx",
-                    "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/decoder.int8.onnx",
-                    "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/tokenizer",
+                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
+                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
+                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libonnxruntime.dylib",
+                    "\(modelRootDirectory)/conv_frontend.onnx",
+                    "\(modelRootDirectory)/encoder.int8.onnx",
+                    "\(modelRootDirectory)/decoder.int8.onnx",
+                    "\(modelRootDirectory)/tokenizer",
                 ],
             )
         }
@@ -128,6 +147,7 @@ protocol SherpaOnnxModelInstalling {
     func prepareModel(
         _ model: LocalSTTModel,
         at storageURL: URL,
+        downloadSource: ModelDownloadSource,
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws -> String
 }
@@ -167,9 +187,10 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
     func prepareModel(
         _ model: LocalSTTModel,
         at storageURL: URL,
+        downloadSource: ModelDownloadSource = .huggingFace,
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
     ) async throws -> String {
-        guard let layout = SherpaOnnxModelLayout.layout(for: model) else {
+        guard let layout = SherpaOnnxModelLayout.layout(for: model, downloadSource: downloadSource) else {
             throw NSError(
                 domain: "SherpaOnnxModelInstaller",
                 code: 1,
@@ -252,11 +273,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
                 try fileManager.removeItem(at: localArchiveURL)
             }
 
-            let downloadedURL = try await archiveDownloader.downloadArchive(from: archiveURL)
-            if fileManager.fileExists(atPath: localArchiveURL.path) {
-                try fileManager.removeItem(at: localArchiveURL)
-            }
-            try fileManager.moveItem(at: downloadedURL, to: localArchiveURL)
+            try await downloadArchive(from: archiveURL, to: localArchiveURL)
 
             _ = try await processRunner.run(
                 executablePath: "/usr/bin/tar",
@@ -273,6 +290,14 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             try? fileManager.removeItem(at: localArchiveURL)
             try? fileManager.removeItem(at: temporaryDirectory)
         }
+    }
+
+    private func downloadArchive(from archiveURL: URL, to localArchiveURL: URL) async throws {
+        let downloadedURL = try await archiveDownloader.downloadArchive(from: archiveURL)
+        if fileManager.fileExists(atPath: localArchiveURL.path) {
+            try fileManager.removeItem(at: localArchiveURL)
+        }
+        try fileManager.moveItem(at: downloadedURL, to: localArchiveURL)
     }
 }
 

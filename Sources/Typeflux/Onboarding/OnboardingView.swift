@@ -537,7 +537,7 @@ struct OnboardingView: View {
 
     private var localSTTConfigFields: some View {
         VStack(spacing: 10) {
-            ForEach(LocalSTTModel.allCases, id: \.self) { model in
+            ForEach(LocalSTTModel.displayOrder, id: \.self) { model in
                 let isSelected = viewModel.localSTTModel == model
 
                 Button {
@@ -548,9 +548,16 @@ struct OnboardingView: View {
                             .scaleEffect(0.78)
 
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(model.displayName)
-                                .font(.studioBody(14, weight: .semibold))
-                                .foregroundStyle(onboardingPrimaryText)
+                            HStack(spacing: 8) {
+                                Text(model.displayName)
+                                    .font(.studioBody(14, weight: .semibold))
+                                    .foregroundStyle(onboardingPrimaryText)
+
+                                if let recommendationBadgeTitle = model.recommendationBadgeTitle {
+                                    onboardingRecommendationPill(recommendationBadgeTitle)
+                                }
+                            }
+
                             Text(model.specs.summary)
                                 .font(.studioBody(12))
                                 .foregroundStyle(onboardingSecondaryText)
@@ -589,6 +596,18 @@ struct OnboardingView: View {
             }
             .padding(.top, 6)
         }
+    }
+
+    private func onboardingRecommendationPill(_ text: String) -> some View {
+        Text(text)
+            .font(.studioBody(10, weight: .bold))
+            .foregroundStyle(Color.green.opacity(0.95))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.green.opacity(0.16)),
+            )
     }
 
     private var multimodalLLMConfigFields: some View {

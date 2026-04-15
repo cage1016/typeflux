@@ -46,6 +46,21 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         )
     }
 
+    func testDownloadCatalogProvidesSherpaURLs() throws {
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .huggingFace).absoluteString,
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2",
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(
+                for: .senseVoiceSmall,
+                source: .huggingFace,
+            )).absoluteString,
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2",
+        )
+        XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .whisperLocal, source: .huggingFace))
+    }
+
     func testSenseVoiceSmallRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
         XCTAssertEqual(layout.requiredRelativePaths.count, 5)

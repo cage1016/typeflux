@@ -468,6 +468,7 @@
 "settings.models.activationMissingAPIKey.message" = "%@ をデフォルト モデルとして設定する前に、API キーを追加します。";
 "settings.models.active" = "アクティブ";
 "settings.models.selected" = "選択済み";
+"settings.models.recommended" = "おすすめ";
 "settings.models.testConnection" = "テスト接続";
 "settings.models.testingConnection" = "接続をテストしています...";
 "settings.models.connectionTimeout" = "接続テストが %d 秒でタイムアウトしました。";

@@ -468,6 +468,7 @@
 "settings.models.activationMissingAPIKey.message" = "請先為 %@ 填入 API Key，再將它設為預設模型。";
 "settings.models.active" = "目前";
 "settings.models.selected" = "已選取";
+"settings.models.recommended" = "推薦";
 "settings.models.testConnection" = "測試連線";
 "settings.models.testingConnection" = "正在測試連線...";
 "settings.models.connectionTimeout" = "連線測試逾時（%d 秒）。";

@@ -3408,7 +3408,7 @@ struct StudioView: View {
                         .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
                         .foregroundStyle(StudioTheme.textSecondary)
 
-                    ForEach(LocalSTTModel.allCases, id: \.self) { model in
+                    ForEach(LocalSTTModel.displayOrder, id: \.self) { model in
                         localSTTModelOptionCard(model)
                     }
                 }
@@ -3943,9 +3943,15 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                 HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
-                        Text(model.displayName)
-                            .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
-                            .foregroundStyle(StudioTheme.textPrimary)
+                        HStack(spacing: StudioTheme.Spacing.xSmall) {
+                            Text(model.displayName)
+                                .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textPrimary)
+
+                            if let recommendationBadgeTitle = model.recommendationBadgeTitle {
+                                localSTTRecommendationPill(recommendationBadgeTitle)
+                            }
+                        }
 
                         Text(specs.summary)
                             .font(.studioBody(StudioTheme.Typography.bodySmall))
@@ -4020,6 +4026,18 @@ struct StudioView: View {
             .background(
                 Capsule(style: .continuous)
                     .fill(StudioTheme.surface),
+            )
+    }
+
+    private func localSTTRecommendationPill(_ text: String) -> some View {
+        Text(text)
+            .font(.studioBody(StudioTheme.Typography.caption, weight: .bold))
+            .foregroundStyle(Color.green.opacity(0.95))
+            .padding(.horizontal, StudioTheme.Insets.pillHorizontal)
+            .padding(.vertical, StudioTheme.Insets.pillVertical)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.green.opacity(0.16)),
             )
     }
 

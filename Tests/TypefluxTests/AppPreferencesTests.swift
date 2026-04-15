@@ -57,6 +57,17 @@ final class AppPreferencesTests: XCTestCase {
         XCTAssertTrue(LocalSTTModel.qwen3ASR.defaultModelIdentifier.contains("Qwen3-ASR"))
     }
 
+    func testLocalSTTModelDisplayOrderStartsWithSenseVoice() {
+        XCTAssertEqual(LocalSTTModel.displayOrder.first, .senseVoiceSmall)
+        XCTAssertEqual(Set(LocalSTTModel.displayOrder), Set(LocalSTTModel.allCases))
+    }
+
+    func testOnlySenseVoiceHasRecommendationBadge() {
+        XCTAssertNotNil(LocalSTTModel.senseVoiceSmall.recommendationBadgeTitle)
+        XCTAssertNil(LocalSTTModel.whisperLocal.recommendationBadgeTitle)
+        XCTAssertNil(LocalSTTModel.qwen3ASR.recommendationBadgeTitle)
+    }
+
     func testLocalSTTModelSpecsAreNonEmpty() {
         for model in LocalSTTModel.allCases {
             let specs = model.specs

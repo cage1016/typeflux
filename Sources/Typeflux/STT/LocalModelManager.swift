@@ -133,6 +133,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             resultPath = try await sherpaOnnxInstaller.prepareModel(
                 configuration.model,
                 at: URL(fileURLWithPath: downloadBasePath, isDirectory: true),
+                downloadSource: configuration.downloadSource,
             ) { update in
                 onUpdate?(LocalSTTPreparationUpdate(
                     message: update.message,

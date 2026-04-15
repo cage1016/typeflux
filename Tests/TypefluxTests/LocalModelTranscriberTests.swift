@@ -434,6 +434,7 @@ private final class FakeSherpaOnnxInstaller: SherpaOnnxModelInstalling {
     func prepareModel(
         _ model: LocalSTTModel,
         at storageURL: URL,
+        downloadSource _: ModelDownloadSource,
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws -> String {
         lastPreparedModel = model
