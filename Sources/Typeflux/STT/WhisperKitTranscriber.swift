@@ -7,6 +7,8 @@ import WhisperKit
 final class WhisperKitTranscriber: Transcriber {
     private let modelName: String
     private let downloadBase: URL?
+    private let modelRepo: String?
+    private let modelEndpoint: String?
     private let modelFolder: String?
     private let pipelineLock = NSLock()
     private var pipeline: WhisperKit?
@@ -15,10 +17,20 @@ final class WhisperKitTranscriber: Transcriber {
     /// - Parameters:
     ///   - modelName: WhisperKit model name, e.g. "small", "base", "large-v3".
     ///   - downloadBase: Base directory where WhisperKit should download model snapshots.
+    ///   - modelRepo: Hugging Face compatible repository containing WhisperKit model snapshots.
+    ///   - modelEndpoint: Hugging Face compatible endpoint used for model downloads.
     ///   - modelFolder: Existing local WhisperKit snapshot folder to load directly.
-    init(modelName: String, downloadBase: URL? = nil, modelFolder: String? = nil) {
+    init(
+        modelName: String,
+        downloadBase: URL? = nil,
+        modelRepo: String? = nil,
+        modelEndpoint: String? = nil,
+        modelFolder: String? = nil,
+    ) {
         self.modelName = modelName
         self.downloadBase = downloadBase
+        self.modelRepo = modelRepo
+        self.modelEndpoint = modelEndpoint
         self.modelFolder = modelFolder
     }
 
@@ -112,10 +124,12 @@ final class WhisperKitTranscriber: Transcriber {
             return existingTask
         }
 
-        let task = Task { [modelName, downloadBase, modelFolder] in
+        let task = Task { [modelName, downloadBase, modelRepo, modelEndpoint, modelFolder] in
             try await WhisperKit(WhisperKitConfig(
                 model: modelName,
                 downloadBase: downloadBase,
+                modelRepo: modelRepo,
+                modelEndpoint: modelEndpoint,
                 modelFolder: modelFolder,
                 verbose: false,
             ))

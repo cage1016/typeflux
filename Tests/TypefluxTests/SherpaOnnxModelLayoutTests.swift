@@ -46,7 +46,20 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         )
     }
 
-    func testDownloadCatalogProvidesSherpaURLs() throws {
+    func testDownloadCatalogProvidesLocalModelDownloadLocations() throws {
+        XCTAssertEqual(LocalModelDownloadCatalog.whisperKitDefaultModelIdentifier, "whisperkit-small")
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperKitModelRepository(source: .huggingFace),
+            "argmaxinc/whisperkit-coreml",
+        )
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: .huggingFace).absoluteString,
+            "https://huggingface.co/argmaxinc/whisperkit-coreml",
+        )
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperKitModelEndpoint(source: .huggingFace),
+            "https://huggingface.co",
+        )
         XCTAssertEqual(
             LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .huggingFace).absoluteString,
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2",

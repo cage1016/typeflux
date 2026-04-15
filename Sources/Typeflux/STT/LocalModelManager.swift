@@ -185,6 +185,8 @@ final class LocalModelManager: LocalSTTModelManaging {
         let transcriber = WhisperKitTranscriber(
             modelName: modelName,
             downloadBase: URL(fileURLWithPath: downloadBasePath, isDirectory: true),
+            modelRepo: LocalModelDownloadCatalog.whisperKitModelRepository(source: configuration.downloadSource),
+            modelEndpoint: LocalModelDownloadCatalog.whisperKitModelEndpoint(source: configuration.downloadSource),
         )
         try await transcriber.prepare { progress, message in
             let mapped = 0.2 + progress * 0.75

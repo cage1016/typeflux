@@ -105,7 +105,7 @@ enum LocalSTTModel: String, CaseIterable, Codable {
     var defaultModelIdentifier: String {
         switch self {
         case .whisperLocal:
-            "whisperkit-small"
+            LocalModelDownloadCatalog.whisperKitDefaultModelIdentifier
         case .senseVoiceSmall:
             "sensevoice-small-coreml"
         case .qwen3ASR:
