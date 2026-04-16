@@ -1,7 +1,7 @@
 import Foundation
 
 final class OllamaLLMService: LLMService {
-    static let localModelKeepAlive = "15m"
+    static let localModelKeepAlive = "30m"
 
     private let settingsStore: SettingsStore
     private let modelManager: OllamaLocalModelManager

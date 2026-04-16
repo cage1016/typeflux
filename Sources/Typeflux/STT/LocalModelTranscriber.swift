@@ -10,7 +10,7 @@ protocol LocalWhisperKitTranscribing: AnyObject {
 }
 
 final class LocalModelTranscriber: Transcriber {
-    static let defaultWhisperKitKeepAliveDuration: TimeInterval = 15 * 60
+    static let defaultWhisperKitKeepAliveDuration: TimeInterval = 30 * 60
 
     private let settingsStore: SettingsStore
     private let modelManager: LocalSTTModelManaging
