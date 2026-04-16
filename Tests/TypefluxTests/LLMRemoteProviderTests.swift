@@ -116,6 +116,28 @@ final class LLMRemoteProviderTests: XCTestCase {
         XCTAssertEqual(LLMRemoteProvider.onboardingDisplayOrder, expected)
     }
 
+    func testSettingsDisplayOrderMatchesProductProviderOrder() {
+        XCTAssertEqual(
+            LLMRemoteProvider.settingsDisplayOrder,
+            [
+                .typefluxCloud,
+                .freeModel,
+                .openRouter,
+                .openAI,
+                .anthropic,
+                .gemini,
+                .grok,
+                .deepSeek,
+                .kimi,
+                .qwen,
+                .zhipu,
+                .minimax,
+                .xiaomi,
+                .custom,
+            ],
+        )
+    }
+
     func testGrokAndXiaomiProvidersExposeOpenAICompatibleDefaults() {
         XCTAssertEqual(LLMRemoteProvider.grok.displayName, "xAI")
         XCTAssertEqual(LLMRemoteProvider.grok.apiStyle, .openAICompatible)

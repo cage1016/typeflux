@@ -23,6 +23,20 @@ final class AppPreferencesTests: XCTestCase {
                 XCTAssertTrue(displayed.contains(provider), "\(provider) should be in settingsDisplayOrder")
             }
         }
+        XCTAssertEqual(
+            STTProvider.settingsDisplayOrder,
+            [
+                .typefluxOfficial,
+                .freeModel,
+                .localModel,
+                .aliCloud,
+                .doubaoRealtime,
+                .googleCloud,
+                .whisperAPI,
+                .multimodalLLM,
+                .groq,
+            ],
+        )
     }
 
     func testSTTProviderOnboardingDisplayOrderExcludesHiddenTypefluxCloudProvider() {

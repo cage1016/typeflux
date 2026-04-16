@@ -30,12 +30,12 @@ enum STTProvider: String, CaseIterable, Codable {
         .typefluxOfficial,
         .freeModel,
         .localModel,
-        .whisperAPI,
-        .groq,
-        .multimodalLLM,
         .aliCloud,
         .doubaoRealtime,
         .googleCloud,
+        .whisperAPI,
+        .multimodalLLM,
+        .groq,
     ]
 
     static let onboardingDisplayOrder: [STTProvider] = settingsDisplayOrder.filter {

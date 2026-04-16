@@ -680,12 +680,19 @@ struct StudioView: View {
     }
 
     private var personaLLMProviderOptions: [(label: String, value: StudioModelProviderID)] {
-        [(label: LLMProvider.ollama.displayName, value: .ollama)] +
-            LLMRemoteProvider.settingsDisplayOrder
-                .filter { $0 != .freeModel || !FreeLLMModelRegistry.suggestedModelNames.isEmpty }
-                .map { provider in
-                    (label: provider.displayName, value: provider.studioProviderID)
-                }
+        let remoteOptions = LLMRemoteProvider.settingsDisplayOrder
+            .filter { $0 != .freeModel || !FreeLLMModelRegistry.suggestedModelNames.isEmpty }
+            .filter { $0 != .custom }
+            .map { provider in
+                (label: provider.displayName, value: provider.studioProviderID)
+            }
+        let customOptions = LLMRemoteProvider.settingsDisplayOrder
+            .filter { $0 == .custom }
+            .map { provider in
+                (label: provider.displayName, value: provider.studioProviderID)
+            }
+
+        return remoteOptions + [(label: LLMProvider.ollama.displayName, value: .ollama)] + customOptions
     }
 
     private func personaRosterCard(
@@ -2982,28 +2989,6 @@ struct StudioView: View {
                     actionTitle: L("settings.models.useLocal"),
                 ),
                 StudioModelCard(
-                    id: StudioModelProviderID.whisperAPI.rawValue,
-                    name: STTProvider.whisperAPI.displayName,
-                    summary: L("settings.models.card.whisper.summary"),
-                    badge: L("settings.models.badge.api"),
-                    metadata: viewModel.whisperModel.isEmpty
-                        ? L("settings.models.modelNotConfigured") : viewModel.whisperModel,
-                    isSelected: viewModel.sttProvider == .whisperAPI,
-                    isMuted: false,
-                    actionTitle: L("settings.models.useRemote"),
-                ),
-                StudioModelCard(
-                    id: StudioModelProviderID.multimodalLLM.rawValue,
-                    name: STTProvider.multimodalLLM.displayName,
-                    summary: L("settings.models.card.multimodal.summary"),
-                    badge: L("settings.models.badge.api"),
-                    metadata: viewModel.multimodalLLMModel.isEmpty
-                        ? L("settings.models.modelNotConfigured") : viewModel.multimodalLLMModel,
-                    isSelected: viewModel.sttProvider == .multimodalLLM,
-                    isMuted: false,
-                    actionTitle: L("settings.models.useMultimodal"),
-                ),
-                StudioModelCard(
                     id: StudioModelProviderID.aliCloud.rawValue,
                     name: STTProvider.aliCloud.displayName,
                     summary: L("settings.models.card.aliCloud.summary"),
@@ -3032,6 +3017,28 @@ struct StudioView: View {
                     isSelected: viewModel.sttProvider == .googleCloud,
                     isMuted: false,
                     actionTitle: L("settings.models.useGoogleCloud"),
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.whisperAPI.rawValue,
+                    name: STTProvider.whisperAPI.displayName,
+                    summary: L("settings.models.card.whisper.summary"),
+                    badge: L("settings.models.badge.api"),
+                    metadata: viewModel.whisperModel.isEmpty
+                        ? L("settings.models.modelNotConfigured") : viewModel.whisperModel,
+                    isSelected: viewModel.sttProvider == .whisperAPI,
+                    isMuted: false,
+                    actionTitle: L("settings.models.useRemote"),
+                ),
+                StudioModelCard(
+                    id: StudioModelProviderID.multimodalLLM.rawValue,
+                    name: STTProvider.multimodalLLM.displayName,
+                    summary: L("settings.models.card.multimodal.summary"),
+                    badge: L("settings.models.badge.api"),
+                    metadata: viewModel.multimodalLLMModel.isEmpty
+                        ? L("settings.models.modelNotConfigured") : viewModel.multimodalLLMModel,
+                    isSelected: viewModel.sttProvider == .multimodalLLM,
+                    isMuted: false,
+                    actionTitle: L("settings.models.useMultimodal"),
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.groqSTT.rawValue,
@@ -3070,7 +3077,22 @@ struct StudioView: View {
                     isMuted: false,
                     actionTitle: L("settings.models.useRemote"),
                 ),
-            ]) + [
+            ]) + LLMRemoteProvider.settingsDisplayOrder
+                .filter { $0 != .freeModel && $0 != .typefluxCloud && $0 != .custom }
+                .map { provider in
+                    StudioModelCard(
+                        id: provider.studioProviderID.rawValue,
+                        name: provider.displayName,
+                        summary: L("settings.models.card.\(provider.rawValue).summary"),
+                        badge: provider.apiStyle == .openAICompatible
+                            ? L("settings.models.badge.api") : L("settings.models.badge.native"),
+                        metadata: metadata(for: provider),
+                        isSelected: viewModel.llmProvider == .openAICompatible
+                            && viewModel.llmRemoteProvider == provider,
+                        isMuted: false,
+                        actionTitle: L("settings.models.useRemote"),
+                    )
+                } + [
                 StudioModelCard(
                     id: StudioModelProviderID.ollama.rawValue,
                     name: LLMProvider.ollama.displayName,
@@ -3083,7 +3105,7 @@ struct StudioView: View {
                     actionTitle: L("settings.models.useLocal"),
                 ),
             ] + LLMRemoteProvider.settingsDisplayOrder
-                .filter { $0 != .freeModel && $0 != .typefluxCloud }
+                .filter { $0 == .custom }
                 .map { provider in
                     StudioModelCard(
                         id: provider.studioProviderID.rawValue,
