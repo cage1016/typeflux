@@ -404,6 +404,15 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.automaticVocabularyCollectionEnabled)
     }
 
+    func testDefaultLocalSTTMemoryOptimizationDisabled() {
+        XCTAssertFalse(store.localSTTMemoryOptimizationEnabled)
+    }
+
+    func testSetLocalSTTMemoryOptimizationDisabled() {
+        store.localSTTMemoryOptimizationEnabled = false
+        XCTAssertFalse(store.localSTTMemoryOptimizationEnabled)
+    }
+
     // MARK: - Personas Computed Property
 
     func testDefaultPersonasIncludesSystemPersonas() {

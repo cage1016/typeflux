@@ -467,6 +467,11 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "stt.localOptimization.enabled") }
     }
 
+    var localSTTMemoryOptimizationEnabled: Bool {
+        get { defaults.object(forKey: "stt.local.memoryOptimization.enabled") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "stt.local.memoryOptimization.enabled") }
+    }
+
     var automaticVocabularyCollectionEnabled: Bool {
         get { defaults.object(forKey: "vocabulary.automaticCollection.enabled") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "vocabulary.automaticCollection.enabled") }

@@ -11,11 +11,12 @@ protocol LocalWhisperKitTranscribing: AnyObject {
 
 final class LocalModelTranscriber: Transcriber {
     static let defaultWhisperKitKeepAliveDuration: TimeInterval = 30 * 60
+    static let persistentWhisperKitKeepAliveDuration: TimeInterval? = nil
 
     private let settingsStore: SettingsStore
     private let modelManager: LocalSTTModelManaging
     private let whisperKitTranscriberFactory: (String, String) -> LocalWhisperKitTranscribing
-    private let whisperKitKeepAliveDuration: TimeInterval
+    private let whisperKitKeepAliveDurationWhenMemoryOptimized: TimeInterval
     private let whisperKitCacheLock = NSLock()
     /// Single active WhisperKit pipeline cache keyed by model name + resolved model folder.
     /// WhisperKit keeps CoreML graphs resident after the first load, so we drop stale
@@ -33,7 +34,7 @@ final class LocalModelTranscriber: Transcriber {
     ) {
         self.settingsStore = settingsStore
         self.modelManager = modelManager
-        self.whisperKitKeepAliveDuration = whisperKitKeepAliveDuration
+        whisperKitKeepAliveDurationWhenMemoryOptimized = whisperKitKeepAliveDuration
         self.whisperKitTranscriberFactory = whisperKitTranscriberFactory
     }
 
@@ -112,7 +113,7 @@ final class LocalModelTranscriber: Transcriber {
         let cacheKey = "\(modelName)|\(modelFolder)"
         whisperKitCacheLock.lock()
         if let cached = whisperKitCache[cacheKey] {
-            scheduleWhisperKitCacheExpiration(for: cacheKey)
+            refreshWhisperKitCacheExpiration(for: cacheKey)
             whisperKitCacheLock.unlock()
             return cached
         }
@@ -120,7 +121,7 @@ final class LocalModelTranscriber: Transcriber {
         whisperKitCache.removeAll(keepingCapacity: true)
         let transcriber = whisperKitTranscriberFactory(modelName, modelFolder)
         whisperKitCache[cacheKey] = transcriber
-        scheduleWhisperKitCacheExpiration(for: cacheKey)
+        refreshWhisperKitCacheExpiration(for: cacheKey)
         whisperKitCacheLock.unlock()
         return transcriber
     }
@@ -133,9 +134,12 @@ final class LocalModelTranscriber: Transcriber {
         whisperKitCacheLock.unlock()
     }
 
-    private func scheduleWhisperKitCacheExpiration(for cacheKey: String) {
+    private func refreshWhisperKitCacheExpiration(for cacheKey: String) {
         whisperKitCacheExpirationTask?.cancel()
-        let keepAliveDuration = whisperKitKeepAliveDuration
+        guard let keepAliveDuration = whisperKitKeepAliveDuration else {
+            whisperKitCacheExpirationTask = nil
+            return
+        }
         whisperKitCacheExpirationTask = Task { [weak self] in
             let nanoseconds = UInt64(max(keepAliveDuration, 0) * 1_000_000_000)
             if nanoseconds > 0 {
@@ -153,6 +157,12 @@ final class LocalModelTranscriber: Transcriber {
             whisperKitCacheExpirationTask = nil
         }
         whisperKitCacheLock.unlock()
+    }
+
+    private var whisperKitKeepAliveDuration: TimeInterval? {
+        settingsStore.localSTTMemoryOptimizationEnabled
+            ? whisperKitKeepAliveDurationWhenMemoryOptimized
+            : Self.persistentWhisperKitKeepAliveDuration
     }
 
     private func vocabularyPromptText() -> String? {

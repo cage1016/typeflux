@@ -116,7 +116,7 @@ final class LLMServiceTests: XCTestCase {
         XCTAssertFalse(schema.strict)
     }
 
-    func testOllamaChatRequestKeepsLocalModelWarmForFifteenMinutes() throws {
+    func testOllamaChatRequestKeepsLocalModelWarmForThirtyMinutes() throws {
         let body = OllamaLLMService.makeChatRequestBody(
             model: "llama3",
             systemPrompt: "system",
@@ -125,7 +125,7 @@ final class LLMServiceTests: XCTestCase {
             temperature: 0.4,
         )
 
-        XCTAssertEqual(body["keep_alive"] as? String, "15m")
+        XCTAssertEqual(body["keep_alive"] as? String, "30m")
         XCTAssertEqual(body["model"] as? String, "llama3")
         XCTAssertEqual(body["stream"] as? Bool, true)
         let options = try XCTUnwrap(body["options"] as? [String: Any])

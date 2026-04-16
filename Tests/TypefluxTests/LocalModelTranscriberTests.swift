@@ -180,6 +180,7 @@ final class LocalModelTranscriberTests: XCTestCase {
         settingsStore.localSTTModelIdentifier = "whisperkit-base"
         settingsStore.localSTTDownloadSource = .huggingFace
         settingsStore.localSTTAutoSetup = false
+        settingsStore.localSTTMemoryOptimizationEnabled = true
 
         let manager = FakeLocalSTTModelManager(preparedInfo: LocalSTTPreparedModelInfo(
             storagePath: "/tmp/typeflux-whisperkit-test",
@@ -203,6 +204,40 @@ final class LocalModelTranscriberTests: XCTestCase {
 
         XCTAssertEqual(factory.createdTranscribers.count, 2)
         XCTAssertEqual(factory.createdTranscribers.map(\.modelName), ["base", "base"])
+    }
+
+    func testWhisperKitTranscriberCacheDoesNotExpireWhenMemoryOptimizationDisabled() async throws {
+        let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.sttProvider = .localModel
+        settingsStore.localSTTModel = .whisperLocal
+        settingsStore.localSTTModelIdentifier = "whisperkit-base"
+        settingsStore.localSTTDownloadSource = .huggingFace
+        settingsStore.localSTTAutoSetup = false
+        settingsStore.localSTTMemoryOptimizationEnabled = false
+
+        let manager = FakeLocalSTTModelManager(preparedInfo: LocalSTTPreparedModelInfo(
+            storagePath: "/tmp/typeflux-whisperkit-test",
+            sourceDisplayName: ModelDownloadSource.huggingFace.displayName,
+        ))
+        let factory = FakeWhisperKitTranscriberFactory()
+        let transcriber = LocalModelTranscriber(
+            settingsStore: settingsStore,
+            modelManager: manager,
+            whisperKitKeepAliveDuration: 0.05,
+            whisperKitTranscriberFactory: factory.makeTranscriber(modelName:modelFolder:),
+        )
+        let audioFile = try makeTestWAVFile()
+
+        _ = try await transcriber.transcribe(audioFile: audioFile)
+        try await Task.sleep(nanoseconds: 120_000_000)
+        _ = try await transcriber.transcribe(audioFile: audioFile)
+
+        XCTAssertEqual(factory.createdTranscribers.count, 1)
+        XCTAssertEqual(factory.createdTranscribers.map(\.modelName), ["base"])
     }
 
     func testSherpaLayoutRejectsASCIIExecutableFixture() throws {

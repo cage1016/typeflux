@@ -1347,6 +1347,23 @@ struct StudioView: View {
                         Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                         StudioSettingRow(
+                            title: L("settings.advanced.localSTTMemoryOptimization.title"),
+                            subtitle: L("settings.advanced.localSTTMemoryOptimization.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.localSTTMemoryOptimizationEnabled },
+                                    set: viewModel.setLocalSTTMemoryOptimizationEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
                             title: L("settings.advanced.personaHotkeyApply.title"),
                             subtitle: L("settings.advanced.personaHotkeyApply.subtitle"),
                             badge: "Beta",

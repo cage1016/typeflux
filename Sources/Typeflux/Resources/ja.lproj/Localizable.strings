@@ -722,6 +722,8 @@
 
 "settings.advanced.localOptimization.title" = "ローカル最適化";
 "settings.advanced.localOptimization.subtitle" = "バックグラウンドでローカル音声認識モデルをダウンロードします。有効にすると音声認識が速くなり、オフラインでも使用できます。";
+"settings.advanced.localSTTMemoryOptimization.title" = "メモリ最適化";
+"settings.advanced.localSTTMemoryOptimization.subtitle" = "有効にすると、しばらく使用していないローカル音声モデルをメモリから自動的に解放し、リソース使用量を抑えます。再度使うときは再読み込みされるため、最初の応答が 3 〜 5 秒ほど遅くなる場合があります。";
 
 "settings.advanced.agentFramework.title" = "エージェントフレームワークを有効にする";
 "settings.advanced.agentFramework.subtitle" = "「何でも質問」にはマルチターンのエージェント ループを使用します。ツールの呼び出しと MCP サーバーの統合をサポートします。";

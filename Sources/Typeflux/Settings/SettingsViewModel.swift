@@ -105,6 +105,7 @@ final class StudioViewModel: ObservableObject {
     @Published var isPreparingLocalSTT = false
     @Published var localSTTPendingDelete: LocalSTTModel? = nil
     @Published var localSTTPendingRedownload: LocalSTTModel? = nil
+    @Published var localSTTMemoryOptimizationEnabled: Bool
 
     @Published var localOptimizationEnabled: Bool
     @Published var appleSpeechFallback: Bool
@@ -271,6 +272,7 @@ final class StudioViewModel: ObservableObject {
         localSTTDownloadSource = settingsStore.localSTTDownloadSource
         localSTTAutoSetup = true
         localSTTStoragePath = ""
+        localSTTMemoryOptimizationEnabled = settingsStore.localSTTMemoryOptimizationEnabled
         localOptimizationEnabled = settingsStore.localOptimizationEnabled
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         automaticVocabularyCollectionEnabled = settingsStore.automaticVocabularyCollectionEnabled
@@ -1021,6 +1023,11 @@ final class StudioViewModel: ObservableObject {
 
     func setLocalSTTAutoSetup(_ value: Bool) {
         localSTTAutoSetup = value; settingsStore.localSTTAutoSetup = value
+    }
+
+    func setLocalSTTMemoryOptimizationEnabled(_ value: Bool) {
+        localSTTMemoryOptimizationEnabled = value
+        settingsStore.localSTTMemoryOptimizationEnabled = value
     }
 
     func setLocalOptimizationEnabled(_ value: Bool) {

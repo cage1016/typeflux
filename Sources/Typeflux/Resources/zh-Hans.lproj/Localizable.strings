@@ -724,6 +724,8 @@
 
 "settings.advanced.localOptimization.title" = "本地优化";
 "settings.advanced.localOptimization.subtitle" = "在后台下载本地语音识别模型，启用后可加速语音识别速度，并支持离线使用。";
+"settings.advanced.localSTTMemoryOptimization.title" = "内存优化";
+"settings.advanced.localSTTMemoryOptimization.subtitle" = "启用后，长时间未使用的本地语音模型会自动从内存中卸载，以减少资源占用。再次使用时会重新加载，首次响应可能会增加 3 到 5 秒。";
 
 "settings.advanced.agentFramework.title" = "启用 Agent 框架";
 "settings.advanced.agentFramework.subtitle" = "为「随便问」功能启用多轮 Agent 循环，支持工具调用和 MCP 服务器集成。";

@@ -724,6 +724,8 @@
 
 "settings.advanced.localOptimization.title" = "Local Optimization";
 "settings.advanced.localOptimization.subtitle" = "Download a local speech recognition model in the background. When enabled, voice recognition starts faster and works even without internet.";
+"settings.advanced.localSTTMemoryOptimization.title" = "Memory Optimization";
+"settings.advanced.localSTTMemoryOptimization.subtitle" = "Unload inactive local speech models from memory to reduce resource usage. The next request may take 3 to 5 seconds while the model reloads.";
 
 "settings.advanced.agentFramework.title" = "Enable Agent framework";
 "settings.advanced.agentFramework.subtitle" = "Use the multi-turn Agent loop for Ask Anything. Supports tool calling and MCP server integration.";
