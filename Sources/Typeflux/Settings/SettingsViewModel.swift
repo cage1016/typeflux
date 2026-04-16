@@ -1827,7 +1827,7 @@ final class StudioViewModel: ObservableObject {
             settingsStore.doubaoResourceID = doubaoResourceID
         case .googleCloud:
             settingsStore.googleCloudProjectID = googleCloudProjectID
-            settingsStore.googleCloudAPIKey = googleCloudAPIKey
+            settingsStore.googleCloudAPIKey = ""
             settingsStore.googleCloudModel = googleCloudModel
         case .groqSTT:
             settingsStore.groqSTTAPIKey = groqSTTAPIKey
@@ -1986,7 +1986,7 @@ final class StudioViewModel: ObservableObject {
         let capturedDoubaoAccessToken = doubaoAccessToken
         let capturedDoubaoResourceID = doubaoResourceID
         let capturedGoogleProjectID = googleCloudProjectID
-        let capturedGoogleAPIKey = googleCloudAPIKey
+        let capturedGoogleAPIKey = ""
         let capturedGoogleModel = googleCloudModel
         let capturedAppLanguage = appLanguage
         let capturedGroqSTTAPIKey = groqSTTAPIKey

@@ -254,7 +254,7 @@ final class OnboardingViewModel: ObservableObject {
         let doubaoToken = doubaoAccessToken
         let doubaoResource = doubaoResourceID
         let googleProjectID = googleCloudProjectID
-        let googleAPIKey = googleCloudAPIKey
+        let googleAPIKey = ""
         let googleModel = googleCloudModel
         let language = appLanguage
         let groqKey = groqSTTAPIKey
@@ -459,7 +459,7 @@ final class OnboardingViewModel: ObservableObject {
                 settingsStore.doubaoResourceID = doubaoResourceID
             case .googleCloud:
                 settingsStore.googleCloudProjectID = googleCloudProjectID
-                settingsStore.googleCloudAPIKey = googleCloudAPIKey
+                settingsStore.googleCloudAPIKey = ""
                 settingsStore.googleCloudModel = googleCloudModel
             case .groq:
                 settingsStore.groqSTTAPIKey = groqSTTAPIKey

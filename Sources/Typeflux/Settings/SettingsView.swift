@@ -3633,19 +3633,6 @@ struct StudioView: View {
                             set: viewModel.setGoogleCloudProjectID,
                         ),
                     )
-                    StudioTextInputCard(
-                        label: L("settings.models.googleCloud.credential"),
-                        placeholder: "AIza... / ya29...",
-                        text: Binding(
-                            get: { viewModel.googleCloudAPIKey },
-                            set: viewModel.setGoogleCloudAPIKey,
-                        ),
-                        secure: true,
-                    ) {
-                        if let url = sttProviderAPIKeyURL(.googleCloud) {
-                            apiKeyHelpButton(url: url)
-                        }
-                    }
                     HStack(spacing: StudioTheme.Spacing.small) {
                         StudioButton(
                             title: viewModel.googleCloudOAuthAuthorized
@@ -3684,15 +3671,6 @@ struct StudioView: View {
                         ),
                         suggestions: GoogleCloudSpeechDefaults.suggestedModels,
                     )
-                    Text(L("settings.models.googleCloud.directHint"))
-                        .font(.studioBody(StudioTheme.Typography.caption))
-                        .foregroundStyle(StudioTheme.textSecondary)
-                    Link(destination: GoogleCloudSpeechDefaults.apiDocumentationURL) {
-                        Text(L("settings.models.googleCloud.docs"))
-                            .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
-                            .foregroundStyle(StudioTheme.accent)
-                    }
-                    .buttonStyle(.plain)
                 }
 
             case .groqSTT:
@@ -4177,10 +4155,7 @@ struct StudioView: View {
             !viewModel.doubaoAppID.isEmpty && !viewModel.doubaoAccessToken.isEmpty
         case .googleCloud:
             !viewModel.googleCloudProjectID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && (
-                    !viewModel.googleCloudAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || viewModel.googleCloudOAuthAuthorized
-                )
+                && viewModel.googleCloudOAuthAuthorized
         case .groqSTT:
             !viewModel.groqSTTAPIKey.isEmpty
         case .typefluxOfficial:
@@ -4446,9 +4421,7 @@ struct StudioView: View {
             URL(string: "https://bailian.console.aliyun.com?tab=model#/api-key")
         case .multimodalLLM:
             URL(string: "https://platform.openai.com/api-keys")
-        case .googleCloud:
-            URL(string: "https://console.cloud.google.com/apis/credentials")
-        case .doubaoRealtime, .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
+        case .doubaoRealtime, .googleCloud, .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
             nil
         }
     }

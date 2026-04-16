@@ -17,7 +17,7 @@ final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber 
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
         let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(
-            manualCredential: await MainActor.run { settingsStore.googleCloudAPIKey }
+            manualCredential: ""
         )
         let configuration = try await MainActor.run {
             try GoogleCloudSpeechConfiguration(
@@ -36,7 +36,8 @@ final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber 
     }
 
     static func testConnection(projectID: String, apiKey: String, model: String, appLanguage: AppLanguage) async throws -> String {
-        let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(manualCredential: apiKey)
+        _ = apiKey
+        let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(manualCredential: "")
         let configuration = try GoogleCloudSpeechConfiguration(
             projectID: projectID,
             apiKey: effectiveCredential,

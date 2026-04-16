@@ -678,12 +678,6 @@ struct OnboardingView: View {
                     placeholder: "my-gcp-project",
                     text: $viewModel.googleCloudProjectID,
                 )
-                StudioTextInputCard(
-                    label: L("settings.models.googleCloud.credential"),
-                    placeholder: "AIza... / ya29...",
-                    text: $viewModel.googleCloudAPIKey,
-                    secure: true,
-                )
                 HStack(spacing: 12) {
                     StudioButton(
                         title: googleCloudOAuthAuthorized
@@ -723,21 +717,6 @@ struct OnboardingView: View {
                     text: $viewModel.googleCloudModel,
                     suggestions: GoogleCloudSpeechDefaults.suggestedModels,
                 )
-                Text(L("settings.models.googleCloud.directHint"))
-                    .font(.studioBody(12))
-                    .foregroundStyle(onboardingSecondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Link(destination: GoogleCloudSpeechDefaults.apiDocumentationURL) {
-                    HStack(spacing: 5) {
-                        Text(L("settings.models.googleCloud.docs"))
-                            .font(.studioBody(12, weight: .semibold))
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .foregroundStyle(StudioTheme.accent)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -1034,11 +1013,9 @@ struct OnboardingView: View {
             URL(string: "https://bailian.console.aliyun.com/")
         case .doubaoRealtime:
             URL(string: "https://console.volcengine.com/speech/service/asr")
-        case .googleCloud:
-            URL(string: "https://console.cloud.google.com/apis/credentials")
         case .multimodalLLM:
             URL(string: "https://platform.openai.com/api-keys")
-        case .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
+        case .googleCloud, .freeModel, .localModel, .appleSpeech, .typefluxOfficial:
             nil
         }
     }
