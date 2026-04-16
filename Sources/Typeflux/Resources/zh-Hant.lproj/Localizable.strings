@@ -605,7 +605,6 @@
 "settings.models.googleCloud.oauth.reauthorize" = "重新授權";
 "settings.models.googleCloud.oauth.disconnect" = "中斷授權";
 "settings.models.googleCloud.oauth.connected" = "Google 授權已連線，Typeflux 會自動刷新 Speech-to-Text 存取權杖。";
-"settings.models.googleCloud.oauth.notConnected" = "尚未儲存 Google 授權。你也可以手動貼上存取權杖或 API Key。";
 "settings.models.googleCloud.oauth.disconnected" = "Google 授權已中斷。";
 "settings.models.googleCloud.cloudGatewayHint" = "使用 Project ID 和 API Key 直接呼叫 Google Cloud Speech-to-Text v2 StreamingRecognize。";
 "settings.models.useGoogleCloud" = "使用 Google";

@@ -14,10 +14,10 @@ import os
 /// 5. The resulting ID token is returned for verification by the Typeflux backend.
 ///
 /// Configuration:
-/// - Set `GOOGLE_OAUTH_CLIENT_ID` in the environment (or via AppServerConfiguration)
-///   to a Desktop-type OAuth 2.0 client ID from Google Cloud Console.
-/// - No redirect URI registration is needed in Google Cloud Console — Desktop app
-///   clients automatically allow the reverse-client-ID scheme redirect.
+/// - Set `GOOGLE_OAUTH_CLIENT_ID` for Google Sign-In.
+/// - Set `GOOGLE_CLOUD_OAUTH_CLIENT_ID` for Google Cloud Speech authorization.
+/// - No redirect URI registration is needed for installed-app clients — Google accepts
+///   the reverse-client-ID scheme redirect used here.
 @MainActor
 struct GoogleOAuthService {
     private static let logger = Logger(subsystem: "dev.typeflux", category: "GoogleOAuthService")

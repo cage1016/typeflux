@@ -3633,6 +3633,15 @@ struct StudioView: View {
                             set: viewModel.setGoogleCloudProjectID,
                         ),
                     )
+                    StudioSuggestedTextInputCard(
+                        label: L("common.model"),
+                        placeholder: GoogleCloudSpeechDefaults.model,
+                        text: Binding(
+                            get: { viewModel.googleCloudModel },
+                            set: viewModel.setGoogleCloudModel,
+                        ),
+                        suggestions: GoogleCloudSpeechDefaults.suggestedModels,
+                    )
                     HStack(spacing: StudioTheme.Spacing.small) {
                         StudioButton(
                             title: viewModel.googleCloudOAuthAuthorized
@@ -3640,7 +3649,7 @@ struct StudioView: View {
                                 : L("settings.models.googleCloud.oauth.authorize"),
                             systemImage: "person.crop.circle.badge.checkmark",
                             variant: .secondary,
-                            isDisabled: AppServerConfiguration.googleOAuthClientID.isEmpty
+                            isDisabled: AppServerConfiguration.googleCloudOAuthClientID.isEmpty
                                 || viewModel.isAuthorizingGoogleCloudOAuth,
                             isLoading: viewModel.isAuthorizingGoogleCloudOAuth,
                         ) {
@@ -3659,18 +3668,6 @@ struct StudioView: View {
 
                         Spacer()
                     }
-                    Text(viewModel.googleCloudOAuthStatusText)
-                        .font(.studioBody(StudioTheme.Typography.caption))
-                        .foregroundStyle(StudioTheme.textSecondary)
-                    StudioSuggestedTextInputCard(
-                        label: L("common.model"),
-                        placeholder: GoogleCloudSpeechDefaults.model,
-                        text: Binding(
-                            get: { viewModel.googleCloudModel },
-                            set: viewModel.setGoogleCloudModel,
-                        ),
-                        suggestions: GoogleCloudSpeechDefaults.suggestedModels,
-                    )
                 }
 
             case .groqSTT:

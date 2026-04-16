@@ -605,7 +605,6 @@
 "settings.models.googleCloud.oauth.reauthorize" = "再認可";
 "settings.models.googleCloud.oauth.disconnect" = "切断";
 "settings.models.googleCloud.oauth.connected" = "Google 認可は接続済みです。Typeflux が Speech-to-Text のアクセストークンを自動更新します。";
-"settings.models.googleCloud.oauth.notConnected" = "保存された Google 認可はありません。アクセストークンまたは API Key を手動で貼り付けることもできます。";
 "settings.models.googleCloud.oauth.disconnected" = "Google 認可を切断しました。";
 "settings.models.googleCloud.cloudGatewayHint" = "Project ID と API Key を使って Google Cloud Speech-to-Text v2 StreamingRecognize を直接呼び出します。";
 "settings.models.useGoogleCloud" = "Google を使用";

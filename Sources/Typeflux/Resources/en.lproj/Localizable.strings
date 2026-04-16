@@ -607,7 +607,6 @@
 "settings.models.googleCloud.oauth.reauthorize" = "Reauthorize";
 "settings.models.googleCloud.oauth.disconnect" = "Disconnect";
 "settings.models.googleCloud.oauth.connected" = "Google authorization is connected. Typeflux will refresh the Speech-to-Text access token automatically.";
-"settings.models.googleCloud.oauth.notConnected" = "No Google authorization stored. You can still paste an access token or API key manually.";
 "settings.models.googleCloud.oauth.disconnected" = "Google authorization disconnected.";
 "settings.models.googleCloud.cloudGatewayHint" = "Uses Google Cloud Speech-to-Text v2 StreamingRecognize directly with your Project ID and API key.";
 "settings.models.useGoogleCloud" = "Use Google";

@@ -678,6 +678,12 @@ struct OnboardingView: View {
                     placeholder: "my-gcp-project",
                     text: $viewModel.googleCloudProjectID,
                 )
+                StudioSuggestedTextInputCard(
+                    label: L("common.model"),
+                    placeholder: GoogleCloudSpeechDefaults.model,
+                    text: $viewModel.googleCloudModel,
+                    suggestions: GoogleCloudSpeechDefaults.suggestedModels,
+                )
                 HStack(spacing: 12) {
                     StudioButton(
                         title: googleCloudOAuthAuthorized
@@ -685,7 +691,7 @@ struct OnboardingView: View {
                             : L("settings.models.googleCloud.oauth.authorize"),
                         systemImage: "person.crop.circle.badge.checkmark",
                         variant: .secondary,
-                        isDisabled: AppServerConfiguration.googleOAuthClientID.isEmpty || isAuthorizingGoogleCloudOAuth,
+                        isDisabled: AppServerConfiguration.googleCloudOAuthClientID.isEmpty || isAuthorizingGoogleCloudOAuth,
                         isLoading: isAuthorizingGoogleCloudOAuth,
                     ) {
                         authorizeGoogleCloudFromOnboarding()
@@ -705,18 +711,6 @@ struct OnboardingView: View {
 
                     Spacer()
                 }
-                Text(googleCloudOAuthAuthorized
-                    ? L("settings.models.googleCloud.oauth.connected")
-                    : L("settings.models.googleCloud.oauth.notConnected"))
-                    .font(.studioBody(12))
-                    .foregroundStyle(onboardingSecondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                StudioSuggestedTextInputCard(
-                    label: L("common.model"),
-                    placeholder: GoogleCloudSpeechDefaults.model,
-                    text: $viewModel.googleCloudModel,
-                    suggestions: GoogleCloudSpeechDefaults.suggestedModels,
-                )
             }
         }
     }
@@ -734,9 +728,9 @@ struct OnboardingView: View {
 
             do {
                 let token = try await GoogleOAuthService.authorizeGoogleCloud(
-                    clientID: AppServerConfiguration.googleOAuthClientID,
-                    clientSecret: AppServerConfiguration.googleOAuthClientSecret.isEmpty
-                        ? nil : AppServerConfiguration.googleOAuthClientSecret,
+                    clientID: AppServerConfiguration.googleCloudOAuthClientID,
+                    clientSecret: AppServerConfiguration.googleCloudOAuthClientSecret.isEmpty
+                        ? nil : AppServerConfiguration.googleCloudOAuthClientSecret,
                 )
                 GoogleCloudSpeechOAuthTokenStore.save(token)
                 viewModel.googleCloudAPIKey = ""

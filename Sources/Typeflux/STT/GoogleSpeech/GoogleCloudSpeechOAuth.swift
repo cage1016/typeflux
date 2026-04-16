@@ -90,8 +90,8 @@ enum GoogleCloudSpeechCredentialResolver {
 
     static func resolveCredential(
         manualCredential: String,
-        clientID: String = AppServerConfiguration.googleOAuthClientID,
-        clientSecret: String = AppServerConfiguration.googleOAuthClientSecret,
+        clientID: String = AppServerConfiguration.googleCloudOAuthClientID,
+        clientSecret: String = AppServerConfiguration.googleCloudOAuthClientSecret,
         tokenLoader: TokenLoader = GoogleCloudSpeechOAuthTokenStore.load,
         tokenSaver: TokenSaver = GoogleCloudSpeechOAuthTokenStore.save,
         tokenRefresher: TokenRefresher = GoogleOAuthService.refreshAccessToken,
