@@ -6,8 +6,10 @@ BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 DMG_PATH="${BUILD_DIR}/${APP_NAME}.dmg"
+ZIP_PATH="${BUILD_DIR}/${APP_NAME}.zip"
 NOTARY_POLL_INTERVAL_SECONDS="${NOTARY_POLL_INTERVAL_SECONDS:-15}"
 NOTARY_SUBMIT_RETRIES="${NOTARY_SUBMIT_RETRIES:-3}"
+NOTARY_KEYCHAIN="${NOTARY_KEYCHAIN:-}"
 
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-${APPLE_DISTRIBUTION:-}}"
 export CODESIGN_IDENTITY
@@ -40,6 +42,19 @@ parse_notary_field() {
   awk -F': ' -v key="$field_name" '$1 ~ key"$" {print $2; exit}' <<<"$raw_output"
 }
 
+run_notarytool() {
+  local subcommand="$1"
+  shift
+
+  local args=("$subcommand" "$@" --keychain-profile "$NOTARY_PROFILE")
+
+  if [[ -n "$NOTARY_KEYCHAIN" ]]; then
+    args+=(--keychain "$NOTARY_KEYCHAIN")
+  fi
+
+  xcrun notarytool "${args[@]}"
+}
+
 submit_for_notarization() {
   local attempt submit_log submit_output submission_id
 
@@ -47,7 +62,7 @@ submit_for_notarization() {
     log "Submitting ${DMG_PATH} for notarization (attempt ${attempt}/${NOTARY_SUBMIT_RETRIES})..."
     submit_log="$(mktemp)"
 
-    if xcrun notarytool submit "$DMG_PATH" --keychain-profile "$NOTARY_PROFILE" 2>&1 | tee "$submit_log" >&2; then
+    if run_notarytool submit "$DMG_PATH" 2>&1 | tee "$submit_log" >&2; then
       submit_output="$(<"$submit_log")"
       submission_id="$(parse_notary_field "id" "$submit_output")"
       rm -f "$submit_log"
@@ -81,7 +96,7 @@ wait_for_notarization() {
 
   while true; do
     info_output="$(
-      xcrun notarytool info "$submission_id" --keychain-profile "$NOTARY_PROFILE" 2>&1
+      run_notarytool info "$submission_id" 2>&1
     )"
     submission_status="$(parse_notary_field "status" "$info_output")"
 
@@ -98,7 +113,7 @@ wait_for_notarization() {
       *)
         echo "$info_output" >&2
         log "Fetching notarization log for ${submission_id}..."
-        xcrun notarytool log "$submission_id" --keychain-profile "$NOTARY_PROFILE" || true
+        run_notarytool log "$submission_id" || true
         fail "Notarization failed with status: ${submission_status}"
         ;;
     esac
@@ -113,6 +128,15 @@ staple_artifacts() {
   log "Stapling notarization ticket to ${DMG_PATH}..."
   xcrun stapler staple "$DMG_PATH"
   xcrun stapler validate "$DMG_PATH"
+}
+
+refresh_zip_archive() {
+  log "Refreshing ZIP archive after stapling..."
+  rm -f "$ZIP_PATH"
+  (
+    cd "$BUILD_DIR"
+    ditto -c -k --sequesterRsrc --keepParent "$APP_NAME.app" "$APP_NAME.zip"
+  )
 }
 
 main() {
@@ -139,9 +163,11 @@ main() {
 
   wait_for_notarization "$submission_id"
   staple_artifacts
+  refresh_zip_archive
 
   log "Release workflow completed successfully."
   log "App: ${APP_BUNDLE}"
+  log "ZIP: ${ZIP_PATH}"
   log "DMG: ${DMG_PATH}"
 }
 
