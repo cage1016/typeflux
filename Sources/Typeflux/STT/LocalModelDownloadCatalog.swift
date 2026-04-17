@@ -2,6 +2,7 @@ import Foundation
 
 enum LocalModelDownloadCatalog {
     private static let huggingFaceEndpoint = "https://huggingface.co"
+    private static let huggingFaceChinaMirrorEndpoint = "https://hf-mirror.com"
     private static let whisperKitRepositoryID = "argmaxinc/whisperkit-coreml"
     private static let whisperKitDefaultModelName = "whisperkit-medium"
     private static let sherpaOnnxRuntimeRootDirectory = "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts"
@@ -16,30 +17,41 @@ enum LocalModelDownloadCatalog {
         whisperKitRepositoryID
     }
 
-    static func whisperKitModelRepositoryURL(source _: ModelDownloadSource) -> URL {
-        URL(string: "\(huggingFaceEndpoint)/\(whisperKitRepositoryID)")!
+    static func whisperKitModelRepositoryURL(source: ModelDownloadSource) -> URL {
+        URL(string: "\(whisperKitModelEndpoint(source: source))/\(whisperKitRepositoryID)")!
     }
 
-    static func whisperKitModelEndpoint(source _: ModelDownloadSource) -> String {
-        huggingFaceEndpoint
+    static func whisperKitModelEndpoint(source: ModelDownloadSource) -> String {
+        switch source {
+        case .huggingFace:
+            huggingFaceEndpoint
+        case .modelScope:
+            huggingFaceChinaMirrorEndpoint
+        }
     }
 
-    static func sherpaOnnxRuntimeArchiveURL(source _: ModelDownloadSource) -> URL {
-        URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/\(sherpaOnnxRuntimeRootDirectory).tar.bz2")!
+    static func sherpaOnnxRuntimeArchiveURL(source: ModelDownloadSource) -> URL {
+        let archiveName = "\(sherpaOnnxRuntimeRootDirectory).tar.bz2"
+        switch source {
+        case .huggingFace:
+            return URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/\(archiveName)")!
+        case .modelScope:
+            return URL(string: "https://sourceforge.net/projects/sherpa-onnx.mirror/files/v1.12.35/\(archiveName)/download")!
+        }
     }
 
     static var sherpaOnnxRuntimeDirectoryName: String {
         sherpaOnnxRuntimeRootDirectory
     }
 
-    static func sherpaOnnxModelArchiveURL(for model: LocalSTTModel, source _: ModelDownloadSource) -> URL? {
+    static func sherpaOnnxModelArchiveURL(for model: LocalSTTModel, source: ModelDownloadSource) -> URL? {
         switch model {
         case .whisperLocal, .whisperLocalLarge:
             nil
         case .senseVoiceSmall:
-            URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/\(senseVoiceRootDirectory).tar.bz2")!
+            sherpaOnnxASRModelArchiveURL(archiveName: "\(senseVoiceRootDirectory).tar.bz2", source: source)
         case .qwen3ASR:
-            URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/\(qwen3ASRRootDirectory).tar.bz2")!
+            sherpaOnnxASRModelArchiveURL(archiveName: "\(qwen3ASRRootDirectory).tar.bz2", source: source)
         }
     }
 
@@ -51,6 +63,15 @@ enum LocalModelDownloadCatalog {
             senseVoiceRootDirectory
         case .qwen3ASR:
             qwen3ASRRootDirectory
+        }
+    }
+
+    private static func sherpaOnnxASRModelArchiveURL(archiveName: String, source: ModelDownloadSource) -> URL {
+        switch source {
+        case .huggingFace:
+            URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/\(archiveName)")!
+        case .modelScope:
+            URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/\(archiveName)")!
         }
     }
 }

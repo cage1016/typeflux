@@ -74,6 +74,32 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .whisperLocal, source: .huggingFace))
     }
 
+    func testDownloadCatalogProvidesChinaMirrorLocations() throws {
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperKitModelRepository(source: .modelScope),
+            "argmaxinc/whisperkit-coreml",
+        )
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: .modelScope).absoluteString,
+            "https://hf-mirror.com/argmaxinc/whisperkit-coreml",
+        )
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperKitModelEndpoint(source: .modelScope),
+            "https://hf-mirror.com",
+        )
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .modelScope).absoluteString,
+            "https://sourceforge.net/projects/sherpa-onnx.mirror/files/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2/download",
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(
+                for: .senseVoiceSmall,
+                source: .modelScope,
+            )).absoluteString,
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2",
+        )
+    }
+
     func testSenseVoiceSmallRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
         XCTAssertEqual(layout.requiredRelativePaths.count, 5)
