@@ -6,6 +6,15 @@ BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 APP_EXECUTABLE="${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+ZIP_PATH="${BUILD_DIR}/${APP_NAME}.zip"
+
+create_zip_archive() {
+  rm -f "$ZIP_PATH"
+  (
+    cd "$BUILD_DIR"
+    ditto -c -k --sequesterRsrc --keepParent "$APP_NAME.app" "$APP_NAME.zip"
+  )
+}
 
 echo "Building Typeflux release bundle..."
 
@@ -51,13 +60,7 @@ elif command -v codesign >/dev/null 2>&1; then
   echo "Signed with ad-hoc identity"
 fi
 
-# Create a ZIP archive for distribution
-ZIP_PATH="${BUILD_DIR}/${APP_NAME}.zip"
-rm -f "$ZIP_PATH"
-(
-  cd "$BUILD_DIR"
-  ditto -c -k --sequesterRsrc --keepParent "$APP_NAME.app" "$APP_NAME.zip"
-)
+create_zip_archive
 
 echo "Release bundle created: $APP_BUNDLE"
 echo "Release archive created: $ZIP_PATH"

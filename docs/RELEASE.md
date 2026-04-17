@@ -6,6 +6,84 @@ For a command-by-command overview, see [MAKE_COMMANDS.md](./MAKE_COMMANDS.md).
 
 ## Recommended Release Path
 
+For official GitHub releases, publish a GitHub Release. The `Release` workflow
+then builds the macOS app, signs it with a Developer ID Application certificate,
+notarizes it with Apple, packages it into a DMG, and uploads `Typeflux.dmg` and
+`Typeflux.zip` as release assets.
+
+For local release validation, use the one-step notarized release command:
+
+```bash
+make release-notarize
+```
+
+## GitHub Actions Release Workflow
+
+The workflow in `.github/workflows/release.yml` runs when a GitHub Release is
+published. It requires the repository secrets below.
+
+### Required GitHub Actions Secrets
+
+| Secret | What it is | Format |
+| --- | --- | --- |
+| `APPLE_CERTIFICATE_BASE64` | Base64-encoded `.p12` export of the Developer ID Application certificate and private key used for macOS distribution signing. | Single-line base64 text |
+| `APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` certificate from Keychain Access. | Plain secret value |
+| `APPLE_TEAM_ID` | Apple Developer Team ID for the account that owns the certificate and notarization credentials. | 10-character team ID |
+| `CODESIGN_IDENTITY` | Exact signing identity name used by `codesign`. | `Developer ID Application: Name (TEAMID)` |
+| `NOTARYTOOL_APPLE_ID` | Apple ID email address used for notarization. | Apple ID email |
+| `NOTARYTOOL_PASSWORD` | App-specific password for the Apple ID used by `notarytool`. | App-specific password |
+
+### Creating the Certificate Secret
+
+1. In Apple Developer, open **Certificates, Identifiers & Profiles**.
+2. Create or select a **Developer ID Application** certificate for the target team.
+3. Install the certificate on a trusted Mac so it appears in Keychain Access with
+   its private key.
+4. In Keychain Access, select the certificate and private key together.
+5. Choose **File > Export Items...** and save as `developer-id-application.p12`.
+6. Set a strong export password. Save this password as
+   `APPLE_CERTIFICATE_PASSWORD`.
+7. Encode the `.p12` file:
+
+```bash
+base64 -i developer-id-application.p12 | pbcopy
+```
+
+8. Save the copied single-line value as `APPLE_CERTIFICATE_BASE64`.
+
+### Finding the Signing Identity
+
+On the Mac that has the certificate installed, run:
+
+```bash
+security find-identity -v -p codesigning
+```
+
+Copy the exact Developer ID Application identity, for example:
+
+```text
+Developer ID Application: Example Company, Inc. (ABCDE12345)
+```
+
+Save that value as `CODESIGN_IDENTITY`.
+
+### Creating Notarization Credentials
+
+1. Confirm the Apple account has access to the same Apple Developer team.
+2. Find the team ID in Apple Developer under **Membership details**. Save it as
+   `APPLE_TEAM_ID`.
+3. Create an app-specific password at
+   `https://account.apple.com/account/manage`.
+4. Save the Apple ID email as `NOTARYTOOL_APPLE_ID`.
+5. Save the app-specific password as `NOTARYTOOL_PASSWORD`.
+
+The workflow stores those credentials in a temporary runner keychain profile
+named `typeflux-release` before calling `scripts/release_notarize.sh`.
+The temporary keychain password is generated inside the workflow run and does
+not need to be configured as a repository secret.
+
+## Local Release Path
+
 The preferred release flow is the one-step notarized release command:
 
 ```bash
@@ -52,11 +130,14 @@ Optional overrides:
 export CODESIGN_IDENTITY="$APPLE_DISTRIBUTION"
 export NOTARY_SUBMIT_RETRIES=3
 export NOTARY_POLL_INTERVAL_SECONDS=15
+export NOTARY_KEYCHAIN="/path/to/custom.keychain-db"
 ```
 
 Notes:
 
 - `CODESIGN_IDENTITY` takes priority over `APPLE_DISTRIBUTION`
+- `NOTARY_KEYCHAIN` is optional and only needed when the notary profile lives in
+  a non-default keychain
 - the release script retries transient notarization submission failures
 - if Apple returns a submission ID and the local client times out afterward, the script continues tracking that submission instead of restarting blindly
 

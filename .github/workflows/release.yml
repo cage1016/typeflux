@@ -1,16 +1,33 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types:
+      - published
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-signed-macos-app:
     runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_NAME: Typeflux
+      APPLE_CERTIFICATE_PATH: ${{ runner.temp }}/developer-id-application.p12
+      BUILD_DIR: .build/release
+      CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+      KEYCHAIN_PATH: ${{ runner.temp }}/typeflux-release.keychain-db
+      NOTARY_KEYCHAIN: ${{ runner.temp }}/typeflux-release.keychain-db
+      NOTARY_PROFILE: typeflux-release
+      NOTARYTOOL_APPLE_ID: ${{ secrets.NOTARYTOOL_APPLE_ID }}
+      NOTARYTOOL_PASSWORD: ${{ secrets.NOTARYTOOL_PASSWORD }}
+      NOTARY_SUBMIT_RETRIES: 3
+      NOTARY_POLL_INTERVAL_SECONDS: 15
 
     steps:
       - name: Checkout
@@ -19,18 +36,74 @@ jobs:
       - name: Install create-dmg
         run: brew install create-dmg
 
-      - name: Build release bundle
-        run: ./scripts/build_release.sh
+      - name: Import Developer ID certificate
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
 
-      - name: Build DMG installer
-        run: ./scripts/build_dmg.sh
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
 
-      - name: Create GitHub Release
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$APPLE_CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$APPLE_CERTIFICATE_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+
+      - name: Configure Apple notarization profile
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --apple-id "$NOTARYTOOL_APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$NOTARYTOOL_PASSWORD" \
+            --keychain "$KEYCHAIN_PATH"
+
+      - name: Build, sign, notarize, staple, and package
+        run: ./scripts/release_notarize.sh
+
+      - name: Verify release artifacts
+        run: |
+          set -euo pipefail
+
+          test -f "$BUILD_DIR/$APP_NAME.dmg"
+          test -f "$BUILD_DIR/$APP_NAME.zip"
+          codesign --verify --deep --strict --verbose=2 "$BUILD_DIR/$APP_NAME.app"
+          spctl --assess --type execute --verbose=4 "$BUILD_DIR/$APP_NAME.app"
+          xcrun stapler validate "$BUILD_DIR/$APP_NAME.dmg"
+
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name }}
           files: |
             .build/release/Typeflux.zip
             .build/release/Typeflux.dmg
-          generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup signing keychain
+        if: always()
+        run: |
+          set -euo pipefail
+
+          security delete-keychain "$KEYCHAIN_PATH" || true
+          rm -f "$APPLE_CERTIFICATE_PATH"
