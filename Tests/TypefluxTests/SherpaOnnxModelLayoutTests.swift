@@ -38,12 +38,20 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         )
     }
 
-    func testSenseVoiceSmallModelArchiveURL() throws {
+    func testSenseVoiceSmallUsesDirectFilesForHuggingFace() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
-        XCTAssertEqual(
-            try XCTUnwrap(layout.modelArchiveURL).absoluteString,
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2",
-        )
+
+        guard case let .files(files) = layout.modelArtifact else {
+            return XCTFail("Expected Hugging Face SenseVoice layout to use extracted files")
+        }
+
+        XCTAssertNil(layout.modelArchiveURL)
+        XCTAssertEqual(files.map(\.relativePath), [
+            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx",
+            "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt",
+        ])
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.hasPrefix("https://huggingface.co/") })
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.contains("/resolve/main/") })
     }
 
     func testDownloadCatalogProvidesLocalModelDownloadLocations() throws {
@@ -64,13 +72,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
             LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .huggingFace).absoluteString,
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2",
         )
-        XCTAssertEqual(
-            try XCTUnwrap(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(
-                for: .senseVoiceSmall,
-                source: .huggingFace,
-            )).absoluteString,
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2",
-        )
+        XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .senseVoiceSmall, source: .huggingFace))
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .whisperLocal, source: .huggingFace))
     }
 
@@ -95,6 +97,29 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .qwen3ASR, source: .modelScope))
     }
 
+    func testDownloadCatalogProvidesWhisperTokenizerMirrorURLs() throws {
+        XCTAssertEqual(
+            LocalModelDownloadCatalog.whisperTokenizerRepositoryID(for: "medium"),
+            "openai/whisper-medium",
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(LocalModelDownloadCatalog.whisperTokenizerFileURL(
+                for: "medium",
+                fileName: "tokenizer.json",
+                source: .modelScope,
+            )).absoluteString,
+            "https://hf-mirror.com/openai/whisper-medium/resolve/main/tokenizer.json",
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(LocalModelDownloadCatalog.whisperTokenizerFileURL(
+                for: "large-v3",
+                fileName: "tokenizer_config.json",
+                source: .modelScope,
+            )).absoluteString,
+            "https://hf-mirror.com/openai/whisper-large-v3/resolve/main/tokenizer_config.json",
+        )
+    }
+
     func testModelScopeSenseVoiceUsesExtractedFilesFromChinaMirror() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall, downloadSource: .modelScope))
 
@@ -108,6 +133,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         ])
         XCTAssertTrue(files.allSatisfy { $0.url.host != "github.com" })
         XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.hasPrefix("https://hf-mirror.com/") })
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.contains("/resolve/main/") })
     }
 
     func testModelScopeQwen3ASRUsesExtractedFilesFromDomesticSources() throws {

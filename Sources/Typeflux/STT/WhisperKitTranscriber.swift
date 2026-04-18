@@ -10,6 +10,7 @@ final class WhisperKitTranscriber: Transcriber {
     private let modelRepo: String?
     private let modelEndpoint: String?
     private let modelFolder: String?
+    private let tokenizerFolder: URL?
     private let pipelineLock = NSLock()
     private var pipeline: WhisperKit?
     private var pipelineLoadTask: Task<WhisperKit, Error>?
@@ -26,12 +27,14 @@ final class WhisperKitTranscriber: Transcriber {
         modelRepo: String? = nil,
         modelEndpoint: String? = nil,
         modelFolder: String? = nil,
+        tokenizerFolder: URL? = nil,
     ) {
         self.modelName = modelName
         self.downloadBase = downloadBase
         self.modelRepo = modelRepo
         self.modelEndpoint = modelEndpoint
         self.modelFolder = modelFolder
+        self.tokenizerFolder = tokenizerFolder ?? Self.defaultTokenizerFolder(for: modelFolder)
     }
 
     var resolvedModelFolderPath: String? {
@@ -124,13 +127,14 @@ final class WhisperKitTranscriber: Transcriber {
             return existingTask
         }
 
-        let task = Task { [modelName, downloadBase, modelRepo, modelEndpoint, modelFolder] in
+        let task = Task { [modelName, downloadBase, modelRepo, modelEndpoint, modelFolder, tokenizerFolder] in
             try await WhisperKit(WhisperKitConfig(
                 model: modelName,
                 downloadBase: downloadBase,
                 modelRepo: modelRepo,
                 modelEndpoint: modelEndpoint,
                 modelFolder: modelFolder,
+                tokenizerFolder: tokenizerFolder,
                 verbose: false,
             ))
         }
@@ -151,6 +155,23 @@ final class WhisperKitTranscriber: Transcriber {
         pipelineLoadTask = nil
         pipelineLock.unlock()
     }
+
+    private static func defaultTokenizerFolder(for modelFolder: String?) -> URL? {
+        guard let modelFolder else {
+            return nil
+        }
+
+        var currentURL = URL(fileURLWithPath: modelFolder, isDirectory: true)
+        while currentURL.path != "/" {
+            if currentURL.lastPathComponent == "models" {
+                return currentURL.deletingLastPathComponent()
+            }
+            currentURL.deleteLastPathComponent()
+        }
+
+        return nil
+    }
 }
 
 extension WhisperKitTranscriber: LocalWhisperKitTranscribing {}
+extension WhisperKitTranscriber: WhisperKitPreparing {}

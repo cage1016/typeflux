@@ -106,6 +106,7 @@ struct SherpaOnnxModelLayout {
         requiredRelativePaths.allSatisfy { relativePath in
             hasUsableItem(
                 at: storageURL.appendingPathComponent(relativePath, isDirectory: false),
+                relativePath: relativePath,
                 fileManager: fileManager,
             )
         }
@@ -113,11 +114,12 @@ struct SherpaOnnxModelLayout {
 
     func hasUsableRuntimeExecutable(storageURL: URL, fileManager: FileManager = .default) -> Bool {
         let executableURL = runtimeExecutableURL(storageURL: storageURL)
+        let relativePath = "\(runtimeRootDirectory)/bin/sherpa-onnx-offline"
         return fileManager.isExecutableFile(atPath: executableURL.path)
-            && hasUsableItem(at: executableURL, fileManager: fileManager)
+            && hasUsableItem(at: executableURL, relativePath: relativePath, fileManager: fileManager)
     }
 
-    private func hasUsableItem(at url: URL, fileManager: FileManager) -> Bool {
+    private func hasUsableItem(at url: URL, relativePath: String, fileManager: FileManager) -> Bool {
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
             return false
@@ -133,10 +135,61 @@ struct SherpaOnnxModelLayout {
         }
 
         guard url.lastPathComponent == "sherpa-onnx-offline" || url.pathExtension == "dylib" else {
-            return true
+            return hasValidModelAsset(at: url, relativePath: relativePath, fileManager: fileManager)
         }
 
         return hasExecutableFileFormat(at: url)
+    }
+
+    private func hasValidModelAsset(at url: URL, relativePath: String, fileManager: FileManager) -> Bool {
+        switch relativePath {
+        case let path where path.hasSuffix("/tokens.txt"):
+            return hasValidSenseVoiceTokensFile(at: url)
+        case let path where path.hasSuffix("/model.int8.onnx"):
+            return hasValidSenseVoiceModelFile(at: url, fileManager: fileManager)
+        default:
+            return true
+        }
+    }
+
+    private func hasValidSenseVoiceTokensFile(at url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url),
+              let prefix = String(data: data.prefix(256), encoding: .utf8)?
+              .trimmingCharacters(in: .whitespacesAndNewlines)
+        else {
+            return false
+        }
+
+        guard !isMirrorErrorResponse(prefix) else {
+            return false
+        }
+
+        return prefix.contains("<unk> 0")
+    }
+
+    private func hasValidSenseVoiceModelFile(at url: URL, fileManager: FileManager) -> Bool {
+        let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+        let fileSize = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+        guard fileSize >= 1_000_000 else {
+            guard let data = try? Data(contentsOf: url),
+                  let prefix = String(data: data.prefix(256), encoding: .utf8)?
+                  .trimmingCharacters(in: .whitespacesAndNewlines)
+            else {
+                return false
+            }
+
+            return !isMirrorErrorResponse(prefix)
+        }
+
+        return true
+    }
+
+    private func isMirrorErrorResponse(_ text: String) -> Bool {
+        text.contains("Invalid rev id:")
+            || text.contains("Repository Not Found")
+            || text.contains("Access to model")
+            || text.hasPrefix("<!DOCTYPE html")
+            || text.hasPrefix("<html")
     }
 
     private func hasExecutableFileFormat(at url: URL) -> Bool {
@@ -222,6 +275,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         }
 
         try fileManager.createDirectory(at: storageURL, withIntermediateDirectories: true)
+        try? pruneRuntimePayload(in: storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
         if layout.isInstalled(storageURL: storageURL, fileManager: fileManager) {
             return storageURL.path
         }
@@ -232,12 +286,16 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             storagePath: storageURL.path,
             source: nil,
         ))
+        NetworkDebugLogger.logMessage(
+            "[Local Model Download] model=\(model.displayName) source=\(downloadSource.displayName) kind=sherpa-runtime url=\(layout.runtimeArchiveURL.absoluteString)"
+        )
         try await downloadAndExtract(
             archiveURL: layout.runtimeArchiveURL,
             destinationURL: storageURL,
             extractedRootDirectoryName: layout.runtimeRootDirectory,
             archiveFileName: "\(layout.runtimeRootDirectory).tar.bz2",
         )
+        try pruneRuntimePayload(in: storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
 
         onUpdate?(LocalSTTPreparationUpdate(
             message: L("localSTT.prepare.modelDownloading", model.displayName),
@@ -245,6 +303,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             storagePath: storageURL.path,
             source: nil,
         ))
+        logModelArtifactDownload(modelArtifact: layout.modelArtifact, model: model, source: downloadSource)
         try await prepareModelArtifact(
             layout.modelArtifact,
             destinationURL: storageURL,
@@ -267,6 +326,25 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         ))
 
         return storageURL.path
+    }
+
+    private func logModelArtifactDownload(
+        modelArtifact: SherpaOnnxModelArtifact,
+        model: LocalSTTModel,
+        source: ModelDownloadSource,
+    ) {
+        switch modelArtifact {
+        case let .archive(url, fileName):
+            NetworkDebugLogger.logMessage(
+                "[Local Model Download] model=\(model.displayName) source=\(source.displayName) kind=model-archive file=\(fileName) url=\(url.absoluteString)"
+            )
+        case let .files(files):
+            for file in files {
+                NetworkDebugLogger.logMessage(
+                    "[Local Model Download] model=\(model.displayName) source=\(source.displayName) kind=model-file path=\(file.relativePath) url=\(file.url.absoluteString)"
+                )
+            }
+        }
     }
 
     private func downloadAndExtract(
@@ -311,6 +389,96 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
 
             try? fileManager.removeItem(at: localArchiveURL)
             try? fileManager.removeItem(at: temporaryDirectory)
+        }
+    }
+
+    private func pruneRuntimePayload(in runtimeRootURL: URL) throws {
+        guard fileManager.fileExists(atPath: runtimeRootURL.path) else {
+            return
+        }
+
+        let binDirectoryURL = runtimeRootURL.appendingPathComponent("bin", isDirectory: true)
+        if fileManager.fileExists(atPath: binDirectoryURL.path) {
+            for itemURL in try fileManager.contentsOfDirectory(
+                at: binDirectoryURL,
+                includingPropertiesForKeys: nil,
+            ) where itemURL.lastPathComponent != "sherpa-onnx-offline" {
+                try? fileManager.removeItem(at: itemURL)
+            }
+        }
+
+        let includeDirectoryURL = runtimeRootURL.appendingPathComponent("include", isDirectory: true)
+        if fileManager.fileExists(atPath: includeDirectoryURL.path) {
+            try? fileManager.removeItem(at: includeDirectoryURL)
+        }
+
+        let libDirectoryURL = runtimeRootURL.appendingPathComponent("lib", isDirectory: true)
+        guard fileManager.fileExists(atPath: libDirectoryURL.path) else {
+            try removeEmptyRuntimeDirectories(in: runtimeRootURL)
+            return
+        }
+
+        let versionedLibraryURL = libDirectoryURL.appendingPathComponent(
+            LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName,
+            isDirectory: false,
+        )
+        let compatibilityLibraryURL = libDirectoryURL.appendingPathComponent("libonnxruntime.dylib", isDirectory: false)
+
+        if !fileManager.fileExists(atPath: versionedLibraryURL.path),
+           fileManager.fileExists(atPath: compatibilityLibraryURL.path)
+        {
+            try fileManager.copyItem(at: compatibilityLibraryURL, to: versionedLibraryURL)
+        }
+
+        if fileManager.fileExists(atPath: compatibilityLibraryURL.path) {
+            try? fileManager.removeItem(at: compatibilityLibraryURL)
+        }
+
+        if fileManager.fileExists(atPath: versionedLibraryURL.path) {
+            try fileManager.createSymbolicLink(
+                atPath: compatibilityLibraryURL.path,
+                withDestinationPath: LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName,
+            )
+        }
+
+        let keepLibraryNames: Set<String> = [
+            "libsherpa-onnx-c-api.dylib",
+            "libonnxruntime.dylib",
+            LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName,
+        ]
+        for itemURL in try fileManager.contentsOfDirectory(
+            at: libDirectoryURL,
+            includingPropertiesForKeys: nil,
+        ) where !keepLibraryNames.contains(itemURL.lastPathComponent) {
+            try? fileManager.removeItem(at: itemURL)
+        }
+
+        try removeEmptyRuntimeDirectories(in: runtimeRootURL)
+    }
+
+    private func removeEmptyRuntimeDirectories(in runtimeRootURL: URL) throws {
+        guard let enumerator = fileManager.enumerator(
+            at: runtimeRootURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [],
+        ) else {
+            return
+        }
+
+        var directories: [URL] = []
+        for case let url as URL in enumerator {
+            let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
+            if values?.isDirectory == true {
+                directories.append(url)
+            }
+        }
+
+        for directoryURL in directories.sorted(by: { $0.path.count > $1.path.count }) {
+            if let contents = try? fileManager.contentsOfDirectory(atPath: directoryURL.path),
+               contents.isEmpty
+            {
+                try? fileManager.removeItem(at: directoryURL)
+            }
         }
     }
 

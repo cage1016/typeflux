@@ -1,51 +1,152 @@
 import Foundation
 
 enum LocalModelDownloadCatalog {
-    private static let huggingFaceEndpoint = "https://huggingface.co"
-    private static let huggingFaceChinaMirrorEndpoint = "https://hf-mirror.com"
-    private static let whisperKitRepositoryID = "argmaxinc/whisperkit-coreml"
-    private static let whisperKitDefaultModelName = "whisperkit-medium"
-    private static let sherpaOnnxRuntimeRootDirectory = "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts"
-    private static let senseVoiceRootDirectory = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
-    private static let qwen3ASRRootDirectory = "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25"
-    private static let senseVoiceMirrorRepositoryID =
-        "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
-    private static let qwen3ASROnnxModelScopeRepositoryID = "zengshuishui/Qwen3-ASR-onnx"
-    private static let qwen3ASRTokenizerModelScopeRepositoryID = "Qwen/Qwen3-ASR-0.6B"
+    /// Centralized download metadata for bundled STT models.
+    ///
+    /// The public API intentionally stays small because callers only need a handful of
+    /// answers: where WhisperKit lives, where the Sherpa runtime archive lives, and how
+    /// a specific Sherpa model should be downloaded for a given source.
+    ///
+    /// The data is intentionally written in a "catalog" style: most URLs are listed here
+    /// as complete values instead of being assembled from smaller parts. This makes the
+    /// supported download locations easier to audit and update.
 
-    static var whisperKitDefaultModelIdentifier: String {
-        whisperKitDefaultModelName
+    private struct WhisperKitSourceDescriptor {
+        let repositoryID: String
+        let endpointKey: LocalModelDownloadURLCatalog.Key
+        let repositoryURLKey: LocalModelDownloadURLCatalog.Key
     }
 
-    static func whisperKitModelRepository(source _: ModelDownloadSource) -> String {
-        whisperKitRepositoryID
+    private enum WhisperKitCatalog {
+        static let defaultModelIdentifier = "whisperkit-medium"
+        static let repositoryID = "argmaxinc/whisperkit-coreml"
+        static let tokenizerRepositoryIDsByModelName: [String: String] = [
+            "tiny": "openai/whisper-tiny",
+            "tiny.en": "openai/whisper-tiny.en",
+            "base": "openai/whisper-base",
+            "base.en": "openai/whisper-base.en",
+            "small": "openai/whisper-small",
+            "small.en": "openai/whisper-small.en",
+            "medium": "openai/whisper-medium",
+            "medium.en": "openai/whisper-medium.en",
+            "large": "openai/whisper-large",
+            "large-v2": "openai/whisper-large-v2",
+            "large-v3": "openai/whisper-large-v3",
+        ]
+
+        static let sources: [ModelDownloadSource: WhisperKitSourceDescriptor] = [
+            .huggingFace: WhisperKitSourceDescriptor(
+                repositoryID: repositoryID,
+                endpointKey: .whisperKitHuggingFaceEndpoint,
+                repositoryURLKey: .whisperKitHuggingFaceRepository
+            ),
+            .modelScope: WhisperKitSourceDescriptor(
+                repositoryID: repositoryID,
+                endpointKey: .whisperKitChinaMirrorEndpoint,
+                repositoryURLKey: .whisperKitChinaMirrorRepository
+            ),
+        ]
+    }
+
+    private enum SherpaOnnxRuntimeCatalog {
+        static let rootDirectory = "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts"
+        static let onnxRuntimeVersionedLibraryName = "libonnxruntime.1.23.2.dylib"
+        static let archiveURLKeys: [ModelDownloadSource: LocalModelDownloadURLCatalog.Key] = [
+            .huggingFace: .sherpaOnnxRuntimeHuggingFaceArchive,
+            .modelScope: .sherpaOnnxRuntimeChinaMirrorArchive,
+        ]
+    }
+
+    private struct SherpaOnnxFileDescriptor {
+        let urlKey: LocalModelDownloadURLCatalog.Key
+        let destinationPath: String
+
+        func makeFile() -> SherpaOnnxModelFile {
+            SherpaOnnxModelFile(
+                url: LocalModelDownloadURLCatalog.url(for: urlKey),
+                relativePath: destinationPath,
+            )
+        }
+    }
+
+    private enum SherpaOnnxDelivery {
+        /// Use the upstream pre-packaged model archive as-is.
+        case archive(urlKey: LocalModelDownloadURLCatalog.Key, fileName: String)
+        /// Rebuild the expected folder layout from individual files when a full archive is
+        /// not available or not practical from the selected domestic source.
+        case files([SherpaOnnxFileDescriptor])
+
+        func makeArtifact() -> SherpaOnnxModelArtifact {
+            switch self {
+            case let .archive(urlKey, fileName):
+                return .archive(
+                    url: LocalModelDownloadURLCatalog.url(for: urlKey),
+                    fileName: fileName,
+                )
+            case let .files(files):
+                return .files(files.map { $0.makeFile() })
+            }
+        }
+    }
+
+    private struct SherpaOnnxModelDescriptor {
+        let rootDirectory: String
+        let deliveryBySource: [ModelDownloadSource: SherpaOnnxDelivery]
+
+        func artifact(for source: ModelDownloadSource) -> SherpaOnnxModelArtifact? {
+            deliveryBySource[source]?.makeArtifact()
+        }
+    }
+
+    static var whisperKitDefaultModelIdentifier: String {
+        WhisperKitCatalog.defaultModelIdentifier
+    }
+
+    static func whisperKitModelRepository(source: ModelDownloadSource) -> String {
+        WhisperKitCatalog.sources[source]?.repositoryID ?? WhisperKitCatalog.repositoryID
     }
 
     static func whisperKitModelRepositoryURL(source: ModelDownloadSource) -> URL {
-        URL(string: "\(whisperKitModelEndpoint(source: source))/\(whisperKitRepositoryID)")!
+        LocalModelDownloadURLCatalog.url(for: WhisperKitCatalog.sources[source]!.repositoryURLKey)
     }
 
     static func whisperKitModelEndpoint(source: ModelDownloadSource) -> String {
-        switch source {
-        case .huggingFace:
-            huggingFaceEndpoint
-        case .modelScope:
-            huggingFaceChinaMirrorEndpoint
+        LocalModelDownloadURLCatalog.url(for: WhisperKitCatalog.sources[source]!.endpointKey).absoluteString
+    }
+
+    static func whisperTokenizerRepositoryID(for modelName: String) -> String? {
+        WhisperKitCatalog.tokenizerRepositoryIDsByModelName[modelName]
+    }
+
+    static func whisperTokenizerFileURL(
+        for modelName: String,
+        fileName: String,
+        source: ModelDownloadSource,
+    ) -> URL? {
+        guard let repositoryID = whisperTokenizerRepositoryID(for: modelName) else {
+            return nil
         }
+
+        var url = URL(string: whisperKitModelEndpoint(source: source))!
+        for component in repositoryID.split(separator: "/") {
+            url.appendPathComponent(String(component), isDirectory: false)
+        }
+        url.appendPathComponent("resolve", isDirectory: false)
+        url.appendPathComponent("main", isDirectory: false)
+        url.appendPathComponent(fileName, isDirectory: false)
+        return url
     }
 
     static func sherpaOnnxRuntimeArchiveURL(source: ModelDownloadSource) -> URL {
-        let archiveName = "\(sherpaOnnxRuntimeRootDirectory).tar.bz2"
-        switch source {
-        case .huggingFace:
-            return URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/\(archiveName)")!
-        case .modelScope:
-            return URL(string: "https://sourceforge.net/projects/sherpa-onnx.mirror/files/v1.12.35/\(archiveName)/download")!
-        }
+        LocalModelDownloadURLCatalog.url(for: SherpaOnnxRuntimeCatalog.archiveURLKeys[source]!)
     }
 
     static var sherpaOnnxRuntimeDirectoryName: String {
-        sherpaOnnxRuntimeRootDirectory
+        SherpaOnnxRuntimeCatalog.rootDirectory
+    }
+
+    static var sherpaOnnxRuntimeVersionedLibraryName: String {
+        SherpaOnnxRuntimeCatalog.onnxRuntimeVersionedLibraryName
     }
 
     static func sherpaOnnxModelArchiveURL(for model: LocalSTTModel, source: ModelDownloadSource) -> URL? {
@@ -56,100 +157,83 @@ enum LocalModelDownloadCatalog {
         for model: LocalSTTModel,
         source: ModelDownloadSource,
     ) -> SherpaOnnxModelArtifact? {
-        switch (model, source) {
-        case (.whisperLocal, _), (.whisperLocalLarge, _):
-            nil
-        case (.senseVoiceSmall, .huggingFace):
-            .archive(
-                url: sherpaOnnxASRModelArchiveURL(archiveName: "\(senseVoiceRootDirectory).tar.bz2"),
-                fileName: "\(senseVoiceRootDirectory).tar.bz2",
-            )
-        case (.qwen3ASR, .huggingFace):
-            .archive(
-                url: sherpaOnnxASRModelArchiveURL(archiveName: "\(qwen3ASRRootDirectory).tar.bz2"),
-                fileName: "\(qwen3ASRRootDirectory).tar.bz2",
-            )
-        case (.senseVoiceSmall, .modelScope):
-            .files([
-                sherpaOnnxFile(
-                    resolveBaseURL: huggingFaceChinaMirrorEndpoint,
-                    repositoryID: senseVoiceMirrorRepositoryID,
-                    sourcePath: "model.int8.onnx",
-                    destinationPath: "\(senseVoiceRootDirectory)/model.int8.onnx",
-                ),
-                sherpaOnnxFile(
-                    resolveBaseURL: huggingFaceChinaMirrorEndpoint,
-                    repositoryID: senseVoiceMirrorRepositoryID,
-                    sourcePath: "tokens.txt",
-                    destinationPath: "\(senseVoiceRootDirectory)/tokens.txt",
-                ),
-            ])
-        case (.qwen3ASR, .modelScope):
-            .files([
-                sherpaOnnxFile(
-                    resolveBaseURL: "https://modelscope.cn/models",
-                    repositoryID: qwen3ASROnnxModelScopeRepositoryID,
-                    sourcePath: "model_0.6B/conv_frontend.onnx",
-                    destinationPath: "\(qwen3ASRRootDirectory)/conv_frontend.onnx",
-                ),
-                sherpaOnnxFile(
-                    resolveBaseURL: "https://modelscope.cn/models",
-                    repositoryID: qwen3ASROnnxModelScopeRepositoryID,
-                    sourcePath: "model_0.6B/encoder.int8.onnx",
-                    destinationPath: "\(qwen3ASRRootDirectory)/encoder.int8.onnx",
-                ),
-                sherpaOnnxFile(
-                    resolveBaseURL: "https://modelscope.cn/models",
-                    repositoryID: qwen3ASROnnxModelScopeRepositoryID,
-                    sourcePath: "model_0.6B/decoder.int8.onnx",
-                    destinationPath: "\(qwen3ASRRootDirectory)/decoder.int8.onnx",
-                ),
-                sherpaOnnxFile(
-                    resolveBaseURL: "https://modelscope.cn/models",
-                    repositoryID: qwen3ASRTokenizerModelScopeRepositoryID,
-                    sourcePath: "merges.txt",
-                    destinationPath: "\(qwen3ASRRootDirectory)/tokenizer/merges.txt",
-                ),
-                sherpaOnnxFile(
-                    resolveBaseURL: "https://modelscope.cn/models",
-                    repositoryID: qwen3ASRTokenizerModelScopeRepositoryID,
-                    sourcePath: "tokenizer_config.json",
-                    destinationPath: "\(qwen3ASRRootDirectory)/tokenizer/tokenizer_config.json",
-                ),
-                sherpaOnnxFile(
-                    resolveBaseURL: "https://modelscope.cn/models",
-                    repositoryID: qwen3ASRTokenizerModelScopeRepositoryID,
-                    sourcePath: "vocab.json",
-                    destinationPath: "\(qwen3ASRRootDirectory)/tokenizer/vocab.json",
-                ),
-            ])
-        }
+        sherpaOnnxModelDescriptor(for: model)?.artifact(for: source)
     }
 
     static func sherpaOnnxModelDirectoryName(for model: LocalSTTModel) -> String? {
+        sherpaOnnxModelDescriptor(for: model)?.rootDirectory
+    }
+
+    private static func sherpaOnnxModelDescriptor(for model: LocalSTTModel) -> SherpaOnnxModelDescriptor? {
         switch model {
         case .whisperLocal, .whisperLocalLarge:
-            nil
+            return nil
         case .senseVoiceSmall:
-            senseVoiceRootDirectory
+            return senseVoiceDescriptor
         case .qwen3ASR:
-            qwen3ASRRootDirectory
+            return qwen3ASRDescriptor
         }
     }
 
-    private static func sherpaOnnxASRModelArchiveURL(archiveName: String) -> URL {
-        URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/\(archiveName)")!
-    }
+    private static let senseVoiceDescriptor = SherpaOnnxModelDescriptor(
+        rootDirectory: "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
+        deliveryBySource: [
+            .huggingFace: .files([
+                SherpaOnnxFileDescriptor(
+                    urlKey: .senseVoiceHuggingFaceModel,
+                    destinationPath: "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .senseVoiceHuggingFaceTokens,
+                    destinationPath: "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt",
+                ),
+            ]),
+            .modelScope: .files([
+                SherpaOnnxFileDescriptor(
+                    urlKey: .senseVoiceChinaMirrorModel,
+                    destinationPath: "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .senseVoiceChinaMirrorTokens,
+                    destinationPath: "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt",
+                ),
+            ]),
+        ],
+    )
 
-    private static func sherpaOnnxFile(
-        resolveBaseURL: String,
-        repositoryID: String,
-        sourcePath: String,
-        destinationPath: String,
-    ) -> SherpaOnnxModelFile {
-        SherpaOnnxModelFile(
-            url: URL(string: "\(resolveBaseURL)/\(repositoryID)/resolve/master/\(sourcePath)")!,
-            relativePath: destinationPath,
-        )
-    }
+    private static let qwen3ASRDescriptor = SherpaOnnxModelDescriptor(
+        rootDirectory: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25",
+        deliveryBySource: [
+            .huggingFace: .archive(
+                urlKey: .qwen3ASRHuggingFaceArchive,
+                fileName: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2"
+            ),
+            .modelScope: .files([
+                SherpaOnnxFileDescriptor(
+                    urlKey: .qwen3ASRModelScopeConvFrontend,
+                    destinationPath: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .qwen3ASRModelScopeEncoder,
+                    destinationPath: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/encoder.int8.onnx",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .qwen3ASRModelScopeDecoder,
+                    destinationPath: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/decoder.int8.onnx",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .qwen3ASRModelScopeTokenizerMerges,
+                    destinationPath: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/tokenizer/merges.txt",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .qwen3ASRModelScopeTokenizerConfig,
+                    destinationPath: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/tokenizer/tokenizer_config.json",
+                ),
+                SherpaOnnxFileDescriptor(
+                    urlKey: .qwen3ASRModelScopeTokenizerVocab,
+                    destinationPath: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/tokenizer/vocab.json",
+                ),
+            ]),
+        ],
+    )
 }

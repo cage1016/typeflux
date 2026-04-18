@@ -1,5 +1,18 @@
 import Foundation
 
+protocol WhisperKitPreparing {
+    var resolvedModelFolderPath: String? { get }
+    func prepare(onProgress: ((Double, String) -> Void)?) async throws
+}
+
+private struct HubRepositorySiblingsResponse: Decodable {
+    struct Sibling: Decodable {
+        let rfilename: String
+    }
+
+    let siblings: [Sibling]
+}
+
 struct LocalSTTPreparationUpdate {
     let message: String
     let progress: Double
@@ -56,8 +69,19 @@ protocol LocalSTTModelManaging {
 }
 
 final class LocalModelManager: LocalSTTModelManaging {
+    typealias WhisperKitPreparerFactory = @Sendable (String, URL, String, String) -> any WhisperKitPreparing
+    typealias LocalWhisperKitPreparerFactory = @Sendable (String, String, URL?) -> any WhisperKitPreparing
+    typealias RemoteFileLoader = @Sendable (URL) async throws -> Data
+    typealias RemoteRepositoryFileListLoader = @Sendable (URL) async throws -> [String]
+    typealias RemoteFileDownloader = @Sendable (URL, URL) async throws -> Void
+
     private let fileManager: FileManager
     private let sherpaOnnxInstaller: SherpaOnnxModelInstalling
+    private let whisperKitPreparerFactory: WhisperKitPreparerFactory
+    private let localWhisperKitPreparerFactory: LocalWhisperKitPreparerFactory
+    private let remoteFileLoader: RemoteFileLoader
+    private let remoteRepositoryFileListLoader: RemoteRepositoryFileListLoader
+    private let remoteFileDownloader: RemoteFileDownloader
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let _modelsRootURL: URL
@@ -67,11 +91,40 @@ final class LocalModelManager: LocalSTTModelManaging {
         fileManager: FileManager = .default,
         sherpaOnnxInstaller: SherpaOnnxModelInstalling? = nil,
         applicationSupportURL: URL? = nil,
+        whisperKitPreparerFactory: @escaping WhisperKitPreparerFactory = { modelName, downloadBase, modelRepo, modelEndpoint in
+            WhisperKitTranscriber(
+                modelName: modelName,
+                downloadBase: downloadBase,
+                modelRepo: modelRepo,
+                modelEndpoint: modelEndpoint,
+            )
+        },
+        localWhisperKitPreparerFactory: @escaping LocalWhisperKitPreparerFactory = { modelName, modelFolder, tokenizerFolder in
+            WhisperKitTranscriber(
+                modelName: modelName,
+                modelFolder: modelFolder,
+                tokenizerFolder: tokenizerFolder,
+            )
+        },
+        remoteFileLoader: @escaping RemoteFileLoader = { url in
+            try await LocalModelManager.defaultRemoteFileLoader(from: url)
+        },
+        remoteRepositoryFileListLoader: @escaping RemoteRepositoryFileListLoader = { url in
+            try await LocalModelManager.defaultRemoteRepositoryFileListLoader(from: url)
+        },
+        remoteFileDownloader: @escaping RemoteFileDownloader = { sourceURL, destinationURL in
+            try await LocalModelManager.defaultRemoteFileDownloader(from: sourceURL, to: destinationURL)
+        },
     ) {
         self.fileManager = fileManager
         self.sherpaOnnxInstaller = sherpaOnnxInstaller ?? SherpaOnnxModelInstaller(
             fileManager: fileManager,
         )
+        self.whisperKitPreparerFactory = whisperKitPreparerFactory
+        self.localWhisperKitPreparerFactory = localWhisperKitPreparerFactory
+        self.remoteFileLoader = remoteFileLoader
+        self.remoteRepositoryFileListLoader = remoteRepositoryFileListLoader
+        self.remoteFileDownloader = remoteFileDownloader
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let base = applicationSupportURL
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -182,11 +235,61 @@ final class LocalModelManager: LocalSTTModelManaging {
             source: configuration.downloadSource.displayName,
         ))
 
-        let transcriber = WhisperKitTranscriber(
+        try await prepareWhisperTokenizerIfNeeded(
             modelName: modelName,
-            downloadBase: URL(fileURLWithPath: downloadBasePath, isDirectory: true),
-            modelRepo: LocalModelDownloadCatalog.whisperKitModelRepository(source: configuration.downloadSource),
-            modelEndpoint: LocalModelDownloadCatalog.whisperKitModelEndpoint(source: configuration.downloadSource),
+            downloadSource: configuration.downloadSource,
+            downloadBasePath: downloadBasePath,
+        )
+
+        if let localModelFolderPath = try await prepareWhisperModelFilesIfNeeded(
+            modelName: modelName,
+            downloadSource: configuration.downloadSource,
+            downloadBasePath: downloadBasePath,
+            onUpdate: onUpdate,
+        ) {
+            let transcriber = localWhisperKitPreparerFactory(
+                modelName,
+                localModelFolderPath,
+                URL(fileURLWithPath: downloadBasePath, isDirectory: true),
+            )
+            NetworkDebugLogger.logMessage(
+                "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit-local modelFolder=\(localModelFolderPath)"
+            )
+            try await transcriber.prepare { progress, message in
+                let mapped = 0.2 + progress * 0.75
+                onUpdate?(LocalSTTPreparationUpdate(
+                    message: message,
+                    progress: mapped,
+                    storagePath: transcriber.resolvedModelFolderPath ?? localModelFolderPath,
+                    source: configuration.downloadSource.displayName,
+                ))
+            }
+
+            guard
+                let resolvedPath = transcriber.resolvedModelFolderPath,
+                isUsableWhisperKitModelFolder(resolvedPath)
+            else {
+                throw NSError(
+                    domain: "LocalModelManager",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+                )
+            }
+
+            return resolvedPath
+        }
+
+        let downloadBaseURL = URL(fileURLWithPath: downloadBasePath, isDirectory: true)
+        let modelRepo = LocalModelDownloadCatalog.whisperKitModelRepository(source: configuration.downloadSource)
+        let modelEndpoint = LocalModelDownloadCatalog.whisperKitModelEndpoint(source: configuration.downloadSource)
+        let transcriber = whisperKitPreparerFactory(
+            modelName,
+            downloadBaseURL,
+            modelRepo,
+            modelEndpoint,
+        )
+        NetworkDebugLogger.logMessage(
+            "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit endpoint=\(modelEndpoint) repository=\(LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: configuration.downloadSource).absoluteString)"
         )
         try await transcriber.prepare { progress, message in
             let mapped = 0.2 + progress * 0.75
@@ -291,6 +394,127 @@ final class LocalModelManager: LocalSTTModelManaging {
         try fileManager.removeItem(at: legacyRuntimeURL)
     }
 
+    private func prepareWhisperTokenizerIfNeeded(
+        modelName: String,
+        downloadSource: ModelDownloadSource,
+        downloadBasePath: String,
+    ) async throws {
+        guard downloadSource != .huggingFace else {
+            return
+        }
+
+        guard LocalModelDownloadCatalog.whisperTokenizerRepositoryID(for: modelName) != nil else {
+            return
+        }
+
+        let tokenizerFolderURL = whisperTokenizerFolderURL(for: modelName, downloadBasePath: downloadBasePath)
+        if isUsableWhisperTokenizerFolder(tokenizerFolderURL.path) {
+            return
+        }
+
+        try fileManager.createDirectory(at: tokenizerFolderURL, withIntermediateDirectories: true)
+        for fileName in ["tokenizer.json", "tokenizer_config.json"] {
+            guard let sourceURL = LocalModelDownloadCatalog.whisperTokenizerFileURL(
+                for: modelName,
+                fileName: fileName,
+                source: downloadSource,
+            ) else {
+                continue
+            }
+
+            NetworkDebugLogger.logMessage(
+                "[Local Model Download] kind=whisper-tokenizer source=\(downloadSource.displayName) model=\(modelName) url=\(sourceURL.absoluteString)"
+            )
+            let data = try await remoteFileLoader(sourceURL)
+            try data.write(
+                to: tokenizerFolderURL.appendingPathComponent(fileName, isDirectory: false),
+                options: .atomic,
+            )
+        }
+    }
+
+    private func prepareWhisperModelFilesIfNeeded(
+        modelName: String,
+        downloadSource: ModelDownloadSource,
+        downloadBasePath: String,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws -> String? {
+        guard downloadSource != .huggingFace else {
+            return nil
+        }
+
+        let modelFolderURL = whisperModelFolderURL(for: modelName, downloadBasePath: downloadBasePath)
+        if isUsableWhisperKitModelFolder(modelFolderURL.path) {
+            return modelFolderURL.path
+        }
+
+        let repositoryFilesURL = whisperModelRepositoryFilesURL(source: downloadSource)
+        let expectedPrefix = whisperModelDirectoryName(for: modelName) + "/"
+        let remoteFiles = try await remoteRepositoryFileListLoader(repositoryFilesURL)
+            .filter { $0.hasPrefix(expectedPrefix) }
+            .sorted()
+
+        guard !remoteFiles.isEmpty else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: 4,
+                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+            )
+        }
+
+        try fileManager.createDirectory(at: modelFolderURL, withIntermediateDirectories: true)
+        let resolveBaseURL = LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: downloadSource)
+            .appendingPathComponent("resolve", isDirectory: true)
+            .appendingPathComponent("main", isDirectory: true)
+        let localRepositoryRootURL = whisperModelRepositoryRootURL(downloadBasePath: downloadBasePath)
+
+        for (index, relativePath) in remoteFiles.enumerated() {
+            let sourceURL = relativePath
+                .split(separator: "/")
+                .reduce(resolveBaseURL) { partialURL, component in
+                    partialURL.appendingPathComponent(String(component), isDirectory: false)
+                }
+            let destinationFileURL = relativePath
+                .split(separator: "/")
+                .reduce(localRepositoryRootURL) { partialURL, component in
+                    partialURL.appendingPathComponent(String(component), isDirectory: false)
+                }
+
+            if isUsableDownloadedWhisperFile(at: destinationFileURL) {
+                continue
+            }
+
+            try fileManager.createDirectory(
+                at: destinationFileURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+            )
+
+            let progressBase = Double(index) / Double(max(remoteFiles.count, 1))
+            onUpdate?(LocalSTTPreparationUpdate(
+                message: L("localSTT.prepare.whisperDownloading", modelName),
+                progress: 0.2 + progressBase * 0.6,
+                storagePath: modelFolderURL.path,
+                source: downloadSource.displayName,
+            ))
+            NetworkDebugLogger.logMessage(
+                "[Local Model Download] kind=whisper-model-file source=\(downloadSource.displayName) model=\(modelName) path=\(relativePath) url=\(sourceURL.absoluteString)"
+            )
+            try await RequestRetry.perform(operationName: "WhisperKit model file download") { [self] in
+                try await remoteFileDownloader(sourceURL, destinationFileURL)
+            }
+        }
+
+        guard isUsableWhisperKitModelFolder(modelFolderURL.path) else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: 5,
+                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+            )
+        }
+
+        return modelFolderURL.path
+    }
+
     private func isPreparedStoragePathValid(_ storagePath: String, for model: LocalSTTModel) -> Bool {
         guard fileManager.fileExists(atPath: storagePath) else {
             return false
@@ -311,14 +535,126 @@ final class LocalModelManager: LocalSTTModelManaging {
     }
 
     private func isUsableWhisperKitModelFolder(_ storagePath: String) -> Bool {
-        ["MelSpectrogram", "AudioEncoder", "TextDecoder"].allSatisfy { modelName in
-            ["mlmodelc", "mlpackage"].contains { ext in
-                fileManager.fileExists(
-                    atPath: URL(fileURLWithPath: storagePath, isDirectory: true)
-                        .appendingPathComponent("\(modelName).\(ext)")
-                        .path,
-                )
+        ["MelSpectrogram", "AudioEncoder", "TextDecoder"].allSatisfy { component in
+            let baseURL = URL(fileURLWithPath: storagePath, isDirectory: true)
+            let compiledURL = baseURL.appendingPathComponent("\(component).mlmodelc", isDirectory: true)
+            let packageURL = baseURL.appendingPathComponent("\(component).mlpackage", isDirectory: true)
+
+            if fileManager.fileExists(atPath: compiledURL.path) {
+                let weightURL = compiledURL
+                    .appendingPathComponent("weights", isDirectory: true)
+                    .appendingPathComponent("weight.bin", isDirectory: false)
+                let modelURL = compiledURL.appendingPathComponent("model.mlmodel", isDirectory: false)
+                return isUsableDownloadedWhisperFile(at: weightURL)
+                    || isUsableDownloadedWhisperFile(at: modelURL)
             }
+
+            return fileManager.fileExists(atPath: packageURL.path)
         }
+    }
+
+    private func whisperModelDirectoryName(for modelName: String) -> String {
+        "openai_whisper-\(modelName)"
+    }
+
+    private func whisperModelRepositoryRootURL(downloadBasePath: String) -> URL {
+        let root = URL(fileURLWithPath: downloadBasePath, isDirectory: true)
+            .appendingPathComponent("models", isDirectory: true)
+        let repositoryID = LocalModelDownloadCatalog.whisperKitModelRepository(source: .huggingFace)
+        return repositoryID.split(separator: "/").reduce(root) { partialURL, component in
+            partialURL.appendingPathComponent(String(component), isDirectory: true)
+        }
+    }
+
+    private func whisperModelFolderURL(for modelName: String, downloadBasePath: String) -> URL {
+        whisperModelRepositoryRootURL(downloadBasePath: downloadBasePath)
+            .appendingPathComponent(whisperModelDirectoryName(for: modelName), isDirectory: true)
+    }
+
+    private func whisperModelRepositoryFilesURL(source: ModelDownloadSource) -> URL {
+        let endpoint = LocalModelDownloadCatalog.whisperKitModelEndpoint(source: source)
+        let repositoryID = LocalModelDownloadCatalog.whisperKitModelRepository(source: source)
+        return URL(string: "\(endpoint)/api/models/\(repositoryID)/revision/main")!
+    }
+
+    private func whisperTokenizerFolderURL(for modelName: String, downloadBasePath: String) -> URL {
+        let root = URL(fileURLWithPath: downloadBasePath, isDirectory: true)
+            .appendingPathComponent("models", isDirectory: true)
+        let repositoryID = LocalModelDownloadCatalog.whisperTokenizerRepositoryID(for: modelName) ?? modelName
+        return repositoryID.split(separator: "/").reduce(root) { partialURL, component in
+            partialURL.appendingPathComponent(String(component), isDirectory: true)
+        }
+    }
+
+    private func isUsableWhisperTokenizerFolder(_ storagePath: String) -> Bool {
+        ["tokenizer.json", "tokenizer_config.json"].allSatisfy { fileName in
+            fileManager.fileExists(
+                atPath: URL(fileURLWithPath: storagePath, isDirectory: true)
+                    .appendingPathComponent(fileName, isDirectory: false)
+                    .path,
+            )
+        }
+    }
+
+    private func isUsableDownloadedWhisperFile(at url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+            return false
+        }
+
+        let fileSize = (try? fileManager.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
+        return fileSize > 0
+    }
+
+    private static func defaultRemoteFileLoader(from url: URL) async throws -> Data {
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Tokenizer download returned a non-HTTP response."],
+            )
+        }
+        guard (200 ..< 300).contains(http.statusCode) else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Tokenizer download failed with status \(http.statusCode)."],
+            )
+        }
+        return data
+    }
+
+    private static func defaultRemoteRepositoryFileListLoader(from url: URL) async throws -> [String] {
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: 6,
+                userInfo: [NSLocalizedDescriptionKey: "WhisperKit repository listing request failed."],
+            )
+        }
+
+        let payload = try JSONDecoder().decode(HubRepositorySiblingsResponse.self, from: data)
+        return payload.siblings.map(\.rfilename)
+    }
+
+    private static func defaultRemoteFileDownloader(from sourceURL: URL, to destinationURL: URL) async throws {
+        var request = URLRequest(url: sourceURL)
+        request.timeoutInterval = 300
+        let (temporaryURL, response) = try await URLSession.shared.download(for: request)
+        guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: 7,
+                userInfo: [NSLocalizedDescriptionKey: "WhisperKit model file download failed."],
+            )
+        }
+
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: destinationURL.path) {
+            try fileManager.removeItem(at: destinationURL)
+        }
+        try fileManager.moveItem(at: temporaryURL, to: destinationURL)
     }
 }
