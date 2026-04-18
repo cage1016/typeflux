@@ -735,6 +735,9 @@
 "settings.advanced.agentFramework.title" = "Enable Agent framework";
 "settings.advanced.agentFramework.subtitle" = "Use the multi-turn Agent loop for Ask Anything. Supports tool calling and MCP server integration.";
 
+"settings.advanced.stubbornPasteFallback.title" = "Launcher & hotkey-window compatibility";
+"settings.advanced.stubbornPasteFallback.subtitle" = "Activate the target app and send Cmd+V as a real keystroke so insertion works in launcher and hotkey-window apps such as Alfred, Raycast, Warp, and iTerm2. Disable if you see conflicts with other keyboard tools.";
+
 "agent.section.general" = "General";
 "agent.general.enabled.title" = "Enable Agent";
 "agent.general.enabled.subtitle" = "Controls the execution flow of Ask Anything. When enabled, Ask Anything is significantly enhanced.";

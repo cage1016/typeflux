@@ -733,6 +733,9 @@
 "settings.advanced.agentFramework.title" = "에이전트 프레임워크 활성화";
 "settings.advanced.agentFramework.subtitle" = "무엇이든 물어보세요에 다중 턴 에이전트 루프를 사용하세요. 도구 호출 및 MCP 서버 통합을 지원합니다.";
 
+"settings.advanced.stubbornPasteFallback.title" = "런처·단축키 창 호환 모드";
+"settings.advanced.stubbornPasteFallback.subtitle" = "대상 앱을 활성화하고 Cmd+V를 실제 키 입력처럼 보내 Alfred, Raycast, Warp, iTerm2 등 런처나 단축키 창에서도 텍스트를 입력할 수 있게 합니다. 다른 키보드 도구와 충돌하면 끄세요.";
+
 "agent.section.general" = "일반";
 "agent.general.enabled.title" = "에이전트 활성화";
 "agent.general.enabled.subtitle" = "무엇이든 물어보세요의 실행 흐름을 제어합니다. 활성화되면 무엇이든 물어보세요 기능이 크게 향상됩니다.";

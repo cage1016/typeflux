@@ -353,6 +353,92 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertEqual(result, .failure("focused-element-not-editable"))
     }
 
+    func testShouldActivateTargetBeforePasteReturnsFalseWhenFlagDisabled() {
+        let result = AXTextInjector.shouldActivateTargetBeforePaste(
+            flagEnabled: false,
+            targetProcessID: 42,
+            frontmostProcessID: 99,
+        )
+
+        XCTAssertFalse(result)
+    }
+
+    func testShouldActivateTargetBeforePasteReturnsFalseWhenTargetMatchesFrontmost() {
+        let result = AXTextInjector.shouldActivateTargetBeforePaste(
+            flagEnabled: true,
+            targetProcessID: 42,
+            frontmostProcessID: 42,
+        )
+
+        XCTAssertFalse(result)
+    }
+
+    func testShouldActivateTargetBeforePasteReturnsFalseWhenTargetProcessIDMissing() {
+        let result = AXTextInjector.shouldActivateTargetBeforePaste(
+            flagEnabled: true,
+            targetProcessID: nil,
+            frontmostProcessID: 42,
+        )
+
+        XCTAssertFalse(result)
+    }
+
+    func testShouldActivateTargetBeforePasteReturnsTrueWhenTargetDiffersFromFrontmost() {
+        let result = AXTextInjector.shouldActivateTargetBeforePaste(
+            flagEnabled: true,
+            targetProcessID: 42,
+            frontmostProcessID: 99,
+        )
+
+        XCTAssertTrue(result)
+    }
+
+    func testShouldActivateTargetBeforePasteReturnsTrueWhenFrontmostIsNil() {
+        let result = AXTextInjector.shouldActivateTargetBeforePaste(
+            flagEnabled: true,
+            targetProcessID: 42,
+            frontmostProcessID: nil,
+        )
+
+        XCTAssertTrue(result)
+    }
+
+    func testPasteEventDispatchMethodUsesHIDTapWhenFlagEnabled() {
+        let result = AXTextInjector.pasteEventDispatchMethod(
+            flagEnabled: true,
+            targetProcessID: 42,
+        )
+
+        XCTAssertEqual(result, .hidTap)
+    }
+
+    func testPasteEventDispatchMethodUsesHIDTapWhenFlagEnabledAndTargetMissing() {
+        let result = AXTextInjector.pasteEventDispatchMethod(
+            flagEnabled: true,
+            targetProcessID: nil,
+        )
+
+        XCTAssertEqual(result, .hidTap)
+    }
+
+    func testPasteEventDispatchMethodUsesPostToPidWhenFlagDisabledAndTargetAvailable() {
+        let result = AXTextInjector.pasteEventDispatchMethod(
+            flagEnabled: false,
+            targetProcessID: 42,
+        )
+
+        XCTAssertEqual(result, .postToPid)
+    }
+
+    func testPasteEventDispatchMethodFallsBackToHIDTapWhenFlagDisabledAndTargetMissing() {
+        let result = AXTextInjector.pasteEventDispatchMethod(
+            flagEnabled: false,
+            targetProcessID: nil,
+        )
+
+        XCTAssertEqual(result, .hidTap)
+    }
+
     func testEvaluatePasteVerificationIsIndeterminateWhenReadableTextIsUnchangedOnHeuristicTarget() {
         let before = CurrentInputTextSnapshot(
             processID: 42,

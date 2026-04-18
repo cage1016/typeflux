@@ -735,6 +735,9 @@
 "settings.advanced.agentFramework.title" = "启用 Agent 框架";
 "settings.advanced.agentFramework.subtitle" = "为「随便问」功能启用多轮 Agent 循环，支持工具调用和 MCP 服务器集成。";
 
+"settings.advanced.stubbornPasteFallback.title" = "启动器与悬浮窗口兼容";
+"settings.advanced.stubbornPasteFallback.subtitle" = "激活目标应用并以真实按键方式发送 Cmd+V，让 Alfred、Raycast、Warp、iTerm2 等启动器或热键悬浮窗口能正常插入文本。若与其他键盘工具冲突，可关闭此选项。";
+
 "agent.section.general" = "通用";
 "agent.general.enabled.title" = "启用 Agent";
 "agent.general.enabled.subtitle" = "此选项控制「随便问」功能的执行流程。启用后，「随便问」功能将得到显著增强。";

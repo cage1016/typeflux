@@ -733,6 +733,9 @@
 "settings.advanced.agentFramework.title" = "エージェントフレームワークを有効にする";
 "settings.advanced.agentFramework.subtitle" = "「何でも質問」にはマルチターンのエージェント ループを使用します。ツールの呼び出しと MCP サーバーの統合をサポートします。";
 
+"settings.advanced.stubbornPasteFallback.title" = "ランチャー・ホットキーウィンドウ互換モード";
+"settings.advanced.stubbornPasteFallback.subtitle" = "対象アプリをアクティブ化し、Cmd+V を実際のキー入力として送信することで、Alfred、Raycast、Warp、iTerm2 などのランチャーやホットキー ウィンドウにもテキストを挿入できるようにします。他のキーボードツールと競合する場合はオフにしてください。";
+
 "agent.section.general" = "一般";
 "agent.general.enabled.title" = "エージェントを有効にする";
 "agent.general.enabled.subtitle" = "「Ask Anything」の実行フローを制御します。有効にすると、「何でも質問」が大幅に強化されます。";

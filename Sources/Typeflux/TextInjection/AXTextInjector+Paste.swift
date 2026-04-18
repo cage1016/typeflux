@@ -178,6 +178,7 @@ extension AXTextInjector {
         let pasteboard = NSPasteboard.general
         let previousSnapshot = capturePasteboardSnapshot(from: pasteboard)
         let strictFallbackEnabled = settingsStore?.strictEditApplyFallbackEnabled ?? false
+        let stubbornPasteFallbackEnabled = settingsStore?.stubbornPasteFallbackEnabled ?? false
         let replacementContext = replaceSelection ? activeSelectionContext() : nil
 
         let targetPID: pid_t?
@@ -189,6 +190,19 @@ extension AXTextInjector {
         } else {
             targetPID = frontmostProcessID()
         }
+
+        if Self.shouldActivateTargetBeforePaste(
+            flagEnabled: stubbornPasteFallbackEnabled,
+            targetProcessID: targetPID,
+            frontmostProcessID: frontmostProcessID(),
+        ) {
+            activateTargetProcess(targetPID)
+        }
+
+        let dispatchMethod = Self.pasteEventDispatchMethod(
+            flagEnabled: stubbornPasteFallbackEnabled,
+            targetProcessID: targetPID,
+        )
 
         let initialSnapshot = readCurrentInputTextSnapshot()
         let beforeSnapshot = initialSnapshot.isEditable ? initialSnapshot : nil
@@ -205,6 +219,8 @@ extension AXTextInjector {
             [Text Injection] paste start
             replaceSelection: \(replaceSelection)
             strictFallbackEnabled: \(strictFallbackEnabled)
+            stubbornPasteFallbackEnabled: \(stubbornPasteFallbackEnabled)
+            dispatchMethod: \(dispatchMethod)
             targetPID: \(targetPID.map(String.init) ?? "nil")
             contextAlreadyRestored: \(contextAlreadyRestored)
             initialSnapshot: \(snapshotSummary(initialSnapshot))
@@ -239,10 +255,16 @@ extension AXTextInjector {
         let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
         vUp?.flags = .maskCommand
 
-        if let targetPID {
-            vDown?.postToPid(targetPID)
-            vUp?.postToPid(targetPID)
-        } else {
+        switch dispatchMethod {
+        case .postToPid:
+            if let targetPID {
+                vDown?.postToPid(targetPID)
+                vUp?.postToPid(targetPID)
+            } else {
+                vDown?.post(tap: .cghidEventTap)
+                vUp?.post(tap: .cghidEventTap)
+            }
+        case .hidTap:
             vDown?.post(tap: .cghidEventTap)
             vUp?.post(tap: .cghidEventTap)
         }
@@ -425,6 +447,22 @@ extension AXTextInjector {
             delayNanoseconds: Self.legacyPasteRestoreDelayNanoseconds,
         )
         return nil
+    }
+
+    func activateTargetProcess(_ processID: pid_t?) {
+        guard let processID,
+              let app = NSRunningApplication(processIdentifier: processID)
+        else { return }
+
+        app.activate(options: [.activateIgnoringOtherApps])
+
+        let deadline = Date().addingTimeInterval(0.6)
+        while Date() < deadline {
+            usleep(50_000)
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier == processID {
+                return
+            }
+        }
     }
 
     func sendCopyShortcut(to processID: pid_t?) {

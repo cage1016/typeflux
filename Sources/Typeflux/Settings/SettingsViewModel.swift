@@ -114,6 +114,7 @@ final class StudioViewModel: ObservableObject {
     @Published var automaticVocabularyCollectionEnabled: Bool
     @Published var autoUpdateEnabled: Bool
 
+    @Published var stubbornPasteFallbackEnabled: Bool
     @Published var agentFrameworkEnabled: Bool
     @Published var agentEnabled: Bool
     @Published var agentStepLoggingEnabled: Bool
@@ -280,6 +281,7 @@ final class StudioViewModel: ObservableObject {
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         automaticVocabularyCollectionEnabled = settingsStore.automaticVocabularyCollectionEnabled
         autoUpdateEnabled = settingsStore.autoUpdateEnabled
+        stubbornPasteFallbackEnabled = settingsStore.stubbornPasteFallbackEnabled
         agentFrameworkEnabled = settingsStore.agentFrameworkEnabled
         agentEnabled = settingsStore.agentEnabled
         agentStepLoggingEnabled = settingsStore.agentStepLoggingEnabled
@@ -1099,6 +1101,13 @@ final class StudioViewModel: ObservableObject {
         } else {
             AutoUpdater.shared.stopAutoCheck()
         }
+    }
+
+    // MARK: - Text Injection
+
+    func setStubbornPasteFallbackEnabled(_ value: Bool) {
+        stubbornPasteFallbackEnabled = value
+        settingsStore.stubbornPasteFallbackEnabled = value
     }
 
     // MARK: - Agent Framework

@@ -1407,6 +1407,24 @@ struct StudioView: View {
                         Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                         StudioSettingRow(
+                            title: L("settings.advanced.stubbornPasteFallback.title"),
+                            subtitle: L("settings.advanced.stubbornPasteFallback.subtitle"),
+                            badge: "Beta",
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.stubbornPasteFallbackEnabled },
+                                    set: viewModel.setStubbornPasteFallbackEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
                             title: L("settings.models.appleFallback"),
                             subtitle: L("settings.models.appleFallback.detail"),
                         ) {

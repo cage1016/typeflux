@@ -12,6 +12,16 @@ extension SettingsStore {
         }
     }
 
+    var stubbornPasteFallbackEnabled: Bool {
+        get {
+            let stored = defaults.object(forKey: "feature.stubbornPasteFallbackEnabled")
+            return stored == nil ? true : defaults.bool(forKey: "feature.stubbornPasteFallbackEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "feature.stubbornPasteFallbackEnabled")
+        }
+    }
+
     var agentFrameworkEnabled: Bool {
         get { defaults.bool(forKey: "agent.frameworkEnabled") }
         set {

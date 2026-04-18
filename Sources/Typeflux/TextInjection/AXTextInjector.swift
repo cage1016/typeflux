@@ -115,6 +115,38 @@ final class AXTextInjector: TextInjector {
         case indeterminate
     }
 
+    enum PasteDispatchMethod: Equatable {
+        case postToPid
+        case hidTap
+    }
+
+    /// When enabled, we re-activate the target process if it is not currently the
+    /// frontmost app, so that panel-style windows (Alfred, Raycast, Warp/iTerm2
+    /// hotkey windows, ...) remain key and the synthesized Cmd+V reaches the
+    /// correct window.
+    static func shouldActivateTargetBeforePaste(
+        flagEnabled: Bool,
+        targetProcessID: pid_t?,
+        frontmostProcessID: pid_t?,
+    ) -> Bool {
+        guard flagEnabled, let target = targetProcessID else { return false }
+        return target != frontmostProcessID
+    }
+
+    /// When the stubborn-paste flag is on, route Cmd+V through the HID tap so the
+    /// event behaves like a real physical keystroke and survives non-standard
+    /// event pipelines (Electron, NSPanel hotkey windows, etc.). Otherwise keep
+    /// the process-scoped delivery that has been the default.
+    static func pasteEventDispatchMethod(
+        flagEnabled: Bool,
+        targetProcessID: pid_t?,
+    ) -> PasteDispatchMethod {
+        if flagEnabled {
+            return .hidTap
+        }
+        return targetProcessID != nil ? .postToPid : .hidTap
+    }
+
     static func shouldAllowClipboardSelectionReplacementWithoutAXBaseline(
         replaceSelection: Bool,
         selectionSource: String?,
