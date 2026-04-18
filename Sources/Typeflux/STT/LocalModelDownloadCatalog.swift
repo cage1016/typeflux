@@ -114,6 +114,34 @@ enum LocalModelDownloadCatalog {
         LocalModelDownloadURLCatalog.url(for: WhisperKitCatalog.sources[source]!.endpointKey).absoluteString
     }
 
+    static func downloadSources(for model: LocalSTTModel) -> [ModelDownloadSource] {
+        switch model {
+        case .whisperLocal, .whisperLocalLarge, .senseVoiceSmall, .qwen3ASR:
+            [.huggingFace, .modelScope]
+        }
+    }
+
+    static func probeURLs(for model: LocalSTTModel, source: ModelDownloadSource) -> [URL] {
+        switch model {
+        case .whisperLocal, .whisperLocalLarge:
+            [whisperKitModelRepositoryURL(source: source)]
+        case .senseVoiceSmall:
+            [
+                sherpaOnnxRuntimeArchiveURL(source: source),
+                LocalModelDownloadURLCatalog.url(for: source == .huggingFace
+                    ? .senseVoiceHuggingFaceModel
+                    : .senseVoiceChinaMirrorModel),
+            ]
+        case .qwen3ASR:
+            switch source {
+            case .huggingFace:
+                [LocalModelDownloadURLCatalog.url(for: .qwen3ASRHuggingFaceArchive)]
+            case .modelScope:
+                [LocalModelDownloadURLCatalog.url(for: .qwen3ASRModelScopeEncoder)]
+            }
+        }
+    }
+
     static func whisperTokenizerRepositoryID(for modelName: String) -> String? {
         WhisperKitCatalog.tokenizerRepositoryIDsByModelName[modelName]
     }

@@ -25,6 +25,11 @@ struct LocalSTTPreparedModelInfo {
     let sourceDisplayName: String
 }
 
+private struct LocalModelDownloadResult {
+    let storagePath: String
+    let source: ModelDownloadSource
+}
+
 private struct LocalModelPreparedRecord: Codable {
     let model: String
     let modelIdentifier: String
@@ -82,6 +87,7 @@ final class LocalModelManager: LocalSTTModelManaging {
     private let remoteFileLoader: RemoteFileLoader
     private let remoteRepositoryFileListLoader: RemoteRepositoryFileListLoader
     private let remoteFileDownloader: RemoteFileDownloader
+    private let downloadSourceResolver: LocalModelDownloadSourceResolving
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let _modelsRootURL: URL
@@ -115,6 +121,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         remoteFileDownloader: @escaping RemoteFileDownloader = { sourceURL, destinationURL in
             try await LocalModelManager.defaultRemoteFileDownloader(from: sourceURL, to: destinationURL)
         },
+        downloadSourceResolver: LocalModelDownloadSourceResolving = NetworkLocalModelDownloadSourceResolver(),
     ) {
         self.fileManager = fileManager
         self.sherpaOnnxInstaller = sherpaOnnxInstaller ?? SherpaOnnxModelInstaller(
@@ -125,6 +132,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         self.remoteFileLoader = remoteFileLoader
         self.remoteRepositoryFileListLoader = remoteRepositoryFileListLoader
         self.remoteFileDownloader = remoteFileDownloader
+        self.downloadSourceResolver = downloadSourceResolver
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let base = applicationSupportURL
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -142,12 +150,12 @@ final class LocalModelManager: LocalSTTModelManaging {
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
     ) async throws {
         let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
-        let resultPath = try await downloadModelFilesOnly(configuration: configuration, onUpdate: onUpdate)
+        let result = try await downloadModelFiles(configuration: configuration, onUpdate: onUpdate)
         let record = LocalModelPreparedRecord(
             model: configuration.model.rawValue,
             modelIdentifier: configuration.modelIdentifier,
-            storagePath: resultPath,
-            source: configuration.downloadSource.rawValue,
+            storagePath: result.storagePath,
+            source: result.source.rawValue,
             preparedAt: Date(),
         )
         try savePreparedRecord(record, for: configuration.model)
@@ -160,6 +168,60 @@ final class LocalModelManager: LocalSTTModelManaging {
         configuration: LocalSTTConfiguration,
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
     ) async throws -> String {
+        try await downloadModelFiles(configuration: configuration, onUpdate: onUpdate).storagePath
+    }
+
+    private func downloadModelFiles(
+        configuration: LocalSTTConfiguration,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
+    ) async throws -> LocalModelDownloadResult {
+        let sources = await downloadSourceResolver.rankedSources(for: configuration)
+        var lastError: Error?
+
+        for source in sources {
+            do {
+                let sourceConfiguration = LocalSTTConfiguration(
+                    model: configuration.model,
+                    modelIdentifier: configuration.modelIdentifier,
+                    downloadSource: source,
+                    autoSetup: configuration.autoSetup,
+                )
+                let storagePath = try await downloadModelFilesOnly(
+                    configuration: sourceConfiguration,
+                    selectedSource: source,
+                    onUpdate: onUpdate,
+                )
+                return LocalModelDownloadResult(storagePath: storagePath, source: source)
+            } catch {
+                lastError = error
+                NetworkDebugLogger.logError(
+                    context: "[Local Model Download] source failed: \(source.displayName)",
+                    error: error,
+                )
+                let attemptedPath = storagePath(for: LocalSTTConfiguration(
+                    model: configuration.model,
+                    modelIdentifier: configuration.modelIdentifier,
+                    downloadSource: source,
+                    autoSetup: configuration.autoSetup,
+                ))
+                if !isPreparedStoragePathValid(attemptedPath, for: configuration.model) {
+                    try? fileManager.removeItem(at: URL(fileURLWithPath: attemptedPath, isDirectory: true))
+                }
+            }
+        }
+
+        throw lastError ?? NSError(
+            domain: "LocalModelManager",
+            code: 8,
+            userInfo: [NSLocalizedDescriptionKey: "All local model download sources failed."],
+        )
+    }
+
+    private func downloadModelFilesOnly(
+        configuration: LocalSTTConfiguration,
+        selectedSource: ModelDownloadSource,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws -> String {
         let downloadBasePath = storagePath(for: configuration)
         var resultPath = downloadBasePath
 
@@ -167,7 +229,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             message: L("localSTT.prepare.cleaningLegacyRuntime"),
             progress: 0.05,
             storagePath: resultPath,
-            source: nil,
+            source: selectedSource.displayName,
         ))
         try? cleanupLegacyPythonRuntime()
 
@@ -192,7 +254,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                     message: update.message,
                     progress: update.progress,
                     storagePath: update.storagePath,
-                    source: configuration.downloadSource.displayName,
+                    source: selectedSource.displayName,
                 ))
             }
         }
@@ -207,7 +269,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             message: L("localSTT.prepare.runtimeReady", configuration.model.displayName),
             progress: 1,
             storagePath: resultPath,
-            source: configuration.downloadSource.displayName,
+            source: selectedSource.displayName,
         ))
 
         return resultPath
@@ -320,7 +382,6 @@ final class LocalModelManager: LocalSTTModelManaging {
         guard
             let record = loadPreparedRecord(for: configuration.model),
             record.modelIdentifier == configuration.modelIdentifier,
-            record.source == configuration.downloadSource.rawValue,
             isPreparedStoragePathValid(record.storagePath, for: configuration.model)
         else {
             return nil

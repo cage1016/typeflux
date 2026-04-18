@@ -231,7 +231,7 @@
 "localSTT.senseVoiceSmall.name" = "SenseVoice";
 "localSTT.senseVoiceSmall.summary" = "快速的多语言语音识别，对普通话、粤语、英语、日语和韩语支持较强。";
 "localSTT.senseVoiceSmall.parameterValue" = "234M";
-"localSTT.senseVoiceSmall.sizeValue" = "1.5 GB";
+"localSTT.senseVoiceSmall.sizeValue" = "350 MB";
 "localSTT.qwen3ASR.name" = "Qwen3-ASR";
 "localSTT.qwen3ASR.summary" = "更大的多语言 ASR 模型，语境理解更强，长语音识别质量更好。";
 "localSTT.qwen3ASR.parameterValue" = "0.6B";

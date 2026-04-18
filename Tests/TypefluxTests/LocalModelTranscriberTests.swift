@@ -93,6 +93,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             fileManager: .default,
             sherpaOnnxInstaller: fakeInstaller,
             applicationSupportURL: appSupportURL,
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
         )
 
         let updates = PreparationUpdateRecorder()
@@ -130,6 +131,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             fileManager: .default,
             sherpaOnnxInstaller: fakeInstaller,
             applicationSupportURL: appSupportURL,
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
         )
 
         try await manager.prepareModel(settingsStore: settingsStore)
@@ -139,6 +141,77 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertEqual(prepared?.storagePath, fakeInstaller.lastStorageURL?.path)
         XCTAssertEqual(fakeInstaller.lastPreparedModel, .qwen3ASR)
         XCTAssertTrue((prepared?.storagePath ?? "").hasPrefix(appSupportURL.path))
+    }
+
+    func testLocalModelManagerFallsBackToNextDownloadSource() async throws {
+        let appSupportURL = makeTemporaryApplicationSupportURL()
+        let fakeInstaller = FakeSherpaOnnxInstaller(failingSources: [.modelScope])
+        let manager = LocalModelManager(
+            fileManager: .default,
+            sherpaOnnxInstaller: fakeInstaller,
+            applicationSupportURL: appSupportURL,
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.modelScope, .huggingFace]),
+        )
+
+        let resolvedPath = try await manager.downloadModelFilesOnly(
+            configuration: LocalSTTConfiguration(
+                model: .senseVoiceSmall,
+                modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
+                downloadSource: .modelScope,
+                autoSetup: true,
+            ),
+        )
+
+        XCTAssertEqual(resolvedPath, fakeInstaller.lastStorageURL?.path)
+        XCTAssertEqual(fakeInstaller.preparedSources, [.modelScope, .huggingFace])
+        XCTAssertTrue(
+            SherpaOnnxModelLayout.layout(for: .senseVoiceSmall)!
+                .isInstalled(storageURL: URL(fileURLWithPath: resolvedPath, isDirectory: true))
+        )
+    }
+
+    func testNetworkDownloadSourceResolverRanksReachableSourcesByLatency() async throws {
+        let resolver = NetworkLocalModelDownloadSourceResolver { url in
+            let latency: TimeInterval
+            let reachable: Bool
+            if url.host == "sourceforge.net" || url.host == "hf-mirror.com" {
+                latency = 0.05
+                reachable = true
+            } else {
+                latency = 0.25
+                reachable = true
+            }
+            return LocalModelDownloadSourceCandidate(
+                source: .huggingFace,
+                latency: latency,
+                isReachable: reachable,
+            )
+        }
+
+        let sources = await resolver.rankedSources(for: LocalSTTConfiguration(
+            model: .senseVoiceSmall,
+            modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
+            downloadSource: .huggingFace,
+            autoSetup: true,
+        ))
+
+        XCTAssertEqual(sources.first, .modelScope)
+        XCTAssertEqual(sources, [.modelScope, .huggingFace])
+    }
+
+    func testNetworkDownloadSourceResolverKeepsFallbackSourcesWhenProbeFails() async throws {
+        let resolver = NetworkLocalModelDownloadSourceResolver { _ in
+            LocalModelDownloadSourceCandidate(source: .huggingFace, latency: nil, isReachable: false)
+        }
+
+        let sources = await resolver.rankedSources(for: LocalSTTConfiguration(
+            model: .whisperLocal,
+            modelIdentifier: LocalSTTModel.whisperLocal.defaultModelIdentifier,
+            downloadSource: .huggingFace,
+            autoSetup: true,
+        ))
+
+        XCTAssertEqual(sources, [.huggingFace, .modelScope])
     }
 
     func testLocalModelManagerPrefetchesWhisperTokenizerForDomesticSource() async throws {
@@ -169,6 +242,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             remoteFileDownloader: { sourceURL, destinationURL in
                 try await fileDownloader.download(from: sourceURL, to: destinationURL)
             },
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.modelScope]),
         )
 
         let resolvedPath = try await manager.downloadModelFilesOnly(
@@ -227,6 +301,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             remoteFileLoader: { url in
                 try await remoteLoader.load(from: url)
             },
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
         )
 
         let resolvedPath = try await manager.downloadModelFilesOnly(
@@ -259,6 +334,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             fileManager: .default,
             sherpaOnnxInstaller: FakeSherpaOnnxInstaller(),
             applicationSupportURL: makeTemporaryApplicationSupportURL(),
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
         )
         let transcriber = LocalModelTranscriber(
             settingsStore: settingsStore,
@@ -765,15 +841,26 @@ private final class CapturingProcessRunner: ProcessCommandRunning {
 }
 
 private final class FakeSherpaOnnxInstaller: SherpaOnnxModelInstalling {
+    private let failingSources: Set<ModelDownloadSource>
     var lastPreparedModel: LocalSTTModel?
     var lastStorageURL: URL?
+    private(set) var preparedSources: [ModelDownloadSource] = []
+
+    init(failingSources: Set<ModelDownloadSource> = []) {
+        self.failingSources = failingSources
+    }
 
     func prepareModel(
         _ model: LocalSTTModel,
         at storageURL: URL,
-        downloadSource _: ModelDownloadSource,
+        downloadSource: ModelDownloadSource,
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws -> String {
+        preparedSources.append(downloadSource)
+        if failingSources.contains(downloadSource) {
+            throw NSError(domain: "FakeSherpaOnnxInstaller", code: 1, userInfo: nil)
+        }
+
         lastPreparedModel = model
         lastStorageURL = storageURL
 

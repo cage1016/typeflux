@@ -229,7 +229,7 @@
 "localSTT.senseVoiceSmall.name" = "SenseVoice Small";
 "localSTT.senseVoiceSmall.summary" = "중국어, 광둥어, 영어, 일본어, 한국어를 강력하게 지원하는 빠른 다국어 음성 인식.";
 "localSTT.senseVoiceSmall.parameterValue" = "234M";
-"localSTT.senseVoiceSmall.sizeValue" = "1.5 GB";
+"localSTT.senseVoiceSmall.sizeValue" = "350 MB";
 "localSTT.qwen3ASR.name" = "Qwen3-ASR";
 "localSTT.qwen3ASR.summary" = "더 강력한 상황 이해와 더 나은 장문 인식 품질을 갖춘 더 큰 다국어 ASR 모델입니다.";
 "localSTT.qwen3ASR.parameterValue" = "0.6B";

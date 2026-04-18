@@ -231,7 +231,7 @@
 "localSTT.senseVoiceSmall.name" = "SenseVoice";
 "localSTT.senseVoiceSmall.summary" = "Fast multilingual speech recognition with strong Mandarin, Cantonese, English, Japanese, and Korean support.";
 "localSTT.senseVoiceSmall.parameterValue" = "234M";
-"localSTT.senseVoiceSmall.sizeValue" = "1.5 GB";
+"localSTT.senseVoiceSmall.sizeValue" = "350 MB";
 "localSTT.qwen3ASR.name" = "Qwen3-ASR";
 "localSTT.qwen3ASR.summary" = "Larger multilingual ASR model with stronger context understanding and better long-form recognition quality.";
 "localSTT.qwen3ASR.parameterValue" = "0.6B";
