@@ -486,7 +486,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             NetworkDebugLogger.logMessage(
                 "[Local Model Download] kind=whisper-tokenizer source=\(downloadSource.displayName) model=\(modelName) url=\(sourceURL.absoluteString)"
             )
-            let data = try await remoteFileLoader(sourceURL)
+            let data = try await loadRemoteFileWithRetry(sourceURL, operationName: "WhisperKit tokenizer file download")
             try data.write(
                 to: tokenizerFolderURL.appendingPathComponent(fileName, isDirectory: false),
                 options: .atomic,
@@ -511,7 +511,10 @@ final class LocalModelManager: LocalSTTModelManaging {
 
         let repositoryFilesURL = whisperModelRepositoryFilesURL(source: downloadSource)
         let expectedPrefix = whisperModelDirectoryName(for: modelName) + "/"
-        let remoteFiles = try await remoteRepositoryFileListLoader(repositoryFilesURL)
+        let remoteFiles = try await loadRemoteRepositoryFileListWithRetry(
+            repositoryFilesURL,
+            operationName: "WhisperKit repository file list download",
+        )
             .filter { $0.hasPrefix(expectedPrefix) }
             .sorted()
 
@@ -560,9 +563,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             NetworkDebugLogger.logMessage(
                 "[Local Model Download] kind=whisper-model-file source=\(downloadSource.displayName) model=\(modelName) path=\(relativePath) url=\(sourceURL.absoluteString)"
             )
-            try await RequestRetry.perform(operationName: "WhisperKit model file download") { [self] in
-                try await remoteFileDownloader(sourceURL, destinationFileURL)
-            }
+            try await downloadRemoteFileWithRetry(sourceURL, to: destinationFileURL, operationName: "WhisperKit model file download")
         }
 
         guard isUsableWhisperKitModelFolder(modelFolderURL.path) else {
@@ -665,6 +666,24 @@ final class LocalModelManager: LocalSTTModelManaging {
 
         let fileSize = (try? fileManager.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
         return fileSize > 0
+    }
+
+    private func loadRemoteFileWithRetry(_ url: URL, operationName: String) async throws -> Data {
+        try await RequestRetry.perform(operationName: "\(operationName) \(url.absoluteString)") { [self] in
+            try await remoteFileLoader(url)
+        }
+    }
+
+    private func loadRemoteRepositoryFileListWithRetry(_ url: URL, operationName: String) async throws -> [String] {
+        try await RequestRetry.perform(operationName: "\(operationName) \(url.absoluteString)") { [self] in
+            try await remoteRepositoryFileListLoader(url)
+        }
+    }
+
+    private func downloadRemoteFileWithRetry(_ sourceURL: URL, to destinationURL: URL, operationName: String) async throws {
+        try await RequestRetry.perform(operationName: "\(operationName) \(sourceURL.absoluteString)") { [self] in
+            try await remoteFileDownloader(sourceURL, destinationURL)
+        }
     }
 
     private static func defaultRemoteFileLoader(from url: URL) async throws -> Data {

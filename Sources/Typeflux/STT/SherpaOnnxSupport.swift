@@ -240,7 +240,14 @@ final class URLSessionSherpaOnnxArchiveDownloader: SherpaOnnxArchiveDownloading 
     }
 
     func downloadArchive(from url: URL) async throws -> URL {
-        let (downloadedURL, _) = try await urlSession.download(from: url)
+        let (downloadedURL, response) = try await urlSession.download(from: url)
+        guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
+            throw NSError(
+                domain: "URLSessionSherpaOnnxArchiveDownloader",
+                code: (response as? HTTPURLResponse)?.statusCode ?? 1,
+                userInfo: [NSLocalizedDescriptionKey: "Sherpa-ONNX archive download failed."],
+            )
+        }
         return downloadedURL
     }
 }
@@ -353,43 +360,41 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         extractedRootDirectoryName: String,
         archiveFileName: String,
     ) async throws {
-        try await RequestRetry.perform(operationName: "Sherpa-ONNX archive download") { [self] in
-            let extractedRootURL = destinationURL.appendingPathComponent(
-                extractedRootDirectoryName,
-                isDirectory: true,
-            )
-            if fileManager.fileExists(atPath: extractedRootURL.path) {
-                try fileManager.removeItem(at: extractedRootURL)
-            }
-
-            let temporaryDirectory = destinationURL.appendingPathComponent(".download", isDirectory: true)
-            try fileManager.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
-
-            let localArchiveURL = temporaryDirectory.appendingPathComponent(
-                archiveFileName,
-                isDirectory: false,
-            )
-            if fileManager.fileExists(atPath: localArchiveURL.path) {
-                try fileManager.removeItem(at: localArchiveURL)
-            }
-
-            try await downloadArchive(from: archiveURL, to: localArchiveURL)
-
-            _ = try await processRunner.run(
-                executablePath: "/usr/bin/tar",
-                arguments: [
-                    "-xjf",
-                    localArchiveURL.path,
-                    "-C",
-                    destinationURL.path,
-                ],
-                environment: nil,
-                currentDirectoryURL: destinationURL,
-            )
-
-            try? fileManager.removeItem(at: localArchiveURL)
-            try? fileManager.removeItem(at: temporaryDirectory)
+        let extractedRootURL = destinationURL.appendingPathComponent(
+            extractedRootDirectoryName,
+            isDirectory: true,
+        )
+        if fileManager.fileExists(atPath: extractedRootURL.path) {
+            try fileManager.removeItem(at: extractedRootURL)
         }
+
+        let temporaryDirectory = destinationURL.appendingPathComponent(".download", isDirectory: true)
+        try fileManager.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+
+        let localArchiveURL = temporaryDirectory.appendingPathComponent(
+            archiveFileName,
+            isDirectory: false,
+        )
+        if fileManager.fileExists(atPath: localArchiveURL.path) {
+            try fileManager.removeItem(at: localArchiveURL)
+        }
+
+        try await downloadArchive(from: archiveURL, to: localArchiveURL)
+
+        _ = try await processRunner.run(
+            executablePath: "/usr/bin/tar",
+            arguments: [
+                "-xjf",
+                localArchiveURL.path,
+                "-C",
+                destinationURL.path,
+            ],
+            environment: nil,
+            currentDirectoryURL: destinationURL,
+        )
+
+        try? fileManager.removeItem(at: localArchiveURL)
+        try? fileManager.removeItem(at: temporaryDirectory)
     }
 
     private func pruneRuntimePayload(in runtimeRootURL: URL) throws {
@@ -509,30 +514,32 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         destinationURL: URL,
         extractedRootDirectoryName: String,
     ) async throws {
-        try await RequestRetry.perform(operationName: "Sherpa-ONNX model file download") { [self] in
-            let extractedRootURL = destinationURL.appendingPathComponent(
-                extractedRootDirectoryName,
-                isDirectory: true,
+        let extractedRootURL = destinationURL.appendingPathComponent(
+            extractedRootDirectoryName,
+            isDirectory: true,
+        )
+        if fileManager.fileExists(atPath: extractedRootURL.path) {
+            try fileManager.removeItem(at: extractedRootURL)
+        }
+
+        try fileManager.createDirectory(at: extractedRootURL, withIntermediateDirectories: true)
+
+        for file in files {
+            let destinationFileURL = destinationURL.appendingPathComponent(file.relativePath, isDirectory: false)
+            try fileManager.createDirectory(
+                at: destinationFileURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
             )
-            if fileManager.fileExists(atPath: extractedRootURL.path) {
-                try fileManager.removeItem(at: extractedRootURL)
-            }
-
-            try fileManager.createDirectory(at: extractedRootURL, withIntermediateDirectories: true)
-
-            for file in files {
-                let destinationFileURL = destinationURL.appendingPathComponent(file.relativePath, isDirectory: false)
-                try fileManager.createDirectory(
-                    at: destinationFileURL.deletingLastPathComponent(),
-                    withIntermediateDirectories: true,
-                )
-                try await downloadArchive(from: file.url, to: destinationFileURL)
-            }
+            try await downloadArchive(from: file.url, to: destinationFileURL)
         }
     }
 
     private func downloadArchive(from archiveURL: URL, to localArchiveURL: URL) async throws {
-        let downloadedURL = try await archiveDownloader.downloadArchive(from: archiveURL)
+        let downloadedURL = try await RequestRetry.perform(
+            operationName: "Sherpa-ONNX file download \(archiveURL.absoluteString)",
+        ) { [self] in
+            try await archiveDownloader.downloadArchive(from: archiveURL)
+        }
         if fileManager.fileExists(atPath: localArchiveURL.path) {
             try fileManager.removeItem(at: localArchiveURL)
         }

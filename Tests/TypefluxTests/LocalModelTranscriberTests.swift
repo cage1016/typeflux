@@ -281,6 +281,48 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: tokenizerRoot.appendingPathComponent("tokenizer_config.json").path))
     }
 
+    func testLocalModelManagerRetriesWhisperTokenizerFileDownloads() async throws {
+        let appSupportURL = makeTemporaryApplicationSupportURL()
+        let remoteLoader = FlakyRemoteFileLoader(failuresBeforeSuccessPerURL: 3)
+        let repositoryLoader = CapturingWhisperRepositoryFileListLoader(fileNames: [
+            "openai_whisper-medium/MelSpectrogram.mlmodelc/weights/weight.bin",
+            "openai_whisper-medium/AudioEncoder.mlmodelc/weights/weight.bin",
+            "openai_whisper-medium/TextDecoder.mlmodelc/weights/weight.bin",
+        ])
+        let fileDownloader = CapturingWhisperFileDownloader()
+        let manager = LocalModelManager(
+            fileManager: .default,
+            sherpaOnnxInstaller: FakeSherpaOnnxInstaller(),
+            applicationSupportURL: appSupportURL,
+            localWhisperKitPreparerFactory: { _, modelFolder, _ in
+                FakeWhisperKitPreparer(resolvedModelFolderPath: modelFolder)
+            },
+            remoteFileLoader: { url in
+                try await remoteLoader.load(from: url)
+            },
+            remoteRepositoryFileListLoader: { url in
+                try await repositoryLoader.load(from: url)
+            },
+            remoteFileDownloader: { sourceURL, destinationURL in
+                try await fileDownloader.download(from: sourceURL, to: destinationURL)
+            },
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.modelScope]),
+        )
+
+        _ = try await manager.downloadModelFilesOnly(
+            configuration: LocalSTTConfiguration(
+                model: .whisperLocal,
+                modelIdentifier: LocalSTTModel.whisperLocal.defaultModelIdentifier,
+                downloadSource: .modelScope,
+                autoSetup: true,
+            ),
+        )
+
+        let attemptCounts = await remoteLoader.attemptCountsByURL()
+        XCTAssertEqual(attemptCounts["https://hf-mirror.com/openai/whisper-medium/resolve/main/tokenizer.json"], 4)
+        XCTAssertEqual(attemptCounts["https://hf-mirror.com/openai/whisper-medium/resolve/main/tokenizer_config.json"], 4)
+    }
+
     func testLocalModelManagerSkipsWhisperTokenizerPrefetchForHuggingFaceSource() async throws {
         let appSupportURL = makeTemporaryApplicationSupportURL()
         let downloadBasePath = appSupportURL
@@ -1030,6 +1072,29 @@ private actor CapturingRemoteFileLoader {
 
     func requestedURLs() -> [URL] {
         urls
+    }
+}
+
+private actor FlakyRemoteFileLoader {
+    private let failuresBeforeSuccessPerURL: Int
+    private var attemptCounts: [URL: Int] = [:]
+    private let payloadLoader = CapturingRemoteFileLoader()
+
+    init(failuresBeforeSuccessPerURL: Int) {
+        self.failuresBeforeSuccessPerURL = failuresBeforeSuccessPerURL
+    }
+
+    func load(from url: URL) async throws -> Data {
+        let attempts = (attemptCounts[url] ?? 0) + 1
+        attemptCounts[url] = attempts
+        if attempts <= failuresBeforeSuccessPerURL {
+            throw NSError(domain: "FlakyRemoteFileLoader", code: attempts, userInfo: nil)
+        }
+        return try await payloadLoader.load(from: url)
+    }
+
+    func attemptCountsByURL() -> [String: Int] {
+        Dictionary(uniqueKeysWithValues: attemptCounts.map { ($0.key.absoluteString, $0.value) })
     }
 }
 
