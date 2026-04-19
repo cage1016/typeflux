@@ -86,54 +86,56 @@ struct AuthAPIService {
         body: Body,
         token: String? = nil,
     ) async throws -> Response {
-        guard let url = URL(string: "\(AppServerConfiguration.apiBaseURL)\(path)") else {
-            throw AuthError.invalidResponse
+        let payload: Data
+        do {
+            payload = try JSONEncoder().encode(body)
+        } catch {
+            throw AuthError.networkError(error)
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        request.httpBody = try JSONEncoder().encode(body)
-        request.timeoutInterval = 30
-
-        return try await execute(request)
+        return try await execute(path: path, method: "POST", token: token, body: payload)
     }
 
     private static func get<Response: Decodable>(
         path: String,
         token: String? = nil,
     ) async throws -> Response {
-        guard let url = URL(string: "\(AppServerConfiguration.apiBaseURL)\(path)") else {
-            throw AuthError.invalidResponse
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        request.timeoutInterval = 30
-
-        return try await execute(request)
+        try await execute(path: path, method: "GET", token: token, body: nil)
     }
 
-    private static func execute<Response: Decodable>(_ request: URLRequest) async throws -> Response {
-        let data: Data
-        let urlResponse: URLResponse
+    private static func execute<Response: Decodable>(
+        path: String,
+        method: String,
+        token: String?,
+        body: Data?,
+    ) async throws -> Response {
+        let executor = CloudRequestExecutor()
 
+        let data: Data
+        let httpResponse: HTTPURLResponse
         do {
-            (data, urlResponse) = try await URLSession.shared.data(for: request)
+            (data, httpResponse) = try await executor.execute { baseURL in
+                let url = AuthEndpointResolver.resolve(baseURL: baseURL, path: path)
+                var request = URLRequest(url: url)
+                request.httpMethod = method
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                if let token {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                if let body {
+                    request.httpBody = body
+                }
+                request.timeoutInterval = 30
+                return request
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+            logger.error("All endpoints failed: \(lastError.localizedDescription)")
+            throw AuthError.networkError(lastError)
         } catch {
             logger.error("Network error: \(error.localizedDescription)")
             throw AuthError.networkError(error)
-        }
-
-        guard let httpResponse = urlResponse as? HTTPURLResponse else {
-            throw AuthError.invalidResponse
         }
 
         let envelope: APIResponse<Response>
@@ -146,7 +148,7 @@ struct AuthAPIService {
 
         if httpResponse.statusCode == 401 {
             let raw = String(data: data, encoding: .utf8) ?? "<non-utf8>"
-            logger.error("[\(request.url?.path ?? "?", privacy: .public)] 401 body: \(raw, privacy: .public)")
+            logger.error("[\(path, privacy: .public)] 401 body: \(raw, privacy: .public)")
             throw AuthError.unauthorized
         }
 
@@ -155,7 +157,7 @@ struct AuthAPIService {
               let responseData = envelope.data
         else {
             let raw = String(data: data, encoding: .utf8) ?? "<non-utf8>"
-            logger.error("[\(request.url?.path ?? "?", privacy: .public)] \(httpResponse.statusCode, privacy: .public) body: \(raw, privacy: .public)")
+            logger.error("[\(path, privacy: .public)] \(httpResponse.statusCode, privacy: .public) body: \(raw, privacy: .public)")
             throw AuthError.serverError(
                 code: envelope.code,
                 message: envelope.message,
@@ -163,5 +165,24 @@ struct AuthAPIService {
         }
 
         return responseData
+    }
+}
+
+/// Joins a Typeflux Cloud base URL with an API path, accommodating base URLs
+/// that may or may not include a trailing slash.
+enum AuthEndpointResolver {
+    static func resolve(baseURL: URL, path: String) -> URL {
+        let trimmedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) ?? URLComponents()
+        let basePath = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if basePath.isEmpty {
+            components.path = "/" + trimmedPath
+        } else {
+            components.path = "/" + basePath + "/" + trimmedPath
+        }
+        if let url = components.url { return url }
+        // Fall back to string concatenation if URLComponents can't reassemble
+        // (extremely unlikely for valid HTTP base URLs).
+        return URL(string: baseURL.absoluteString + path) ?? baseURL
     }
 }

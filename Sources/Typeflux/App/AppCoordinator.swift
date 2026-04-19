@@ -7,6 +7,7 @@ final class AppCoordinator {
     private var statusBarController: StatusBarController?
     private var workflowController: WorkflowController?
     private var onboardingWindowController: OnboardingWindowController?
+    private let cloudEndpointProbeScheduler = CloudEndpointProbeScheduler()
 
     func start() {
         let workflowController = WorkflowController(
@@ -55,6 +56,7 @@ final class AppCoordinator {
         di.autoModelDownloadService.triggerIfNeeded()
         AutoUpdater.shared.startAutoCheck(settingsStore: di.settingsStore)
         UsageStatsStore.shared.backfillIfNeeded(from: di.historyStore)
+        cloudEndpointProbeScheduler.start()
         Task { await AuthState.shared.refreshTokenIfNeeded() }
 
         if !di.settingsStore.isOnboardingCompleted {
@@ -65,6 +67,7 @@ final class AppCoordinator {
     }
 
     func stop() {
+        cloudEndpointProbeScheduler.stop()
         workflowController?.stop()
         statusBarController?.stop()
     }

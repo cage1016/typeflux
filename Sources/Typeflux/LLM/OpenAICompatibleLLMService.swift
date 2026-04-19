@@ -27,20 +27,27 @@ enum LLMConnectionResolver {
         baseURL: String,
         model: String,
         apiKey: String,
+        typefluxCloudBaseURL: URL? = nil,
     ) throws -> ResolvedLLMConnection {
         let trimmedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // typefluxCloud uses the server URL + Bearer token injected at call time
         if provider == .typefluxCloud {
-            let serverBaseURL = AppServerConfiguration.apiBaseURL + "/api/v1"
-            guard let url = URL(string: serverBaseURL) else {
-                throw NSError(
-                    domain: "LLM",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid Typeflux Cloud server URL."],
-                )
+            let rawBase: URL
+            if let typefluxCloudBaseURL {
+                rawBase = typefluxCloudBaseURL
+            } else {
+                guard let fallback = URL(string: AppServerConfiguration.apiBaseURL) else {
+                    throw NSError(
+                        domain: "LLM",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Invalid Typeflux Cloud server URL."],
+                    )
+                }
+                rawBase = fallback
             }
+            let url = AuthEndpointResolver.resolve(baseURL: rawBase, path: "/api/v1")
             return ResolvedLLMConnection(
                 provider: provider,
                 baseURL: url,
@@ -121,25 +128,37 @@ final class OpenAICompatibleLLMService: LLMService {
         self.settingsStore = settingsStore
     }
 
-    private func resolveConnection(for config: SettingsStore.TextLLMConfiguration) async throws -> ResolvedLLMConnection {
+    /// Connection plus the raw cloud base URL (no `/api/v1` suffix) when
+    /// applicable. The raw URL is used to report transport failures back to
+    /// `CloudEndpointSelector` so subsequent attempts pick a different host.
+    private struct ResolvedLLMCall {
+        let connection: ResolvedLLMConnection
+        let cloudBaseURL: URL?
+    }
+
+    private func resolveConnection(for config: SettingsStore.TextLLMConfiguration) async throws -> ResolvedLLMCall {
         if config.provider == .typefluxCloud {
             let token = await MainActor.run { AuthState.shared.accessToken }
             guard let token else {
                 throw TypefluxCloudLLMError.notLoggedIn
             }
-            return try LLMConnectionResolver.resolve(
+            let primary = await CloudEndpointRegistry.shared.primaryEndpoint()
+            let connection = try LLMConnectionResolver.resolve(
                 provider: config.provider,
                 baseURL: "",
                 model: config.model,
                 apiKey: token,
+                typefluxCloudBaseURL: primary,
             )
+            return ResolvedLLMCall(connection: connection, cloudBaseURL: primary)
         }
-        return try LLMConnectionResolver.resolve(
+        let connection = try LLMConnectionResolver.resolve(
             provider: config.provider,
             baseURL: config.baseURL,
             model: config.model,
             apiKey: config.apiKey,
         )
+        return ResolvedLLMCall(connection: connection, cloudBaseURL: nil)
     }
 
     private func headers(
@@ -165,45 +184,75 @@ final class OpenAICompatibleLLMService: LLMService {
 
     func complete(systemPrompt: String, userPrompt: String) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try await resolveConnection(for: llmConfig)
-        let additionalHeaders = headers(for: connection, scenario: .askAnything)
+        let appLanguage = settingsStore.appLanguage
         let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: systemPrompt,
-            appLanguage: settingsStore.appLanguage,
+            appLanguage: appLanguage,
         )
-        return try await RequestRetry.perform(operationName: "LLM completion request") {
-            try await RemoteLLMClient.complete(
-                provider: connection.provider,
-                baseURL: connection.baseURL,
-                model: connection.model,
-                apiKey: connection.apiKey,
-                additionalHeaders: additionalHeaders,
-                systemPrompt: effectiveSystemPrompt,
-                userPrompt: userPrompt,
-                schema: nil,
-            )
+        return try await RequestRetry.perform(operationName: "LLM completion request") { [weak self] in
+            guard let self else { throw CancellationError() }
+            // Re-resolve on each attempt so typefluxCloud retries pick up the
+            // current lowest-latency endpoint when an earlier attempt failed.
+            let call = try await self.resolveConnection(for: llmConfig)
+            let additionalHeaders = self.headers(for: call.connection, scenario: .askAnything)
+            return try await self.runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
+                try await RemoteLLMClient.complete(
+                    provider: call.connection.provider,
+                    baseURL: call.connection.baseURL,
+                    model: call.connection.model,
+                    apiKey: call.connection.apiKey,
+                    additionalHeaders: additionalHeaders,
+                    systemPrompt: effectiveSystemPrompt,
+                    userPrompt: userPrompt,
+                    schema: nil,
+                )
+            }
         }
     }
 
     func completeJSON(systemPrompt: String, userPrompt: String, schema: LLMJSONSchema) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try await resolveConnection(for: llmConfig)
-        let additionalHeaders = headers(for: connection, scenario: .automaticVocabulary)
+        let appLanguage = settingsStore.appLanguage
         let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: systemPrompt,
-            appLanguage: settingsStore.appLanguage,
+            appLanguage: appLanguage,
         )
-        return try await RequestRetry.perform(operationName: "LLM JSON completion request") {
-            try await RemoteLLMClient.complete(
-                provider: connection.provider,
-                baseURL: connection.baseURL,
-                model: connection.model,
-                apiKey: connection.apiKey,
-                additionalHeaders: additionalHeaders,
-                systemPrompt: effectiveSystemPrompt,
-                userPrompt: userPrompt,
-                schema: schema,
-            )
+        return try await RequestRetry.perform(operationName: "LLM JSON completion request") { [weak self] in
+            guard let self else { throw CancellationError() }
+            let call = try await self.resolveConnection(for: llmConfig)
+            let additionalHeaders = self.headers(for: call.connection, scenario: .automaticVocabulary)
+            return try await self.runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
+                try await RemoteLLMClient.complete(
+                    provider: call.connection.provider,
+                    baseURL: call.connection.baseURL,
+                    model: call.connection.model,
+                    apiKey: call.connection.apiKey,
+                    additionalHeaders: additionalHeaders,
+                    systemPrompt: effectiveSystemPrompt,
+                    userPrompt: userPrompt,
+                    schema: schema,
+                )
+            }
+        }
+    }
+
+    /// Runs `operation` and reports transport failures for typefluxCloud calls
+    /// so subsequent retries pick a different host. Success cases intentionally
+    /// do not report here because the LLM client does not measure request
+    /// latency; the periodic ping probe is authoritative for latency.
+    private func runWithFailureReporting<T>(
+        cloudBaseURL: URL?,
+        operation: () async throws -> T,
+    ) async throws -> T {
+        do {
+            return try await operation()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let cloudBaseURL {
+                await CloudEndpointRegistry.shared.reportFailure(cloudBaseURL, error: error)
+            }
+            throw error
         }
     }
 
@@ -212,8 +261,8 @@ final class OpenAICompatibleLLMService: LLMService {
         continuation: AsyncThrowingStream<String, Error>.Continuation,
     ) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try await resolveConnection(for: llmConfig)
-        let additionalHeaders = headers(for: connection, scenario: .textRewrite)
+        let call = try await resolveConnection(for: llmConfig)
+        let additionalHeaders = headers(for: call.connection, scenario: .textRewrite)
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
         var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
@@ -227,16 +276,18 @@ final class OpenAICompatibleLLMService: LLMService {
             }
         }
 
-        let final = try await RemoteLLMClient.streamRewrite(
-            provider: connection.provider,
-            baseURL: connection.baseURL,
-            model: connection.model,
-            apiKey: connection.apiKey,
-            additionalHeaders: additionalHeaders,
-            systemPrompt: effectiveSystemPrompt,
-            userPrompt: prompts.user,
-            continuation: continuation,
-        )
+        let final = try await runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
+            try await RemoteLLMClient.streamRewrite(
+                provider: call.connection.provider,
+                baseURL: call.connection.baseURL,
+                model: call.connection.model,
+                apiKey: call.connection.apiKey,
+                additionalHeaders: additionalHeaders,
+                systemPrompt: effectiveSystemPrompt,
+                userPrompt: prompts.user,
+                continuation: continuation,
+            )
+        }
 
         NetworkDebugLogger.logMessage("LLM final result: \(final.isEmpty ? "<empty stream result>" : final)")
 

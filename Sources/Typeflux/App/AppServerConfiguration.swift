@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppServerConfiguration {
-    private static let defaultBaseURL = "https://typeflux.gulu.ai"
+    private static let defaultBaseURLs = ["https://typeflux.gulu.ai"]
     private static let defaultGoogleOAuthClientID = "567492048493-bh84p3mfjfjimsfvga7pil3cc373d389.apps.googleusercontent.com"
     private static let defaultGoogleCloudOAuthClientID = "86325451552-drgdrf01ffjo0on25a1psmg4mpvlo8gi.apps.googleusercontent.com"
     private static let defaultGithubOAuthClientID = "Ov23lidqnPDEOAvE8RvH"
@@ -20,12 +20,57 @@ enum AppServerConfiguration {
         return defaultValue
     }
 
-    static var apiBaseURL: String {
-        configuredValue(
+    /// Ordered list of Typeflux Cloud server base URLs.
+    /// Sources, in priority order:
+    /// 1. `TYPEFLUX_API_URLS` env var or Info.plist key — comma-separated list
+    /// 2. `TYPEFLUX_API_URL` env var or Info.plist key — single URL (legacy)
+    /// 3. Built-in default
+    /// The list always has at least one entry.
+    static var apiBaseURLs: [String] {
+        if let multi = parseList(rawMultiEndpointValue()), !multi.isEmpty {
+            return multi
+        }
+        let single = configuredValue(
             environmentKey: "TYPEFLUX_API_URL",
             infoPlistKey: "TYPEFLUX_API_URL",
-            default: defaultBaseURL
+            default: defaultBaseURLs.first ?? ""
         )
+        return [single]
+    }
+
+    /// Backwards-compatible single base URL accessor — returns the first
+    /// configured endpoint. New code should use `apiBaseURLs` together with
+    /// `CloudEndpointSelector` for latency-based routing and failover.
+    static var apiBaseURL: String {
+        apiBaseURLs.first ?? (defaultBaseURLs.first ?? "")
+    }
+
+    private static func rawMultiEndpointValue() -> String? {
+        if let value = ProcessInfo.processInfo.environment["TYPEFLUX_API_URLS"], !value.isEmpty {
+            return value
+        }
+        if let value = Bundle.main.object(forInfoDictionaryKey: "TYPEFLUX_API_URLS") as? String, !value.isEmpty {
+            return value
+        }
+        return nil
+    }
+
+    static func parseList(_ raw: String?) -> [String]? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let parts = raw
+            .split(separator: ",", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        // Preserve order while removing duplicates so users can paste a list
+        // without worrying about repeated entries.
+        var seen = Set<String>()
+        var result: [String] = []
+        for part in parts {
+            if seen.insert(part).inserted {
+                result.append(part)
+            }
+        }
+        return result.isEmpty ? nil : result
     }
 
     /// Google OAuth 2.0 Client ID from Google Cloud Console.

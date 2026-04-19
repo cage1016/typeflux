@@ -48,12 +48,15 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
         }
 
         let pcmData = try CloudASRAudioConverter.convert(url: audioFile.fileURL)
-        return try await TypefluxOfficialASRSession.run(
-            pcmData: pcmData,
-            token: token,
-            scenario: scenario,
-            onUpdate: onUpdate,
-        )
+        return try await Self.runWithEndpointFailover { apiBaseURL in
+            try await TypefluxOfficialASRSession.run(
+                pcmData: pcmData,
+                apiBaseURL: apiBaseURL,
+                token: token,
+                scenario: scenario,
+                onUpdate: onUpdate,
+            )
+        }
     }
 
     func transcribeStreamWithLLMRewrite(
@@ -70,15 +73,18 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
         }
 
         let pcmData = try CloudASRAudioConverter.convert(url: audioFile.fileURL)
-        return try await TypefluxOfficialASRSession.runWithLLM(
-            pcmData: pcmData,
-            token: token,
-            scenario: scenario,
-            llmConfig: llmConfig,
-            onASRUpdate: onASRUpdate,
-            onLLMStart: onLLMStart,
-            onLLMChunk: onLLMChunk,
-        )
+        return try await Self.runWithEndpointFailover { apiBaseURL in
+            try await TypefluxOfficialASRSession.runWithLLM(
+                pcmData: pcmData,
+                apiBaseURL: apiBaseURL,
+                token: token,
+                scenario: scenario,
+                llmConfig: llmConfig,
+                onASRUpdate: onASRUpdate,
+                onLLMStart: onLLMStart,
+                onLLMChunk: onLLMChunk,
+            )
+        }
     }
 
     static func testConnection() async throws -> String {
@@ -88,11 +94,50 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
         }
 
         let pcmData = RemoteSTTTestAudio.pcm16MonoSilence()
-        return try await TypefluxOfficialASRSession.run(
-            pcmData: pcmData,
-            token: token,
-            scenario: .modelSetup,
-        ) { _ in }
+        return try await runWithEndpointFailover { apiBaseURL in
+            try await TypefluxOfficialASRSession.run(
+                pcmData: pcmData,
+                apiBaseURL: apiBaseURL,
+                token: token,
+                scenario: .modelSetup,
+            ) { _ in }
+        }
+    }
+
+    /// Runs an ASR session against the highest-priority cloud endpoint and
+    /// transparently retries against the next endpoint when the connection
+    /// fails. Once a session begins streaming results we let it run to
+    /// completion against the chosen endpoint — mid-session migration is not
+    /// supported because that would risk reordering or duplicating audio.
+    static func runWithEndpointFailover<T>(
+        operation: @Sendable (String) async throws -> T
+    ) async throws -> T {
+        let urls = await CloudEndpointRegistry.shared.orderedEndpoints()
+        let baseURLs: [URL] = urls.isEmpty
+            ? [URL(string: AppServerConfiguration.apiBaseURL)].compactMap { $0 }
+            : urls
+
+        guard !baseURLs.isEmpty else {
+            throw TypefluxOfficialASRError.connectionFailed("No Typeflux Cloud endpoint configured.")
+        }
+
+        var lastError: Error?
+        for baseURL in baseURLs {
+            do {
+                return try await operation(baseURL.absoluteString)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as TypefluxOfficialASRError {
+                await CloudEndpointRegistry.shared.reportFailure(baseURL, error: error)
+                lastError = error
+                continue
+            } catch {
+                await CloudEndpointRegistry.shared.reportFailure(baseURL, error: error)
+                lastError = error
+                continue
+            }
+        }
+        throw lastError ?? TypefluxOfficialASRError.connectionFailed("All endpoints failed.")
     }
 }
 
@@ -236,6 +281,7 @@ enum TypefluxOfficialASRRequestFactory {
 private actor TypefluxOfficialASRSession {
     static func run(
         pcmData: Data,
+        apiBaseURL: String,
         token: String,
         scenario: TypefluxCloudScenario,
         provider: String = "default",
@@ -243,6 +289,7 @@ private actor TypefluxOfficialASRSession {
     ) async throws -> String {
         let session = TypefluxOfficialASRSession(
             pcmData: pcmData,
+            apiBaseURL: apiBaseURL,
             token: token,
             scenario: scenario,
             provider: provider,
@@ -257,6 +304,7 @@ private actor TypefluxOfficialASRSession {
 
     static func runWithLLM(
         pcmData: Data,
+        apiBaseURL: String,
         token: String,
         scenario: TypefluxCloudScenario,
         llmConfig: ASRLLMConfig,
@@ -266,6 +314,7 @@ private actor TypefluxOfficialASRSession {
     ) async throws -> (transcript: String, rewritten: String?) {
         let session = TypefluxOfficialASRSession(
             pcmData: pcmData,
+            apiBaseURL: apiBaseURL,
             token: token,
             scenario: scenario,
             provider: "default",
@@ -278,6 +327,7 @@ private actor TypefluxOfficialASRSession {
     }
 
     private let pcmData: Data
+    private let apiBaseURL: String
     private let token: String
     private let scenario: TypefluxCloudScenario
     private let provider: String
@@ -295,6 +345,7 @@ private actor TypefluxOfficialASRSession {
 
     private init(
         pcmData: Data,
+        apiBaseURL: String,
         token: String,
         scenario: TypefluxCloudScenario,
         provider: String,
@@ -304,6 +355,7 @@ private actor TypefluxOfficialASRSession {
         onLLMChunk: (@Sendable (String) async -> Void)?,
     ) {
         self.pcmData = pcmData
+        self.apiBaseURL = apiBaseURL
         self.token = token
         self.scenario = scenario
         self.provider = provider
@@ -315,7 +367,7 @@ private actor TypefluxOfficialASRSession {
 
     private func execute() async throws -> (transcript: String, rewritten: String?) {
         let request = try TypefluxOfficialASRRequestFactory.makeWebSocketRequest(
-            apiBaseURL: AppServerConfiguration.apiBaseURL,
+            apiBaseURL: apiBaseURL,
             token: token,
             scenario: scenario,
             provider: provider,

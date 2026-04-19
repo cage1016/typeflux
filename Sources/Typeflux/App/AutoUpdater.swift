@@ -67,41 +67,43 @@ final class AutoUpdater {
 
         let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
 
-        guard var components = URLComponents(string: "\(AppServerConfiguration.apiBaseURL)/api/v1/app/update") else { return }
-        components.queryItems = [URLQueryItem(name: "version", value: currentVersion)]
-        guard let url = components.url else { return }
-
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-
-                if let error {
-                    if manual { self.showCheckFailedAlert(message: error.localizedDescription) }
-                    return
+        Task { [weak self] in
+            guard let self else { return }
+            let executor = CloudRequestExecutor()
+            do {
+                let (data, _) = try await executor.execute { baseURL in
+                    var components = URLComponents(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update"), resolvingAgainstBaseURL: false) ?? URLComponents()
+                    components.queryItems = [URLQueryItem(name: "version", value: currentVersion)]
+                    let url = components.url ?? AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update")
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "GET"
+                    return request
                 }
 
-                guard let data else {
-                    if manual { self.showCheckFailedAlert(message: L("updater.checkFailed.noData")) }
-                    return
-                }
-
+                let envelope: UpdateEnvelope
                 do {
-                    let envelope = try JSONDecoder().decode(UpdateEnvelope.self, from: data)
-                    guard let info = envelope.data else {
-                        if manual { self.showCheckFailedAlert(message: envelope.message ?? L("updater.checkFailed.noData")) }
-                        return
-                    }
-
-                    if info.shouldUpdate {
-                        self.promptUpdate(info: info, manual: manual)
-                    } else if manual {
-                        self.showUpToDateAlert()
-                    }
+                    envelope = try JSONDecoder().decode(UpdateEnvelope.self, from: data)
                 } catch {
                     if manual { self.showCheckFailedAlert(message: error.localizedDescription) }
+                    return
                 }
+
+                guard let info = envelope.data else {
+                    if manual { self.showCheckFailedAlert(message: envelope.message ?? L("updater.checkFailed.noData")) }
+                    return
+                }
+
+                if info.shouldUpdate {
+                    self.promptUpdate(info: info, manual: manual)
+                } else if manual {
+                    self.showUpToDateAlert()
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                if manual { self.showCheckFailedAlert(message: error.localizedDescription) }
             }
-        }.resume()
+        }
     }
 
     // MARK: - Download & Install

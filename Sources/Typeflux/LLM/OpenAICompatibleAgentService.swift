@@ -13,11 +13,13 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             guard let token else {
                 throw TypefluxCloudLLMError.notLoggedIn
             }
+            let primary = await CloudEndpointRegistry.shared.primaryEndpoint()
             return try LLMConnectionResolver.resolve(
                 provider: config.provider,
                 baseURL: "",
                 model: config.model,
                 apiKey: token,
+                typefluxCloudBaseURL: primary,
             )
         }
         return try LLMConnectionResolver.resolve(
@@ -41,12 +43,11 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         }
 
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try await resolveConnection(for: llmConfig)
-        let additionalHeaders = headers(for: connection, scenario: .askAnything)
+        let appLanguage = settingsStore.appLanguage
         let effectiveSystemPrompt: String = {
             var prompt = PromptCatalog.appendUserEnvironmentContext(
                 to: request.systemPrompt,
-                appLanguage: settingsStore.appLanguage,
+                appLanguage: appLanguage,
             )
             if let appContext = request.appSystemContext {
                 let extra = PromptCatalog.appSpecificSystemContext(appContext)
@@ -55,21 +56,29 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             return prompt
         }()
 
-        return try await RequestRetry.perform(operationName: "LLM agent tool call") {
-            try await RemoteAgentClient.runTool(
-                provider: connection.provider,
-                baseURL: connection.baseURL,
-                model: connection.model,
-                apiKey: connection.apiKey,
-                additionalHeaders: additionalHeaders,
-                request: LLMAgentRequest(
-                    systemPrompt: effectiveSystemPrompt,
-                    userPrompt: request.userPrompt,
-                    tools: request.tools,
-                    forcedToolName: request.forcedToolName,
-                ),
-                decoding: type,
-            )
+        return try await RequestRetry.perform(operationName: "LLM agent tool call") { [weak self] in
+            guard let self else { throw CancellationError() }
+            let connection = try await self.resolveConnection(for: llmConfig)
+            let additionalHeaders = self.headers(for: connection, scenario: .askAnything)
+            let cloudBaseURL: URL? = (llmConfig.provider == .typefluxCloud)
+                ? await CloudEndpointRegistry.shared.primaryEndpoint()
+                : nil
+            return try await Self.reportingFailures(cloudBaseURL: cloudBaseURL) {
+                try await RemoteAgentClient.runTool(
+                    provider: connection.provider,
+                    baseURL: connection.baseURL,
+                    model: connection.model,
+                    apiKey: connection.apiKey,
+                    additionalHeaders: additionalHeaders,
+                    request: LLMAgentRequest(
+                        systemPrompt: effectiveSystemPrompt,
+                        userPrompt: request.userPrompt,
+                        tools: request.tools,
+                        forcedToolName: request.forcedToolName,
+                    ),
+                    decoding: type,
+                )
+            }
         }
     }
 
@@ -81,12 +90,11 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         }
 
         let llmConfig = settingsStore.textLLMConfiguration()
-        let connection = try await resolveConnection(for: llmConfig)
-        let additionalHeaders = headers(for: connection, scenario: .askAnything)
+        let appLanguage = settingsStore.appLanguage
         let effectiveSystemPrompt: String = {
             var prompt = PromptCatalog.appendUserEnvironmentContext(
                 to: request.systemPrompt,
-                appLanguage: settingsStore.appLanguage,
+                appLanguage: appLanguage,
             )
             if let appContext = request.appSystemContext {
                 let extra = PromptCatalog.appSpecificSystemContext(appContext)
@@ -95,20 +103,41 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             return prompt
         }()
 
-        return try await RequestRetry.perform(operationName: "LLM phase 1 router call") {
-            try await RemoteAgentClient.runAnyTool(
-                provider: connection.provider,
-                baseURL: connection.baseURL,
-                model: connection.model,
-                apiKey: connection.apiKey,
-                additionalHeaders: additionalHeaders,
-                request: LLMAgentRequest(
-                    systemPrompt: effectiveSystemPrompt,
-                    userPrompt: request.userPrompt,
-                    tools: request.tools,
-                    forcedToolName: request.forcedToolName,
-                ),
-            )
+        return try await RequestRetry.perform(operationName: "LLM phase 1 router call") { [weak self] in
+            guard let self else { throw CancellationError() }
+            let connection = try await self.resolveConnection(for: llmConfig)
+            let additionalHeaders = self.headers(for: connection, scenario: .askAnything)
+            let cloudBaseURL: URL? = (llmConfig.provider == .typefluxCloud)
+                ? await CloudEndpointRegistry.shared.primaryEndpoint()
+                : nil
+            return try await Self.reportingFailures(cloudBaseURL: cloudBaseURL) {
+                try await RemoteAgentClient.runAnyTool(
+                    provider: connection.provider,
+                    baseURL: connection.baseURL,
+                    model: connection.model,
+                    apiKey: connection.apiKey,
+                    additionalHeaders: additionalHeaders,
+                    request: LLMAgentRequest(
+                        systemPrompt: effectiveSystemPrompt,
+                        userPrompt: request.userPrompt,
+                        tools: request.tools,
+                        forcedToolName: request.forcedToolName,
+                    ),
+                )
+            }
+        }
+    }
+
+    static func reportingFailures<T>(cloudBaseURL: URL?, operation: () async throws -> T) async throws -> T {
+        do {
+            return try await operation()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let cloudBaseURL {
+                await CloudEndpointRegistry.shared.reportFailure(cloudBaseURL, error: error)
+            }
+            throw error
         }
     }
 }
