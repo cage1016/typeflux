@@ -147,6 +147,20 @@ final class AXTextInjector: TextInjector {
         return targetProcessID != nil ? .postToPid : .hidTap
     }
 
+    /// Strict paste verification is scoped to edit-apply (replace selection)
+    /// flows, where a silently failed replacement must be surfaced so the user
+    /// can copy the result manually. Plain insertions (voice dictation) cannot
+    /// be reliably verified through AX on apps like WeChat, Warp, Codex,
+    /// terminals, and the Safari address bar — their AXValue does not reflect
+    /// the paste in time, which would produce a false-positive "copy result"
+    /// dialog even when the paste visibly succeeded.
+    static func shouldPerformStrictPasteVerification(
+        replaceSelection: Bool,
+        strictFallbackEnabled: Bool,
+    ) -> Bool {
+        strictFallbackEnabled && replaceSelection
+    }
+
     static func shouldAllowClipboardSelectionReplacementWithoutAXBaseline(
         replaceSelection: Bool,
         selectionSource: String?,

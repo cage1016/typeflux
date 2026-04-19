@@ -280,9 +280,12 @@ extension AXTextInjector {
             return
         }
 
-        guard strictFallbackEnabled else {
+        guard Self.shouldPerformStrictPasteVerification(
+            replaceSelection: replaceSelection,
+            strictFallbackEnabled: strictFallbackEnabled,
+        ) else {
             NetworkDebugLogger.logMessage(
-                "[Text Injection] paste verification skipped because strict fallback is disabled",
+                "[Text Injection] paste verification skipped (replaceSelection=\(replaceSelection), strictFallbackEnabled=\(strictFallbackEnabled))",
             )
             restorePasteboardAfterPaste(
                 previousSnapshot,

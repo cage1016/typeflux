@@ -439,6 +439,42 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertEqual(result, .hidTap)
     }
 
+    func testShouldPerformStrictPasteVerificationReturnsFalseForInsertEvenWhenFlagEnabled() {
+        let result = AXTextInjector.shouldPerformStrictPasteVerification(
+            replaceSelection: false,
+            strictFallbackEnabled: true,
+        )
+
+        XCTAssertFalse(result)
+    }
+
+    func testShouldPerformStrictPasteVerificationReturnsFalseForReplaceWhenFlagDisabled() {
+        let result = AXTextInjector.shouldPerformStrictPasteVerification(
+            replaceSelection: true,
+            strictFallbackEnabled: false,
+        )
+
+        XCTAssertFalse(result)
+    }
+
+    func testShouldPerformStrictPasteVerificationReturnsTrueForReplaceWhenFlagEnabled() {
+        let result = AXTextInjector.shouldPerformStrictPasteVerification(
+            replaceSelection: true,
+            strictFallbackEnabled: true,
+        )
+
+        XCTAssertTrue(result)
+    }
+
+    func testShouldPerformStrictPasteVerificationReturnsFalseForInsertWhenFlagDisabled() {
+        let result = AXTextInjector.shouldPerformStrictPasteVerification(
+            replaceSelection: false,
+            strictFallbackEnabled: false,
+        )
+
+        XCTAssertFalse(result)
+    }
+
     func testEvaluatePasteVerificationIsIndeterminateWhenReadableTextIsUnchangedOnHeuristicTarget() {
         let before = CurrentInputTextSnapshot(
             processID: 42,
