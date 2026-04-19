@@ -70,7 +70,7 @@ actor CloudEndpointSelector {
         baseURLs: [URL],
         prober: CloudEndpointProbing,
         config: CloudEndpointSelectorConfig = .default,
-        now: @escaping @Sendable () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         precondition(!baseURLs.isEmpty, "CloudEndpointSelector requires at least one base URL")
         // Preserve the configured order while removing duplicates.
