@@ -285,11 +285,18 @@ struct LoginView: View {
                 .multilineTextAlignment(.center)
 
             if let subtitle = plainHeaderSubtitle, !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.studioBody(13))
-                    .foregroundStyle(headerSubtitleColor)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .center, spacing: 6) {
+                    Text(subtitle)
+                        .font(.studioBody(13))
+                        .foregroundStyle(headerSubtitleColor)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let tag = plainHeaderSubtitleTag {
+                        StudioTag(title: tag)
+                    }
+                }
+                .frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity)
@@ -307,13 +314,6 @@ struct LoginView: View {
                 text: $email,
                 icon: "envelope",
             )
-
-            if step == .enterEmail {
-                Text(plainEmailHelperText)
-                    .font(.studioBody(12))
-                    .foregroundStyle(helperTextColor)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
 
             loginButton(title: L("auth.login.continue"), action: checkEmail)
         }
@@ -814,7 +814,7 @@ struct LoginView: View {
 
     private var agreementText: some View {
         HStack(spacing: 4) {
-            Text(agreementLeadInText)
+            Text(agreementCombinedLeadInText)
                 .foregroundStyle(policyTextColor)
             Link(agreementTermsTitle, destination: termsURL)
                 .foregroundStyle(StudioTheme.accent)
@@ -825,6 +825,12 @@ struct LoginView: View {
         }
         .font(.studioBody(12))
         .multilineTextAlignment(.center)
+    }
+
+    /// Merges the "unregistered accounts will be auto-created" helper note
+    /// with the policy agreement lead-in so both appear as a single line.
+    private var agreementCombinedLeadInText: String {
+        agreementLeadInText
     }
 
     private var agreementLeadInText: String {
@@ -884,15 +890,35 @@ struct LoginView: View {
         case .enterEmail, .login:
             switch localization.language {
             case .simplifiedChinese:
-                "登录后即可使用 Typeflux Cloud 提供的语音识别和模型推理服务"
+                "解锁云端语音识别与 AI 推理能力"
             case .traditionalChinese:
-                "登入後即可使用 Typeflux Cloud 提供的語音辨識和模型推理服務"
+                "解鎖雲端語音辨識與 AI 推理能力"
             case .japanese:
-                "サインインすると、Typeflux Cloud の音声認識とモデル推論サービスを利用できます"
+                "クラウド音声認識と AI 推論機能を解放する"
             case .korean:
-                "로그인하면 Typeflux Cloud가 제공하는 음성 인식 및 모델 추론 서비스를 사용할 수 있습니다"
+                "클라우드 음성 인식과 AI 추론 기능을 해방하세요"
             case .english:
-                "Sign in to use Typeflux Cloud speech recognition and model inference services."
+                "Unlock cloud speech recognition and AI inference"
+            }
+        case .register, .activate, .forgotPassword, .resetPassword:
+            nil
+        }
+    }
+
+    private var plainHeaderSubtitleTag: String? {
+        switch step {
+        case .enterEmail, .login:
+            switch localization.language {
+            case .simplifiedChinese:
+                "限时免费"
+            case .traditionalChinese:
+                "限時免費"
+            case .japanese:
+                "期間限定無料"
+            case .korean:
+                "기간 한정 무료"
+            case .english:
+                "Free for now"
             }
         case .register, .activate, .forgotPassword, .resetPassword:
             nil

@@ -854,6 +854,31 @@ struct StudioPill: View {
     }
 }
 
+/// A small inline tag badge, distinct from `StudioPill`.
+/// Use this for short contextual labels (e.g. "限时免费", "Beta").
+/// Reuse this component anywhere a compact tag callout is needed.
+struct StudioTag: View {
+    let title: String
+    var tone: Color = StudioTheme.accent
+    var fill: Color = StudioTheme.accent.opacity(0.12)
+    var systemImage: String?
+
+    var body: some View {
+        HStack(spacing: 3) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: StudioTheme.Typography.caption - 2, weight: .bold))
+            }
+            Text(title)
+                .font(.studioBody(StudioTheme.Typography.caption - 1, weight: .semibold))
+        }
+        .foregroundStyle(tone)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(fill))
+    }
+}
+
 struct StudioMetricCard: View {
     let icon: String
     let value: String
