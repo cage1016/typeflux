@@ -8,6 +8,26 @@ APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 APP_EXECUTABLE="${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 ZIP_PATH="${BUILD_DIR}/${APP_NAME}.zip"
 
+profile_supports_apple_sign_in() {
+  local profile_path="$1"
+  local decoded_profile
+  decoded_profile="$(mktemp "${TMPDIR:-/tmp}/typeflux-profile.XXXXXX")"
+
+  if ! security cms -D -i "$profile_path" >"$decoded_profile" 2>/dev/null; then
+    rm -f "$decoded_profile"
+    return 1
+  fi
+
+  local entitlement_output
+  entitlement_output="$(
+    /usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.applesignin" "$decoded_profile" 2>/dev/null \
+      || true
+  )"
+  rm -f "$decoded_profile"
+
+  [[ "$entitlement_output" == *"Default"* ]]
+}
+
 create_zip_archive() {
   rm -f "$ZIP_PATH"
   (
@@ -46,7 +66,12 @@ use_apple_sign_in_entitlements=false
 if [[ -n "$TYPEFLUX_PROVISIONING_PROFILE" ]]; then
   if [[ -f "$TYPEFLUX_PROVISIONING_PROFILE" ]]; then
     cp "$TYPEFLUX_PROVISIONING_PROFILE" "$APP_BUNDLE/Contents/embedded.provisionprofile"
-    use_apple_sign_in_entitlements=true
+    if profile_supports_apple_sign_in "$TYPEFLUX_PROVISIONING_PROFILE"; then
+      use_apple_sign_in_entitlements=true
+    else
+      echo "Warning: embedded provisioning profile does not grant Sign In with Apple."
+      echo "Warning: signing release bundle without com.apple.developer.applesignin so it remains launchable."
+    fi
   else
     echo "Warning: TYPEFLUX_PROVISIONING_PROFILE does not exist: $TYPEFLUX_PROVISIONING_PROFILE"
     rm -f "$APP_BUNDLE/Contents/embedded.provisionprofile"

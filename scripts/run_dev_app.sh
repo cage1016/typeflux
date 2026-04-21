@@ -4,6 +4,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="${TYPEFLUX_DEV_APP_DIR:-${TYPEFLUX_DEV_APP_DIR:-$HOME/Applications/Typeflux Dev.app}}"
 
+profile_supports_apple_sign_in() {
+  local profile_path="$1"
+  local decoded_profile
+  decoded_profile="$(mktemp "${TMPDIR:-/tmp}/typeflux-profile.XXXXXX")"
+
+  if ! security cms -D -i "$profile_path" >"$decoded_profile" 2>/dev/null; then
+    rm -f "$decoded_profile"
+    return 1
+  fi
+
+  local entitlement_output
+  entitlement_output="$(
+    /usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.applesignin" "$decoded_profile" 2>/dev/null \
+      || true
+  )"
+  rm -f "$decoded_profile"
+
+  [[ "$entitlement_output" == *"Default"* ]]
+}
+
 swift build --package-path "$ROOT_DIR" -c debug
 
 BIN_DIR="$(swift build --package-path "$ROOT_DIR" --show-bin-path)"
@@ -52,13 +72,24 @@ use_apple_sign_in_entitlements=false
 if [[ -n "$TYPEFLUX_DEV_PROVISIONING_PROFILE" ]]; then
   if [[ -f "$TYPEFLUX_DEV_PROVISIONING_PROFILE" ]]; then
     cp "$TYPEFLUX_DEV_PROVISIONING_PROFILE" "$APP_DIR/Contents/embedded.provisionprofile"
-    use_apple_sign_in_entitlements=true
+    if profile_supports_apple_sign_in "$TYPEFLUX_DEV_PROVISIONING_PROFILE"; then
+      use_apple_sign_in_entitlements=true
+    else
+      echo "Warning: embedded provisioning profile does not grant Sign In with Apple."
+      echo "Warning: signing dev app without com.apple.developer.applesignin so it can still launch."
+    fi
   else
     echo "Warning: TYPEFLUX_DEV_PROVISIONING_PROFILE does not exist: $TYPEFLUX_DEV_PROVISIONING_PROFILE"
     rm -f "$APP_DIR/Contents/embedded.provisionprofile"
   fi
 else
   rm -f "$APP_DIR/Contents/embedded.provisionprofile"
+fi
+
+if [[ "$use_apple_sign_in_entitlements" == true ]] && [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]]; then
+  use_apple_sign_in_entitlements=false
+  echo "Warning: provisioning profile grants Sign In with Apple, but no Apple Development signing identity was found."
+  echo "Warning: signing dev app without com.apple.developer.applesignin so it can still launch."
 fi
 
 # Sign In with Apple on manually assembled macOS app bundles requires both:
@@ -98,7 +129,7 @@ if [[ "$use_apple_sign_in_entitlements" == true ]]; then
   echo "Embedded provisioning profile: $TYPEFLUX_DEV_PROVISIONING_PROFILE"
 else
   echo "Warning: Sign In with Apple is disabled for this dev build."
-  echo "Warning: To enable it, provide TYPEFLUX_DEV_PROVISIONING_PROFILE with a matching macOS provisioning profile."
+  echo "Warning: To enable it, provide TYPEFLUX_DEV_PROVISIONING_PROFILE with a matching macOS provisioning profile that includes the Sign In with Apple capability."
 fi
 
 open "$APP_DIR"
