@@ -715,7 +715,7 @@
 "onboarding.action.back" = "上一步";
 "onboarding.action.continue" = "下一步";
 "onboarding.action.skip" = "跳过";
-"onboarding.account.skip" = "跳过登录，手动配置模型";
+"onboarding.account.skip" = "跳过";
 "onboarding.action.getStarted" = "开始使用";
 
 // MARK: - Agent 框架

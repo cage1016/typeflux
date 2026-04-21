@@ -713,7 +713,7 @@
 "onboarding.action.back" = "前へ";
 "onboarding.action.continue" = "次へ";
 "onboarding.action.skip" = "スキップ";
-"onboarding.account.skip" = "サインインをスキップして手動でモデルを設定";
+"onboarding.account.skip" = "スキップ";
 "onboarding.action.getStarted" = "始めましょう";
 
 // MARK: - Agent Framework

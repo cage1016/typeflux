@@ -713,7 +713,7 @@
 "onboarding.action.back" = "이전";
 "onboarding.action.continue" = "다음";
 "onboarding.action.skip" = "건너뛰기";
-"onboarding.account.skip" = "로그인을 건너뛰고 모델 직접 설정";
+"onboarding.account.skip" = "건너뛰기";
 "onboarding.action.getStarted" = "시작하기";
 
 // MARK: - Agent Framework

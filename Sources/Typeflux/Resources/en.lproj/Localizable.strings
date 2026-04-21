@@ -715,7 +715,7 @@
 "onboarding.action.back" = "Previous";
 "onboarding.action.continue" = "Next";
 "onboarding.action.skip" = "Skip";
-"onboarding.account.skip" = "Skip sign in and configure models manually";
+"onboarding.account.skip" = "Skip";
 "onboarding.action.getStarted" = "Get Started";
 
 // MARK: - Agent Framework

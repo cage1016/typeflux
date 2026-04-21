@@ -713,7 +713,7 @@
 "onboarding.action.back" = "上一步";
 "onboarding.action.continue" = "下一步";
 "onboarding.action.skip" = "略過";
-"onboarding.account.skip" = "略過登入，手動設定模型";
+"onboarding.account.skip" = "略過";
 "onboarding.action.getStarted" = "開始使用";
 
 // MARK: - Agent 框架

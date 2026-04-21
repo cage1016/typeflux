@@ -35,29 +35,54 @@ cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/Typeflux_Typeflux.bundl
 
 chmod +x "$APP_BUNDLE/Contents/MacOS/Typeflux"
 
+ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
+PROVISIONING_PROFILE="${PROVISIONING_PROFILE:-}"
+
+# Sign In with Apple requires both the entitlement and an embedded macOS
+# provisioning profile whose App ID matches dev.typeflux. Without the profile,
+# AMFI rejects the app at launch when restricted entitlements are present, so
+# we fall back to signing without entitlements and warn the operator.
+use_apple_sign_in_entitlements=false
+if [[ -n "$PROVISIONING_PROFILE" ]]; then
+  if [[ -f "$PROVISIONING_PROFILE" ]]; then
+    cp "$PROVISIONING_PROFILE" "$APP_BUNDLE/Contents/embedded.provisionprofile"
+    use_apple_sign_in_entitlements=true
+  else
+    echo "Warning: PROVISIONING_PROFILE does not exist: $PROVISIONING_PROFILE"
+    rm -f "$APP_BUNDLE/Contents/embedded.provisionprofile"
+  fi
+else
+  rm -f "$APP_BUNDLE/Contents/embedded.provisionprofile"
+fi
+
 # Sign the bundle if an identity is available.
 # Hardened runtime is required for notarization with a Developer ID signature.
 if [[ -n "${CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
-  codesign \
-    --force \
-    --sign "$CODESIGN_IDENTITY" \
-    --timestamp \
-    --options runtime \
-    --identifier "dev.typeflux" \
-    "$APP_EXECUTABLE"
-  codesign \
-    --force \
-    --sign "$CODESIGN_IDENTITY" \
-    --timestamp \
-    --options runtime \
-    --identifier "dev.typeflux" \
-    "$APP_BUNDLE"
+  codesign_args=(
+    --force
+    --sign "$CODESIGN_IDENTITY"
+    --timestamp
+    --options runtime
+    --identifier "dev.typeflux"
+  )
+  if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+    codesign_args+=(--entitlements "$ENTITLEMENTS")
+  fi
+  codesign "${codesign_args[@]}" "$APP_EXECUTABLE"
+  codesign "${codesign_args[@]}" "$APP_BUNDLE"
   codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
   echo "Signed with identity: $CODESIGN_IDENTITY"
 elif command -v codesign >/dev/null 2>&1; then
   codesign --force --sign - --identifier "dev.typeflux" "$APP_EXECUTABLE"
   codesign --force --sign - --identifier "dev.typeflux" "$APP_BUNDLE"
   echo "Signed with ad-hoc identity"
+fi
+
+if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+  echo "Embedded provisioning profile: $PROVISIONING_PROFILE"
+else
+  echo "Warning: Sign In with Apple is disabled for this release build."
+  echo "Warning: To enable it, set PROVISIONING_PROFILE to a macOS provisioning profile whose App ID matches dev.typeflux and includes the Sign In with Apple capability."
 fi
 
 create_zip_archive
