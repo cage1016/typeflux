@@ -63,7 +63,6 @@ jobs:
           security import "$APPLE_CERTIFICATE_PATH" \
             -P "$APPLE_CERTIFICATE_PASSWORD" \
             -A \
-            -t cert \
             -f pkcs12 \
             -k "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
