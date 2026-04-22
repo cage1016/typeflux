@@ -79,6 +79,62 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAdvanceFromPermissionsShowsAlertWhenRequiredPermissionsAreMissing() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .permissions
+        viewModel.permissions = [
+            PrivacyGuard.PermissionSnapshot(
+                id: .microphone,
+                state: .needsAttention,
+                detail: "Microphone missing",
+            ),
+            PrivacyGuard.PermissionSnapshot(
+                id: .speechRecognition,
+                state: .granted,
+                detail: "Speech granted",
+            ),
+            PrivacyGuard.PermissionSnapshot(
+                id: .accessibility,
+                state: .granted,
+                detail: "Accessibility granted",
+            ),
+        ]
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .permissions)
+        XCTAssertTrue(viewModel.showIncompletePermissionsAlert)
+    }
+
+    @MainActor
+    func testAdvanceFromPermissionsContinuesWhenRequiredPermissionsAreGranted() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .permissions
+        viewModel.permissions = [
+            PrivacyGuard.PermissionSnapshot(
+                id: .microphone,
+                state: .granted,
+                detail: "Microphone granted",
+            ),
+            PrivacyGuard.PermissionSnapshot(
+                id: .speechRecognition,
+                state: .needsAttention,
+                detail: "Speech missing",
+            ),
+            PrivacyGuard.PermissionSnapshot(
+                id: .accessibility,
+                state: .granted,
+                detail: "Accessibility granted",
+            ),
+        ]
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .shortcuts)
+        XCTAssertFalse(viewModel.showIncompletePermissionsAlert)
+    }
+
+    @MainActor
     func testInitialSTTProviderFallsBackWhenTypefluxCloudIsHiddenInOnboarding() {
         store.sttProvider = .typefluxOfficial
 

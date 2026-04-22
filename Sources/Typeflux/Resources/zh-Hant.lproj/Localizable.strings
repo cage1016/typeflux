@@ -699,6 +699,10 @@
 
 "onboarding.permissions.title" = "授予權限";
 "onboarding.permissions.subtitle" = "Typeflux 需要少量系統權限，用於錄製語音並將文字輸入其他應用程式。";
+"onboarding.permissions.instruction.title" = "請完成每一項必要授權";
+"onboarding.permissions.instruction.subtitle" = "點擊每個權限右側的按鈕，在 macOS 彈窗或系統設定中完成授權，然後回到 Typeflux。";
+"onboarding.permissions.incompleteAlert.title" = "權限尚未完成";
+"onboarding.permissions.incompleteAlert.message" = "繼續之前請先完成必要權限。請點擊每個權限右側的按鈕，並在 macOS 中確認授權。";
 "onboarding.permissions.privacyCallout.title" = "隱私優先";
 "onboarding.permissions.privacyCallout.subtitle" = "你的音訊資料會盡可能在本機處理。未經你明確授權，我們不會儲存任何錄音。";
 

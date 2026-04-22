@@ -699,6 +699,10 @@
 
 "onboarding.permissions.title" = "権限を付与する";
 "onboarding.permissions.subtitle" = "Typeflux では、音声をキャプチャして他のアプリにテキストを挿入するには、いくつかのシステム権限が必要です。";
+"onboarding.permissions.instruction.title" = "必要な権限をすべて完了してください";
+"onboarding.permissions.instruction.subtitle" = "各権限の右側にあるボタンをクリックし、macOS の確認画面またはシステム設定で許可してから Typeflux に戻ってください。";
+"onboarding.permissions.incompleteAlert.title" = "権限が完了していません";
+"onboarding.permissions.incompleteAlert.message" = "続行する前に必要な権限を完了してください。各権限のボタンをクリックし、macOS で許可してください。";
 "onboarding.permissions.privacyCallout.title" = "プライバシー重視";
 "onboarding.permissions.privacyCallout.subtitle" = "音声データは可能な限りローカルで処理されます。明確な同意がない限り、録音を保存することはありません。";
 

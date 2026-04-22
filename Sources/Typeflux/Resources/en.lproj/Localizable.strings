@@ -701,6 +701,10 @@
 
 "onboarding.permissions.title" = "Grant permissions";
 "onboarding.permissions.subtitle" = "Typeflux needs a few system permissions to capture your voice and insert text into other apps.";
+"onboarding.permissions.instruction.title" = "Complete each required permission";
+"onboarding.permissions.instruction.subtitle" = "Click the button on the right of each permission, approve the macOS prompt, then return to Typeflux.";
+"onboarding.permissions.incompleteAlert.title" = "Permissions not complete";
+"onboarding.permissions.incompleteAlert.message" = "Complete the required permissions before continuing. Click each permission button and approve it in macOS.";
 "onboarding.permissions.privacyCallout.title" = "Privacy First";
 "onboarding.permissions.privacyCallout.subtitle" = "Your audio data is processed locally whenever possible. We never store recordings without your explicit consent.";
 

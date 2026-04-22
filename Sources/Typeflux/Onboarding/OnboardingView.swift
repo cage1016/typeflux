@@ -50,6 +50,14 @@ struct OnboardingView: View {
         }
         .preferredColorScheme(preferredColorScheme)
         .environment(\.locale, localization.locale)
+        .alert(
+            L("onboarding.permissions.incompleteAlert.title"),
+            isPresented: $viewModel.showIncompletePermissionsAlert,
+        ) {
+            Button(L("common.ok"), role: .cancel) {}
+        } message: {
+            Text(L("onboarding.permissions.incompleteAlert.message"))
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             if viewModel.currentStep == .permissions {
                 viewModel.refreshPermissions()
@@ -1359,6 +1367,8 @@ struct OnboardingView: View {
                     alignCenter: false,
                 )
 
+                permissionInstruction
+
                 VStack(spacing: 10) {
                     ForEach(PrivacyGuard.PermissionID.allCases) { permissionID in
                         if let snapshot = viewModel.permissions.first(where: { $0.id == permissionID }) {
@@ -1415,36 +1425,53 @@ struct OnboardingView: View {
                             .fill(StudioTheme.success.opacity(0.12)),
                     )
             } else {
-                Button {
+                StudioButton(
+                    title: snapshot.actionTitle,
+                    systemImage: "lock.open.display",
+                    variant: .primary,
+                    isDisabled: isRequesting,
+                    isLoading: isRequesting,
+                ) {
                     viewModel.requestPermission(snapshot.id)
-                } label: {
-                    if isRequesting {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(onboardingPrimaryText)
-                            .frame(width: 18, height: 18)
-                    } else {
-                        Circle()
-                            .fill(onboardingPrimaryText)
-                            .frame(width: 14, height: 14)
-                    }
                 }
-                .buttonStyle(StudioInteractiveButtonStyle())
-                .frame(width: 36, height: 36)
-                .background(
-                    Circle()
-                        .fill(onboardingMutedSurface),
-                )
-                .overlay(
-                    Circle()
-                        .stroke(onboardingSubtleBorder, lineWidth: 1),
-                )
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background(onboardingCardFill)
         .overlay(onboardingCardStroke)
+    }
+
+    private var permissionInstruction: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "hand.point.up.left.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(StudioTheme.accent)
+                .frame(width: 34, height: 34)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(StudioTheme.accent.opacity(isDarkMode ? 0.16 : 0.10)),
+                )
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(L("onboarding.permissions.instruction.title"))
+                    .font(.studioBody(13, weight: .semibold))
+                    .foregroundStyle(onboardingPrimaryText)
+                Text(L("onboarding.permissions.instruction.subtitle"))
+                    .font(.studioBody(12))
+                    .foregroundStyle(onboardingSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(onboardingMutedSurface),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(onboardingSubtleBorder, lineWidth: 1),
+        )
     }
 
     private var privacyCallout: some View {

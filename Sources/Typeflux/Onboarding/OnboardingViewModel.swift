@@ -68,6 +68,7 @@ final class OnboardingViewModel: ObservableObject {
     // Permissions
     @Published var permissions: [PrivacyGuard.PermissionSnapshot] = []
     @Published var requestingPermissions: Set<PrivacyGuard.PermissionID> = []
+    @Published var showIncompletePermissionsAlert = false
 
     private let settingsStore: SettingsStore
     private let authState: AuthState
@@ -178,6 +179,11 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     func advance() {
+        if currentStep == .permissions && !allRequiredPermissionsGranted {
+            showIncompletePermissionsAlert = true
+            return
+        }
+
         saveCurrentStepSettings()
         if isLastStep {
             complete()
