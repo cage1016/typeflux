@@ -121,6 +121,37 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Prepare pre-release metadata
+        if: github.event_name == 'push' && github.ref_name == 'pre-release'
+        run: |
+          set -euo pipefail
+
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "TYPEFLUX_PRERELEASE_TAG=pre-release-${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "TYPEFLUX_PRERELEASE_NAME=Typeflux Pre-release #${GITHUB_RUN_NUMBER} (${SHORT_SHA})" >> "$GITHUB_ENV"
+
+      - name: Upload pre-release assets
+        if: github.event_name == 'push' && github.ref_name == 'pre-release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TYPEFLUX_PRERELEASE_TAG }}
+          name: ${{ env.TYPEFLUX_PRERELEASE_NAME }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          body: |
+            Automated Typeflux pre-release build.
+
+            Commit: ${{ github.sha }}
+            Branch: pre-release
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          files: |
+            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.zip
+            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.dmg
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload release assets
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
