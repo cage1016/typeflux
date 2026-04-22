@@ -22,11 +22,8 @@ jobs:
     env:
       APP_NAME: Typeflux
       TYPEFLUX_PACKAGE_NAME: ${{ github.event_name == 'push' && github.ref_name == 'pre-release' && 'Typeflux-pre-release' || 'Typeflux' }}
-      APPLE_CERTIFICATE_PATH: ${{ runner.temp }}/developer-id-application.p12
       BUILD_DIR: .build/release
       TYPEFLUX_CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
-      KEYCHAIN_PATH: ${{ runner.temp }}/typeflux-release.keychain-db
-      TYPEFLUX_NOTARY_KEYCHAIN: ${{ runner.temp }}/typeflux-release.keychain-db
       TYPEFLUX_NOTARY_PROFILE: typeflux-release
       NOTARYTOOL_APPLE_ID: ${{ secrets.NOTARYTOOL_APPLE_ID }}
       NOTARYTOOL_PASSWORD: ${{ secrets.NOTARYTOOL_PASSWORD }}
@@ -36,6 +33,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure temporary paths
+        run: |
+          set -euo pipefail
+
+          echo "APPLE_CERTIFICATE_PATH=$RUNNER_TEMP/developer-id-application.p12" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PATH=$RUNNER_TEMP/typeflux-release.keychain-db" >> "$GITHUB_ENV"
+          echo "TYPEFLUX_NOTARY_KEYCHAIN=$RUNNER_TEMP/typeflux-release.keychain-db" >> "$GITHUB_ENV"
 
       - name: Install create-dmg
         run: brew install create-dmg
