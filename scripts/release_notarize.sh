@@ -45,19 +45,26 @@ parse_notary_field() {
 
 find_valid_codesign_identity() {
   local requested_identity="$1"
+  local identity
 
-  security find-identity -v -p codesigning 2>/dev/null \
-    | sed -n 's/^[[:space:]]*[0-9][0-9]*) [0-9A-F]\{40\} "\(.*\)"$/\1/p' \
-    | while IFS= read -r identity; do
-      [[ -n "$identity" ]] || continue
+  while IFS= read -r identity; do
+    [[ -n "$identity" ]] || continue
 
-      if [[ -n "$requested_identity" ]]; then
-        [[ "$identity" == "$requested_identity" ]] && printf '%s\n' "$identity"
-      elif [[ "$identity" == Developer\ ID\ Application:* ]]; then
+    if [[ -n "$requested_identity" ]]; then
+      if [[ "$identity" == "$requested_identity" ]]; then
         printf '%s\n' "$identity"
-        break
+        return 0
       fi
-    done
+    elif [[ "$identity" == Developer\ ID\ Application:* ]]; then
+      printf '%s\n' "$identity"
+      return 0
+    fi
+  done < <(
+    security find-identity -v -p codesigning 2>/dev/null \
+      | sed -n 's/^[[:space:]]*[0-9][0-9]*) [0-9A-F]\{40\} "\(.*\)"$/\1/p'
+  )
+
+  return 1
 }
 
 codesign_identity_exists_as_certificate() {
@@ -69,7 +76,7 @@ resolve_codesign_identity() {
   local requested_identity="${TYPEFLUX_CODESIGN_IDENTITY:-}"
   local resolved_identity
 
-  resolved_identity="$(find_valid_codesign_identity "$requested_identity" | head -n 1)"
+  resolved_identity="$(find_valid_codesign_identity "$requested_identity" || true)"
   if [[ -n "$resolved_identity" ]]; then
     TYPEFLUX_CODESIGN_IDENTITY="$resolved_identity"
     export TYPEFLUX_CODESIGN_IDENTITY
