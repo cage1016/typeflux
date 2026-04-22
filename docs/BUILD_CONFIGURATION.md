@@ -226,6 +226,7 @@ The release script passes `--keychain` automatically when this variable is set.
 | `TYPEFLUX_NOTARY_KEYCHAIN` | Optional | Path to a non-default keychain file containing the notary profile | `scripts/release_notarize.sh` |
 | `TYPEFLUX_NOTARY_SUBMIT_RETRIES` | Optional | Integer; default `3` | `scripts/release_notarize.sh` (retries on transient submission failure) |
 | `TYPEFLUX_NOTARY_POLL_INTERVAL_SECONDS` | Optional | Integer; default `15` | `scripts/release_notarize.sh` (sleep between status polls) |
+| `TYPEFLUX_RELEASE_VARIANT` | Optional | `minimal` (default) or `full` | `scripts/build_release.sh` (controls whether SenseVoice is embedded into the app bundle) |
 
 > Variables that are **not** prefixed are intentionally Apple-defined or third-party names: `NOTARYTOOL_APPLE_ID`, `NOTARYTOOL_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD` exist only inside the GitHub Actions workflow.
 
@@ -265,14 +266,15 @@ Per release:
 export TYPEFLUX_APPLE_DISTRIBUTION="Developer ID Application: YIYAO GUAN (N95437SZ2A)"
 export TYPEFLUX_PROVISIONING_PROFILE="$HOME/secure/typeflux/release.provisionprofile"
 export TYPEFLUX_NOTARY_PROFILE="typeflux-profile"
+export TYPEFLUX_RELEASE_VARIANT="full"
 make release-notarize
 ```
 
 Outputs in `.build/release/`:
 
 - `Typeflux.app`
-- `Typeflux.zip`
-- `Typeflux.dmg`
+- `Typeflux.zip` / `Typeflux.dmg` for the minimal installer
+- `Typeflux-full.zip` / `Typeflux-full.dmg` for the bundled SenseVoice installer
 
 ### 8.3 GitHub Actions release
 

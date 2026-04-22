@@ -178,6 +178,7 @@
 "common.apiKey" = "API Key";
 "common.model" = "モデル";
 "common.automatic" = "自動";
+"common.bundled" = "同梱";
 "common.selectSuggestedValue" = "提案された値を選択してください";
 "common.failedWithReason" = "失敗: %@";
 "common.failedPrefix" = "失敗しました:";

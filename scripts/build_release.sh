@@ -4,7 +4,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
-PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$APP_NAME}"
+RELEASE_VARIANT="${TYPEFLUX_RELEASE_VARIANT:-minimal}"
+DEFAULT_PACKAGE_NAME="$APP_NAME"
+if [[ "$RELEASE_VARIANT" == "full" ]]; then
+  DEFAULT_PACKAGE_NAME="${APP_NAME}-full"
+fi
+PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 APP_EXECUTABLE="${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 ZIP_PATH="${BUILD_DIR}/${PACKAGE_NAME}.zip"
@@ -38,6 +43,16 @@ create_zip_archive() {
 }
 
 echo "Building Typeflux release bundle..."
+echo "Release variant: ${RELEASE_VARIANT}"
+
+case "$RELEASE_VARIANT" in
+  minimal|full)
+    ;;
+  *)
+    echo "Error: unsupported TYPEFLUX_RELEASE_VARIANT: ${RELEASE_VARIANT}" >&2
+    exit 1
+    ;;
+esac
 
 swift build --package-path "$ROOT_DIR" -c release
 
@@ -53,6 +68,12 @@ cp "$ROOT_DIR/app/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 cp "$BIN" "$APP_BUNDLE/Contents/MacOS/Typeflux"
 cp "$ROOT_DIR/app/Typeflux.icns" "$APP_BUNDLE/Contents/Resources/Typeflux.icns"
 cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/Typeflux_Typeflux.bundle"
+
+rm -rf "$APP_BUNDLE/Contents/Resources/BundledModels"
+if [[ "$RELEASE_VARIANT" == "full" ]]; then
+  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" \
+    "$APP_BUNDLE/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small"
+fi
 
 chmod +x "$APP_BUNDLE/Contents/MacOS/Typeflux"
 

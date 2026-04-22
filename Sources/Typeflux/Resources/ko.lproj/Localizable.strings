@@ -178,6 +178,7 @@
 "common.apiKey" = "API Key";
 "common.model" = "모델";
 "common.automatic" = "자동";
+"common.bundled" = "앱 포함";
 "common.selectSuggestedValue" = "제안된 값을 선택하세요.";
 "common.failedWithReason" = "실패: %@";
 "common.failedPrefix" = "실패:";

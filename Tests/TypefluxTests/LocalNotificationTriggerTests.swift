@@ -46,6 +46,29 @@ final class LocalNotificationTriggerTests: XCTestCase {
         XCTAssertEqual(notification.body, L("notification.localModelReady.body"))
     }
 
+    func testDeleteLocalSTTModelKeepsBundledModelReady() {
+        let bundledInfo = LocalSTTPreparedModelInfo(
+            storagePath: "/Applications/Typeflux.app/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small",
+            sourceDisplayName: L("common.bundled"),
+        )
+        let localModelManager = BundledLocalSTTModelManager(preparedInfo: bundledInfo)
+        let viewModel = StudioViewModel(
+            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "LocalNotificationTriggerTests.bundledDelete.\(UUID().uuidString)")!),
+            historyStore: InMemoryNotificationHistoryStore(),
+            initialSection: .models,
+            modelManager: MockOllamaModelManager(),
+            localModelManager: localModelManager,
+            notificationService: RecordingLocalNotificationService(),
+        )
+
+        viewModel.deleteLocalSTTModel(.senseVoiceSmall)
+
+        XCTAssertTrue(viewModel.isLocalSTTPrepared)
+        XCTAssertEqual(viewModel.localSTTPreparedSource, L("common.bundled"))
+        XCTAssertEqual(viewModel.localSTTStoragePath, bundledInfo.storagePath)
+        XCTAssertEqual(viewModel.toastMessage, L("settings.models.localSTT.ready"))
+    }
+
     private func waitForNotificationCount(
         _ expectedCount: Int,
         in service: RecordingLocalNotificationService,
@@ -84,7 +107,7 @@ private final class MockLocalSTTModelManager: LocalSTTModelManaging {
         nil
     }
 
-    func isModelDownloaded(_: LocalSTTModel) -> Bool {
+    func isModelAvailable(_: LocalSTTModel) -> Bool {
         false
     }
 
@@ -92,6 +115,33 @@ private final class MockLocalSTTModelManager: LocalSTTModelManaging {
 
     func storagePath(for _: LocalSTTConfiguration) -> String {
         "/tmp/typeflux-local-model"
+    }
+}
+
+private final class BundledLocalSTTModelManager: LocalSTTModelManaging {
+    private let preparedInfo: LocalSTTPreparedModelInfo
+
+    init(preparedInfo: LocalSTTPreparedModelInfo) {
+        self.preparedInfo = preparedInfo
+    }
+
+    func prepareModel(
+        settingsStore _: SettingsStore,
+        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {}
+
+    func preparedModelInfo(settingsStore _: SettingsStore) -> LocalSTTPreparedModelInfo? {
+        preparedInfo
+    }
+
+    func isModelAvailable(_: LocalSTTModel) -> Bool {
+        true
+    }
+
+    func deleteModelFiles(_: LocalSTTModel) throws {}
+
+    func storagePath(for _: LocalSTTConfiguration) -> String {
+        preparedInfo.storagePath
     }
 }
 

@@ -68,7 +68,7 @@ protocol LocalSTTModelManaging {
     ) async throws
 
     func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo?
-    func isModelDownloaded(_ model: LocalSTTModel) -> Bool
+    func isModelAvailable(_ model: LocalSTTModel) -> Bool
     func deleteModelFiles(_ model: LocalSTTModel) throws
     func storagePath(for configuration: LocalSTTConfiguration) -> String
 }
@@ -88,6 +88,7 @@ final class LocalModelManager: LocalSTTModelManaging {
     private let remoteRepositoryFileListLoader: RemoteRepositoryFileListLoader
     private let remoteFileDownloader: RemoteFileDownloader
     private let downloadSourceResolver: LocalModelDownloadSourceResolving
+    private let bundledModelLocator: BundledLocalModelLocator
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let _modelsRootURL: URL
@@ -122,6 +123,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             try await LocalModelManager.defaultRemoteFileDownloader(from: sourceURL, to: destinationURL)
         },
         downloadSourceResolver: LocalModelDownloadSourceResolving = NetworkLocalModelDownloadSourceResolver(),
+        bundledModelsRootURL: URL? = nil,
     ) {
         self.fileManager = fileManager
         self.sherpaOnnxInstaller = sherpaOnnxInstaller ?? SherpaOnnxModelInstaller(
@@ -133,6 +135,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         self.remoteRepositoryFileListLoader = remoteRepositoryFileListLoader
         self.remoteFileDownloader = remoteFileDownloader
         self.downloadSourceResolver = downloadSourceResolver
+        bundledModelLocator = BundledLocalModelLocator(bundledModelsRootURL: bundledModelsRootURL)
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let base = applicationSupportURL
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -150,6 +153,9 @@ final class LocalModelManager: LocalSTTModelManaging {
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
     ) async throws {
         let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
+        if preparedModelInfo(for: configuration) != nil {
+            return
+        }
         let result = try await downloadModelFiles(configuration: configuration, onUpdate: onUpdate)
         let record = LocalModelPreparedRecord(
             model: configuration.model.rawValue,
@@ -378,7 +384,31 @@ final class LocalModelManager: LocalSTTModelManaging {
     }
 
     func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo? {
-        let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
+        preparedModelInfo(for: LocalSTTConfiguration(settingsStore: settingsStore))
+    }
+
+    func isModelAvailable(_ model: LocalSTTModel) -> Bool {
+        let defaultConfiguration = LocalSTTConfiguration(
+            model: model,
+            modelIdentifier: model.defaultModelIdentifier,
+            downloadSource: model.recommendedDownloadSource,
+            autoSetup: true,
+        )
+        if bundledModelInfo(for: defaultConfiguration) != nil {
+            return true
+        }
+
+        guard let record = loadPreparedRecord(for: model) else {
+            return false
+        }
+        return isPreparedStoragePathValid(record.storagePath, for: model)
+    }
+
+    func preparedModelInfo(for configuration: LocalSTTConfiguration) -> LocalSTTPreparedModelInfo? {
+        if let bundled = bundledModelInfo(for: configuration) {
+            return bundled
+        }
+
         guard
             let record = loadPreparedRecord(for: configuration.model),
             record.modelIdentifier == configuration.modelIdentifier,
@@ -391,13 +421,6 @@ final class LocalModelManager: LocalSTTModelManaging {
             storagePath: record.storagePath,
             sourceDisplayName: ModelDownloadSource(rawValue: record.source)?.displayName ?? configuration.downloadSource.displayName,
         )
-    }
-
-    func isModelDownloaded(_ model: LocalSTTModel) -> Bool {
-        guard let record = loadPreparedRecord(for: model) else {
-            return false
-        }
-        return isPreparedStoragePathValid(record.storagePath, for: model)
     }
 
     func deleteModelFiles(_ model: LocalSTTModel) throws {
@@ -453,6 +476,18 @@ final class LocalModelManager: LocalSTTModelManaging {
             return
         }
         try fileManager.removeItem(at: legacyRuntimeURL)
+    }
+
+    private func bundledModelInfo(for configuration: LocalSTTConfiguration) -> LocalSTTPreparedModelInfo? {
+        for candidateURL in bundledModelLocator.storageURLs(for: configuration)
+        where isPreparedStoragePathValid(candidateURL.path, for: configuration.model) {
+            return LocalSTTPreparedModelInfo(
+                storagePath: candidateURL.path,
+                sourceDisplayName: L("common.bundled"),
+            )
+        }
+
+        return nil
     }
 
     private func prepareWhisperTokenizerIfNeeded(

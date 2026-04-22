@@ -180,6 +180,7 @@
 "common.apiKey" = "API Key";
 "common.model" = "Model";
 "common.automatic" = "Automatic";
+"common.bundled" = "Bundled";
 "common.selectSuggestedValue" = "Select a suggested value";
 "common.failedWithReason" = "Failed: %@";
 "common.failedPrefix" = "Failed:";

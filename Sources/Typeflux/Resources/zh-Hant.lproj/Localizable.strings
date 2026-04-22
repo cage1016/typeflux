@@ -178,6 +178,7 @@
 "common.apiKey" = "API Key";
 "common.model" = "模型";
 "common.automatic" = "自動";
+"common.bundled" = "隨應用附帶";
 "common.selectSuggestedValue" = "選擇建議值";
 "common.failedWithReason" = "失敗：%@";
 "common.failedPrefix" = "失敗：";

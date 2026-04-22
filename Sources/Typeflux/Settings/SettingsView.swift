@@ -4133,7 +4133,7 @@ struct StudioView: View {
         .buttonStyle(StudioInteractiveButtonStyle())
         .contextMenu {
             Button {
-                if viewModel.isModelDownloaded(model) {
+                if viewModel.isModelAvailable(model) {
                     localSTTPendingRedownload = model
                 } else {
                     viewModel.setLocalSTTModel(model)
@@ -4143,7 +4143,7 @@ struct StudioView: View {
                 Label(L("settings.models.redownload"), systemImage: "arrow.clockwise")
             }
 
-            if viewModel.isModelDownloaded(model) {
+            if viewModel.isModelAvailable(model) {
                 Divider()
                 Button(role: .destructive) {
                     localSTTPendingDelete = model

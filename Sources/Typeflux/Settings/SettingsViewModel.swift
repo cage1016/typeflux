@@ -1687,20 +1687,21 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
-    func isModelDownloaded(_ model: LocalSTTModel) -> Bool {
-        localModelManager.isModelDownloaded(model)
+    func isModelAvailable(_ model: LocalSTTModel) -> Bool {
+        localModelManager.isModelAvailable(model)
     }
 
     func deleteLocalSTTModel(_ model: LocalSTTModel) {
         do {
             try localModelManager.deleteModelFiles(model)
             if model == localSTTModel {
-                isLocalSTTPrepared = false
-                localSTTPreparationProgress = 0
-                localSTTStatus = L("settings.models.localSTT.notPrepared")
-                localSTTPreparationDetail = L("settings.models.localSTT.autoPrepareHint")
+                refreshLocalSTTStoragePath()
+                refreshLocalSTTPreparedState()
             }
-            showToast(L("settings.models.localSTT.deleted"))
+            let toastKey = localModelManager.isModelAvailable(model)
+                ? "settings.models.localSTT.ready"
+                : "settings.models.localSTT.deleted"
+            showToast(L(toastKey))
         } catch {
             showToast(L("common.failedWithReason", error.localizedDescription))
         }

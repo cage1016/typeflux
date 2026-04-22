@@ -7,9 +7,17 @@ For a command-by-command overview, see [MAKE_COMMANDS.md](./MAKE_COMMANDS.md).
 ## Recommended Release Path
 
 For official GitHub releases, publish a GitHub Release. The `Release` workflow
-then builds the macOS app, signs it with a Developer ID Application certificate,
-notarizes it with Apple, packages it into a DMG, and uploads `Typeflux.dmg` and
-`Typeflux.zip` as release assets.
+then builds two macOS installers, signs them with a Developer ID Application
+certificate, notarizes them with Apple, packages them into DMGs, and uploads
+both variants as release assets:
+
+- `Typeflux-minimal.dmg` / `Typeflux-minimal.zip` (~15 MB, app only)
+- `Typeflux-full.dmg` / `Typeflux-full.zip` (~150 MB, includes SenseVoice model)
+
+The `full` variant embeds the SenseVoice STT model so users can use local
+speech recognition immediately without downloading additional model files.
+The `minimal` variant requires an internet connection to download the model
+on first use.
 
 For local release validation, use the one-step notarized release command:
 
@@ -131,6 +139,7 @@ export TYPEFLUX_CODESIGN_IDENTITY="$TYPEFLUX_APPLE_DISTRIBUTION"
 export TYPEFLUX_NOTARY_SUBMIT_RETRIES=3
 export TYPEFLUX_NOTARY_POLL_INTERVAL_SECONDS=15
 export TYPEFLUX_NOTARY_KEYCHAIN="/path/to/custom.keychain-db"
+export TYPEFLUX_RELEASE_VARIANT="minimal" # or "full"
 ```
 
 Notes:
@@ -153,8 +162,8 @@ make release-notarize
 Successful output artifacts:
 
 - `.build/release/Typeflux.app`
-- `.build/release/Typeflux.zip`
-- `.build/release/Typeflux.dmg`
+- `.build/release/Typeflux.zip` or `.build/release/Typeflux-full.zip`
+- `.build/release/Typeflux.dmg` or `.build/release/Typeflux-full.dmg`
 
 ## Manual Release Steps
 
@@ -169,7 +178,8 @@ make release
 Outputs:
 
 - `.build/release/Typeflux.app`
-- `.build/release/Typeflux.zip`
+- `.build/release/Typeflux.zip` for `TYPEFLUX_RELEASE_VARIANT=minimal`
+- `.build/release/Typeflux-full.zip` for `TYPEFLUX_RELEASE_VARIANT=full`
 
 ### Build the DMG
 
@@ -179,7 +189,8 @@ make dmg
 
 Output:
 
-- `.build/release/Typeflux.dmg`
+- `.build/release/Typeflux.dmg` for `TYPEFLUX_RELEASE_VARIANT=minimal`
+- `.build/release/Typeflux-full.dmg` for `TYPEFLUX_RELEASE_VARIANT=full`
 
 ### Submit to notarization manually
 
@@ -206,8 +217,10 @@ You can distribute the final artifacts through:
 
 If you publish a release manually, prefer attaching both:
 
-- `Typeflux.dmg`
-- `Typeflux.zip`
+- `Typeflux-minimal.dmg`
+- `Typeflux-minimal.zip`
+- `Typeflux-full.dmg`
+- `Typeflux-full.zip`
 
 ## Release Checklist
 

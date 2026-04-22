@@ -21,7 +21,6 @@ jobs:
     timeout-minutes: 60
     env:
       APP_NAME: Typeflux
-      TYPEFLUX_PACKAGE_NAME: ${{ github.event_name == 'push' && github.ref_name == 'pre-release' && 'Typeflux-pre-release' || 'Typeflux' }}
       BUILD_DIR: .build/release
       TYPEFLUX_CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
       TYPEFLUX_NOTARY_PROFILE: typeflux-release
@@ -41,6 +40,14 @@ jobs:
           echo "APPLE_CERTIFICATE_PATH=$RUNNER_TEMP/developer-id-application.p12" >> "$GITHUB_ENV"
           echo "KEYCHAIN_PATH=$RUNNER_TEMP/typeflux-release.keychain-db" >> "$GITHUB_ENV"
           echo "TYPEFLUX_NOTARY_KEYCHAIN=$RUNNER_TEMP/typeflux-release.keychain-db" >> "$GITHUB_ENV"
+
+      - name: Cache bundled model downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/typeflux-bundled-models
+          key: typeflux-bundled-models-${{ runner.os }}-${{ hashFiles('scripts/install_bundled_sensevoice.sh') }}
+          restore-keys: |
+            typeflux-bundled-models-${{ runner.os }}-
 
       - name: Install create-dmg
         run: brew install create-dmg
@@ -97,27 +104,54 @@ jobs:
             --password "$NOTARYTOOL_PASSWORD" \
             --keychain "$KEYCHAIN_PATH"
 
-      - name: Build, sign, notarize, staple, and package
-        run: ./scripts/release_notarize.sh
+      - name: Build, sign, notarize, staple, and package minimal + full installers
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "pre-release" ]]; then
+            MINIMAL_PACKAGE_NAME="Typeflux-pre-release-minimal"
+            FULL_PACKAGE_NAME="Typeflux-pre-release-full"
+          else
+            MINIMAL_PACKAGE_NAME="Typeflux-minimal"
+            FULL_PACKAGE_NAME="Typeflux-full"
+          fi
+
+          TYPEFLUX_RELEASE_VARIANT=minimal \
+          TYPEFLUX_PACKAGE_NAME="$MINIMAL_PACKAGE_NAME" \
+          ./scripts/release_notarize.sh
+
+          TYPEFLUX_RELEASE_VARIANT=full \
+          TYPEFLUX_PACKAGE_NAME="$FULL_PACKAGE_NAME" \
+          ./scripts/release_notarize.sh
 
       - name: Verify release artifacts
         run: |
           set -euo pipefail
 
-          test -f "$BUILD_DIR/$TYPEFLUX_PACKAGE_NAME.dmg"
-          test -f "$BUILD_DIR/$TYPEFLUX_PACKAGE_NAME.zip"
+          test -f "$BUILD_DIR/Typeflux-minimal.dmg" || test -f "$BUILD_DIR/Typeflux-pre-release-minimal.dmg"
+          test -f "$BUILD_DIR/Typeflux-minimal.zip" || test -f "$BUILD_DIR/Typeflux-pre-release-minimal.zip"
+          test -f "$BUILD_DIR/Typeflux-full.dmg" || test -f "$BUILD_DIR/Typeflux-pre-release-full.dmg"
+          test -f "$BUILD_DIR/Typeflux-full.zip" || test -f "$BUILD_DIR/Typeflux-pre-release-full.zip"
           codesign --verify --deep --strict --verbose=2 "$BUILD_DIR/$APP_NAME.app"
           spctl --assess --type execute --verbose=4 "$BUILD_DIR/$APP_NAME.app"
-          xcrun stapler validate "$BUILD_DIR/$TYPEFLUX_PACKAGE_NAME.dmg"
+          if [[ -f "$BUILD_DIR/Typeflux-full.dmg" ]]; then
+            xcrun stapler validate "$BUILD_DIR/Typeflux-full.dmg"
+            xcrun stapler validate "$BUILD_DIR/Typeflux-minimal.dmg"
+          else
+            xcrun stapler validate "$BUILD_DIR/Typeflux-pre-release-full.dmg"
+            xcrun stapler validate "$BUILD_DIR/Typeflux-pre-release-minimal.dmg"
+          fi
 
       - name: Upload pre-release build artifacts
         if: github.event_name == 'push' && github.ref_name == 'pre-release'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.TYPEFLUX_PACKAGE_NAME }}-${{ github.sha }}
+          name: typeflux-pre-release-installers-${{ github.sha }}
           path: |
-            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.zip
-            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.dmg
+            .build/release/Typeflux-pre-release-minimal.zip
+            .build/release/Typeflux-pre-release-minimal.dmg
+            .build/release/Typeflux-pre-release-full.zip
+            .build/release/Typeflux-pre-release-full.dmg
           if-no-files-found: error
           retention-days: 14
 
@@ -146,8 +180,10 @@ jobs:
             Branch: pre-release
             Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           files: |
-            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.zip
-            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.dmg
+            .build/release/Typeflux-pre-release-minimal.zip
+            .build/release/Typeflux-pre-release-minimal.dmg
+            .build/release/Typeflux-pre-release-full.zip
+            .build/release/Typeflux-pre-release-full.dmg
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -158,8 +194,10 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
-            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.zip
-            .build/release/${{ env.TYPEFLUX_PACKAGE_NAME }}.dmg
+            .build/release/Typeflux-minimal.zip
+            .build/release/Typeflux-minimal.dmg
+            .build/release/Typeflux-full.zip
+            .build/release/Typeflux-full.dmg
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

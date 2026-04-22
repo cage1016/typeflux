@@ -102,6 +102,11 @@ final class AutoModelDownloadService {
 
         let config = Self.recommendedConfiguration()
 
+        if let prepared = modelManager.preparedModelInfo(for: config) {
+            markReady(config: config, storagePath: prepared.storagePath)
+            return
+        }
+
         // If already downloaded in a previous session, mark ready immediately.
         let state = loadState()
         if state.isCompleted,

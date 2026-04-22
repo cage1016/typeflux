@@ -180,6 +180,7 @@
 "common.apiKey" = "API Key";
 "common.model" = "模型";
 "common.automatic" = "自动";
+"common.bundled" = "随应用附带";
 "common.selectSuggestedValue" = "选择建议值";
 "common.failedWithReason" = "失败：%@";
 "common.failedPrefix" = "失败：";

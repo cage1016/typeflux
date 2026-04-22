@@ -4,7 +4,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
-PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$APP_NAME}"
+RELEASE_VARIANT="${TYPEFLUX_RELEASE_VARIANT:-minimal}"
+DEFAULT_PACKAGE_NAME="$APP_NAME"
+if [[ "$RELEASE_VARIANT" == "full" ]]; then
+  DEFAULT_PACKAGE_NAME="${APP_NAME}-full"
+fi
+PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 DMG_PATH="${BUILD_DIR}/${PACKAGE_NAME}.dmg"
 ZIP_PATH="${BUILD_DIR}/${PACKAGE_NAME}.zip"
@@ -199,6 +204,7 @@ main() {
 
   log "Using signing identity: ${TYPEFLUX_CODESIGN_IDENTITY}"
   log "Using notary profile: ${TYPEFLUX_NOTARY_PROFILE}"
+  log "Using release variant: ${RELEASE_VARIANT}"
   log "Using package name: ${PACKAGE_NAME}"
 
   log "Building signed release app..."

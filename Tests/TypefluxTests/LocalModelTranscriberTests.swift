@@ -114,6 +114,92 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertTrue(updates.values().contains(where: { $0.message == "fake sherpa ready" }))
     }
 
+    func testLocalModelManagerPrefersBundledSenseVoicePreparedModelInfo() async throws {
+        let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.localSTTModel = .senseVoiceSmall
+        settingsStore.localSTTModelIdentifier = LocalSTTModel.senseVoiceSmall.defaultModelIdentifier
+        settingsStore.localSTTDownloadSource = .huggingFace
+        settingsStore.localSTTAutoSetup = true
+
+        let appSupportURL = makeTemporaryApplicationSupportURL()
+        let firstManager = LocalModelManager(
+            fileManager: .default,
+            sherpaOnnxInstaller: FakeSherpaOnnxInstaller(),
+            applicationSupportURL: appSupportURL,
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
+        )
+        try await firstManager.prepareModel(settingsStore: settingsStore)
+
+        let bundledModelsRootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("typeflux-bundled-models-\(UUID().uuidString)", isDirectory: true)
+        let bundledStorageURL = bundledModelsRootURL
+            .appendingPathComponent("senseVoiceSmall", isDirectory: true)
+            .appendingPathComponent(LocalSTTModel.senseVoiceSmall.defaultModelIdentifier, isDirectory: true)
+        try FileManager.default.createDirectory(at: bundledStorageURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(
+            at: makeSherpaModelFolder(for: .senseVoiceSmall),
+            to: bundledStorageURL,
+        )
+
+        let manager = LocalModelManager(
+            fileManager: .default,
+            sherpaOnnxInstaller: FakeSherpaOnnxInstaller(),
+            applicationSupportURL: appSupportURL,
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
+            bundledModelsRootURL: bundledModelsRootURL,
+        )
+
+        let prepared = try XCTUnwrap(manager.preparedModelInfo(settingsStore: settingsStore))
+
+        XCTAssertEqual(prepared.storagePath, bundledStorageURL.path)
+        XCTAssertEqual(prepared.sourceDisplayName, L("common.bundled"))
+        XCTAssertFalse(prepared.storagePath.hasPrefix(appSupportURL.path))
+    }
+
+    func testAutoModelDownloadServiceUsesBundledSenseVoiceWithoutDownloading() throws {
+        let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.localOptimizationEnabled = true
+
+        let bundledModelsRootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("typeflux-auto-bundled-\(UUID().uuidString)", isDirectory: true)
+        let bundledStorageURL = bundledModelsRootURL
+            .appendingPathComponent("senseVoiceSmall", isDirectory: true)
+            .appendingPathComponent(LocalSTTModel.senseVoiceSmall.defaultModelIdentifier, isDirectory: true)
+        try FileManager.default.createDirectory(at: bundledStorageURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(
+            at: makeSherpaModelFolder(for: .senseVoiceSmall),
+            to: bundledStorageURL,
+        )
+
+        let fakeInstaller = FakeSherpaOnnxInstaller()
+        let manager = LocalModelManager(
+            fileManager: .default,
+            sherpaOnnxInstaller: fakeInstaller,
+            applicationSupportURL: makeTemporaryApplicationSupportURL(),
+            downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
+            bundledModelsRootURL: bundledModelsRootURL,
+        )
+        let service = AutoModelDownloadService(
+            modelManager: manager,
+            settingsStore: settingsStore,
+        )
+
+        service.triggerIfNeeded()
+
+        XCTAssertTrue(service.isModelReady)
+        XCTAssertEqual(service.status, .completed)
+        XCTAssertEqual(fakeInstaller.preparedSources, [])
+        XCTAssertNotNil(service.makeTranscriberIfReady())
+    }
+
     func testLocalModelManagerPersistsQwen3PreparedModelInfo() async throws {
         let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -975,7 +1061,7 @@ private final class FakeLocalSTTModelManager: LocalSTTModelManaging {
         preparedInfo
     }
 
-    func isModelDownloaded(_: LocalSTTModel) -> Bool {
+    func isModelAvailable(_: LocalSTTModel) -> Bool {
         preparedInfo != nil
     }
 
