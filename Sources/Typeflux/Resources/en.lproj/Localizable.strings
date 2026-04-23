@@ -90,8 +90,9 @@
 "menu.addVocabulary.dialog.title" = "Add word";
 "menu.addVocabulary.dialog.message" = "Enter one word or phrase per line.";
 "menu.addVocabulary.dialog.confirm" = "Add";
-"menu.recentTranscriptionHistory" = "Recent Transcriptions";
-"menu.recentTranscriptionHistory.empty" = "No transcription history";
+"menu.transcriptionHistory" = "Transcription History";
+"menu.transcriptionHistory.empty" = "No transcription history";
+"menu.transcriptionHistory.viewAll" = "View All";
 "menu.personas" = "Personas";
 "menu.agentTasks" = "Agent Tasks";
 "menu.agentTasks.empty" = "No running tasks";

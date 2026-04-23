@@ -90,8 +90,9 @@
 "menu.addVocabulary.dialog.title" = "添加生词";
 "menu.addVocabulary.dialog.message" = "每行输入一个词或短语。";
 "menu.addVocabulary.dialog.confirm" = "添加";
-"menu.recentTranscriptionHistory" = "最近转写历史";
-"menu.recentTranscriptionHistory.empty" = "暂无转写历史";
+"menu.transcriptionHistory" = "转写历史";
+"menu.transcriptionHistory.empty" = "暂无转写历史";
+"menu.transcriptionHistory.viewAll" = "查看全部";
 "menu.personas" = "人设";
 "menu.agentTasks" = "Agent 任务";
 "menu.agentTasks.empty" = "暂无运行中的任务";

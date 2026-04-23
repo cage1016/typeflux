@@ -5,7 +5,7 @@ import Combine
 final class StatusBarController: NSObject {
     private enum MenuTag {
         static let agentTasks = 9001
-        static let recentTranscriptionHistory = 9002
+        static let transcriptionHistory = 9002
     }
 
     private enum MenuLayout {
@@ -192,12 +192,11 @@ final class StatusBarController: NSObject {
         menu.delegate = self
 
         menu.addItem(makeItem(title: L("menu.openVoiceStudio"), action: #selector(openHome)))
-        menu.addItem(makeItem(title: L("menu.history"), action: #selector(openHistory)))
         menu.addItem(makeItem(title: L("menu.addVocabulary"), action: #selector(addVocabularyTerm)))
-        let recentHistoryItem = NSMenuItem(title: L("menu.recentTranscriptionHistory"), action: nil, keyEquivalent: "")
-        recentHistoryItem.tag = MenuTag.recentTranscriptionHistory
-        recentHistoryItem.submenu = buildRecentTranscriptionHistoryMenu()
-        menu.addItem(recentHistoryItem)
+        let historyItem = NSMenuItem(title: L("menu.transcriptionHistory"), action: nil, keyEquivalent: "")
+        historyItem.tag = MenuTag.transcriptionHistory
+        historyItem.submenu = buildTranscriptionHistoryMenu()
+        menu.addItem(historyItem)
         menu.addItem(makeItem(title: L("menu.personas"), action: #selector(openPersonas)))
         if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
             let agentTasksItem = NSMenuItem(title: L("menu.agentTasks"), action: nil, keyEquivalent: "")
@@ -235,14 +234,14 @@ final class StatusBarController: NSObject {
         return menu
     }
 
-    private func buildRecentTranscriptionHistoryMenu() -> NSMenu {
-        let menu = NSMenu(title: L("menu.recentTranscriptionHistory"))
+    private func buildTranscriptionHistoryMenu() -> NSMenu {
+        let menu = NSMenu(title: L("menu.transcriptionHistory"))
         menu.delegate = self
-        populateRecentTranscriptionHistoryMenu(menu)
+        populateTranscriptionHistoryMenu(menu)
         return menu
     }
 
-    private func populateRecentTranscriptionHistoryMenu(_ menu: NSMenu) {
+    private func populateTranscriptionHistoryMenu(_ menu: NSMenu) {
         let records = StatusBarMenuSupport.recentTranscriptionRecords(
             from: historyStore.list(limit: MenuLayout.recentHistoryLimit * 3, offset: 0, searchQuery: nil),
             limit: MenuLayout.recentHistoryLimit,
@@ -250,25 +249,27 @@ final class StatusBarController: NSObject {
 
         if records.isEmpty {
             let emptyItem = NSMenuItem(
-                title: L("menu.recentTranscriptionHistory.empty"),
+                title: L("menu.transcriptionHistory.empty"),
                 action: nil,
                 keyEquivalent: "",
             )
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
-            return
+        } else {
+            for record in records {
+                let item = NSMenuItem(
+                    title: StatusBarMenuSupport.recentHistoryTitle(for: record),
+                    action: #selector(copyRecentHistoryResult(_:)),
+                    keyEquivalent: "",
+                )
+                item.target = self
+                item.representedObject = record.finalText
+                menu.addItem(item)
+            }
         }
 
-        for record in records {
-            let item = NSMenuItem(
-                title: StatusBarMenuSupport.recentHistoryTitle(for: record),
-                action: #selector(copyRecentHistoryResult(_:)),
-                keyEquivalent: "",
-            )
-            item.target = self
-            item.representedObject = record.finalText
-            menu.addItem(item)
-        }
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(makeItem(title: L("menu.transcriptionHistory.viewAll"), action: #selector(openHistory)))
     }
 
     private func buildAgentTasksMenu() -> NSMenu {
@@ -511,9 +512,9 @@ extension StatusBarController: NSMenuDelegate {
             startRunningJobDurationTimer()
         }
 
-        if menu.title == L("menu.recentTranscriptionHistory") {
+        if menu.title == L("menu.transcriptionHistory") {
             menu.removeAllItems()
-            populateRecentTranscriptionHistoryMenu(menu)
+            populateTranscriptionHistoryMenu(menu)
         }
     }
 

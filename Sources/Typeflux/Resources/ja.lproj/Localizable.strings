@@ -90,8 +90,9 @@
 "menu.addVocabulary.dialog.title" = "単語を追加";
 "menu.addVocabulary.dialog.message" = "1 行に 1 つの単語またはフレーズを入力してください。";
 "menu.addVocabulary.dialog.confirm" = "追加";
-"menu.recentTranscriptionHistory" = "最近の文字起こし";
-"menu.recentTranscriptionHistory.empty" = "文字起こし履歴はありません";
+"menu.transcriptionHistory" = "文字起こし履歴";
+"menu.transcriptionHistory.empty" = "文字起こし履歴はありません";
+"menu.transcriptionHistory.viewAll" = "すべて表示";
 "menu.personas" = "ペルソナ";
 "menu.agentTasks" = "Agent タスク";
 "menu.agentTasks.empty" = "実行中のタスクなし";
