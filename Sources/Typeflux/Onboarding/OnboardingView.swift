@@ -1489,8 +1489,6 @@ struct OnboardingView: View {
                 alignCenter: false,
             )
 
-            globeKeyNotice
-
             VStack(spacing: shortcutsSectionSpacing) {
                 HStack(alignment: .top, spacing: shortcutsSectionSpacing) {
                     shortcutCard(
@@ -1514,6 +1512,8 @@ struct OnboardingView: View {
                     binding: HotkeyBinding.defaultPersona,
                 )
             }
+
+            globeKeyNotice
         }
         .frame(maxWidth: 920, alignment: .leading)
         .frame(maxWidth: .infinity)
@@ -1580,7 +1580,7 @@ struct OnboardingView: View {
     }
 
     private var globeKeyNotice: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -1596,7 +1596,16 @@ struct OnboardingView: View {
                     .foregroundStyle(onboardingPrimaryText)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Spacer(minLength: 0)
+                Spacer(minLength: 12)
+
+                StudioButton(
+                    title: L("onboarding.shortcuts.globeKeyNotice.button"),
+                    systemImage: "arrow.up.forward.app",
+                    variant: .secondary,
+                ) {
+                    viewModel.openKeyboardSystemSettings()
+                }
+                .fixedSize()
             }
 
             Text(L("onboarding.shortcuts.globeKeyNotice.message"))
@@ -1605,14 +1614,7 @@ struct OnboardingView: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-            StudioButton(
-                title: L("onboarding.shortcuts.globeKeyNotice.button"),
-                systemImage: "arrow.up.forward.app",
-                variant: .secondary,
-            ) {
-                viewModel.openKeyboardSystemSettings()
-            }
+                .padding(.leading, 58)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
