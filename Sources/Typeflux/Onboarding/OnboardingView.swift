@@ -1585,7 +1585,6 @@ struct OnboardingView: View {
     private var globeKeyNotice: some View {
         let isReady = viewModel.isGlobeKeyReady
         let accent: Color = isReady ? StudioTheme.success : StudioTheme.warning
-        let iconName = isReady ? "checkmark.seal.fill" : "globe"
         let titleKey = isReady
             ? "onboarding.shortcuts.globeKeyNotice.ready.title"
             : "onboarding.shortcuts.globeKeyNotice.title"
@@ -1597,9 +1596,20 @@ struct OnboardingView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(accent.opacity(isDarkMode ? 0.22 : 0.14))
-                Image(systemName: iconName)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(accent)
+                if isReady {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(accent)
+                } else {
+                    VStack(spacing: 2) {
+                        Text("FN")
+                            .font(.studioBody(10, weight: .bold))
+                            .foregroundStyle(accent)
+                        Image(systemName: "globe")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(accent)
+                    }
+                }
             }
             .frame(width: 44, height: 44)
 
