@@ -6,6 +6,7 @@ final class StatusBarController: NSObject {
     private enum MenuTag {
         static let agentTasks = 9001
         static let transcriptionHistory = 9002
+        static let personas = 9003
     }
 
     private enum MenuLayout {
@@ -31,6 +32,7 @@ final class StatusBarController: NSObject {
     private var agentJobObserver: NSObjectProtocol?
     private var agentSettingsObserver: NSObjectProtocol?
     private var historyObserver: NSObjectProtocol?
+    private var personaSelectionObserver: NSObjectProtocol?
     private var autoUpdateStateObserver: NSObjectProtocol?
     private var autoModelDownloadObserver: NSObjectProtocol?
     private var runningJobDurationTimer: Timer?
@@ -102,6 +104,15 @@ final class StatusBarController: NSObject {
                 self?.rebuildMenu()
             }
         }
+        personaSelectionObserver = NotificationCenter.default.addObserver(
+            forName: .personaSelectionDidChange,
+            object: settingsStore,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.rebuildMenu()
+            }
+        }
         autoUpdateStateObserver = NotificationCenter.default.addObserver(
             forName: .autoUpdateStateDidChange,
             object: nil,
@@ -153,6 +164,10 @@ final class StatusBarController: NSObject {
             NotificationCenter.default.removeObserver(historyObserver)
         }
         historyObserver = nil
+        if let personaSelectionObserver {
+            NotificationCenter.default.removeObserver(personaSelectionObserver)
+        }
+        personaSelectionObserver = nil
         if let autoModelDownloadObserver {
             NotificationCenter.default.removeObserver(autoModelDownloadObserver)
         }
@@ -197,7 +212,10 @@ final class StatusBarController: NSObject {
         historyItem.tag = MenuTag.transcriptionHistory
         historyItem.submenu = buildTranscriptionHistoryMenu()
         menu.addItem(historyItem)
-        menu.addItem(makeItem(title: L("menu.personas"), action: #selector(openPersonas)))
+        let personasItem = NSMenuItem(title: L("menu.personas"), action: nil, keyEquivalent: "")
+        personasItem.tag = MenuTag.personas
+        personasItem.submenu = buildPersonasMenu()
+        menu.addItem(personasItem)
         if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
             let agentTasksItem = NSMenuItem(title: L("menu.agentTasks"), action: nil, keyEquivalent: "")
             agentTasksItem.tag = MenuTag.agentTasks
@@ -270,6 +288,43 @@ final class StatusBarController: NSObject {
 
         menu.addItem(NSMenuItem.separator())
         menu.addItem(makeItem(title: L("menu.transcriptionHistory.viewAll"), action: #selector(openHistory)))
+    }
+
+    private func buildPersonasMenu() -> NSMenu {
+        let menu = NSMenu(title: L("menu.personas"))
+        menu.delegate = self
+        populatePersonasMenu(menu)
+        return menu
+    }
+
+    private func populatePersonasMenu(_ menu: NSMenu) {
+        let personas = settingsStore.personas
+        let activePersonaID = settingsStore.personaRewriteEnabled ? settingsStore.activePersonaID : ""
+
+        if personas.isEmpty {
+            let emptyItem = NSMenuItem(
+                title: L("menu.personas.empty"),
+                action: nil,
+                keyEquivalent: "",
+            )
+            emptyItem.isEnabled = false
+            menu.addItem(emptyItem)
+        } else {
+            for persona in personas {
+                let item = NSMenuItem(
+                    title: persona.name,
+                    action: #selector(selectPersonaFromMenu(_:)),
+                    keyEquivalent: "",
+                )
+                item.target = self
+                item.representedObject = persona.id.uuidString
+                item.state = persona.id.uuidString == activePersonaID ? .on : .off
+                menu.addItem(item)
+            }
+        }
+
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(makeItem(title: L("menu.personas.edit"), action: #selector(openPersonas)))
     }
 
     private func buildAgentTasksMenu() -> NSMenu {
@@ -425,6 +480,18 @@ final class StatusBarController: NSObject {
         rebuildMenu()
     }
 
+    @objc private func selectPersonaFromMenu(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let personaID = UUID(uuidString: rawValue)
+        else {
+            return
+        }
+
+        settingsStore.applyPersonaSelection(personaID)
+        rebuildMenu()
+    }
+
     @objc private func checkUpdates() {
         AutoUpdater.shared.checkForUpdates()
     }
@@ -515,6 +582,11 @@ extension StatusBarController: NSMenuDelegate {
         if menu.title == L("menu.transcriptionHistory") {
             menu.removeAllItems()
             populateTranscriptionHistoryMenu(menu)
+        }
+
+        if menu.title == L("menu.personas") {
+            menu.removeAllItems()
+            populatePersonasMenu(menu)
         }
     }
 

@@ -94,6 +94,8 @@
 "menu.transcriptionHistory.empty" = "文字起こし履歴はありません";
 "menu.transcriptionHistory.viewAll" = "すべて表示";
 "menu.personas" = "ペルソナ";
+"menu.personas.empty" = "ペルソナはありません";
+"menu.personas.edit" = "ペルソナを編集";
 "menu.agentTasks" = "Agent タスク";
 "menu.agentTasks.empty" = "実行中のタスクなし";
 "menu.agentTasks.viewAll" = "すべてのタスクを表示";

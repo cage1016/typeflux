@@ -94,6 +94,8 @@
 "menu.transcriptionHistory.empty" = "暂无转写历史";
 "menu.transcriptionHistory.viewAll" = "查看全部";
 "menu.personas" = "人设";
+"menu.personas.empty" = "暂无人设";
+"menu.personas.edit" = "编辑人设";
 "menu.agentTasks" = "Agent 任务";
 "menu.agentTasks.empty" = "暂无运行中的任务";
 "menu.agentTasks.viewAll" = "查看所有任务";

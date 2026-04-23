@@ -94,6 +94,8 @@
 "menu.transcriptionHistory.empty" = "No transcription history";
 "menu.transcriptionHistory.viewAll" = "View All";
 "menu.personas" = "Personas";
+"menu.personas.empty" = "No personas";
+"menu.personas.edit" = "Edit Personas";
 "menu.agentTasks" = "Agent Tasks";
 "menu.agentTasks.empty" = "No running tasks";
 "menu.agentTasks.viewAll" = "View All Tasks";
