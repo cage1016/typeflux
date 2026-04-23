@@ -49,7 +49,24 @@ enum PrivacyGuard {
     struct PermissionSnapshot: Identifiable, Equatable {
         let id: PermissionID
         let state: PermissionState
-        let detail: String
+        private let detailSource: DetailSource
+
+        enum DetailSource: Equatable {
+            case localizedKey(String)
+            case literal(String)
+        }
+
+        init(id: PermissionID, state: PermissionState, detailKey: String) {
+            self.id = id
+            self.state = state
+            detailSource = .localizedKey(detailKey)
+        }
+
+        init(id: PermissionID, state: PermissionState, detail: String) {
+            self.id = id
+            self.state = state
+            detailSource = .literal(detail)
+        }
 
         var title: String {
             id.title
@@ -57,6 +74,15 @@ enum PrivacyGuard {
 
         var summary: String {
             id.summary
+        }
+
+        var detail: String {
+            switch detailSource {
+            case let .localizedKey(key):
+                L(key)
+            case let .literal(detail):
+                detail
+            }
         }
 
         var isGranted: Bool {
@@ -80,7 +106,7 @@ enum PrivacyGuard {
             return PermissionSnapshot(
                 id: id,
                 state: status == .authorized ? .granted : .needsAttention,
-                detail: microphoneDetail(for: status),
+                detailKey: microphoneDetailKey(for: status),
             )
 
         case .speechRecognition:
@@ -88,7 +114,7 @@ enum PrivacyGuard {
             return PermissionSnapshot(
                 id: id,
                 state: status == .authorized ? .granted : .needsAttention,
-                detail: speechRecognitionDetail(for: status),
+                detailKey: speechRecognitionDetailKey(for: status),
             )
 
         case .accessibility:
@@ -96,9 +122,9 @@ enum PrivacyGuard {
             return PermissionSnapshot(
                 id: id,
                 state: trusted ? .granted : .needsAttention,
-                detail: trusted
-                    ? L("permission.accessibility.detail.granted")
-                    : L("permission.accessibility.detail.required"),
+                detailKey: trusted
+                    ? "permission.accessibility.detail.granted"
+                    : "permission.accessibility.detail.required",
             )
         }
     }
@@ -185,33 +211,33 @@ enum PrivacyGuard {
         return AXIsProcessTrustedWithOptions(options)
     }
 
-    private static func microphoneDetail(for status: AVAuthorizationStatus) -> String {
+    private static func microphoneDetailKey(for status: AVAuthorizationStatus) -> String {
         switch status {
         case .authorized:
-            return L("permission.microphone.detail.authorized")
+            return "permission.microphone.detail.authorized"
         case .notDetermined:
-            return L("permission.microphone.detail.notDetermined")
+            return "permission.microphone.detail.notDetermined"
         case .denied:
-            return L("permission.microphone.detail.denied")
+            return "permission.microphone.detail.denied"
         case .restricted:
-            return L("permission.microphone.detail.restricted")
+            return "permission.microphone.detail.restricted"
         @unknown default:
-            return L("permission.microphone.detail.unknown")
+            return "permission.microphone.detail.unknown"
         }
     }
 
-    private static func speechRecognitionDetail(for status: SFSpeechRecognizerAuthorizationStatus) -> String {
+    private static func speechRecognitionDetailKey(for status: SFSpeechRecognizerAuthorizationStatus) -> String {
         switch status {
         case .authorized:
-            return L("permission.speechRecognition.detail.authorized")
+            return "permission.speechRecognition.detail.authorized"
         case .notDetermined:
-            return L("permission.speechRecognition.detail.notDetermined")
+            return "permission.speechRecognition.detail.notDetermined"
         case .denied:
-            return L("permission.speechRecognition.detail.denied")
+            return "permission.speechRecognition.detail.denied"
         case .restricted:
-            return L("permission.speechRecognition.detail.restricted")
+            return "permission.speechRecognition.detail.restricted"
         @unknown default:
-            return L("permission.speechRecognition.detail.unknown")
+            return "permission.speechRecognition.detail.unknown"
         }
     }
 

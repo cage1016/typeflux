@@ -58,6 +58,26 @@ final class PrivacyGuardTests: XCTestCase {
         XCTAssertFalse(snapshot.actionTitle.isEmpty)
     }
 
+    @MainActor
+    func testPermissionSnapshotLocalizedDetailTracksLanguageChanges() {
+        let originalLanguage = AppLocalization.shared.language
+        defer {
+            AppLocalization.shared.setLanguage(originalLanguage)
+        }
+
+        let snapshot = PrivacyGuard.PermissionSnapshot(
+            id: .microphone,
+            state: .needsAttention,
+            detailKey: "permission.microphone.detail.notDetermined",
+        )
+
+        AppLocalization.shared.setLanguage(.simplifiedChinese)
+        XCTAssertEqual(snapshot.detail, "请授予麦克风权限，以便从菜单栏开始录音。")
+
+        AppLocalization.shared.setLanguage(.english)
+        XCTAssertEqual(snapshot.detail, "Grant microphone access to allow recording from the menu bar.")
+    }
+
     // MARK: - requiredPermissionIDs
 
     @MainActor
