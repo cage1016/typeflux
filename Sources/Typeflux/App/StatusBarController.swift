@@ -5,10 +5,12 @@ import Combine
 final class StatusBarController: NSObject {
     private enum MenuTag {
         static let agentTasks = 9001
+        static let recentTranscriptionHistory = 9002
     }
 
     private enum MenuLayout {
         static let runningJobTitleLimit = 44
+        static let recentHistoryLimit = 10
     }
 
     private let appState: AppStateStore
@@ -28,6 +30,7 @@ final class StatusBarController: NSObject {
     private var languageObserver: NSObjectProtocol?
     private var agentJobObserver: NSObjectProtocol?
     private var agentSettingsObserver: NSObjectProtocol?
+    private var historyObserver: NSObjectProtocol?
     private var autoUpdateStateObserver: NSObjectProtocol?
     private var autoModelDownloadObserver: NSObjectProtocol?
     private var runningJobDurationTimer: Timer?
@@ -90,6 +93,15 @@ final class StatusBarController: NSObject {
                 self?.rebuildMenu()
             }
         }
+        historyObserver = NotificationCenter.default.addObserver(
+            forName: .historyStoreDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.rebuildMenu()
+            }
+        }
         autoUpdateStateObserver = NotificationCenter.default.addObserver(
             forName: .autoUpdateStateDidChange,
             object: nil,
@@ -137,6 +149,10 @@ final class StatusBarController: NSObject {
             NotificationCenter.default.removeObserver(agentSettingsObserver)
         }
         agentSettingsObserver = nil
+        if let historyObserver {
+            NotificationCenter.default.removeObserver(historyObserver)
+        }
+        historyObserver = nil
         if let autoModelDownloadObserver {
             NotificationCenter.default.removeObserver(autoModelDownloadObserver)
         }
@@ -177,6 +193,11 @@ final class StatusBarController: NSObject {
 
         menu.addItem(makeItem(title: L("menu.openVoiceStudio"), action: #selector(openHome)))
         menu.addItem(makeItem(title: L("menu.history"), action: #selector(openHistory)))
+        menu.addItem(makeItem(title: L("menu.addVocabulary"), action: #selector(addVocabularyTerm)))
+        let recentHistoryItem = NSMenuItem(title: L("menu.recentTranscriptionHistory"), action: nil, keyEquivalent: "")
+        recentHistoryItem.tag = MenuTag.recentTranscriptionHistory
+        recentHistoryItem.submenu = buildRecentTranscriptionHistoryMenu()
+        menu.addItem(recentHistoryItem)
         menu.addItem(makeItem(title: L("menu.personas"), action: #selector(openPersonas)))
         if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
             let agentTasksItem = NSMenuItem(title: L("menu.agentTasks"), action: nil, keyEquivalent: "")
@@ -212,6 +233,42 @@ final class StatusBarController: NSObject {
         menu.addItem(makeAppearanceItem(mode: .dark))
 
         return menu
+    }
+
+    private func buildRecentTranscriptionHistoryMenu() -> NSMenu {
+        let menu = NSMenu(title: L("menu.recentTranscriptionHistory"))
+        menu.delegate = self
+        populateRecentTranscriptionHistoryMenu(menu)
+        return menu
+    }
+
+    private func populateRecentTranscriptionHistoryMenu(_ menu: NSMenu) {
+        let records = StatusBarMenuSupport.recentTranscriptionRecords(
+            from: historyStore.list(limit: MenuLayout.recentHistoryLimit * 3, offset: 0, searchQuery: nil),
+            limit: MenuLayout.recentHistoryLimit,
+        )
+
+        if records.isEmpty {
+            let emptyItem = NSMenuItem(
+                title: L("menu.recentTranscriptionHistory.empty"),
+                action: nil,
+                keyEquivalent: "",
+            )
+            emptyItem.isEnabled = false
+            menu.addItem(emptyItem)
+            return
+        }
+
+        for record in records {
+            let item = NSMenuItem(
+                title: StatusBarMenuSupport.recentHistoryTitle(for: record),
+                action: #selector(copyRecentHistoryResult(_:)),
+                keyEquivalent: "",
+            )
+            item.target = self
+            item.representedObject = record.finalText
+            menu.addItem(item)
+        }
     }
 
     private func buildAgentTasksMenu() -> NSMenu {
@@ -318,6 +375,43 @@ final class StatusBarController: NSObject {
         )
     }
 
+    @objc private func addVocabularyTerm() {
+        let alert = NSAlert()
+        alert.messageText = L("menu.addVocabulary.dialog.title")
+        alert.informativeText = L("menu.addVocabulary.dialog.message")
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: L("menu.addVocabulary.dialog.confirm"))
+        alert.addButton(withTitle: L("common.cancel"))
+
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        textField.placeholderString = L("vocabulary.sheet.placeholder")
+        alert.accessoryView = textField
+        alert.window.initialFirstResponder = textField
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let terms = textField.stringValue
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        for term in terms {
+            VocabularyStore.add(term: term, source: .manual)
+        }
+    }
+
+    @objc private func copyRecentHistoryResult(_ sender: NSMenuItem) {
+        guard
+            let text = sender.representedObject as? String,
+            !text.isEmpty
+        else {
+            return
+        }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
     @objc private func selectAppearanceMode(_ sender: NSMenuItem) {
         guard
             let rawValue = sender.representedObject as? String,
@@ -412,13 +506,49 @@ final class StatusBarController: NSObject {
 
 extension StatusBarController: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
-        guard menu == self.menu || menu.title == L("menu.agentTasks") else { return }
-        refreshVisibleAgentTaskMenuTitles()
-        startRunningJobDurationTimer()
+        if menu == self.menu || menu.title == L("menu.agentTasks") {
+            refreshVisibleAgentTaskMenuTitles()
+            startRunningJobDurationTimer()
+        }
+
+        if menu.title == L("menu.recentTranscriptionHistory") {
+            menu.removeAllItems()
+            populateRecentTranscriptionHistoryMenu(menu)
+        }
     }
 
     func menuDidClose(_ menu: NSMenu) {
         guard menu == self.menu || menu.title == L("menu.agentTasks") else { return }
         stopRunningJobDurationTimer()
+    }
+}
+
+enum StatusBarMenuSupport {
+    private static let titleTextLimit = 42
+
+    static func recentTranscriptionRecords(from records: [HistoryRecord], limit: Int = 10) -> [HistoryRecord] {
+        records
+            .filter { record in
+                guard let text = record.finalText?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                    return false
+                }
+                return !text.isEmpty
+            }
+            .sorted { $0.date > $1.date }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    static func recentHistoryTitle(for record: HistoryRecord) -> String {
+        let dateText = DateFormatter.localizedString(from: record.date, dateStyle: .none, timeStyle: .short)
+        let text = (record.finalText ?? "")
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(dateText)  \(truncated(text, limit: titleTextLimit))"
+    }
+
+    private static func truncated(_ text: String, limit: Int) -> String {
+        guard text.count > limit else { return text }
+        return String(text.prefix(max(0, limit - 3))) + "..."
     }
 }

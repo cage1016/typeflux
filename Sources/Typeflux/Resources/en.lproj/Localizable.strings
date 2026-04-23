@@ -86,6 +86,12 @@
 
 "menu.openVoiceStudio" = "Open Typeflux";
 "menu.history" = "History";
+"menu.addVocabulary" = "Add Word";
+"menu.addVocabulary.dialog.title" = "Add word";
+"menu.addVocabulary.dialog.message" = "Enter one word or phrase per line.";
+"menu.addVocabulary.dialog.confirm" = "Add";
+"menu.recentTranscriptionHistory" = "Recent Transcriptions";
+"menu.recentTranscriptionHistory.empty" = "No transcription history";
 "menu.personas" = "Personas";
 "menu.agentTasks" = "Agent Tasks";
 "menu.agentTasks.empty" = "No running tasks";

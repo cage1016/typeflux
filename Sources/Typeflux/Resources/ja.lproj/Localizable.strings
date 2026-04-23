@@ -86,6 +86,12 @@
 
 "menu.openVoiceStudio" = "Typeflux を開く";
 "menu.history" = "歴史";
+"menu.addVocabulary" = "単語を追加";
+"menu.addVocabulary.dialog.title" = "単語を追加";
+"menu.addVocabulary.dialog.message" = "1 行に 1 つの単語またはフレーズを入力してください。";
+"menu.addVocabulary.dialog.confirm" = "追加";
+"menu.recentTranscriptionHistory" = "最近の文字起こし";
+"menu.recentTranscriptionHistory.empty" = "文字起こし履歴はありません";
 "menu.personas" = "ペルソナ";
 "menu.agentTasks" = "Agent タスク";
 "menu.agentTasks.empty" = "実行中のタスクなし";

@@ -86,6 +86,12 @@
 
 "menu.openVoiceStudio" = "Typeflux 열기";
 "menu.history" = "역사";
+"menu.addVocabulary" = "단어 추가";
+"menu.addVocabulary.dialog.title" = "단어 추가";
+"menu.addVocabulary.dialog.message" = "한 줄에 단어나 구문을 하나씩 입력하세요.";
+"menu.addVocabulary.dialog.confirm" = "추가";
+"menu.recentTranscriptionHistory" = "최근 전사 기록";
+"menu.recentTranscriptionHistory.empty" = "전사 기록이 없습니다";
 "menu.personas" = "페르소나";
 "menu.agentTasks" = "Agent 작업";
 "menu.agentTasks.empty" = "실행 중인 작업 없음";
