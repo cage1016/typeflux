@@ -81,7 +81,8 @@ if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v security >/dev/n
   )"
 fi
 
-ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
+RUNTIME_ENTITLEMENTS="$ROOT_DIR/app/TypefluxRuntime.entitlements"
+APPLE_SIGN_IN_ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
 TYPEFLUX_DEV_PROVISIONING_PROFILE="${TYPEFLUX_DEV_PROVISIONING_PROFILE:-}"
 
 use_apple_sign_in_entitlements=false
@@ -92,7 +93,7 @@ if [[ -n "$TYPEFLUX_DEV_PROVISIONING_PROFILE" ]]; then
       use_apple_sign_in_entitlements=true
     else
       echo "Warning: embedded provisioning profile does not grant Sign In with Apple."
-      echo "Warning: signing dev app without com.apple.developer.applesignin so it can still launch."
+      echo "Warning: signing dev app with runtime-only entitlements so it can still launch."
     fi
   else
     echo "Warning: TYPEFLUX_DEV_PROVISIONING_PROFILE does not exist: $TYPEFLUX_DEV_PROVISIONING_PROFILE"
@@ -105,7 +106,12 @@ fi
 if [[ "$use_apple_sign_in_entitlements" == true ]] && [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]]; then
   use_apple_sign_in_entitlements=false
   echo "Warning: provisioning profile grants Sign In with Apple, but no Apple Development signing identity was found."
-  echo "Warning: signing dev app without com.apple.developer.applesignin so it can still launch."
+  echo "Warning: signing dev app with runtime-only entitlements so it can still launch."
+fi
+
+entitlements_to_use="$RUNTIME_ENTITLEMENTS"
+if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+  entitlements_to_use="$APPLE_SIGN_IN_ENTITLEMENTS"
 fi
 
 # Sign In with Apple on manually assembled macOS app bundles requires both:
@@ -115,12 +121,8 @@ fi
 # entitlements are present. In that case we keep the app launchable and disable
 # Sign In with Apple for the dev build.
 if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
-  if [[ "$use_apple_sign_in_entitlements" == true ]]; then
-    codesign --force --deep --sign - --identifier "ai.gulu.app.typeflux" \
-      --entitlements "$ENTITLEMENTS" "$APP_DIR"
-  else
-    codesign --force --deep --sign - --identifier "ai.gulu.app.typeflux" "$APP_DIR"
-  fi
+  codesign --force --deep --sign - --identifier "ai.gulu.app.typeflux" \
+    --entitlements "$entitlements_to_use" "$APP_DIR"
 fi
 
 # If you want a fully stable identity across machines and clean TCC behavior,
@@ -130,12 +132,8 @@ fi
 #   TYPEFLUX_DEV_PROVISIONING_PROFILE="/path/to/profile.provisionprofile" \
 #   TYPEFLUX_DEV_CODESIGN_IDENTITY="Apple Development: Your Name (...)" ./scripts/run_dev_attached.sh
 if [[ -n "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
-  if [[ "$use_apple_sign_in_entitlements" == true ]]; then
-    codesign --force --deep --sign "$TYPEFLUX_DEV_CODESIGN_IDENTITY" \
-      --entitlements "$ENTITLEMENTS" "$APP_DIR"
-  else
-    codesign --force --deep --sign "$TYPEFLUX_DEV_CODESIGN_IDENTITY" "$APP_DIR"
-  fi
+  codesign --force --deep --sign "$TYPEFLUX_DEV_CODESIGN_IDENTITY" \
+    --entitlements "$entitlements_to_use" "$APP_DIR"
   echo "Signed with stable identity: $TYPEFLUX_DEV_CODESIGN_IDENTITY"
 else
   echo "Warning: using ad-hoc signing. Accessibility permission may need to be re-granted across rebuilds."

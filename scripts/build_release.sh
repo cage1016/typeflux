@@ -85,13 +85,14 @@ fi
 
 chmod +x "$APP_BUNDLE/Contents/MacOS/Typeflux"
 
-ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
+RUNTIME_ENTITLEMENTS="$ROOT_DIR/app/TypefluxRuntime.entitlements"
+APPLE_SIGN_IN_ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
 TYPEFLUX_PROVISIONING_PROFILE="${TYPEFLUX_PROVISIONING_PROFILE:-}"
 
 # Sign In with Apple requires both the entitlement and an embedded macOS
 # provisioning profile whose App ID matches ai.gulu.app.typeflux. Without the profile,
 # AMFI rejects the app at launch when restricted entitlements are present, so
-# we fall back to signing without entitlements and warn the operator.
+# we fall back to runtime-only entitlements and warn the operator.
 use_apple_sign_in_entitlements=false
 if [[ -n "$TYPEFLUX_PROVISIONING_PROFILE" ]]; then
   if [[ -f "$TYPEFLUX_PROVISIONING_PROFILE" ]]; then
@@ -100,7 +101,7 @@ if [[ -n "$TYPEFLUX_PROVISIONING_PROFILE" ]]; then
       use_apple_sign_in_entitlements=true
     else
       echo "Warning: embedded provisioning profile does not grant Sign In with Apple."
-      echo "Warning: signing release bundle without com.apple.developer.applesignin so it remains launchable."
+      echo "Warning: signing release bundle with runtime-only entitlements so it remains launchable."
     fi
   else
     echo "Warning: TYPEFLUX_PROVISIONING_PROFILE does not exist: $TYPEFLUX_PROVISIONING_PROFILE"
@@ -108,6 +109,11 @@ if [[ -n "$TYPEFLUX_PROVISIONING_PROFILE" ]]; then
   fi
 else
   rm -f "$APP_BUNDLE/Contents/embedded.provisionprofile"
+fi
+
+entitlements_to_use="$RUNTIME_ENTITLEMENTS"
+if [[ "$use_apple_sign_in_entitlements" == true ]]; then
+  entitlements_to_use="$APPLE_SIGN_IN_ENTITLEMENTS"
 fi
 
 # Notarization requires every Mach-O inside the bundle to carry a Developer ID
@@ -153,10 +159,8 @@ if [[ -n "${TYPEFLUX_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 
     --timestamp
     --options runtime
     --identifier "ai.gulu.app.typeflux"
+    --entitlements "$entitlements_to_use"
   )
-  if [[ "$use_apple_sign_in_entitlements" == true ]]; then
-    codesign_args+=(--entitlements "$ENTITLEMENTS")
-  fi
   sign_nested_binaries "$TYPEFLUX_CODESIGN_IDENTITY" false
   codesign "${codesign_args[@]}" "$APP_EXECUTABLE"
   codesign "${codesign_args[@]}" "$APP_BUNDLE"
@@ -164,8 +168,10 @@ if [[ -n "${TYPEFLUX_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 
   echo "Signed with identity: $TYPEFLUX_CODESIGN_IDENTITY"
 elif command -v codesign >/dev/null 2>&1; then
   sign_nested_binaries "" true
-  codesign --force --sign - --identifier "ai.gulu.app.typeflux" "$APP_EXECUTABLE"
-  codesign --force --sign - --identifier "ai.gulu.app.typeflux" "$APP_BUNDLE"
+  codesign --force --sign - --identifier "ai.gulu.app.typeflux" \
+    --entitlements "$entitlements_to_use" "$APP_EXECUTABLE"
+  codesign --force --sign - --identifier "ai.gulu.app.typeflux" \
+    --entitlements "$entitlements_to_use" "$APP_BUNDLE"
   echo "Signed with ad-hoc identity"
 fi
 
