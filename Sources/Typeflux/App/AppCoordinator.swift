@@ -53,6 +53,11 @@ final class AppCoordinator {
         )
         statusBarController?.start()
         self.workflowController?.start()
+        // Link the bundled SenseVoice copy before triggering the auto-model
+        // download service: triggerIfNeeded() reads preparedModelInfo to decide
+        // whether the local-first fallback route is available, so the record
+        // must already exist.
+        di.bundledModelAutoSetup.applyIfNeeded()
         di.autoModelDownloadService.triggerIfNeeded()
         AutoUpdater.shared.startAutoCheck(settingsStore: di.settingsStore)
         UsageStatsStore.shared.backfillIfNeeded(from: di.historyStore)

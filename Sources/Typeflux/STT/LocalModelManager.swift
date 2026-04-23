@@ -311,6 +311,54 @@ final class LocalModelManager: LocalSTTModelManaging {
         isPreparedStoragePathValid(storagePath, for: model)
     }
 
+    /// Ensures the bundled SenseVoice copy shipped inside the .app bundle (if present)
+    /// is linked into Application Support and recorded in prepared.json.
+    ///
+    /// This is intended to be called once at app start for the full installer variant
+    /// so that the first hotkey press doesn't have to wait for a lazy prepare on the
+    /// transcription hot path. No-op on the minimal variant (no bundle present).
+    ///
+    /// Uses a fixed SenseVoice configuration rather than reading from SettingsStore,
+    /// so it works correctly even before onboarding runs and is not affected by any
+    /// model the user may have manually picked afterwards.
+    ///
+    /// - Returns: `true` if a bundled model was found (and is now linked/recorded),
+    ///            `false` if no bundled model ships with this build.
+    @discardableResult
+    func ensureBundledSenseVoiceLinked() throws -> Bool {
+        let configuration = LocalSTTConfiguration(
+            model: .senseVoiceSmall,
+            modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
+            downloadSource: .huggingFace,
+            autoSetup: true,
+        )
+
+        guard let bundled = bundledModelInfo(for: configuration) else {
+            return false
+        }
+
+        if let existing = loadPreparedRecord(for: configuration.model),
+           existing.modelIdentifier == configuration.modelIdentifier,
+           existing.source == Self.bundledPreparedSource,
+           isPreparedStoragePathValid(existing.storagePath, for: configuration.model) {
+            return true
+        }
+
+        let linkedPath = try linkBundledModelIntoAppSupport(
+            configuration: configuration,
+            bundledPath: bundled.storagePath,
+        )
+        let record = LocalModelPreparedRecord(
+            model: configuration.model.rawValue,
+            modelIdentifier: configuration.modelIdentifier,
+            storagePath: linkedPath,
+            source: Self.bundledPreparedSource,
+            preparedAt: Date(),
+        )
+        try savePreparedRecord(record, for: configuration.model)
+        return true
+    }
+
     private func prepareWhisperKit(
         configuration: LocalSTTConfiguration,
         downloadBasePath: String,

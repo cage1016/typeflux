@@ -23,6 +23,7 @@ final class DIContainer {
     let notificationService: LocalNotificationSending
     let ollamaModelManager: OllamaLocalModelManager
     let localModelManager: LocalModelManager
+    let bundledModelAutoSetup: BundledModelAutoSetup
     let autoModelDownloadService: AutoModelDownloadService
     let agentJobStore: AgentJobStore
     let agentExecutionRegistry: AgentExecutionRegistry
@@ -64,6 +65,7 @@ final class DIContainer {
             notifications: notificationService,
         )
         localModelManager = LocalModelManager()
+        bundledModelAutoSetup = BundledModelAutoSetup(linker: localModelManager)
         autoModelDownloadService = AutoModelDownloadService(
             modelManager: localModelManager,
             settingsStore: settingsStore,
