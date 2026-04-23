@@ -1,6 +1,13 @@
 import Foundation
 import os
 
+extension Notification.Name {
+    /// Posted on the main actor after a successful explicit login
+    /// (email/password, Google/Apple/GitHub OAuth). Not fired on silent
+    /// token refresh or session restore at app launch.
+    static let authDidLogin = Notification.Name("AuthState.authDidLogin")
+}
+
 /// Observable auth state manager, shared across the app.
 @MainActor
 final class AuthState: ObservableObject {
@@ -88,6 +95,7 @@ final class AuthState: ObservableObject {
         KeychainTokenStore.saveToken(token, expiresAt: expiresAt, refreshToken: refreshToken)
         isLoggedIn = true
         await refreshProfile()
+        NotificationCenter.default.post(name: .authDidLogin, object: self)
     }
 
     // MARK: - Logout

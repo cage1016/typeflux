@@ -28,6 +28,7 @@ final class DIContainer {
     let agentExecutionRegistry: AgentExecutionRegistry
     let agentJobsWindowController: AgentJobsWindowController
     let mcpRegistry: MCPRegistry
+    let cloudLoginSyncCoordinator: CloudLoginSyncCoordinator
 
     init() {
         hotkeyService = EventTapHotkeyService(settingsStore: settingsStore)
@@ -58,6 +59,10 @@ final class DIContainer {
             ollama: OllamaAgentService(),
         )
         notificationService = SystemLocalNotificationService.shared
+        cloudLoginSyncCoordinator = CloudLoginSyncCoordinator(
+            settingsStore: settingsStore,
+            notifications: notificationService,
+        )
         localModelManager = LocalModelManager()
         autoModelDownloadService = AutoModelDownloadService(
             modelManager: localModelManager,

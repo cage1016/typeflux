@@ -650,6 +650,8 @@
 "settings.models.localSTT.deleted" = "模型檔案已刪除。";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "本地模型已就緒。";
+"cloud.autoSwitch.title" = "已啟用 Typeflux Cloud";
+"cloud.autoSwitch.body" = "語音辨識與 AI 模型已自動切換為 Typeflux Cloud 雲端服務，可隨時在「設定」中切換回您自己的模型。";
 "settings.models.redownload" = "重新下載";
 "settings.models.deleteModelFiles" = "刪除模型檔案";
 "settings.models.redownloadDialog.title" = "重新下載 %@？";

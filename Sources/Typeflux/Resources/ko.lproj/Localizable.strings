@@ -650,6 +650,8 @@
 "settings.models.localSTT.deleted" = "모델 파일이 삭제되었습니다.";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "로컬 모델이 준비되었습니다.";
+"cloud.autoSwitch.title" = "Typeflux Cloud이(가) 활성화되었습니다";
+"cloud.autoSwitch.body" = "음성 인식과 AI 모델이 Typeflux Cloud로 전환되었습니다. 「설정」에서 언제든지 본인의 모델로 되돌릴 수 있습니다.";
 "settings.models.redownload" = "다시 다운로드";
 "settings.models.deleteModelFiles" = "모델 파일 삭제";
 "settings.models.redownloadDialog.title" = "%@을(를) 다시 다운로드하시겠습니까?";
