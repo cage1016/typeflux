@@ -74,6 +74,11 @@ protocol LocalSTTModelManaging {
 }
 
 final class LocalModelManager: LocalSTTModelManaging {
+    /// Raw value stored in `prepared.json` when the active model is backed by the bundled copy
+    /// shipped inside the .app bundle (the on-disk path under Application Support is a symlink
+    /// into Contents/Resources/BundledModels).
+    static let bundledPreparedSource = "bundled"
+
     typealias WhisperKitPreparerFactory = @Sendable (String, URL, String, String) -> any WhisperKitPreparing
     typealias LocalWhisperKitPreparerFactory = @Sendable (String, String, URL?) -> any WhisperKitPreparing
     typealias RemoteFileLoader = @Sendable (URL) async throws -> Data
@@ -153,9 +158,29 @@ final class LocalModelManager: LocalSTTModelManaging {
         onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
     ) async throws {
         let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
-        if preparedModelInfo(for: configuration) != nil {
+
+        if let bundled = bundledModelInfo(for: configuration) {
+            let linkedPath = try linkBundledModelIntoAppSupport(
+                configuration: configuration,
+                bundledPath: bundled.storagePath,
+            )
+            let record = LocalModelPreparedRecord(
+                model: configuration.model.rawValue,
+                modelIdentifier: configuration.modelIdentifier,
+                storagePath: linkedPath,
+                source: Self.bundledPreparedSource,
+                preparedAt: Date(),
+            )
+            try savePreparedRecord(record, for: configuration.model)
+            onUpdate?(LocalSTTPreparationUpdate(
+                message: L("localSTT.prepare.runtimeReady", configuration.model.displayName),
+                progress: 1,
+                storagePath: linkedPath,
+                source: L("common.bundled"),
+            ))
             return
         }
+
         let result = try await downloadModelFiles(configuration: configuration, onUpdate: onUpdate)
         let record = LocalModelPreparedRecord(
             model: configuration.model.rawValue,
@@ -419,7 +444,10 @@ final class LocalModelManager: LocalSTTModelManaging {
 
         return LocalSTTPreparedModelInfo(
             storagePath: record.storagePath,
-            sourceDisplayName: ModelDownloadSource(rawValue: record.source)?.displayName ?? configuration.downloadSource.displayName,
+            sourceDisplayName: preparedSourceDisplayName(
+                rawValue: record.source,
+                configuration: configuration,
+            ),
         )
     }
 
@@ -488,6 +516,62 @@ final class LocalModelManager: LocalSTTModelManaging {
         }
 
         return nil
+    }
+
+    /// Links the bundled model directory into the per-user Application Support tree so that it
+    /// mirrors the layout produced by a real download. This lets downstream code treat bundled and
+    /// downloaded models uniformly (single lookup path, single prepared.json record).
+    ///
+    /// Idempotent: if a symlink pointing at the same bundle destination already exists, the
+    /// existing link is reused. Any unrelated file/directory at the target path is replaced.
+    private func linkBundledModelIntoAppSupport(
+        configuration: LocalSTTConfiguration,
+        bundledPath: String,
+    ) throws -> String {
+        let targetURL = URL(fileURLWithPath: storagePath(for: configuration), isDirectory: true)
+        let bundledURL = URL(fileURLWithPath: bundledPath, isDirectory: true)
+
+        // Defense in depth: every removeItem/createSymbolicLink below must land strictly
+        // inside modelsRootURL. storagePath() derives from modelsRootURL + sanitized
+        // identifier today, but this guard makes the invariant explicit so future changes
+        // to identifier handling cannot silently let us touch arbitrary filesystem paths.
+        let rootPath = modelsRootURL.standardizedFileURL.path
+        let resolvedTargetPath = targetURL.standardizedFileURL.path
+        guard resolvedTargetPath.hasPrefix(rootPath + "/") else {
+            throw NSError(
+                domain: "LocalModelManager",
+                code: 9,
+                userInfo: [NSLocalizedDescriptionKey: "Resolved bundled model target path escapes models root: \(resolvedTargetPath)"],
+            )
+        }
+
+        try fileManager.createDirectory(
+            at: targetURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+        )
+
+        if let existingDestination = try? fileManager.destinationOfSymbolicLink(atPath: targetURL.path) {
+            if existingDestination == bundledURL.path {
+                return targetURL.path
+            }
+            try fileManager.removeItem(at: targetURL)
+        } else if fileManager.fileExists(atPath: targetURL.path) {
+            try fileManager.removeItem(at: targetURL)
+        }
+
+        try fileManager.createSymbolicLink(at: targetURL, withDestinationURL: bundledURL)
+        return targetURL.path
+    }
+
+    private func preparedSourceDisplayName(
+        rawValue: String,
+        configuration: LocalSTTConfiguration,
+    ) -> String {
+        if rawValue == Self.bundledPreparedSource {
+            return L("common.bundled")
+        }
+        return ModelDownloadSource(rawValue: rawValue)?.displayName
+            ?? configuration.downloadSource.displayName
     }
 
     private func prepareWhisperTokenizerIfNeeded(

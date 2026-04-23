@@ -32,7 +32,7 @@ private struct AutoModelState: Codable {
 
 /// Silently downloads and manages the device-appropriate local STT model in the background.
 ///
-/// - All Macs (both Apple Silicon and Intel) use SenseVoice (sensevoice-small-coreml).
+/// - All Macs (both Apple Silicon and Intel) use SenseVoice (sensevoice-small).
 ///
 /// The service maintains its own state independently of the user's local model settings,
 /// so it never overwrites the user's manually configured model record.

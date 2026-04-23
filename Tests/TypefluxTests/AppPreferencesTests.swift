@@ -68,7 +68,7 @@ final class AppPreferencesTests: XCTestCase {
     func testLocalSTTModelDefaultIdentifiers() {
         XCTAssertEqual(LocalSTTModel.whisperLocal.defaultModelIdentifier, "whisperkit-medium")
         XCTAssertEqual(LocalSTTModel.whisperLocalLarge.defaultModelIdentifier, "whisperkit-large-v3")
-        XCTAssertEqual(LocalSTTModel.senseVoiceSmall.defaultModelIdentifier, "sensevoice-small-coreml")
+        XCTAssertEqual(LocalSTTModel.senseVoiceSmall.defaultModelIdentifier, "sensevoice-small")
         XCTAssertTrue(LocalSTTModel.qwen3ASR.defaultModelIdentifier.contains("Qwen3-ASR"))
     }
 

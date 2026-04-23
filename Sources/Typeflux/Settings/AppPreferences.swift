@@ -113,7 +113,10 @@ enum LocalSTTModel: String, CaseIterable, Codable {
         case .whisperLocalLarge:
             "whisperkit-large-v3"
         case .senseVoiceSmall:
-            "sensevoice-small-coreml"
+            // The historical "-coreml" suffix was a misnomer: SenseVoice has always been
+            // executed via the sherpa-onnx ONNX runtime, never CoreML. The identifier now
+            // matches the directory name shipped under Contents/Resources/BundledModels.
+            "sensevoice-small"
         case .qwen3ASR:
             "mlx-community/Qwen3-ASR-0.6B-bf16"
         }

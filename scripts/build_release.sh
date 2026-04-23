@@ -71,8 +71,16 @@ cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/Typeflux_Typeflux.bundl
 
 rm -rf "$APP_BUNDLE/Contents/Resources/BundledModels"
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
-  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" \
-    "$APP_BUNDLE/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small"
+  # Directory name must match LocalSTTModel.senseVoiceSmall.defaultModelIdentifier
+  # so that BundledLocalModelLocator resolves the bundled copy at runtime.
+  BUNDLED_SENSEVOICE_DIR="$APP_BUNDLE/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small"
+  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$BUNDLED_SENSEVOICE_DIR"
+
+  expected_model_file="$BUNDLED_SENSEVOICE_DIR/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"
+  if [[ ! -f "$expected_model_file" ]]; then
+    echo "Error: bundled SenseVoice model missing at $expected_model_file" >&2
+    exit 1
+  fi
 fi
 
 chmod +x "$APP_BUNDLE/Contents/MacOS/Typeflux"
