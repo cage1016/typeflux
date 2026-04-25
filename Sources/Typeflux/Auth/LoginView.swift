@@ -111,8 +111,8 @@ struct LoginView: View {
     @ObservedObject private var localization = AppLocalization.shared
     @Environment(\.colorScheme) private var colorScheme
 
-    private let privacyURL = URL(string: "https://typeflux.gulu.ai/privacy")!
-    private let termsURL = URL(string: "https://typeflux.gulu.ai/terms")!
+    private let privacyURL = URL(string: "https://typeflux.app/privacy")!
+    private let termsURL = URL(string: "https://typeflux.app/terms")!
     private let resendTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     let presentationStyle: PresentationStyle

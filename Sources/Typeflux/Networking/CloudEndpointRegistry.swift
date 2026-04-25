@@ -19,7 +19,7 @@ enum CloudEndpointRegistry {
         if let override { return override }
         if let cached { return cached }
         let urls = AppServerConfiguration.apiBaseURLs.compactMap(URL.init(string:))
-        let resolved = urls.isEmpty ? [URL(string: "https://typeflux.gulu.ai")!] : urls
+        let resolved = urls.isEmpty ? [URL(string: "https://typeflux.app")!] : urls
         let selector = CloudEndpointSelector(
             baseURLs: resolved,
             prober: HTTPCloudEndpointProber()

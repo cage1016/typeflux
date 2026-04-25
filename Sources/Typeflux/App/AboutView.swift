@@ -6,8 +6,8 @@ struct AboutView: View {
     @ObservedObject private var localization = AppLocalization.shared
 
     private let developerURL = URL(string: "https://gulu.ai")!
-    private let websiteURL = URL(string: "https://typeflux.gulu.ai")!
-    private let privacyURL = URL(string: "https://typeflux.gulu.ai/privacy")!
+    private let websiteURL = URL(string: "https://typeflux.app")!
+    private let privacyURL = URL(string: "https://typeflux.app/privacy")!
     private let projectURL = URL(string: "https://github.com/mylxsw/typeflux")!
 
     var body: some View {
@@ -93,7 +93,7 @@ struct AboutView: View {
             detailLinkRow(
                 icon: "globe",
                 title: L("about.website"),
-                value: "typeflux.gulu.ai",
+                value: "typeflux.app",
                 subtitle: websiteURL.absoluteString,
                 url: websiteURL,
             )
