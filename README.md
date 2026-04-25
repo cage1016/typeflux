@@ -1,77 +1,96 @@
+<div align="center">
+
 # Typeflux
 
-**Voice input for any macOS app — hold to talk, release to insert.**
+**Talk. We'll Type.**
+
+Press `Fn` and speak naturally. Typeflux delivers lightning-fast, accurate voice-to-text directly into any macOS application. Free, open-source, and supports local models — your voice never has to leave your Mac.
 
 [![Tests](https://github.com/mylxsw/typeflux/actions/workflows/test.yml/badge.svg)](https://github.com/mylxsw/typeflux/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/mylxsw/typeflux/graph/badge.svg)](https://codecov.io/gh/mylxsw/typeflux)
-[![Release](https://img.shields.io/github/v/release/mylxsw/typeflux)](https://github.com/mylxsw/typeflux/releases/latest)
-[![Stars](https://img.shields.io/github/stars/mylxsw/typeflux?style=social)](https://github.com/mylxsw/typeflux/stargazers)
-
-Typeflux is a macOS menu bar app that lets you speak into any text field — email, code editor, terminal, browser — without switching apps or changing your workflow. Press a hotkey, talk, release, and your words appear at the cursor.
 
 ![Typeflux demo](./assets/preview-1.png)
 
+</div>
+
 ## Download
 
-**[⬇ Download latest release (.app)](https://github.com/mylxsw/typeflux/releases/latest)**
+**[⬇ Download latest release (.dmg)](https://github.com/mylxsw/typeflux/releases/latest)**
 
-1. Download `Typeflux.zip` from the latest release
-2. Unzip and drag `Typeflux.app` to **Applications**
+1. Download `Typeflux.dmg` from the latest release
+2. Open the DMG and drag `Typeflux.app` to **Applications**
 3. Launch and grant Microphone + Accessibility permissions
 
-> macOS 13+. No subscription. Fully local inference supported (no API keys required).
+> **macOS 13+** · Free · No subscription · Fully local inference supported
 
 ---
 
 ## Why Typeflux
 
-Most voice input tools are separate apps. You dictate, copy the result, and paste it elsewhere. That context switch breaks flow.
+Most voice input tools force you to switch apps — dictating in one place, then copying and pasting into another. That context switch breaks flow.
 
-Typeflux injects text directly into whichever app you're already using — at the cursor position — the moment you release the hotkey. It feels like typing, just faster.
+Typeflux injects text directly into whichever app you're already using, at the cursor position, the moment you release the hotkey. It feels like typing, just **4× faster** (~200 WPM vs. ~50 WPM).
 
-It also handles the editing case: **select existing text, speak an instruction** ("make this shorter", "translate to English"), and the selection is rewritten in place using an LLM.
+And when you need more than dictation, **Voice Agent** turns your voice into an AI assistant for Q&A, rewriting, translation, and complex workflows.
 
 ---
 
 ## How It Works
 
 ```
-Hold hotkey → Speak → Release → Text appears in focused app
+Hold Fn → Speak → Release → Text appears instantly
 ```
 
-1. Press and hold your configured hotkey (default: `Option + Space`)
-2. Speak naturally
-3. Release — Typeflux transcribes and injects the text at your cursor
+1. **Press and hold** `Fn` (default hotkey)
+2. **Speak naturally**
+3. **Release** — Typeflux transcribes and injects the text at your cursor
 4. The result is also copied to clipboard as a fallback
 
 ---
 
 ## Features
 
-### Voice Dictation
-Insert transcribed speech into any macOS app via the Accessibility API. Works in browsers, code editors, terminals, Electron apps, and native apps — anywhere a text cursor exists.
+### One-Click Voice Input
+Hold `Fn` to start, release to stop. No switching input methods, no clicking buttons — works in any text field across browsers, code editors, terminals, and native apps.
 
-### Voice Editing
-Select text first, then speak an instruction. Typeflux sends the selection + your instruction to an LLM and replaces it with the rewritten result. No copy-paste needed.
+### Voice Agent (`Fn + Space`)
+More than just dictation. Press `Fn + Space` to chat with an AI agent using your voice:
 
-### Local-First, Privacy-Friendly
-Run entirely on your Mac with **WhisperKit** (on-device Whisper inference) and **Ollama** (local LLM). No API keys, no data leaving your machine.
+- **Voice Q&A** — Ask questions and get instant answers
+- **Content Rewrite** — Select text, then speak an instruction like "make this shorter" or "translate to English"
+- **Complex Workflows** — Handle multi-step tasks through natural conversation
+
+### Local-First, Privacy-First
+Run entirely on your Mac with on-device models. No API keys needed, no data leaves your machine. We don't collect, store, or analyze any of your voice or text data.
+
+### Custom Personas
+Create named instruction sets for different scenarios — work emails, study notes, casual chat, code comments — and switch between them from the menu bar.
 
 ### Multiple Speech Backends
-| Backend | Type | Best for |
-|---------|------|----------|
-| Apple Speech | Built-in | Quick setup, fast |
-| Whisper API / OpenAI-compatible | Cloud | High accuracy |
-| WhisperKit | Local | Privacy, M-series Macs |
-| Alibaba Cloud Realtime ASR | Cloud streaming | Low latency |
+| Provider | Type | Best For |
+|----------|------|----------|
+| Typeflux Cloud | Cloud | Zero-config, balanced accuracy |
+| Local Model | Local | Privacy, offline use |
+| Alibaba Cloud ASR | Cloud streaming | Low latency, Chinese |
 | Doubao Realtime ASR | Cloud streaming | Chinese optimization |
-| Multimodal LLM | Cloud | Specialized use cases |
+| Google Speech-to-Text | Cloud | Multi-language, enterprise |
+| OpenAI (Whisper API) | Cloud | High accuracy |
+| Multimodal LLM | Cloud | Vision + audio tasks |
+| Groq | Cloud | Fast inference, low cost |
+| Free Models | Cloud | No API key, open-source endpoints |
+
+### Local Models
+When you choose **Local Model**, Typeflux downloads and runs the model entirely on your Mac:
+
+| Model | Size | Params | Best For |
+|-------|------|--------|----------|
+| SenseVoice Small | ~350 MB | 234M | Fast multilingual, strong Chinese/Japanese/Korean |
+| WhisperKit Medium | ~1.5 GB | 769M | Balanced English and multilingual dictation |
+| WhisperKit Large | ~3 GB | 1.55B | Highest accuracy offline transcription |
+| Qwen3-ASR | ~1.3 GB | 0.6B | Strong context understanding, long-form recognition |
 
 ### Streaming Preview
 See partial transcription results while still speaking, so you get immediate feedback before you release.
-
-### Persona System
-Create named instruction sets (personas) for different workflows — formal writing, code comments, quick notes, specific languages — and switch between them from the menu bar.
 
 ### History & Replay
 Every session is saved locally. Review past sessions, replay audio, retry transcription with different settings, or export records to Markdown.
@@ -83,9 +102,9 @@ Every session is saved locally. Review past sessions, replay audio, retry transc
 - macOS 13 or later
 - Microphone permission
 - Accessibility permission (for text injection)
-- Speech Recognition permission (when using Apple Speech)
 
-For cloud providers: API keys and endpoint URLs. For local inference: model files downloaded on first use.
+For cloud providers: API keys and endpoint URLs.  
+For local inference: model files are downloaded automatically on first use.
 
 ---
 
@@ -116,7 +135,9 @@ See [CLAUDE.md](./CLAUDE.md) for the full development guide.
 
 ## Contributing
 
-Contributions welcome. Good starting points: STT provider integrations, overlay UX, settings views, text injection edge cases, or history/export features.
+Typeflux is a completely open-source project. We believe great tools should belong to everyone.
+
+Contributions welcome — STT provider integrations, overlay UX, settings views, text injection edge cases, or history/export features are great starting points.
 
 1. Read the module layout in [CLAUDE.md](./CLAUDE.md)
 2. Run the app locally with `make dev`
@@ -127,4 +148,4 @@ Contributions welcome. Good starting points: STT provider integrations, overlay 
 
 ## License
 
-GPL-3.0. See [LICENSE](./LICENSE).
+AGPL-3.0. See [LICENSE](./LICENSE).
