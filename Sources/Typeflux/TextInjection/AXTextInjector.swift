@@ -74,6 +74,7 @@ final class AXTextInjector: TextInjector {
 
     let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "AXTextInjector")
     let settingsStore: SettingsStore?
+    var lastApplicationStateFailureReason: String?
     struct PasteboardItemSnapshot {
         let representations: [(type: NSPasteboard.PasteboardType, data: Data)]
     }
@@ -118,11 +119,12 @@ final class AXTextInjector: TextInjector {
     static let copySelectionTimeoutMilliseconds = 180
     static let documentContextMaxBytes = 2_000_000
     static let applicationStateContextMaxBytes = 2_000_000
-    static let visibleTextContextMaxNodes = 800
-    static let visibleTextContextSearchDepth = 8
+    static let visibleTextContextMaxNodes = 4_000
+    static let visibleTextContextSearchDepth = 16
+    static let visibleTextContextMaxCharacters = 60_000
     static let copyShortcutKeyCode: CGKeyCode = 8
     static let selectionContextLifetime: TimeInterval = 180
-    static let focusedDescendantSearchDepth = 6
+    static let focusedDescendantSearchDepth = 10
 
     var latestSelectionContext: SelectionContext?
 
@@ -467,6 +469,16 @@ final class AXTextInjector: TextInjector {
         let isFocusedTarget = copyBooleanAttribute(kAXFocusedAttribute as String, from: element) ?? false
         let selectedRange = copySelectedTextRange(from: element)
         let documentURL = documentURL(for: element, processID: processID)
+        let shouldPreferApplicationState = Self.shouldPreferApplicationStateContextBeforeAXValue(
+            bundleIdentifier: bundleIdentifier,
+            role: role,
+            isFocusedTarget: isFocusedTarget,
+        )
+        let shouldSuppressAXValue = Self.shouldSuppressAXValueContext(
+            bundleIdentifier: bundleIdentifier,
+            role: role,
+            isFocusedTarget: isFocusedTarget,
+        )
 
         guard isEditable else {
             let documentText = documentURL.flatMap(readDocumentContextText(from:))
@@ -486,7 +498,11 @@ final class AXTextInjector: TextInjector {
                 selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
                 isEditable: false,
                 isFocusedTarget: isFocusedTarget,
-                failureReason: contextText == nil ? "focused-element-not-editable" : "focused-element-not-editable-context",
+                failureReason: inputContextFailureReason(
+                    defaultReason: "focused-element-not-editable",
+                    contextReason: "focused-element-not-editable-context",
+                    contextText: contextText,
+                ),
                 documentURL: documentURL,
                 textSource: Self.contextTextSource(
                     documentText: documentText,
@@ -494,6 +510,29 @@ final class AXTextInjector: TextInjector {
                     visibleText: visibleText,
                 ),
             )
+        }
+
+        if shouldPreferApplicationState {
+            let applicationStateContext = applicationStateContext(
+                bundleIdentifier: bundleIdentifier,
+                selectedText: latestSelectionContext?.selectedText,
+                windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+            )
+            if let applicationStateContext {
+                return CurrentInputTextSnapshot(
+                    processID: processID,
+                    processName: processName,
+                    bundleIdentifier: bundleIdentifier,
+                    role: role,
+                    text: applicationStateContext.text,
+                    selectedRange: applicationStateContext.selectedRange,
+                    isEditable: true,
+                    isFocusedTarget: isFocusedTarget,
+                    failureReason: "ax-value-bypassed-application-state-context",
+                    documentURL: documentURL,
+                    textSource: "application-state",
+                )
+            }
         }
 
         if let value = copyTextAttribute(kAXValueAttribute as String, from: element) {
@@ -515,7 +554,11 @@ final class AXTextInjector: TextInjector {
                     selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
-                    failureReason: contextText == nil ? "missing-ax-value" : "missing-ax-value-context",
+                    failureReason: inputContextFailureReason(
+                        defaultReason: "missing-ax-value",
+                        contextReason: "missing-ax-value-context",
+                        contextText: contextText,
+                    ),
                     documentURL: documentURL,
                     textSource: Self.contextTextSource(
                         documentText: documentText,
@@ -553,6 +596,25 @@ final class AXTextInjector: TextInjector {
                 )
             }
 
+            if shouldSuppressAXValue {
+                return CurrentInputTextSnapshot(
+                    processID: processID,
+                    processName: processName,
+                    bundleIdentifier: bundleIdentifier,
+                    role: role,
+                    text: nil,
+                    selectedRange: nil,
+                    isEditable: false,
+                    isFocusedTarget: isFocusedTarget,
+                    failureReason: inputContextFailureReason(
+                        defaultReason: "browser-chrome-ui-ax-value-ignored",
+                        contextReason: "browser-chrome-ui-ax-value-ignored-context",
+                        contextText: nil,
+                    ),
+                    documentURL: documentURL,
+                )
+            }
+
             return CurrentInputTextSnapshot(
                 processID: processID,
                 processName: processName,
@@ -585,7 +647,11 @@ final class AXTextInjector: TextInjector {
             selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
             isEditable: true,
             isFocusedTarget: isFocusedTarget,
-            failureReason: contextText == nil ? "missing-ax-value" : "missing-ax-value-context",
+            failureReason: inputContextFailureReason(
+                defaultReason: "missing-ax-value",
+                contextReason: "missing-ax-value-context",
+                contextText: contextText,
+            ),
             documentURL: documentURL,
             textSource: Self.contextTextSource(
                 documentText: documentText,
@@ -597,6 +663,17 @@ final class AXTextInjector: TextInjector {
 
     func currentInputText() async -> String? {
         await currentInputTextSnapshot().text
+    }
+
+    func inputContextFailureReason(defaultReason: String, contextReason: String, contextText: String?) -> String {
+        if contextText != nil {
+            return contextReason
+        }
+
+        guard let stateFailure = lastApplicationStateFailureReason else {
+            return defaultReason
+        }
+        return "\(defaultReason)-\(stateFailure)"
     }
 
     func replaceSelection(text: String) throws {

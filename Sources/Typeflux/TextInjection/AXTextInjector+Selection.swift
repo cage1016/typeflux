@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import SQLite3
 
 // swiftlint:disable file_length function_body_length opening_brace
 extension AXTextInjector {
@@ -404,10 +405,19 @@ extension AXTextInjector {
     static func joinedVisibleTextCandidates(_ candidates: [String]) -> String? {
         var lines: [String] = []
         var previous: String?
+        var characterCount = 0
         for candidate in candidates {
             let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty, trimmed != previous else { continue }
+            let projectedCount = characterCount + trimmed.count + (lines.isEmpty ? 0 : 1)
+            guard projectedCount <= visibleTextContextMaxCharacters else {
+                NetworkDebugLogger.logMessage(
+                    "[InputContext] visible text context truncated at \(characterCount) characters",
+                )
+                break
+            }
             lines.append(trimmed)
+            characterCount = projectedCount
             previous = trimmed
         }
 
@@ -420,15 +430,412 @@ extension AXTextInjector {
         selectedText: String?,
         windowTitle: String?,
     ) -> ApplicationStateContext? {
+        lastApplicationStateFailureReason = nil
+
         switch bundleIdentifier {
         case "com.sublimetext.4", "com.sublimetext.3", "com.sublimetext.2":
             return sublimeSessionContext(
                 selectedText: selectedText?.trimmingCharacters(in: .whitespacesAndNewlines),
                 windowTitle: windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
             )
+        case "dev.zed.Zed":
+            return zedEditorContext(
+                selectedText: selectedText?.trimmingCharacters(in: .whitespacesAndNewlines),
+                windowTitle: windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+            )
+        default:
+            return browserDOMContext(bundleIdentifier: bundleIdentifier)
+        }
+    }
+
+    func browserDOMContext(bundleIdentifier: String?) -> ApplicationStateContext? {
+        guard let kind = Self.browserAutomationKind(for: bundleIdentifier) else { return nil }
+        let script = Self.browserDOMContextAppleScript(
+            bundleIdentifier: kind.bundleIdentifier,
+            javascript: Self.browserDOMContextJavaScript,
+            command: kind.command,
+        )
+
+        guard let output = executeAppleScript(script) else {
+            return nil
+        }
+
+        let payload = Self.browserDOMContextPayload(fromJSON: output)
+        guard let payload, let context = Self.browserDOMContext(from: payload) else {
+            lastApplicationStateFailureReason = payload?.reason.map { "browser-dom-\($0)" }
+                ?? "browser-dom-invalid-response"
+            NetworkDebugLogger.logMessage("[InputContext] browser DOM context invalid response: \(output.prefix(200))")
+            return nil
+        }
+
+        lastApplicationStateFailureReason = nil
+        return context
+    }
+
+    func executeAppleScript(_ source: String) -> String? {
+        var errorInfo: NSDictionary?
+        guard let result = NSAppleScript(source: source)?.executeAndReturnError(&errorInfo),
+              errorInfo == nil
+        else {
+            if let errorInfo {
+                lastApplicationStateFailureReason = Self.appleScriptFailureReason(from: errorInfo)
+                NetworkDebugLogger.logMessage("[InputContext] browser DOM context failed: \(errorInfo)")
+            }
+            return nil
+        }
+
+        let output = result.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return output?.isEmpty == false ? output : nil
+    }
+
+    static func appleScriptFailureReason(from errorInfo: NSDictionary) -> String {
+        let message = (errorInfo[NSAppleScript.errorMessage] as? String) ?? ""
+        let number = errorInfo[NSAppleScript.errorNumber] as? NSNumber
+
+        if number?.intValue == 12,
+           message.localizedCaseInsensitiveContains("JavaScript through AppleScript is turned off")
+        {
+            return "browser-dom-javascript-from-apple-events-disabled"
+        }
+
+        if number?.intValue == -1743 {
+            return "browser-dom-automation-permission-denied"
+        }
+
+        return "browser-dom-applescript-failed"
+    }
+
+    struct BrowserAutomationKind: Equatable {
+        enum Command: Equatable {
+            case chromium
+            case safari
+        }
+
+        let bundleIdentifier: String
+        let command: Command
+    }
+
+    static func browserAutomationKind(for bundleIdentifier: String?) -> BrowserAutomationKind? {
+        guard let bundleIdentifier else { return nil }
+        switch bundleIdentifier {
+        case "com.google.Chrome",
+             "com.google.Chrome.beta",
+             "com.google.Chrome.dev",
+             "com.google.Chrome.canary",
+             "org.chromium.Chromium",
+             "com.microsoft.edgemac",
+             "com.microsoft.edgemac.Canary",
+             "com.brave.Browser",
+             "com.vivaldi.Vivaldi",
+             "com.operasoftware.Opera",
+             "company.thebrowser.Browser":
+            return BrowserAutomationKind(bundleIdentifier: bundleIdentifier, command: .chromium)
+        case "com.apple.Safari",
+             "com.apple.SafariTechnologyPreview":
+            return BrowserAutomationKind(bundleIdentifier: bundleIdentifier, command: .safari)
         default:
             return nil
         }
+    }
+
+    static func shouldPreferApplicationStateContextBeforeAXValue(
+        bundleIdentifier: String?,
+        role: String?,
+        isFocusedTarget: Bool,
+    ) -> Bool {
+        guard browserAutomationKind(for: bundleIdentifier) != nil else { return false }
+
+        if isFocusedTarget == false {
+            return true
+        }
+
+        return role == "AXTextField"
+    }
+
+    static func shouldSuppressAXValueContext(
+        bundleIdentifier: String?,
+        role: String?,
+        isFocusedTarget: Bool,
+    ) -> Bool {
+        browserAutomationKind(for: bundleIdentifier) != nil
+            && role == "AXTextField"
+            && isFocusedTarget == false
+    }
+
+    static func browserDOMContextAppleScript(
+        bundleIdentifier: String,
+        javascript: String,
+        command: BrowserAutomationKind.Command,
+    ) -> String {
+        let quotedBundle = appleScriptQuotedString(bundleIdentifier)
+        let quotedJavaScript = appleScriptQuotedString(javascript)
+
+        switch command {
+        case .chromium:
+            return """
+            tell application id \(quotedBundle)
+                if not (exists front window) then return ""
+                return execute active tab of front window javascript \(quotedJavaScript)
+            end tell
+            """
+        case .safari:
+            return """
+            tell application id \(quotedBundle)
+                if not (exists front document) then return ""
+                return do JavaScript \(quotedJavaScript) in front document
+            end tell
+            """
+        }
+    }
+
+    static func appleScriptQuotedString(_ value: String) -> String {
+        "\"" + value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\n", with: "\\n") + "\""
+    }
+
+    static func browserDOMContext(fromJSON json: String) -> ApplicationStateContext? {
+        guard let payload = browserDOMContextPayload(fromJSON: json) else {
+            return nil
+        }
+
+        return browserDOMContext(from: payload)
+    }
+
+    static func browserDOMContextPayload(fromJSON json: String) -> BrowserDOMContextPayload? {
+        guard let data = json.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(BrowserDOMContextPayload.self, from: data)
+        else {
+            return nil
+        }
+
+        return payload
+    }
+
+    static func browserDOMContext(from payload: BrowserDOMContextPayload) -> ApplicationStateContext? {
+        guard payload.ok, payload.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+            return nil
+        }
+
+        let start = max(0, min(payload.selectionStart, payload.text.utf16.count))
+        let end = max(0, min(payload.selectionEnd, payload.text.utf16.count))
+        return ApplicationStateContext(
+            text: payload.text,
+            selectedRange: CFRange(location: min(start, end), length: abs(end - start)),
+        )
+    }
+
+    struct BrowserDOMContextPayload: Decodable {
+        let ok: Bool
+        let reason: String?
+        let text: String
+        let selectionStart: Int
+        let selectionEnd: Int
+    }
+
+    static let browserDOMContextJavaScript = """
+    (function () {
+      function json(payload) {
+        return JSON.stringify(payload);
+      }
+
+      function empty(reason) {
+        return json({ ok: false, reason: reason, text: "", selectionStart: 0, selectionEnd: 0 });
+      }
+
+      function inputSupportsTextSelection(element) {
+        if (!element || element.tagName !== "INPUT") return false;
+        return /^(text|search|url|tel|email|password|number)$/i.test(element.type || "text");
+      }
+
+      function textNodeOffset(root, targetNode, targetOffset) {
+        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        var offset = 0;
+        var node;
+        while ((node = walker.nextNode())) {
+          if (node === targetNode) return offset + targetOffset;
+          offset += node.nodeValue.length;
+        }
+        if (targetNode === root) return Math.min(targetOffset, offset);
+        return offset;
+      }
+
+      function editableRootForSelection(selection) {
+        if (!selection || selection.rangeCount === 0) return null;
+        var node = selection.anchorNode;
+        var element = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+        if (!element) return null;
+        return element.closest('[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"]');
+      }
+
+      var active = document.activeElement;
+      if (active && active.tagName === "TEXTAREA") {
+        return json({
+          ok: true,
+          kind: "textarea",
+          text: active.value || "",
+          selectionStart: active.selectionStart || 0,
+          selectionEnd: active.selectionEnd || 0
+        });
+      }
+
+      if (inputSupportsTextSelection(active)) {
+        return json({
+          ok: true,
+          kind: "input",
+          text: active.value || "",
+          selectionStart: active.selectionStart || 0,
+          selectionEnd: active.selectionEnd || 0
+        });
+      }
+
+      var selection = window.getSelection();
+      var root = active && active.isContentEditable ? active : editableRootForSelection(selection);
+      if (!root) return empty("no-editable-root");
+      var text = root.innerText || root.textContent || "";
+      var start = 0;
+      var end = 0;
+
+      if (selection && selection.rangeCount > 0 && root.contains(selection.anchorNode) && root.contains(selection.focusNode)) {
+        start = textNodeOffset(root, selection.anchorNode, selection.anchorOffset);
+        end = textNodeOffset(root, selection.focusNode, selection.focusOffset);
+      }
+
+      return json({
+        ok: true,
+        kind: "contenteditable",
+        text: text,
+        selectionStart: Math.min(start, end),
+        selectionEnd: Math.max(start, end)
+      });
+    })();
+    """
+
+    func zedEditorContext(selectedText: String?, windowTitle: String?) -> ApplicationStateContext? {
+        let dbURLs = [
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support/Zed/db/0-stable/db.sqlite"),
+        ]
+
+        for dbURL in dbURLs {
+            guard let context = zedEditorContext(
+                dbURL: dbURL,
+                selectedText: selectedText,
+                windowTitle: windowTitle,
+            ) else {
+                continue
+            }
+            return context
+        }
+
+        return nil
+    }
+
+    func zedEditorContext(
+        dbURL: URL,
+        selectedText: String?,
+        windowTitle: String?,
+    ) -> ApplicationStateContext? {
+        guard FileManager.default.fileExists(atPath: dbURL.path) else { return nil }
+
+        var db: OpaquePointer?
+        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
+        guard sqlite3_open_v2(dbURL.path, &db, flags, nil) == SQLITE_OK, let db else {
+            return nil
+        }
+        defer { sqlite3_close(db) }
+
+        let sql = """
+        SELECT e.contents, e.buffer_path, s.start, s.end
+        FROM editors e
+        JOIN items i ON i.item_id = e.item_id AND i.workspace_id = e.workspace_id
+        JOIN panes p ON p.pane_id = i.pane_id AND p.workspace_id = i.workspace_id
+        LEFT JOIN editor_selections s ON s.item_id = e.item_id AND s.workspace_id = e.workspace_id
+        WHERE i.active = 1 AND p.active = 1
+        ORDER BY e.item_id DESC
+        LIMIT 20;
+        """
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK, let statement else {
+            return nil
+        }
+        defer { sqlite3_finalize(statement) }
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let contents = Self.sqliteString(statement, column: 0)
+            let bufferPath = Self.sqliteString(statement, column: 1)
+            let range = Self.sqliteRange(statement, startColumn: 2, endColumn: 3)
+            guard let context = zedEditorContext(
+                contents: contents,
+                bufferPath: bufferPath,
+                selectedRange: range,
+                selectedText: selectedText,
+                windowTitle: windowTitle,
+            ) else {
+                continue
+            }
+            return context
+        }
+
+        return nil
+    }
+
+    func zedEditorContext(
+        contents: String?,
+        bufferPath: String?,
+        selectedRange: CFRange?,
+        selectedText: String?,
+        windowTitle: String?,
+    ) -> ApplicationStateContext? {
+        let text = contents?.isEmpty == false
+            ? contents
+            : bufferPath.flatMap { readDocumentContextText(from: URL(fileURLWithPath: $0)) }
+        guard let text, !text.isEmpty else { return nil }
+
+        if let selectedText, !selectedText.isEmpty,
+           Self.sessionContents(text, containsSelection: selectedText)
+        {
+            return ApplicationStateContext(text: text, selectedRange: selectedRange)
+        }
+
+        if let windowTitle,
+           let bufferPath,
+           Self.zedWindowTitle(windowTitle, matchesPath: bufferPath)
+        {
+            return ApplicationStateContext(text: text, selectedRange: selectedRange)
+        }
+
+        return nil
+    }
+
+    private static func sqliteString(_ statement: OpaquePointer, column: Int32) -> String? {
+        guard sqlite3_column_type(statement, column) != SQLITE_NULL,
+              let value = sqlite3_column_text(statement, column)
+        else {
+            return nil
+        }
+        return String(cString: value)
+    }
+
+    private static func sqliteRange(_ statement: OpaquePointer, startColumn: Int32, endColumn: Int32) -> CFRange? {
+        guard sqlite3_column_type(statement, startColumn) != SQLITE_NULL,
+              sqlite3_column_type(statement, endColumn) != SQLITE_NULL
+        else {
+            return nil
+        }
+
+        let start = Int(sqlite3_column_int64(statement, startColumn))
+        let end = Int(sqlite3_column_int64(statement, endColumn))
+        return CFRange(location: min(start, end), length: abs(end - start))
+    }
+
+    private static func zedWindowTitle(_ windowTitle: String, matchesPath bufferPath: String) -> Bool {
+        let filename = URL(fileURLWithPath: bufferPath).lastPathComponent
+        guard !filename.isEmpty else { return false }
+        return normalizedSessionSearchText(windowTitle).contains(normalizedSessionSearchText(filename))
     }
 
     func sublimeSessionContext(selectedText: String?, windowTitle: String?) -> ApplicationStateContext? {

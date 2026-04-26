@@ -166,6 +166,18 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertEqual(text, "first line\nsecond line")
     }
 
+    func testJoinedVisibleTextCandidatesAppliesCharacterLimit() {
+        let longLine = String(repeating: "a", count: AXTextInjector.visibleTextContextMaxCharacters + 1)
+
+        let text = AXTextInjector.joinedVisibleTextCandidates([
+            "first line",
+            longLine,
+            "third line",
+        ])
+
+        XCTAssertEqual(text, "first line")
+    }
+
     func testFirstSessionContentsFindsNestedSublimeBufferContainingSelection() {
         let object: [String: Any] = [
             "windows": [
@@ -258,6 +270,143 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertEqual(context?.text, "before cursor.after cursor")
         XCTAssertEqual(context?.selectedRange?.location, 13)
         XCTAssertEqual(context?.selectedRange?.length, 0)
+    }
+
+    func testZedEditorContextUsesContentsContainingSelection() {
+        let injector = AXTextInjector(settingsStore: nil)
+
+        let context = injector.zedEditorContext(
+            contents: "before\nselected paragraph\nafter",
+            bufferPath: "/tmp/example.md",
+            selectedRange: nil,
+            selectedText: "selected paragraph",
+            windowTitle: "project - example.md",
+        )
+
+        XCTAssertEqual(context?.text, "before\nselected paragraph\nafter")
+    }
+
+    func testZedEditorContextReadsBufferPathWhenContentsMissing() throws {
+        let injector = AXTextInjector(settingsStore: nil)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TypefluxZedContext-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileURL = directory.appendingPathComponent("draft.md")
+        try "before\nselected paragraph\nafter".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let context = injector.zedEditorContext(
+            contents: nil,
+            bufferPath: fileURL.path,
+            selectedRange: CFRange(location: 7, length: 18),
+            selectedText: "selected paragraph",
+            windowTitle: "project - draft.md",
+        )
+
+        XCTAssertEqual(context?.text, "before\nselected paragraph\nafter")
+        XCTAssertEqual(context?.selectedRange?.location, 7)
+        XCTAssertEqual(context?.selectedRange?.length, 18)
+    }
+
+    func testBrowserAutomationKindDetectsCommonBrowsers() {
+        XCTAssertEqual(
+            AXTextInjector.browserAutomationKind(for: "com.google.Chrome"),
+            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.google.Chrome", command: .chromium),
+        )
+        XCTAssertEqual(
+            AXTextInjector.browserAutomationKind(for: "com.microsoft.edgemac"),
+            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.microsoft.edgemac", command: .chromium),
+        )
+        XCTAssertEqual(
+            AXTextInjector.browserAutomationKind(for: "com.apple.Safari"),
+            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.apple.Safari", command: .safari),
+        )
+        XCTAssertNil(AXTextInjector.browserAutomationKind(for: "com.openai.atlas"))
+    }
+
+    func testBrowserDOMContextAppleScriptUsesBrowserBundleIdentifier() {
+        let script = AXTextInjector.browserDOMContextAppleScript(
+            bundleIdentifier: "com.google.Chrome",
+            javascript: "return \"hello\";",
+            command: .chromium,
+        )
+
+        XCTAssertTrue(script.contains("tell application id \"com.google.Chrome\""))
+        XCTAssertTrue(script.contains("execute active tab of front window javascript"))
+        XCTAssertTrue(script.contains("return \\\"hello\\\";"))
+    }
+
+    func testBrowserDOMContextParsesUTF16SelectionRange() {
+        let json = """
+        {"ok":true,"text":"hi 😄 there","selectionStart":6,"selectionEnd":11}
+        """
+
+        let context = AXTextInjector.browserDOMContext(fromJSON: json)
+
+        XCTAssertEqual(context?.text, "hi 😄 there")
+        XCTAssertEqual(context?.selectedRange?.location, 6)
+        XCTAssertEqual(context?.selectedRange?.length, 5)
+    }
+
+    func testBrowserDOMContextRejectsEmptyPayload() {
+        let json = """
+        {"ok":false,"text":"","selectionStart":0,"selectionEnd":0}
+        """
+
+        XCTAssertNil(AXTextInjector.browserDOMContext(fromJSON: json))
+    }
+
+    func testBrowserDOMContextPayloadPreservesFailureReason() {
+        let json = """
+        {"ok":false,"reason":"no-editable-root","text":"","selectionStart":0,"selectionEnd":0}
+        """
+
+        let payload = AXTextInjector.browserDOMContextPayload(fromJSON: json)
+
+        XCTAssertEqual(payload?.reason, "no-editable-root")
+        XCTAssertNil(payload.flatMap(AXTextInjector.browserDOMContext(from:)))
+    }
+
+    func testBrowserAXValuePolicyPrefersDOMBeforeChromeAddressField() {
+        XCTAssertTrue(AXTextInjector.shouldPreferApplicationStateContextBeforeAXValue(
+            bundleIdentifier: "com.google.Chrome",
+            role: "AXTextField",
+            isFocusedTarget: false,
+        ))
+        XCTAssertTrue(AXTextInjector.shouldSuppressAXValueContext(
+            bundleIdentifier: "com.google.Chrome",
+            role: "AXTextField",
+            isFocusedTarget: false,
+        ))
+    }
+
+    func testBrowserAXValuePolicyKeepsFocusedWebTextAreaFallback() {
+        XCTAssertFalse(AXTextInjector.shouldSuppressAXValueContext(
+            bundleIdentifier: "com.google.Chrome",
+            role: "AXTextArea",
+            isFocusedTarget: true,
+        ))
+    }
+
+    func testAppleScriptFailureReasonDetectsChromeJavaScriptDisabled() {
+        let reason = AXTextInjector.appleScriptFailureReason(from: [
+            NSAppleScript.errorNumber: NSNumber(value: 12),
+            NSAppleScript.errorMessage: "Executing JavaScript through AppleScript is turned off.",
+        ])
+
+        XCTAssertEqual(reason, "browser-dom-javascript-from-apple-events-disabled")
+    }
+
+    func testInputContextFailureReasonIncludesApplicationStateFailure() {
+        let injector = AXTextInjector(settingsStore: nil)
+        injector.lastApplicationStateFailureReason = "browser-dom-javascript-from-apple-events-disabled"
+
+        let reason = injector.inputContextFailureReason(
+            defaultReason: "focused-element-not-editable",
+            contextReason: "focused-element-not-editable-context",
+            contextText: nil,
+        )
+
+        XCTAssertEqual(reason, "focused-element-not-editable-browser-dom-javascript-from-apple-events-disabled")
     }
 
     func testContextTextSourcePrefersDocumentOverApplicationState() {
