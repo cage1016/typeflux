@@ -532,6 +532,12 @@ extension WorkflowController {
                 && !(askContextText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
             let multimodalHandlesPersona = settingsStore.sttProvider.handlesPersonaInternally
                 && (selectedText == nil || selectedText!.isEmpty)
+            let hasRewritePersona = Self.hasRewritePersona(personaPrompt)
+            let hasInputContext = inputContext?.hasContent == true
+            let shouldRewriteTranscript = Self.shouldRewriteTranscript(
+                personaPrompt: personaPrompt,
+                inputContext: inputContext,
+            )
             let shouldKeepProcessingCapsule =
                 requiresRewrite(selectedText: selectedText, personaPrompt: personaPrompt)
                     && !multimodalHandlesPersona
@@ -556,7 +562,7 @@ extension WorkflowController {
                 && recordingIntent == .dictation
                 && !multimodalHandlesPersona
                 && inputContext == nil
-                && personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                && hasRewritePersona
 
             let transcribedText: String
             var mergedLLMResult: String?
@@ -632,14 +638,14 @@ extension WorkflowController {
                     record: &record,
                     pipelineTiming: &pipelineTiming,
                 )
-            } else if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            } else if shouldRewriteTranscript {
                 detachedAgentExecution = false
                 try await processPersonaRewriteFlow(
                     transcribedText: transcribedText,
-                    personaPrompt: personaPrompt,
+                    personaPrompt: personaPrompt ?? "",
                     selectionSnapshot: selectionSnapshot,
                     inputContext: inputContext,
-                    multimodalHandlesPersona: multimodalHandlesPersona,
+                    multimodalHandlesPersona: multimodalHandlesPersona && !hasInputContext,
                     mergedLLMResult: mergedLLMResult,
                     sessionID: sessionID,
                     record: &record,
@@ -1243,7 +1249,7 @@ extension WorkflowController {
         record: inout HistoryRecord,
         pipelineTiming: inout HistoryPipelineTiming,
     ) async throws {
-        record.mode = .personaRewrite
+        record.mode = Self.hasRewritePersona(personaPrompt) ? .personaRewrite : .dictation
 
         if multimodalHandlesPersona {
             record.personaResultText = transcribedText
@@ -1371,6 +1377,17 @@ extension WorkflowController {
 
     static func isServiceOverloadedError(_ error: Error) -> Bool {
         (error as NSError).code == 529
+    }
+
+    static func hasRewritePersona(_ personaPrompt: String?) -> Bool {
+        personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    static func shouldRewriteTranscript(
+        personaPrompt: String?,
+        inputContext: InputContextSnapshot?,
+    ) -> Bool {
+        hasRewritePersona(personaPrompt) || inputContext?.hasContent == true
     }
 
     func shouldTreatAsSkippedSpeechInput(error: Error, audioFile: AudioFile) -> Bool {

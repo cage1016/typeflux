@@ -92,6 +92,31 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         }
     }
 
+    func testHasRewritePersonaRequiresNonEmptyPrompt() {
+        XCTAssertTrue(WorkflowController.hasRewritePersona("Make it concise"))
+        XCTAssertFalse(WorkflowController.hasRewritePersona(nil))
+        XCTAssertFalse(WorkflowController.hasRewritePersona("   \n"))
+    }
+
+    func testShouldRewriteTranscriptWhenInputContextHasContentWithoutPersona() {
+        let inputContext = InputContextSnapshot(
+            appName: "Zed",
+            bundleIdentifier: "dev.zed.Zed",
+            role: "AXWindow",
+            isEditable: false,
+            isFocusedTarget: true,
+            prefix: "",
+            suffix: "",
+            selectedText: "Selected markdown paragraph",
+        )
+
+        XCTAssertTrue(WorkflowController.shouldRewriteTranscript(personaPrompt: nil, inputContext: inputContext))
+    }
+
+    func testShouldNotRewriteTranscriptWithoutPersonaOrInputContext() {
+        XCTAssertFalse(WorkflowController.shouldRewriteTranscript(personaPrompt: nil, inputContext: nil))
+    }
+
     func testGenerateRewriteThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 

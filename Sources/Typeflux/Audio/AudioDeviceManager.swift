@@ -1,4 +1,3 @@
-import AVFoundation
 import CoreAudio
 import Foundation
 
@@ -11,22 +10,18 @@ final class AudioDeviceManager {
     static let automaticDeviceID = ""
 
     func availableInputDevices() -> [AudioInputDevice] {
-        let devices: [AVCaptureDevice] = if #available(macOS 14.0, *) {
-            AVCaptureDevice.DiscoverySession(
-                deviceTypes: [.microphone, .external],
-                mediaType: .audio,
-                position: .unspecified,
-            ).devices
-        } else {
-            AVCaptureDevice.DiscoverySession(
-                deviceTypes: [.builtInMicrophone, .externalUnknown],
-                mediaType: .audio,
-                position: .unspecified,
-            ).devices
-        }
+        return allAudioDeviceIDs()
+            .compactMap { deviceID in
+                guard
+                    deviceSupportsInput(deviceID),
+                    let id = deviceUniqueID(for: deviceID),
+                    let name = deviceName(for: deviceID)
+                else {
+                    return nil
+                }
 
-        return devices
-            .map { AudioInputDevice(id: $0.uniqueID, name: $0.localizedName) }
+                return AudioInputDevice(id: id, name: name)
+            }
             .sorted { lhs, rhs in
                 lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
@@ -97,6 +92,24 @@ final class AudioDeviceManager {
     private func deviceUniqueID(for deviceID: AudioDeviceID) -> String? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain,
+        )
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let status = withUnsafeMutablePointer(to: &value) { pointer in
+            AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, pointer)
+        }
+        guard status == noErr else {
+            return nil
+        }
+
+        return value.map { $0.takeUnretainedValue() as String }
+    }
+
+    private func deviceName(for deviceID: AudioDeviceID) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain,
         )

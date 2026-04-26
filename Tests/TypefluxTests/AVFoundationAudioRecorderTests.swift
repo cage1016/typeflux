@@ -1,7 +1,24 @@
+import AVFoundation
 @testable import Typeflux
 import XCTest
 
 final class AVFoundationAudioRecorderTests: XCTestCase {
+    func testValidateInputFormatAcceptsUsableMicrophoneFormat() throws {
+        XCTAssertNoThrow(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 44_100))
+    }
+
+    func testValidateInputFormatRejectsZeroChannelFormat() throws {
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 0, sampleRate: 44_100)) { error in
+            XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
+        }
+    }
+
+    func testValidateInputFormatRejectsZeroSampleRate() throws {
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 0)) { error in
+            XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
+        }
+    }
+
     func testDelayedMuteBeginsAfterConfiguredSleep() async throws {
         let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

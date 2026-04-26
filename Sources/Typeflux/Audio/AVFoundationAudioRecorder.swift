@@ -4,6 +4,17 @@ import Foundation
 final class AVFoundationAudioRecorder: AudioRecorder {
     private static let outputMuteDelay: Duration = .milliseconds(180)
 
+    enum RecorderError: LocalizedError, Equatable {
+        case inputDeviceUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .inputDeviceUnavailable:
+                return "No usable microphone input format is available."
+            }
+        }
+    }
+
     private let engine = AVAudioEngine()
     private let settingsStore: SettingsStore
     private let audioDeviceManager: AudioDeviceManager
@@ -43,6 +54,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         defer { lifecycleLock.unlock() }
 
         stopInternal()
+        engine.reset()
 
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let now = Date()
@@ -55,8 +67,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
         let url = dir.appendingPathComponent(UUID().uuidString).appendingPathExtension("wav")
         let inputNode = engine.inputNode
-        try configureInputDeviceIfNeeded(for: inputNode)
-        let inputFormat = inputNode.inputFormat(forBus: 0)
+        let inputFormat = try configureInputDeviceAndResolveFormat(for: inputNode)
         let outputSettings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: inputFormat.sampleRate,
@@ -147,6 +158,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         if shouldStopEngine {
             removeInputTapIfInstalled()
             engine.stop()
+            engine.reset()
         }
 
         stateCondition.lock()
@@ -212,11 +224,54 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         inputNode.auAudioUnit.setValue(Int(deviceID), forKey: "deviceID")
     }
 
+    private func configureInputDeviceAndResolveFormat(for inputNode: AVAudioInputNode) throws -> AVAudioFormat {
+        let preferredID = settingsStore.preferredMicrophoneID
+        if !preferredID.isEmpty {
+            try configureInputDeviceIfNeeded(for: inputNode)
+            let preferredFormat = inputNode.inputFormat(forBus: 0)
+            if Self.isUsableInputFormat(preferredFormat) {
+                return preferredFormat
+            }
+
+            NetworkDebugLogger.logMessage(
+                """
+                [Audio Recorder] Falling back to automatic microphone selection.
+                preferredMicrophoneID: \(preferredID)
+                sampleRate: \(preferredFormat.sampleRate)
+                channelCount: \(preferredFormat.channelCount)
+                """,
+            )
+            inputNode.auAudioUnit.setValue(0, forKey: "deviceID")
+        }
+
+        let automaticFormat = inputNode.inputFormat(forBus: 0)
+        try Self.validateInputFormat(automaticFormat)
+        return automaticFormat
+    }
+
     private func currentRecordingState() -> Bool {
         stateCondition.lock()
         let isRecording = isRecording
         stateCondition.unlock()
         return isRecording
+    }
+
+    static func validateInputFormat(_ format: AVAudioFormat) throws {
+        try validateInputFormat(channelCount: format.channelCount, sampleRate: format.sampleRate)
+    }
+
+    static func validateInputFormat(channelCount: AVAudioChannelCount, sampleRate: Double) throws {
+        guard isUsableInputFormat(channelCount: channelCount, sampleRate: sampleRate) else {
+            throw RecorderError.inputDeviceUnavailable
+        }
+    }
+
+    static func isUsableInputFormat(_ format: AVAudioFormat) -> Bool {
+        isUsableInputFormat(channelCount: format.channelCount, sampleRate: format.sampleRate)
+    }
+
+    static func isUsableInputFormat(channelCount: AVAudioChannelCount, sampleRate: Double) -> Bool {
+        channelCount > 0 && sampleRate > 0
     }
 
     private func handleInputBuffer(_ buffer: AVAudioPCMBuffer) {
