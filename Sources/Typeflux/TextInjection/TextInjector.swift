@@ -46,6 +46,8 @@ struct CurrentInputTextSnapshot {
     var isEditable: Bool = false
     var isFocusedTarget: Bool = false
     var failureReason: String?
+    var documentURL: URL?
+    var textSource: String?
 }
 
 protocol TextInjector {

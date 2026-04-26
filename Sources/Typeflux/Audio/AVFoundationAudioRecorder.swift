@@ -15,7 +15,8 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         }
     }
 
-    private let engine = AVAudioEngine()
+    private let makeAudioEngine: () -> AVAudioEngine
+    private var engine: AVAudioEngine
     private let settingsStore: SettingsStore
     private let audioDeviceManager: AudioDeviceManager
     private let outputMuter: SystemAudioOutputMuting
@@ -36,6 +37,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         settingsStore: SettingsStore,
         audioDeviceManager: AudioDeviceManager = AudioDeviceManager(),
         outputMuter: SystemAudioOutputMuting = SystemAudioOutputMuter(),
+        makeAudioEngine: @escaping () -> AVAudioEngine = { AVAudioEngine() },
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
         },
@@ -43,6 +45,8 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         self.settingsStore = settingsStore
         self.audioDeviceManager = audioDeviceManager
         self.outputMuter = outputMuter
+        self.makeAudioEngine = makeAudioEngine
+        engine = makeAudioEngine()
         self.sleep = sleep
     }
 
@@ -54,7 +58,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         defer { lifecycleLock.unlock() }
 
         stopInternal()
-        engine.reset()
+        rebuildAudioEngine()
 
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let now = Date()
@@ -66,8 +70,18 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let url = dir.appendingPathComponent(UUID().uuidString).appendingPathExtension("wav")
-        let inputNode = engine.inputNode
-        let inputFormat = try configureInputDeviceAndResolveFormat(for: inputNode)
+        var inputNode = engine.inputNode
+        let inputFormat: AVAudioFormat
+        do {
+            inputFormat = try configureInputDeviceAndResolveFormat(for: inputNode)
+        } catch RecorderError.inputDeviceUnavailable {
+            NetworkDebugLogger.logMessage(
+                "[Audio Recorder] Rebuilding audio engine after microphone input format became unavailable.",
+            )
+            rebuildAudioEngine()
+            inputNode = engine.inputNode
+            inputFormat = try configureInputDeviceAndResolveFormat(for: inputNode)
+        }
         let outputSettings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: inputFormat.sampleRate,
@@ -181,6 +195,11 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         outputMuter.endMutedSession()
     }
 
+    private func rebuildAudioEngine() {
+        engine = makeAudioEngine()
+        isTapInstalled = false
+    }
+
     private func removeInputTapIfInstalled() {
         guard isTapInstalled else { return }
         engine.inputNode.removeTap(onBus: 0)
@@ -199,6 +218,14 @@ final class AVFoundationAudioRecorder: AudioRecorder {
     }
 
     #if DEBUG
+        var audioEngineIdentifierForTesting: ObjectIdentifier {
+            ObjectIdentifier(engine)
+        }
+
+        func rebuildAudioEngineForTesting() {
+            rebuildAudioEngine()
+        }
+
         func beginMutedSessionAfterDelayForTesting() {
             stateCondition.lock()
             isRecording = true

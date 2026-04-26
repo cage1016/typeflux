@@ -19,6 +19,19 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         }
     }
 
+    func testRebuildAudioEngineReplacesStaleEngineInstance() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let recorder = AVFoundationAudioRecorder(settingsStore: SettingsStore(defaults: defaults))
+        let originalIdentifier = recorder.audioEngineIdentifierForTesting
+
+        recorder.rebuildAudioEngineForTesting()
+
+        XCTAssertNotEqual(recorder.audioEngineIdentifierForTesting, originalIdentifier)
+    }
+
     func testDelayedMuteBeginsAfterConfiguredSleep() async throws {
         let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

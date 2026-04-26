@@ -1,3 +1,4 @@
+import ApplicationServices
 @testable import Typeflux
 import XCTest
 
@@ -129,6 +130,153 @@ final class AXTextInjectorTests: XCTestCase {
         )
 
         XCTAssertFalse(result)
+    }
+
+    func testDocumentURLParsesFileURLAttribute() {
+        let url = AXTextInjector.documentURL(fromAXAttributeValue: "file:///Users/example/doc.md")
+
+        XCTAssertEqual(url?.path, "/Users/example/doc.md")
+    }
+
+    func testDocumentURLParsesAbsolutePathAttribute() {
+        let url = AXTextInjector.documentURL(fromAXAttributeValue: "/Users/example/doc.md")
+
+        XCTAssertEqual(url?.path, "/Users/example/doc.md")
+    }
+
+    func testVisibleTextCandidateAttributesIncludeStaticTextValues() {
+        XCTAssertEqual(
+            AXTextInjector.visibleTextCandidateAttributes(for: "AXStaticText"),
+            [kAXValueAttribute as String, kAXDescriptionAttribute as String, kAXTitleAttribute as String],
+        )
+    }
+
+    func testVisibleTextCandidateAttributesIgnoreWindowTitles() {
+        XCTAssertTrue(AXTextInjector.visibleTextCandidateAttributes(for: "AXWindow").isEmpty)
+    }
+
+    func testJoinedVisibleTextCandidatesDeduplicatesAdjacentLines() {
+        let text = AXTextInjector.joinedVisibleTextCandidates([
+            " first line ",
+            "first line",
+            "second line",
+            "",
+        ])
+
+        XCTAssertEqual(text, "first line\nsecond line")
+    }
+
+    func testFirstSessionContentsFindsNestedSublimeBufferContainingSelection() {
+        let object: [String: Any] = [
+            "windows": [
+                [
+                    "buffers": [
+                        [
+                            "contents": "before\nselected paragraph\nafter",
+                        ],
+                    ],
+                ],
+            ],
+        ]
+
+        let text = AXTextInjector.firstSessionContents(containing: "selected paragraph", in: object)
+
+        XCTAssertEqual(text, "before\nselected paragraph\nafter")
+    }
+
+    func testFirstSessionContentsMatchesNormalizedSelection() {
+        let object: [String: Any] = [
+            "buffers": [
+                [
+                    "contents": "before\n做一个“能用的原型”和做一个“可以给别人用的产品”之间\nafter",
+                ],
+            ],
+        ]
+
+        let text = AXTextInjector.firstSessionContents(
+            containing: "做一个\"能用的原型\" 和做一个\"可以给别人用的产品\"之间",
+            in: object,
+        )
+
+        XCTAssertEqual(text, "before\n做一个“能用的原型”和做一个“可以给别人用的产品”之间\nafter")
+    }
+
+    func testFirstSessionContentsMatchesSelectionFragmentWhenBufferChanged() {
+        let object: [String: Any] = [
+            "buffers": [
+                [
+                    "contents": "最初我以为花一两天就能跑通。结果发现，做一个\"能用的原型\"和做一个\"可以给别人用的产品\"之间，差的是一个月的废寝忘食寝食难安。",
+                ],
+            ],
+        ]
+
+        let text = AXTextInjector.firstSessionContents(
+            containing: "最初我以为花一两天就能跑通。结果发现，做一个\"能用的原型\"和做一个\"可以给别人用的产品\"之间，差的是一个月的废寝忘食。",
+            in: object,
+        )
+
+        XCTAssertNotNil(text)
+    }
+
+    func testFirstSublimeSessionContextReadsSelectedSheetCursorRange() {
+        let object: [String: Any] = [
+            "windows": [
+                [
+                    "buffers": [
+                        [
+                            "contents": "before cursor.after cursor",
+                        ],
+                    ],
+                    "groups": [
+                        [
+                            "sheets": [
+                                [
+                                    "buffer": 0,
+                                    "selected": true,
+                                    "settings": [
+                                        "selection": [
+                                            [13, 13],
+                                        ],
+                                        "settings": [
+                                            "auto_name": "draft",
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]
+
+        let context = AXTextInjector.firstSublimeSessionContext(
+            selectedText: "before cursor",
+            windowTitle: "draft",
+            in: object,
+        )
+
+        XCTAssertEqual(context?.text, "before cursor.after cursor")
+        XCTAssertEqual(context?.selectedRange?.location, 13)
+        XCTAssertEqual(context?.selectedRange?.length, 0)
+    }
+
+    func testContextTextSourcePrefersDocumentOverApplicationState() {
+        XCTAssertEqual(
+            AXTextInjector.contextTextSource(
+                documentText: "document",
+                applicationStateText: "state",
+                visibleText: "visible",
+            ),
+            "document",
+        )
+        XCTAssertEqual(
+            AXTextInjector.contextTextSource(
+                documentText: nil,
+                applicationStateText: "state",
+                visibleText: "visible",
+            ),
+            "application-state",
+        )
     }
 
     func testEditableCandidateScoreRejectsScrollbarFalsePositive() {

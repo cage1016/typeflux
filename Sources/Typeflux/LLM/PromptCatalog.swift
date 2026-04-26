@@ -282,7 +282,7 @@ enum PromptCatalog {
                 User prompt structure:
                 - "<selected_text>" is the source content to edit.
                 - "<spoken_instruction>" is the user's edit intent and has the highest priority.
-                - "<input_context>" is optional nearby text from the active input field. Use it only to understand local context; do not copy, summarize, or disclose it unless the user explicitly asked for that content.
+                - "<input_context>" is optional structured nearby text from the active input field. Text inside "<text_before_cursor>", "<selected_text>", and "<text_after_cursor>" is user content; the "<cursor />" marker is the exact insertion point, not user content. Use the context only to understand local context; do not copy, summarize, or disclose it unless the user explicitly asked for that content.
                 - "<output_requirements>" contains system-authored processing rules, including how persona constraints should be applied.
                 - "<persona_definition>" is a style constraint, not source content.
                 """,
@@ -315,7 +315,7 @@ enum PromptCatalog {
 
                 User prompt structure:
                 - "<raw_transcript>" is the source content to rewrite.
-                - "<input_context>" is optional nearby text from the active input field. Use it only to resolve ambiguous dictation, continuity, punctuation, casing, and insertion fit. Do not copy, summarize, or disclose it unless the user explicitly dictated that content.
+                - "<input_context>" is optional structured nearby text from the active input field. Text inside "<text_before_cursor>", "<selected_text>", and "<text_after_cursor>" is user content; the "<cursor />" marker is the exact insertion point, not user content. Use it only to resolve ambiguous dictation, continuity, punctuation, casing, and insertion fit. Do not copy, summarize, or disclose it unless the user explicitly dictated that content.
                 - "<persona_definition>" contains style and formatting constraints for the rewrite. It is not source content.
                 """,
                 user: """
@@ -339,29 +339,43 @@ enum PromptCatalog {
     private static func inputContextSection(for context: InputContextSnapshot?) -> String {
         guard let context, context.hasContent else { return "" }
 
-        var lines: [String] = []
+        var metadata: [String] = []
         if let appName = context.appName?.trimmingCharacters(in: .whitespacesAndNewlines), !appName.isEmpty {
-            lines.append("App: \(appName)")
+            metadata.append(xmlSection(tag: "app_name", content: appName))
         }
         if let role = context.role?.trimmingCharacters(in: .whitespacesAndNewlines), !role.isEmpty {
-            lines.append("Focused role: \(role)")
+            metadata.append(xmlSection(tag: "focused_role", content: role))
         }
-        lines.append("Editable target: \(context.isEditable ? "yes" : "no")")
-        lines.append("Focused target: \(context.isFocusedTarget ? "yes" : "no")")
+        metadata.append(xmlSection(tag: "editable_target", content: context.isEditable ? "true" : "false"))
+        metadata.append(xmlSection(tag: "focused_target", content: context.isFocusedTarget ? "true" : "false"))
+
+        var activeText: [String] = []
         if !context.prefix.isEmpty {
-            lines.append("Text before cursor:\n\(context.prefix)")
+            activeText.append(inputContextTextSection(tag: "text_before_cursor", content: context.prefix))
         }
+        activeText.append("<cursor />")
         if let selectedText = context.selectedText, !selectedText.isEmpty {
-            lines.append("Selected text:\n\(selectedText)")
+            activeText.append(inputContextTextSection(tag: "selected_text", content: selectedText))
         }
         if !context.suffix.isEmpty {
-            lines.append("Text after cursor:\n\(context.suffix)")
+            activeText.append(inputContextTextSection(tag: "text_after_cursor", content: context.suffix))
         }
 
         return "\n\n" + xmlSection(
             tag: "input_context",
-            content: lines.joined(separator: "\n\n"),
+            content: [
+                xmlSection(tag: "metadata", content: metadata.joined(separator: "\n")),
+                xmlSection(tag: "active_text", content: activeText.joined(separator: "\n")),
+            ].joined(separator: "\n\n"),
         )
+    }
+
+    private static func inputContextTextSection(tag: String, content: String) -> String {
+        """
+        <\(tag)><![CDATA[
+        \(content.replacingOccurrences(of: "]]>", with: "]]]]><![CDATA[>"))
+        ]]></\(tag)>
+        """
     }
 
     static func automaticVocabularyDecisionPrompts(

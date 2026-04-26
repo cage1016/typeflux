@@ -87,11 +87,17 @@ final class AXTextInjector: TextInjector {
         let range: CFRange?
         let processID: pid_t?
         let processName: String?
+        let selectedText: String?
         let role: String?
         let windowTitle: String?
         let isFocusedTarget: Bool
         let source: String
         let capturedAt: Date
+    }
+
+    struct ApplicationStateContext {
+        let text: String
+        let selectedRange: CFRange?
     }
 
     static var didRequestAccessibility = false
@@ -110,6 +116,10 @@ final class AXTextInjector: TextInjector {
     static let axWriteVerificationAttempts = 4
     static let focusRestoreDelayMicroseconds: useconds_t = 250_000
     static let copySelectionTimeoutMilliseconds = 180
+    static let documentContextMaxBytes = 2_000_000
+    static let applicationStateContextMaxBytes = 2_000_000
+    static let visibleTextContextMaxNodes = 800
+    static let visibleTextContextSearchDepth = 8
     static let copyShortcutKeyCode: CGKeyCode = 8
     static let selectionContextLifetime: TimeInterval = 180
     static let focusedDescendantSearchDepth = 6
@@ -364,6 +374,7 @@ final class AXTextInjector: TextInjector {
                 range: nil,
                 processID: processID,
                 processName: processName,
+                selectedText: copiedText,
                 role: nil,
                 windowTitle: selectionWindow.flatMap(windowTitle(of:)) ?? focusedWindowTitle(for: processID),
                 isFocusedTarget: isFocusedTarget,
@@ -455,33 +466,62 @@ final class AXTextInjector: TextInjector {
         let isEditable = isLikelyEditable(element: element)
         let isFocusedTarget = copyBooleanAttribute(kAXFocusedAttribute as String, from: element) ?? false
         let selectedRange = copySelectedTextRange(from: element)
+        let documentURL = documentURL(for: element, processID: processID)
 
         guard isEditable else {
+            let documentText = documentURL.flatMap(readDocumentContextText(from:))
+            let applicationStateContext = documentText == nil ? applicationStateContext(
+                bundleIdentifier: bundleIdentifier,
+                selectedText: latestSelectionContext?.selectedText,
+                windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+            ) : nil
+            let visibleText = documentText == nil && applicationStateContext == nil ? visibleTextContext(for: element, processID: processID) : nil
+            let contextText = documentText ?? applicationStateContext?.text ?? visibleText
             return CurrentInputTextSnapshot(
                 processID: processID,
                 processName: processName,
                 bundleIdentifier: bundleIdentifier,
                 role: role,
-                text: nil,
-                selectedRange: selectedRange,
+                text: contextText,
+                selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
                 isEditable: false,
                 isFocusedTarget: isFocusedTarget,
-                failureReason: "focused-element-not-editable",
+                failureReason: contextText == nil ? "focused-element-not-editable" : "focused-element-not-editable-context",
+                documentURL: documentURL,
+                textSource: Self.contextTextSource(
+                    documentText: documentText,
+                    applicationStateText: applicationStateContext?.text,
+                    visibleText: visibleText,
+                ),
             )
         }
 
         if let value = copyTextAttribute(kAXValueAttribute as String, from: element) {
             if Self.shouldTreatAXValueAsUnreadable(role: role, value: value, selectedRange: selectedRange) {
+                let documentText = documentURL.flatMap(readDocumentContextText(from:))
+                let applicationStateContext = documentText == nil ? applicationStateContext(
+                    bundleIdentifier: bundleIdentifier,
+                    selectedText: latestSelectionContext?.selectedText,
+                    windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+                ) : nil
+                let visibleText = documentText == nil && applicationStateContext == nil ? visibleTextContext(for: element, processID: processID) : nil
+                let contextText = documentText ?? applicationStateContext?.text ?? visibleText
                 return CurrentInputTextSnapshot(
                     processID: processID,
                     processName: processName,
                     bundleIdentifier: bundleIdentifier,
                     role: role,
-                    text: nil,
-                    selectedRange: selectedRange,
+                    text: contextText,
+                    selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
-                    failureReason: "missing-ax-value",
+                    failureReason: contextText == nil ? "missing-ax-value" : "missing-ax-value-context",
+                    documentURL: documentURL,
+                    textSource: Self.contextTextSource(
+                        documentText: documentText,
+                        applicationStateText: applicationStateContext?.text,
+                        visibleText: visibleText,
+                    ),
                 )
             }
             if let placeholder = copyTextAttribute(kAXPlaceholderValueAttribute as String, from: element), placeholder == value {
@@ -495,6 +535,7 @@ final class AXTextInjector: TextInjector {
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
                     failureReason: "value-matched-placeholder",
+                    documentURL: documentURL,
                 )
             }
             if let title = copyTextAttribute(kAXTitleAttribute as String, from: element), title == value {
@@ -508,6 +549,7 @@ final class AXTextInjector: TextInjector {
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
                     failureReason: "value-matched-title",
+                    documentURL: documentURL,
                 )
             }
 
@@ -521,19 +563,35 @@ final class AXTextInjector: TextInjector {
                 isEditable: true,
                 isFocusedTarget: isFocusedTarget,
                 failureReason: nil,
+                documentURL: documentURL,
+                textSource: "ax-value",
             )
         }
 
+        let documentText = documentURL.flatMap(readDocumentContextText(from:))
+        let applicationStateContext = documentText == nil ? applicationStateContext(
+            bundleIdentifier: bundleIdentifier,
+            selectedText: latestSelectionContext?.selectedText,
+            windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+        ) : nil
+        let visibleText = documentText == nil && applicationStateContext == nil ? visibleTextContext(for: element, processID: processID) : nil
+        let contextText = documentText ?? applicationStateContext?.text ?? visibleText
         return CurrentInputTextSnapshot(
             processID: processID,
             processName: processName,
             bundleIdentifier: bundleIdentifier,
             role: role,
-            text: nil,
-            selectedRange: selectedRange,
+            text: contextText,
+            selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
             isEditable: true,
             isFocusedTarget: isFocusedTarget,
-            failureReason: "missing-ax-value",
+            failureReason: contextText == nil ? "missing-ax-value" : "missing-ax-value-context",
+            documentURL: documentURL,
+            textSource: Self.contextTextSource(
+                documentText: documentText,
+                applicationStateText: applicationStateContext?.text,
+                visibleText: visibleText,
+            ),
         )
     }
 
@@ -553,7 +611,8 @@ final class AXTextInjector: TextInjector {
         return
             "pid=\(context.processID.map(String.init) ?? "nil") process=\(context.processName ?? "nil") "
                 + "role=\(context.role ?? "nil") window=\(context.windowTitle ?? "nil") "
-                + "source=\(context.source) focused=\(context.isFocusedTarget) range=\(range)"
+                + "source=\(context.source) focused=\(context.isFocusedTarget) range=\(range) "
+                + "selectedTextLength=\(context.selectedText?.count ?? 0)"
     }
 
     func snapshotSummary(_ snapshot: CurrentInputTextSnapshot) -> String {
@@ -565,6 +624,8 @@ final class AXTextInjector: TextInjector {
                 + "role=\(snapshot.role ?? "nil") editable=\(snapshot.isEditable) "
                 + "focused=\(snapshot.isFocusedTarget) "
                 + "failure=\(snapshot.failureReason ?? "nil") textLength=\(snapshot.text?.count ?? 0) "
+                + "document=\(snapshot.documentURL?.path ?? "nil") "
+                + "textSource=\(snapshot.textSource ?? "nil") "
                 + "preview=\(preview)"
     }
 

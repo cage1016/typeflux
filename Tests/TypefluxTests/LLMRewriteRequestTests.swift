@@ -59,7 +59,40 @@ final class LLMRewriteRequestTests: XCTestCase {
 
         XCTAssertTrue(prompts.system.contains("<input_context>"))
         XCTAssertTrue(prompts.user.contains("<input_context>"))
+        XCTAssertTrue(prompts.user.contains("<metadata>"))
+        XCTAssertTrue(prompts.user.contains("<app_name>\nNotes\n</app_name>"))
+        XCTAssertTrue(prompts.user.contains("<active_text>"))
+        XCTAssertTrue(prompts.user.contains("<text_before_cursor><![CDATA[\nProject Apollo will ship\n]]></text_before_cursor>"))
+        XCTAssertTrue(prompts.user.contains("<cursor />"))
+        XCTAssertTrue(prompts.user.contains("<text_after_cursor><![CDATA[\nafter QA signs off\n]]></text_after_cursor>"))
         XCTAssertTrue(prompts.user.contains("Project Apollo will ship"))
         XCTAssertTrue(prompts.user.contains("after QA signs off"))
+    }
+
+    func testRewritePromptMarksSelectedTextInsideInputContextWhenProvided() {
+        let inputContext = InputContextSnapshot(
+            appName: "Sublime Text",
+            bundleIdentifier: "com.sublimetext.4",
+            role: "AXWindow",
+            isEditable: false,
+            isFocusedTarget: true,
+            prefix: "before",
+            suffix: "after",
+            selectedText: "selected",
+        )
+        let request = LLMRewriteRequest(
+            mode: .rewriteTranscript,
+            sourceText: "replacement",
+            spokenInstruction: nil,
+            personaPrompt: nil,
+            inputContext: inputContext,
+        )
+
+        let prompts = PromptCatalog.rewritePrompts(for: request)
+
+        XCTAssertTrue(prompts.user.contains("<text_before_cursor><![CDATA[\nbefore\n]]></text_before_cursor>"))
+        XCTAssertTrue(prompts.user.contains("<cursor />"))
+        XCTAssertTrue(prompts.user.contains("<selected_text><![CDATA[\nselected\n]]></selected_text>"))
+        XCTAssertTrue(prompts.user.contains("<text_after_cursor><![CDATA[\nafter\n]]></text_after_cursor>"))
     }
 }
