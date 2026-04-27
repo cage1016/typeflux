@@ -222,6 +222,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             body["temperature"] = temp
         }
 
+        OpenAICompatibleResponseSupport.applyAnthropicTuning(body: &body)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let data = try await RemoteLLMClient.performJSONRequest(request)
         return parseAnthropicTurnResult(from: data)
@@ -322,6 +323,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
         if let temp = config.temperature {
             generationConfig["temperature"] = temp
         }
+        OpenAICompatibleResponseSupport.applyGeminiTuning(generationConfig: &generationConfig, model: model)
 
         var body: [String: Any] = [
             "contents": AgentMessage.toGeminiContents(messages),
