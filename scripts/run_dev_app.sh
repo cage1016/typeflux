@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="${TYPEFLUX_DEV_APP_DIR:-${TYPEFLUX_DEV_APP_DIR:-$HOME/Applications/Typeflux Dev.app}}"
 DEV_VARIANT="${TYPEFLUX_DEV_VARIANT:-minimal}"
 
+# Kill any running instance before rebuilding, so the binary copy succeeds.
+pkill -f "Typeflux Dev.app/Contents/MacOS/Typeflux" 2>/dev/null || true
+
 profile_supports_apple_sign_in() {
   local profile_path="$1"
   local decoded_profile
@@ -97,11 +100,20 @@ chmod +x "$APP_DIR/Contents/MacOS/Typeflux"
 # identifier. Re-sign the assembled app bundle with a stable identifier so the
 # dev app is launchable and privacy services see a consistent app identity.
 if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v security >/dev/null 2>&1; then
+  # Prefer Apple Development identities, then the project's self-signed cert
+  # ("Typeflux Dev"). A stable identity ensures macOS privacy permissions
+  # (microphone, accessibility, etc.) persist across rebuilds.
+  # Run 'scripts/setup_dev_cert.sh' once to create the reusable self-signed cert.
   TYPEFLUX_DEV_CODESIGN_IDENTITY="$(
     security find-identity -v -p codesigning 2>/dev/null \
       | sed -n 's/.*"Apple Development: \(.*\)"/Apple Development: \1/p' \
       | head -n 1
   )"
+  if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]]; then
+    if security find-identity -v -p codesigning 2>/dev/null | grep -qF '"Typeflux Dev"'; then
+      TYPEFLUX_DEV_CODESIGN_IDENTITY="Typeflux Dev"
+    fi
+  fi
 fi
 
 RUNTIME_ENTITLEMENTS="$ROOT_DIR/app/TypefluxRuntime.entitlements"
