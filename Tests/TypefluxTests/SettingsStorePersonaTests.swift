@@ -17,6 +17,63 @@ final class SettingsStorePersonaTests: XCTestCase {
         XCTAssertTrue(translatorPersona.prompt.contains("always produce the final output in natural English"))
     }
 
+    func testResolvedTypefluxPersonaUsesAppLanguagePrompt() throws {
+        let suiteName = "SettingsStorePersonaTests.localizedTypeflux.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = SettingsStore(defaults: defaults)
+        store.appLanguage = .simplifiedChinese
+
+        let typefluxPersona = try XCTUnwrap(store.personas.first(where: { $0.name == "Typeflux" }))
+        let prompt = store.resolvedPersonaPrompt(for: typefluxPersona)
+
+        XCTAssertTrue(prompt.contains("人设语言模式：继承。"))
+        XCTAssertTrue(prompt.contains("把原始口述内容整理成可直接使用的文字"))
+        XCTAssertFalse(prompt.contains("You are Typeflux AI"))
+    }
+
+    func testResolvedTypefluxPersonaFallsBackToEnglishPrompt() throws {
+        let suiteName = "SettingsStorePersonaTests.typefluxEnglishFallback.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = SettingsStore(defaults: defaults)
+        store.appLanguage = .japanese
+
+        let typefluxPersona = try XCTUnwrap(store.personas.first(where: { $0.name == "Typeflux" }))
+        let prompt = store.resolvedPersonaPrompt(for: typefluxPersona)
+
+        XCTAssertTrue(prompt.contains("Persona language mode: inherit."))
+        XCTAssertTrue(prompt.contains("You are Typeflux AI"))
+        XCTAssertFalse(prompt.contains("ペルソナ言語モード"))
+    }
+
+    func testResolvedEnglishTranslatorPersonaAlwaysUsesEnglishPrompt() throws {
+        let suiteName = "SettingsStorePersonaTests.englishTranslatorUnchanged.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = SettingsStore(defaults: defaults)
+        store.appLanguage = .simplifiedChinese
+
+        let translatorPersona = try XCTUnwrap(store.personas.first(where: { $0.name == "English Translator" }))
+        let prompt = store.resolvedPersonaPrompt(for: translatorPersona)
+
+        XCTAssertTrue(prompt.contains("Persona language mode: fixed English."))
+        XCTAssertTrue(prompt.contains("always produce the final output in natural English"))
+        XCTAssertFalse(prompt.contains("人设语言模式"))
+    }
+
+    func testActivePersonaPromptUsesResolvedSystemPrompt() throws {
+        let suiteName = "SettingsStorePersonaTests.activeLocalized.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = SettingsStore(defaults: defaults)
+        store.appLanguage = .simplifiedChinese
+
+        store.applyPersonaSelection(SettingsStore.defaultPersonaID)
+
+        XCTAssertTrue(store.activePersonaPrompt?.contains("人设语言模式：继承。") == true)
+    }
+
     func testPersonasAlwaysIncludeSystemProfilesAndPersistOnlyCustomProfiles() throws {
         let suiteName = "SettingsStorePersonaTests.persistOnlyCustom.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
