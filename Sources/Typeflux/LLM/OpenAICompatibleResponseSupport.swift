@@ -90,7 +90,37 @@ enum OpenAICompatibleResponseSupport {
 
     static func applyProviderTuning(body: inout [String: Any], baseURL: URL, model: String) {
         guard shouldDisableThinking(baseURL: baseURL, model: model) else { return }
+        if shouldSendThinkingToggle(baseURL: baseURL, model: model) {
+            body["thinking"] = ["type": "disabled"]
+        }
+        if shouldSendQwenThinkingToggle(baseURL: baseURL, model: model) {
+            body["enable_thinking"] = false
+        }
+        if shouldSendOpenRouterReasoningToggle(baseURL: baseURL) {
+            body["reasoning"] = [
+                "effort": "none",
+                "exclude": true,
+            ]
+            body["include_reasoning"] = false
+        } else if let effort = reasoningEffort(baseURL: baseURL, model: model) {
+            body["reasoning"] = ["effort": effort]
+        }
+    }
+
+    static func applyGeminiTuning(generationConfig: inout [String: Any], model: String) {
+        let normalizedModel = model.lowercased()
+        if normalizedModel.contains("gemini-3") {
+            generationConfig["thinkingConfig"] = ["thinkingLevel": "low"]
+        } else if normalizedModel.contains("gemini-2.5"),
+                  normalizedModel.contains("flash") || normalizedModel.contains("lite")
+        {
+            generationConfig["thinkingConfig"] = ["thinkingBudget": 0]
+        }
+    }
+
+    static func applyAnthropicTuning(body: inout [String: Any]) {
         body["thinking"] = ["type": "disabled"]
+        body["output_config"] = ["effort": "low"]
     }
 
     static func extractTextDelta(from data: Data) -> String? {
@@ -165,6 +195,7 @@ enum OpenAICompatibleResponseSupport {
         let disabledModelKeywords = [
             "doubao",
             "deepseek",
+            "gpt-5",
             "qwen",
             "grok",
             "glm",
@@ -175,6 +206,62 @@ enum OpenAICompatibleResponseSupport {
         ]
         return disabledHosts.contains(where: { host.contains($0) })
             || disabledModelKeywords.contains(where: { normalizedModel.contains($0) })
+    }
+
+    private static func shouldSendThinkingToggle(baseURL: URL, model: String) -> Bool {
+        let host = baseURL.host?.lowercased() ?? ""
+        let normalizedModel = model.lowercased()
+        let thinkingHosts = [
+            "volces.com",
+            "bytedance.net",
+            "deepseek.com",
+            "opencode.ai",
+        ]
+        let thinkingModelKeywords = [
+            "doubao",
+            "deepseek",
+        ]
+        return thinkingHosts.contains(where: { host.contains($0) })
+            || thinkingModelKeywords.contains(where: { normalizedModel.contains($0) })
+    }
+
+    private static func shouldSendQwenThinkingToggle(baseURL: URL, model: String) -> Bool {
+        let host = baseURL.host?.lowercased() ?? ""
+        let normalizedModel = model.lowercased()
+        return host.contains("dashscope.aliyuncs.com")
+            || host.contains("modelscope.cn")
+            || normalizedModel.contains("qwen")
+            || normalizedModel.contains("qwq")
+    }
+
+    private static func shouldSendOpenRouterReasoningToggle(baseURL: URL) -> Bool {
+        let host = baseURL.host?.lowercased() ?? ""
+        return host.contains("openrouter.ai")
+    }
+
+    private static func reasoningEffort(baseURL: URL, model: String) -> String? {
+        let host = baseURL.host?.lowercased() ?? ""
+        let normalizedModel = model.lowercased()
+        if host.contains("deepseek.com") || normalizedModel.contains("deepseek") {
+            return "none"
+        }
+
+        if host == "api.openai.com" || host.hasSuffix(".openai.com"),
+           normalizedModel.hasPrefix("gpt-5"),
+           !normalizedModel.contains("pro")
+        {
+            if normalizedModel.hasPrefix("gpt-5.1")
+                || normalizedModel.hasPrefix("gpt-5.2")
+                || normalizedModel.hasPrefix("gpt-5.3")
+                || normalizedModel.hasPrefix("gpt-5.4")
+            {
+                return "none"
+            }
+
+            return "minimal"
+        }
+
+        return nil
     }
 
     private static func extractText(from value: Any?) -> String? {

@@ -37,10 +37,14 @@ final class LLMAgentResponseSupportTests: XCTestCase {
         let toolChoice = try XCTUnwrap(body["tool_choice"] as? [String: String])
         let tools = try XCTUnwrap(body["tools"] as? [[String: Any]])
         let inputSchema = try XCTUnwrap(tools.first?["input_schema"] as? [String: Any])
+        let thinking = try XCTUnwrap(body["thinking"] as? [String: String])
+        let outputConfig = try XCTUnwrap(body["output_config"] as? [String: String])
 
         XCTAssertEqual(toolChoice["type"], "tool")
         XCTAssertEqual(toolChoice["name"], tool.name)
         XCTAssertEqual(inputSchema["type"] as? String, "object")
+        XCTAssertEqual(thinking["type"], "disabled")
+        XCTAssertEqual(outputConfig["effort"], "low")
     }
 
     func testGeminiToolBodyRestrictsAllowedFunctionNames() throws {

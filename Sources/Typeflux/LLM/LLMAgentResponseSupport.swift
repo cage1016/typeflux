@@ -78,6 +78,7 @@ enum LLMAgentResponseSupport {
             ]
         }
 
+        OpenAICompatibleResponseSupport.applyAnthropicTuning(body: &body)
         return body
     }
 
