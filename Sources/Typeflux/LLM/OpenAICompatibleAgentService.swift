@@ -364,6 +364,7 @@ enum RemoteAgentClient {
             urlRequest.setValue(value, forHTTPHeaderField: field)
         }
         let body = LLMAgentResponseSupport.geminiToolBody(
+            model: model,
             systemPrompt: request.systemPrompt,
             userPrompt: request.userPrompt,
             tools: request.tools,

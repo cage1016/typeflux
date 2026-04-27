@@ -83,6 +83,7 @@ enum LLMAgentResponseSupport {
     }
 
     static func geminiToolBody(
+        model: String,
         systemPrompt: String,
         userPrompt: String,
         tools: [LLMAgentTool],
@@ -122,6 +123,11 @@ enum LLMAgentResponseSupport {
                     "allowedFunctionNames": [forcedToolName],
                 ],
             ]
+        }
+
+        if var generationConfig = body["generationConfig"] as? [String: Any] {
+            OpenAICompatibleResponseSupport.applyGeminiTuning(generationConfig: &generationConfig, model: model)
+            body["generationConfig"] = generationConfig
         }
 
         return body

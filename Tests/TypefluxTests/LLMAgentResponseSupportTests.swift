@@ -38,17 +38,17 @@ final class LLMAgentResponseSupportTests: XCTestCase {
         let tools = try XCTUnwrap(body["tools"] as? [[String: Any]])
         let inputSchema = try XCTUnwrap(tools.first?["input_schema"] as? [String: Any])
         let thinking = try XCTUnwrap(body["thinking"] as? [String: String])
-        let outputConfig = try XCTUnwrap(body["output_config"] as? [String: String])
 
         XCTAssertEqual(toolChoice["type"], "tool")
         XCTAssertEqual(toolChoice["name"], tool.name)
         XCTAssertEqual(inputSchema["type"] as? String, "object")
         XCTAssertEqual(thinking["type"], "disabled")
-        XCTAssertEqual(outputConfig["effort"], "low")
+        XCTAssertNil(body["output_config"])
     }
 
     func testGeminiToolBodyRestrictsAllowedFunctionNames() throws {
         let body = LLMAgentResponseSupport.geminiToolBody(
+            model: "gemini-2.5-flash",
             systemPrompt: "system",
             userPrompt: "user",
             tools: [tool],
@@ -61,6 +61,12 @@ final class LLMAgentResponseSupportTests: XCTestCase {
 
         XCTAssertEqual(functionCallingConfig["mode"] as? String, "ANY")
         XCTAssertEqual(names, [tool.name])
+
+        let generationConfig = try XCTUnwrap(body["generationConfig"] as? [String: Any])
+        XCTAssertEqual(
+            (generationConfig["thinkingConfig"] as? [String: Int])?["thinkingBudget"],
+            0,
+        )
     }
 
     func testExtractOpenAICompatibleToolCall() throws {

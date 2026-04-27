@@ -149,7 +149,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         )
     }
 
-    func testAnthropicTuningDisablesThinkingAndLowersEffort() {
+    func testAnthropicTuningDisablesThinking() {
         var body: [String: Any] = ["model": "claude-sonnet-4"]
         OpenAICompatibleResponseSupport.applyAnthropicTuning(body: &body)
 
@@ -157,10 +157,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
             (body["thinking"] as? [String: String])?["type"],
             "disabled",
         )
-        XCTAssertEqual(
-            (body["output_config"] as? [String: String])?["effort"],
-            "low",
-        )
+        XCTAssertNil(body["output_config"])
     }
 
     private func jsonData(_ object: [String: Any]) throws -> Data {
@@ -308,7 +305,7 @@ extension OpenAICompatibleResponseSupportTests {
             baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
             model: "gpt-4o",
         )
-        // For non-Doubao endpoint, "thinking" key should not be added
+        // For endpoints/models that don't match any tuning rules, body should not be modified
         XCTAssertNil(body["thinking"])
     }
 

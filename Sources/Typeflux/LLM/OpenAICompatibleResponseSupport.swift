@@ -120,7 +120,6 @@ enum OpenAICompatibleResponseSupport {
 
     static func applyAnthropicTuning(body: inout [String: Any]) {
         body["thinking"] = ["type": "disabled"]
-        body["output_config"] = ["effort": "low"]
     }
 
     static func extractTextDelta(from data: Data) -> String? {
