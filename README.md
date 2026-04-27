@@ -9,9 +9,22 @@ Press `Fn` and speak naturally. Typeflux delivers lightning-fast, accurate voice
 [![Tests](https://github.com/mylxsw/typeflux/actions/workflows/test.yml/badge.svg)](https://github.com/mylxsw/typeflux/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/mylxsw/typeflux/graph/badge.svg)](https://codecov.io/gh/mylxsw/typeflux)
 
-![Typeflux demo](./assets/preview-1.png)
+<table>
+  <tr>
+    <td><img src="./assets/EN-promotional-1.png" alt="Typeflux promotional screenshot 1"></td>
+    <td><img src="./assets/EN-promotional-2.png" alt="Typeflux promotional screenshot 2"></td>
+  </tr>
+  <tr>
+    <td><img src="./assets/EN-promotional-3.png" alt="Typeflux promotional screenshot 3"></td>
+    <td><img src="./assets/EN-n-input-process.png" alt="Typeflux input process screenshot"></td>
+  </tr>
+</table>
+
+[View application screenshots](./docs/SCREENSHOTS.md)
 
 </div>
+
+
 
 ## Download
 
