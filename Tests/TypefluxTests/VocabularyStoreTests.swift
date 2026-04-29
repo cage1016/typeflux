@@ -74,6 +74,23 @@ final class VocabularyStoreTests: XCTestCase {
             L("vocabulary.importDialog.message", 12, VocabularySource.claude.displayName),
         )
     }
+
+    @MainActor
+    func testStudioViewModelDisplaysVocabularyAlphabetically() {
+        VocabularyStore.save([
+            VocabularyEntry(term: "zeta", source: .manual),
+            VocabularyEntry(term: "Alpha", source: .automatic),
+            VocabularyEntry(term: "beta", source: .codex),
+        ])
+
+        let viewModel = StudioViewModel(
+            settingsStore: SettingsStore(),
+            historyStore: InMemoryHistoryStore(),
+            initialSection: .vocabulary,
+        )
+
+        XCTAssertEqual(viewModel.filteredVocabularyEntries.map(\.term), ["Alpha", "beta", "zeta"])
+    }
 }
 
 private final class InMemoryHistoryStore: HistoryStore {
@@ -154,7 +171,7 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         let decoded = try JSONSerialization.jsonObject(with: data) as? [[String: String]]
 
         XCTAssertEqual(decoded?.count, 2)
-        XCTAssertEqual(Set(decoded?.first?.keys ?? []), Set(["term", "source"]))
+        XCTAssertEqual(Set(decoded?.first.map { Array($0.keys) } ?? []), Set(["term", "source"]))
         XCTAssertTrue(decoded?.contains(where: { $0["term"] == "TypefluxCloud" && $0["source"] == "manual" }) == true)
         XCTAssertTrue(decoded?.contains(where: { $0["term"] == "Qwen3-ASR" && $0["source"] == "claude" }) == true)
     }
@@ -190,7 +207,7 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         XCTAssertEqual(result.entries.first(where: { $0.term == "TypefluxCloud" })?.source, .manual)
     }
 
-    func testImportEntriesUpgradesExistingAutomaticTermToManualWithoutInflatingCount() throws {
+    func testImportEntriesSkipsExistingTermWithoutChangingSourceOrCount() throws {
         VocabularyStore.save([
             VocabularyEntry(term: "TypefluxCloud", source: .automatic, occurrenceCount: 2),
         ])
@@ -203,12 +220,12 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         let result = try VocabularyStore.importEntries(from: data, defaultSource: .manual)
 
         XCTAssertEqual(result.addedCount, 0)
-        XCTAssertEqual(result.updatedCount, 1)
-        XCTAssertEqual(result.entries.first?.source, .manual)
+        XCTAssertEqual(result.updatedCount, 0)
+        XCTAssertEqual(result.entries.first?.source, .automatic)
         XCTAssertEqual(result.entries.first?.occurrenceCount, 2)
     }
 
-    func testImportEntriesUpdatesExternalSourceToLatestImport() throws {
+    func testImportTermsSkipsExistingExternalTermWithoutChangingSource() throws {
         VocabularyStore.save([
             VocabularyEntry(term: "WhisperKit", source: .claude, occurrenceCount: 2),
         ])
@@ -216,9 +233,28 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         let result = VocabularyStore.importTerms(["WhisperKit"], source: .codex)
 
         XCTAssertEqual(result.addedCount, 0)
-        XCTAssertEqual(result.updatedCount, 1)
-        XCTAssertEqual(result.entries.first?.source, .codex)
+        XCTAssertEqual(result.updatedCount, 0)
+        XCTAssertEqual(result.entries.first?.source, .claude)
         XCTAssertEqual(result.entries.first?.occurrenceCount, 2)
+    }
+
+    func testPreviewImportItemsSkipsExistingTermsCaseInsensitively() throws {
+        VocabularyStore.save([
+            VocabularyEntry(term: "TypefluxCloud", source: .manual),
+        ])
+
+        let data = """
+        [
+          { "term": "typefluxcloud", "source": "codex" },
+          { "term": "Qwen3-ASR", "source": "claude" }
+        ]
+        """.data(using: .utf8)!
+
+        let items = try VocabularyStore.previewImportItems(from: data)
+
+        XCTAssertEqual(items, [
+            VocabularyTransferItem(term: "Qwen3-ASR", source: .claude),
+        ])
     }
 
     func testPreviewImportItemsDeduplicatesTermsCaseInsensitively() throws {

@@ -1814,14 +1814,7 @@ struct StudioView: View {
                             Text(L("vocabulary.empty.subtitle"))
                                 .font(.studioBody(StudioTheme.Typography.body))
                                 .foregroundStyle(StudioTheme.textSecondary)
-                            StudioButton(
-                                title: L("vocabulary.action.addFirst"), systemImage: "plus",
-                                variant: .secondary,
-                            ) {
-                                editingVocabularyEntry = nil
-                                newVocabularyTerm = ""
-                                isAddingVocabulary = true
-                            }
+                            vocabularyEmptyActions
                         }
                         .padding(.vertical, StudioTheme.Insets.historyEmptyVertical)
                     } else {
@@ -3002,6 +2995,39 @@ struct StudioView: View {
 
     private var filteredVocabularyEntries: [VocabularyEntry] {
         viewModel.filteredVocabularyEntries.filter { vocabularyFilter.matches($0.source) }
+    }
+
+    @ViewBuilder
+    private var vocabularyEmptyActions: some View {
+        if vocabularyFilter == .otherApps, vocabularyCount(for: .otherApps) == 0 {
+            HStack(spacing: StudioTheme.Spacing.small) {
+                StudioButton(
+                    title: L("vocabulary.action.importClaude"),
+                    systemImage: "arrow.down.doc",
+                    variant: .secondary,
+                    isDisabled: viewModel.isSynchronizingVocabulary,
+                ) {
+                    viewModel.importClaudeVocabulary()
+                }
+                StudioButton(
+                    title: L("vocabulary.action.importCodex"),
+                    systemImage: "arrow.down.doc",
+                    variant: .secondary,
+                    isDisabled: viewModel.isSynchronizingVocabulary,
+                ) {
+                    viewModel.importCodexVocabulary()
+                }
+            }
+        } else {
+            StudioButton(
+                title: L("vocabulary.action.addFirst"), systemImage: "plus",
+                variant: .secondary,
+            ) {
+                editingVocabularyEntry = nil
+                newVocabularyTerm = ""
+                isAddingVocabulary = true
+            }
+        }
     }
 
     private func vocabularyFilterChip(_ filter: VocabularyFilter) -> some View {

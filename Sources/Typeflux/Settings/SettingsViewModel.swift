@@ -498,8 +498,24 @@ final class StudioViewModel: ObservableObject {
     }
 
     var filteredVocabularyEntries: [VocabularyEntry] {
-        guard !searchQuery.isEmpty else { return vocabularyEntries }
-        return vocabularyEntries.filter { $0.term.localizedCaseInsensitiveContains(searchQuery) }
+        let entries = searchQuery.isEmpty
+            ? vocabularyEntries
+            : vocabularyEntries.filter { $0.term.localizedCaseInsensitiveContains(searchQuery) }
+        return Self.alphabeticallySortedVocabularyEntries(entries)
+    }
+
+    private static func alphabeticallySortedVocabularyEntries(_ entries: [VocabularyEntry]) -> [VocabularyEntry] {
+        entries.sorted { lhs, rhs in
+            let termOrder = lhs.term.compare(
+                rhs.term,
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: Locale(identifier: "en_US_POSIX"),
+            )
+            if termOrder != .orderedSame {
+                return termOrder == .orderedAscending
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
     }
 
     private let statsStore = UsageStatsStore.shared

@@ -151,12 +151,14 @@ enum VocabularyStore {
         from data: Data,
         defaultSource: VocabularySource = .manual,
     ) throws -> [VocabularyTransferItem] {
-        deduplicatedImportItems(try decodeImportedItems(from: data, defaultSource: defaultSource))
+        newImportItems(
+            deduplicatedImportItems(try decodeImportedItems(from: data, defaultSource: defaultSource)),
+        )
     }
 
     @discardableResult
     static func importItems(_ items: [VocabularyTransferItem]) throws -> VocabularyBatchImportResult {
-        merge(deduplicatedImportItems(items))
+        merge(newImportItems(deduplicatedImportItems(items)))
     }
 
     @discardableResult
@@ -167,7 +169,7 @@ enum VocabularyStore {
         let importedItems = terms.map {
             VocabularyTransferItem(term: $0, source: source)
         }
-        return merge(deduplicatedImportItems(importedItems))
+        return merge(newImportItems(deduplicatedImportItems(importedItems)))
     }
 
     /// Add a new term, or bump the occurrence count if the normalized term already exists.
@@ -308,26 +310,22 @@ enum VocabularyStore {
     private static func merge(_ importedItems: [VocabularyTransferItem]) -> VocabularyBatchImportResult {
         var entries = load()
         var addedCount = 0
-        var updatedCount = 0
+
+        guard !importedItems.isEmpty else {
+            return VocabularyBatchImportResult(
+                entries: entries,
+                addedCount: addedCount,
+                updatedCount: 0,
+            )
+        }
 
         for importedItem in importedItems {
             let normalizedTerm = normalize(importedItem.term)
             guard !normalizedTerm.isEmpty else { continue }
-            if let index = entries.firstIndex(where: {
+            if entries.contains(where: {
                 normalize($0.term).caseInsensitiveCompare(normalizedTerm) == .orderedSame
             }) {
-                let existing = entries[index]
-                let mergedEntry = VocabularyEntry(
-                    id: existing.id,
-                    term: preferredSurface(existing: existing.term, imported: normalizedTerm),
-                    source: mergedSource(existing: existing.source, imported: importedItem.source),
-                    createdAt: existing.createdAt,
-                    occurrenceCount: ensureMinimumCount(existing.occurrenceCount),
-                )
-                if mergedEntry != existing {
-                    entries[index] = mergedEntry
-                    updatedCount += 1
-                }
+                continue
             } else {
                 entries.insert(
                     VocabularyEntry(
@@ -344,7 +342,7 @@ enum VocabularyStore {
         return VocabularyBatchImportResult(
             entries: load(),
             addedCount: addedCount,
-            updatedCount: updatedCount,
+            updatedCount: 0,
         )
     }
 
@@ -410,11 +408,19 @@ enum VocabularyStore {
         return deduplicated
     }
 
-    /// Merge source precedence keeps the highest-signal provenance available:
+    private static func newImportItems(_ items: [VocabularyTransferItem]) -> [VocabularyTransferItem] {
+        let existingTerms = Set(load().map { normalize($0.term).lowercased() })
+        return items.filter { item in
+            let normalizedTerm = normalize(item.term)
+            guard !normalizedTerm.isEmpty else { return false }
+            return !existingTerms.contains(normalizedTerm.lowercased())
+        }
+    }
+
+    /// Within a single import payload, merge source precedence keeps the
+    /// highest-signal provenance available:
     /// manual > same source > latest imported external app > existing external app >
     /// automatic/other existing source.
-    /// This lets local/user-curated terms stay strongest while ensuring an explicit
-    /// Claude/Codex import updates the displayed provenance for shared terms.
     private static func mergedSource(
         existing: VocabularySource,
         imported: VocabularySource,
@@ -451,10 +457,6 @@ enum VocabularyStore {
 
     private static func normalize(_ term: String) -> String {
         term.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func ensureMinimumCount(_ count: Int) -> Int {
-        max(1, count)
     }
 }
 
