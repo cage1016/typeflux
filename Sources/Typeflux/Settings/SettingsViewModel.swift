@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 // swiftlint:disable file_length
 private final class HistoryStoreSendableBox: @unchecked Sendable {
@@ -154,6 +155,7 @@ final class StudioViewModel: ObservableObject {
     @Published var personaAppBindingDraftPersonaID: UUID?
     @Published private(set) var isCreatingPersonaDraft: Bool
     @Published var vocabularyEntries: [VocabularyEntry]
+    @Published private(set) var isSynchronizingVocabulary = false
 
     @Published var launchAtLogin: Bool
     @Published var activationHotkey: HotkeyBinding?
@@ -375,6 +377,7 @@ final class StudioViewModel: ObservableObject {
                 self?.refreshAgentJobs()
             }
         }
+
     }
 
     deinit {
@@ -1582,6 +1585,66 @@ final class StudioViewModel: ObservableObject {
         vocabularyEntries = VocabularyStore.add(term: term, source: source)
     }
 
+    func importVocabulary() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.json, .plainText]
+
+        guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
+
+        do {
+            let data = try Data(contentsOf: sourceURL)
+            let previewItems = try VocabularyStore.previewImportItems(from: data)
+            guard !previewItems.isEmpty else {
+                showToast(L("vocabulary.toast.importNoChanges"))
+                return
+            }
+
+            guard showImportConfirmationAlert(
+                subject: sourceURL.lastPathComponent,
+                itemCount: previewItems.count,
+            ) else { return }
+
+            let result = try VocabularyStore.importItems(previewItems)
+            vocabularyEntries = result.entries
+            let changedCount = result.addedCount + result.updatedCount
+            if changedCount > 0 {
+                showToast(L("vocabulary.toast.imported", changedCount))
+            } else {
+                showToast(L("vocabulary.toast.importNoChanges"))
+            }
+        } catch {
+            showToast(L("common.failedWithReason", error.localizedDescription))
+        }
+    }
+
+    func exportVocabulary() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "typeflux-vocabulary.json"
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [.json]
+
+        guard panel.runModal() == .OK, let destinationURL = panel.url else { return }
+
+        do {
+            let data = try VocabularyStore.exportData()
+            try data.write(to: destinationURL, options: .atomic)
+            showToast(L("vocabulary.toast.exported"))
+        } catch {
+            showToast(L("common.failedWithReason", error.localizedDescription))
+        }
+    }
+
+    func importClaudeVocabulary() {
+        importVocabularyFromExternalApp(source: .claude, directoryName: ".claude")
+    }
+
+    func importCodexVocabulary() {
+        importVocabularyFromExternalApp(source: .codex, directoryName: ".codex")
+    }
+
     func removeVocabularyEntry(id: UUID) {
         vocabularyEntries = VocabularyStore.remove(id: id)
     }
@@ -2277,6 +2340,64 @@ final class StudioViewModel: ObservableObject {
 
     private func refreshGoogleCloudOAuthState() {
         googleCloudOAuthAuthorized = GoogleCloudSpeechCredentialResolver.isStoredAuthorizationAvailable()
+    }
+
+    static func makeVocabularyImportConfirmationAlert(subject: String, itemCount: Int) -> NSAlert {
+        let alert = NSAlert()
+        alert.messageText = L("vocabulary.importDialog.title")
+        alert.informativeText = L("vocabulary.importDialog.message", itemCount, subject)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: L("vocabulary.importDialog.confirm"))
+        alert.addButton(withTitle: L("common.cancel"))
+        return alert
+    }
+
+    private func showImportConfirmationAlert(subject: String, itemCount: Int) -> Bool {
+        Self.makeVocabularyImportConfirmationAlert(subject: subject, itemCount: itemCount)
+            .runModal() == .alertFirstButtonReturn
+    }
+
+    private func importVocabularyFromExternalApp(source: VocabularySource, directoryName: String) {
+        guard !isSynchronizingVocabulary else { return }
+        isSynchronizingVocabulary = true
+
+        Task { [weak self] in
+            guard let self else { return }
+            let discovery = await Task.detached(priority: .utility) {
+                let directory = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(directoryName, isDirectory: true)
+                return ProjectVocabularyScanner.scanContextDirectories([directory])
+            }.value
+
+            await MainActor.run {
+                self.isSynchronizingVocabulary = false
+
+                guard !discovery.roots.isEmpty else {
+                    self.showToast(L("vocabulary.toast.externalNoSource", source.displayName))
+                    return
+                }
+
+                guard !discovery.terms.isEmpty else {
+                    self.showToast(L("vocabulary.toast.externalNoTerms", source.displayName))
+                    return
+                }
+
+                guard self.showImportConfirmationAlert(
+                    subject: source.displayName,
+                    itemCount: discovery.terms.count,
+                ) else { return }
+
+                let result = VocabularyStore.importTerms(discovery.terms, source: source)
+                self.vocabularyEntries = result.entries
+                let changedCount = result.addedCount + result.updatedCount
+
+                if changedCount > 0 {
+                    self.showToast(L("vocabulary.toast.externalImported", changedCount, source.displayName))
+                } else {
+                    self.showToast(L("vocabulary.toast.externalNoTerms", source.displayName))
+                }
+            }
+        }
     }
 
     private func showToast(_ text: String) {
