@@ -155,6 +155,28 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertTrue(viewModel.personaAppBindingDraftIdentifier.isEmpty)
     }
 
+    func testSavePersonaAppBindingAllowsNoPersonaSelection() {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let historyStore = InMemoryHistoryStore()
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        viewModel.personaAppBindingDraftIdentifier = "com.apple.Notes"
+        viewModel.personaAppBindingDraftPersonaID = nil
+
+        viewModel.savePersonaAppBinding()
+
+        XCTAssertEqual(settingsStore.personaAppBindings.count, 1)
+        XCTAssertEqual(settingsStore.personaAppBindings.first?.appIdentifier, "com.apple.Notes")
+        XCTAssertNil(settingsStore.personaAppBindings.first?.personaID)
+        XCTAssertTrue(viewModel.personaAppBindingDraftIdentifier.isEmpty)
+    }
+
     func testDeletePersonaRemovesAssociatedAppBindings() {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -215,6 +237,27 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
         XCTAssertEqual(settingsStore.personaAppBindings.first?.personaID, updatedPersona.id)
         XCTAssertEqual(viewModel.personaAppBindings.first?.personaID, updatedPersona.id)
+    }
+
+    func testUpdatePersonaAppBindingPersonaCanDisablePersona() throws {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let historyStore = InMemoryHistoryStore()
+        let persona = PersonaProfile(name: "Casual", prompt: "Casual")
+        settingsStore.personas = settingsStore.personas + [persona]
+        settingsStore.savePersonaAppBinding(appIdentifier: "Slack", personaID: persona.id)
+        let bindingID = try XCTUnwrap(settingsStore.personaAppBindings.first?.id)
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        viewModel.updatePersonaAppBindingPersona(id: bindingID, personaID: nil)
+
+        XCTAssertNil(settingsStore.personaAppBindings.first?.personaID)
+        XCTAssertNil(viewModel.personaAppBindings.first?.personaID)
     }
 
     func testSetPersonaAppBindingEnabledUpdatesStore() throws {

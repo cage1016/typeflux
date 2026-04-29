@@ -426,7 +426,7 @@
 "settings.personaDefault.enabled" = "New dictation sessions will be rewritten with the selected persona.";
 "settings.personaDefault.disabled" = "Persona is currently off, so dictation will stay in its plain form.";
 "settings.personaDefault.openPersonas" = "Open Personas";
-"settings.personaAppBindings.title" = "App-Specific Persona Settings";
+"settings.personaAppBindings.title" = "App-Specific Personas";
 "settings.personaAppBindings.subtitle" = "Match the focused app and override the default persona automatically. Bundle identifiers are the most reliable, but app names also work.";
 "settings.personaAppBindings.empty" = "No app-specific personas yet.";
 "settings.personaAppBindings.openButton" = "App Personas";
@@ -442,8 +442,9 @@
 "settings.personaAppBindings.searchApp" = "Search apps";
 "settings.personaAppBindings.persona" = "Persona";
 "settings.personaAppBindings.selectPersona" = "Select Persona";
-"settings.personaAppBindings.add" = "Add Binding";
+"settings.personaAppBindings.add" = "Add App";
 "settings.personaAppBindings.saved" = "%@ will now switch automatically for the matched app.";
+"settings.personaAppBindings.savedNoPersona" = "Persona styling is now off for the matched app.";
 "settings.personaAppBindings.savedGeneric" = "The app-specific persona binding has been saved.";
 "settings.personaAppBindings.missingPersona" = "Missing Persona";
 "settings.personaAppBindings.binding.enable" = "Enable";

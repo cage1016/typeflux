@@ -94,6 +94,11 @@ struct StudioView: View {
         }
     }
 
+    private let personaAppIdentifierFieldWidth: CGFloat = 360
+    private let personaAppPickerFieldWidth: CGFloat = 220
+    private let personaAppBindingControlHeight: CGFloat = 44
+    private let personaAppBindingFieldVerticalPadding: CGFloat = 8
+
     @ObservedObject var viewModel: StudioViewModel
     @StateObject private var recorder = HotkeyRecorder()
     @State private var recordingTarget: ShortcutRecordingTarget?
@@ -770,16 +775,22 @@ struct StudioView: View {
 
                     StudioCard {
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
-                            personaAppBindingsCardHeader(
-                                title: L("settings.personaAppBindings.addTitle"),
-                            )
-
-                            HStack(alignment: .bottom, spacing: StudioTheme.Spacing.medium) {
-                                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                                HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
                                     Text(L("settings.personaAppBindings.appIdentifier"))
                                         .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
                                         .foregroundStyle(StudioTheme.textSecondary)
+                                        .frame(width: personaAppIdentifierFieldWidth, alignment: .leading)
 
+                                    Text(L("settings.personaAppBindings.persona"))
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                        .frame(width: personaAppPickerFieldWidth, alignment: .leading)
+
+                                    Spacer(minLength: 0)
+                                }
+
+                                HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
                                     HStack(spacing: StudioTheme.Spacing.xSmall) {
                                         TextField(
                                             L("settings.personaAppBindings.appIdentifierPlaceholder"),
@@ -812,7 +823,11 @@ struct StudioView: View {
                                     }
                                     .padding(.leading, StudioTheme.Insets.textFieldHorizontal)
                                     .padding(.trailing, 10)
-                                    .padding(.vertical, StudioTheme.Insets.textFieldVertical)
+                                    .padding(.vertical, personaAppBindingFieldVerticalPadding)
+                                    .frame(
+                                        width: personaAppIdentifierFieldWidth,
+                                        height: personaAppBindingControlHeight,
+                                    )
                                     .background(
                                         RoundedRectangle(
                                             cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
@@ -828,35 +843,30 @@ struct StudioView: View {
                                             lineWidth: StudioTheme.BorderWidth.thin,
                                         ),
                                     )
-                                }
-                                .frame(maxWidth: 360, alignment: .leading)
-
-                                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                                    Text(L("settings.personaAppBindings.persona"))
-                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
-                                        .foregroundStyle(StudioTheme.textSecondary)
 
                                     StudioMenuPicker(
-                                        options: viewModel.personas.map { persona in
-                                            (label: persona.name, value: Optional(persona.id))
-                                        },
+                                        options: [(label: L("persona.none.title"), value: nil as UUID?)]
+                                            + viewModel.personas.map { persona in
+                                                (label: persona.name, value: Optional(persona.id))
+                                            },
                                         selection: Binding(
                                             get: { viewModel.personaAppBindingDraftPersonaID },
                                             set: { viewModel.personaAppBindingDraftPersonaID = $0 },
                                         ),
-                                        width: 220,
+                                        width: personaAppPickerFieldWidth,
+                                        height: personaAppBindingControlHeight,
                                     )
-                                }
 
-                                Spacer(minLength: 0)
+                                    Spacer(minLength: 0)
 
-                                StudioButton(
-                                    title: L("settings.personaAppBindings.add"),
-                                    systemImage: "plus",
-                                    variant: .primary,
-                                    isDisabled: !viewModel.canSavePersonaAppBinding,
-                                ) {
-                                    viewModel.savePersonaAppBinding()
+                                    StudioButton(
+                                        title: L("settings.personaAppBindings.add"),
+                                        systemImage: "plus",
+                                        variant: .primary,
+                                        isDisabled: !viewModel.canSavePersonaAppBinding,
+                                    ) {
+                                        viewModel.savePersonaAppBinding()
+                                    }
                                 }
                             }
                         }
@@ -928,7 +938,9 @@ struct StudioView: View {
     @MainActor
     private func personaAppBindingRow(_ binding: PersonaAppBinding) -> some View {
         let metadata = personaAppMetadata(for: binding.appIdentifier)
-        let hasMatchingPersona = viewModel.personas.contains(where: { $0.id == binding.personaID })
+        let hasMatchingPersona = binding.personaID.map { personaID in
+            viewModel.personas.contains(where: { $0.id == personaID })
+        } ?? true
 
         return HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
             HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
@@ -965,14 +977,13 @@ struct StudioView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             StudioMenuPicker(
-                options: [(label: L("settings.personaAppBindings.selectPersona"), value: nil as UUID?)]
+                options: [(label: L("persona.none.title"), value: nil as UUID?)]
                     + viewModel.personas.map { persona in
                         (label: persona.name, value: Optional(persona.id))
                     },
                 selection: Binding(
-                    get: { hasMatchingPersona ? Optional(binding.personaID) : nil },
+                    get: { hasMatchingPersona ? binding.personaID : nil },
                     set: { newPersonaID in
-                        guard let newPersonaID else { return }
                         viewModel.updatePersonaAppBindingPersona(id: binding.id, personaID: newPersonaID)
                     },
                 ),

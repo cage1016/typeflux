@@ -424,7 +424,7 @@
 "settings.personaDefault.enabled" = "新的聽寫會話會使用所選人設進行改寫。";
 "settings.personaDefault.disabled" = "目前未啟用人設，聽寫內容會保持原始形式。";
 "settings.personaDefault.openPersonas" = "打開人設";
-"settings.personaAppBindings.title" = "應用專屬人設設定";
+"settings.personaAppBindings.title" = "應用專屬人設";
 "settings.personaAppBindings.subtitle" = "根據目前聚焦輸入框所在的應用自動覆蓋預設人設。建議優先填寫 Bundle Identifier，也支援直接填寫應用名稱。";
 "settings.personaAppBindings.empty" = "尚未設定應用專屬人設。";
 "settings.personaAppBindings.openButton" = "應用專屬人設";
@@ -440,8 +440,9 @@
 "settings.personaAppBindings.searchApp" = "搜尋應用";
 "settings.personaAppBindings.persona" = "人設";
 "settings.personaAppBindings.selectPersona" = "選擇人設";
-"settings.personaAppBindings.add" = "新增綁定";
+"settings.personaAppBindings.add" = "新增應用";
 "settings.personaAppBindings.saved" = "符合的應用現在會自動切換到 %@。";
+"settings.personaAppBindings.savedNoPersona" = "已為符合的應用關閉人設。";
 "settings.personaAppBindings.savedGeneric" = "已儲存應用專屬人設綁定。";
 "settings.personaAppBindings.missingPersona" = "人設已不存在";
 "settings.personaAppBindings.binding.enable" = "啟用";

@@ -405,10 +405,15 @@ final class SettingsStore {
 
     func effectivePersona(appName: String?, bundleIdentifier: String?) -> PersonaProfile? {
         if personaAppBindingsEnabled,
-           let binding = personaAppBinding(appName: appName, bundleIdentifier: bundleIdentifier),
-           let boundPersona = personas.first(where: { $0.id == binding.personaID })
+           let binding = personaAppBinding(appName: appName, bundleIdentifier: bundleIdentifier)
         {
-            return boundPersona
+            guard let personaID = binding.personaID else {
+                return nil
+            }
+
+            if let boundPersona = personas.first(where: { $0.id == personaID }) {
+                return boundPersona
+            }
         }
 
         return activePersona
@@ -448,7 +453,7 @@ final class SettingsStore {
         NotificationCenter.default.post(name: .personaSelectionDidChange, object: self)
     }
 
-    func savePersonaAppBinding(appIdentifier: String, personaID: UUID) {
+    func savePersonaAppBinding(appIdentifier: String, personaID: UUID?) {
         let trimmedIdentifier = appIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedIdentifier = PersonaAppBinding.normalize(trimmedIdentifier)
         guard !normalizedIdentifier.isEmpty else { return }
@@ -475,7 +480,7 @@ final class SettingsStore {
         personaAppBindings = personaAppBindings.filter { $0.id != id }
     }
 
-    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID) {
+    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID?) {
         updatePersonaAppBinding(id: id) { $0.personaID = personaID }
     }
 

@@ -147,6 +147,36 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(personaPrompt, customPersona.prompt)
     }
 
+    func testActivePersonaPromptUsesNoPersonaAppBindingOverDefaultPersona() {
+        let controller = makeWorkflowController { settingsStore in
+            let defaultPersona = settingsStore.personas[0]
+            settingsStore.applyPersonaSelection(defaultPersona.id)
+            settingsStore.savePersonaAppBinding(
+                appIdentifier: "com.apple.Notes",
+                personaID: nil,
+            )
+        }
+        let selectionSnapshot = TextSelectionSnapshot(
+            processID: 1,
+            processName: "Notes",
+            bundleIdentifier: "com.apple.Notes",
+            selectedRange: nil,
+            selectedText: nil,
+            source: "accessibility",
+            isEditable: true,
+            role: "AXTextArea",
+            windowTitle: "Note",
+            isFocusedTarget: true,
+        )
+
+        let personaPrompt = controller.activePersonaPrompt(
+            selectionSnapshot: selectionSnapshot,
+            inputContext: nil,
+        )
+
+        XCTAssertNil(personaPrompt)
+    }
+
     func testGenerateRewriteThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 

@@ -266,10 +266,10 @@ struct PersonaProfile: Codable, Identifiable, Equatable {
 struct PersonaAppBinding: Codable, Identifiable, Equatable {
     let id: UUID
     var appIdentifier: String
-    var personaID: UUID
+    var personaID: UUID?
     var isEnabled: Bool
 
-    init(id: UUID = UUID(), appIdentifier: String, personaID: UUID, isEnabled: Bool = true) {
+    init(id: UUID = UUID(), appIdentifier: String, personaID: UUID?, isEnabled: Bool = true) {
         self.id = id
         self.appIdentifier = appIdentifier
         self.personaID = personaID
@@ -287,7 +287,7 @@ struct PersonaAppBinding: Codable, Identifiable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         appIdentifier = try container.decode(String.self, forKey: .appIdentifier)
-        personaID = try container.decode(UUID.self, forKey: .personaID)
+        personaID = try container.decodeIfPresent(UUID.self, forKey: .personaID)
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
     }
 
@@ -295,7 +295,7 @@ struct PersonaAppBinding: Codable, Identifiable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(appIdentifier, forKey: .appIdentifier)
-        try container.encode(personaID, forKey: .personaID)
+        try container.encodeIfPresent(personaID, forKey: .personaID)
         try container.encode(isEnabled, forKey: .isEnabled)
     }
 

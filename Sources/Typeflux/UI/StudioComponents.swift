@@ -1347,6 +1347,7 @@ struct StudioMenuPicker<T: Hashable>: View {
     let options: [(label: String, value: T)]
     @Binding var selection: T
     var width: CGFloat?
+    var height: CGFloat?
 
     private var selectedLabel: String {
         options.first(where: { $0.value == selection })?.label ?? ""
@@ -1372,7 +1373,7 @@ struct StudioMenuPicker<T: Hashable>: View {
             }
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
             .padding(.vertical, StudioTheme.Insets.buttonVertical)
-            .frame(width: width)
+            .frame(width: width, height: height)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
                     .fill(StudioTheme.surfaceMuted),

@@ -1530,17 +1530,19 @@ final class StudioViewModel: ObservableObject {
 
     var canSavePersonaAppBinding: Bool {
         !personaAppBindingDraftIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && personaAppBindingDraftPersonaID != nil
     }
 
     func savePersonaAppBinding() {
         let identifier = personaAppBindingDraftIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !identifier.isEmpty, let personaID = personaAppBindingDraftPersonaID else { return }
+        guard !identifier.isEmpty else { return }
 
+        let personaID = personaAppBindingDraftPersonaID
         settingsStore.savePersonaAppBinding(appIdentifier: identifier, personaID: personaID)
         personaAppBindings = settingsStore.personaAppBindings
         personaAppBindingDraftIdentifier = ""
-        if let persona = personas.first(where: { $0.id == personaID }) {
+        if personaID == nil {
+            showToast(L("settings.personaAppBindings.savedNoPersona"))
+        } else if let persona = personas.first(where: { $0.id == personaID }) {
             showToast(L("settings.personaAppBindings.saved", persona.name))
         } else {
             showToast(L("settings.personaAppBindings.savedGeneric"))
@@ -1552,7 +1554,7 @@ final class StudioViewModel: ObservableObject {
         settingsStore.personaAppBindingsEnabled = value
     }
 
-    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID) {
+    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID?) {
         settingsStore.updatePersonaAppBindingPersona(id: id, personaID: personaID)
         personaAppBindings = settingsStore.personaAppBindings
     }
@@ -1568,7 +1570,11 @@ final class StudioViewModel: ObservableObject {
     }
 
     func personaName(for binding: PersonaAppBinding) -> String {
-        personas.first(where: { $0.id == binding.personaID })?.name
+        guard let personaID = binding.personaID else {
+            return L("persona.none.title")
+        }
+
+        return personas.first(where: { $0.id == personaID })?.name
             ?? L("settings.personaAppBindings.missingPersona")
     }
 
