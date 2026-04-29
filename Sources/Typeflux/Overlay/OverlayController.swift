@@ -62,6 +62,21 @@ final class OverlayController {
         let subtitle: String
     }
 
+    enum PersonaPickerIcon: Equatable {
+        case none
+        case global
+        case application(NSImage?)
+
+        static func == (lhs: PersonaPickerIcon, rhs: PersonaPickerIcon) -> Bool {
+            switch (lhs, rhs) {
+            case (.none, .none), (.global, .global), (.application, .application):
+                true
+            default:
+                false
+            }
+        }
+    }
+
     private let appState: AppStateStore
     private var window: NSPanel?
 
@@ -372,13 +387,17 @@ final class OverlayController {
     }
 
     func showPersonaPicker(
-        items: [PersonaPickerItem], selectedIndex: Int, title: String, instructions: String,
+        items: [PersonaPickerItem],
+        selectedIndex: Int,
+        title: String,
+        instructions: String,
+        icon: PersonaPickerIcon,
     ) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
                 self?.showPersonaPicker(
                     items: items, selectedIndex: selectedIndex, title: title,
-                    instructions: instructions,
+                    instructions: instructions, icon: icon,
                 )
             }
             return
@@ -392,6 +411,7 @@ final class OverlayController {
         model.personaViewportHeight = min(360, CGFloat(max(1, items.count)) * 84)
         model.statusText = title
         model.detailText = instructions
+        model.personaPickerIcon = icon
         refreshWindow()
     }
 
@@ -586,7 +606,7 @@ final class OverlayController {
         case .personaPicker:
             let viewportHeight = min(320, max(180, model.personaViewportHeight))
             return OverlayMetrics(
-                size: NSSize(width: 458, height: viewportHeight + 132), anchor: .center, offset: 36,
+                size: NSSize(width: 458, height: viewportHeight + 152), anchor: .center, offset: 36,
                 interactive: true,
             )
         case .resultDialog:
@@ -833,6 +853,7 @@ final class OverlayViewModel: ObservableObject {
     @Published var personaItems: [OverlayController.PersonaPickerItem] = []
     @Published var personaSelectedIndex: Int = 0
     @Published var personaViewportHeight: CGFloat = 240
+    @Published var personaPickerIcon: OverlayController.PersonaPickerIcon = .none
     @Published var failureActions: [OverlayFailureAction] = []
     var onDismissRequested: (() -> Void)?
     var onCancelRequested: (() -> Void)?
@@ -1178,19 +1199,25 @@ private struct OverlayView: View {
 
     private var personaPickerCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(model.statusText)
-                        .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.98))
+            HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .center, spacing: 14) {
+                    personaPickerScopeIcon
 
-                    Text(model.detailText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.62))
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(model.statusText)
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.98))
+                            .lineLimit(1)
+
+                        Text(model.detailText)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.62))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button(action: model.requestPersonaCancel) {
                     Image(systemName: "xmark")
@@ -1262,6 +1289,31 @@ private struct OverlayView: View {
                         .stroke(Color.black.opacity(0.35), lineWidth: 0.6),
                 ),
         )
+    }
+
+    @ViewBuilder
+    private var personaPickerScopeIcon: some View {
+        switch model.personaPickerIcon {
+        case .none:
+            EmptyView()
+        case .global:
+            Image(systemName: "globe")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .frame(width: 42, height: 42)
+        case let .application(icon):
+            if let icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 42, height: 42)
+            } else {
+                Image(systemName: "app.fill")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .frame(width: 42, height: 42)
+            }
+        }
     }
 
     private var resultDialogCard: some View {

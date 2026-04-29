@@ -474,6 +474,11 @@ final class WorkflowController {
             let frontmostApplicationContext = Self.frontmostApplicationContext()
             let appName = selectionSnapshot.processName ?? frontmostApplicationContext.appName
             let bundleIdentifier = selectionSnapshot.bundleIdentifier ?? frontmostApplicationContext.bundleIdentifier
+            let applicationIcon = Self.applicationIcon(
+                appName: appName,
+                bundleIdentifier: bundleIdentifier,
+                frontmostApplicationContext: frontmostApplicationContext,
+            )
             let mode: PersonaPickerMode
             let items: [PersonaPickerEntry]
 
@@ -521,6 +526,7 @@ final class WorkflowController {
                     selectedIndex: selectedIndex,
                     title: self.personaPickerTitle(for: mode),
                     instructions: self.personaPickerInstructions(for: mode),
+                    icon: self.personaPickerIcon(for: mode, applicationIcon: applicationIcon),
                 )
             }
         }
@@ -529,17 +535,37 @@ final class WorkflowController {
     private struct FrontmostApplicationContext {
         let appName: String?
         let bundleIdentifier: String?
+        let icon: NSImage?
     }
 
     private static func frontmostApplicationContext() -> FrontmostApplicationContext {
         let application = NSWorkspace.shared.frontmostApplication
-        let bundleIdentifier = application?.bundleIdentifier == Bundle.main.bundleIdentifier
-            ? nil
-            : application?.bundleIdentifier
+        let isTypeflux = application?.bundleIdentifier == Bundle.main.bundleIdentifier
         return FrontmostApplicationContext(
-            appName: application?.localizedName,
-            bundleIdentifier: bundleIdentifier,
+            appName: isTypeflux ? nil : application?.localizedName,
+            bundleIdentifier: isTypeflux ? nil : application?.bundleIdentifier,
+            icon: isTypeflux ? nil : application?.icon,
         )
+    }
+
+    private static func applicationIcon(
+        appName: String?,
+        bundleIdentifier: String?,
+        frontmostApplicationContext: FrontmostApplicationContext,
+    ) -> NSImage? {
+        if PersonaAppBinding.normalize(bundleIdentifier) == PersonaAppBinding.normalize(frontmostApplicationContext.bundleIdentifier)
+            || PersonaAppBinding.normalize(appName) == PersonaAppBinding.normalize(frontmostApplicationContext.appName)
+        {
+            return frontmostApplicationContext.icon
+        }
+
+        if let bundleIdentifier,
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
+        {
+            return NSWorkspace.shared.icon(forFile: appURL.path)
+        }
+
+        return nil
     }
 
     func beginRecording(intent: RecordingIntent, startLocked: Bool) async {

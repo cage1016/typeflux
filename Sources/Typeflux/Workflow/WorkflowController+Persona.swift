@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 extension WorkflowController {
@@ -20,6 +21,20 @@ extension WorkflowController {
             L("overlay.personaPicker.switchApplicationInstructions")
         case .applySelection:
             L("overlay.personaPicker.applyInstructions")
+        }
+    }
+
+    func personaPickerIcon(
+        for mode: PersonaPickerMode,
+        applicationIcon: NSImage? = nil,
+    ) -> OverlayController.PersonaPickerIcon {
+        switch mode {
+        case .switchDefault:
+            .global
+        case .switchApplication:
+            .application(applicationIcon)
+        case .applySelection:
+            .none
         }
     }
 

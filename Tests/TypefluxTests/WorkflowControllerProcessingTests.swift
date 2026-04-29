@@ -185,6 +185,11 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             controller.personaPickerTitle(for: .switchApplication(binding)),
             L("overlay.personaPicker.switchApplicationTitle"),
         )
+        if case .application = controller.personaPickerIcon(for: .switchApplication(binding)) {
+            // Expected application-scoped icon.
+        } else {
+            XCTFail("Expected application persona picker icon")
+        }
     }
 
     func testDefaultPersonaPickerTitleUsesGlobalScope() {
@@ -195,6 +200,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             L("overlay.personaPicker.switchTitle"),
         )
         XCTAssertEqual(L("overlay.personaPicker.switchTitle"), "Switch Global Persona")
+        XCTAssertEqual(controller.personaPickerIcon(for: .switchDefault), .global)
     }
 
     func testApplicationPersonaSelectionUpdatesAppBindingWithoutChangingGlobalPersona() throws {
