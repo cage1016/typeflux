@@ -132,6 +132,111 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertFalse(viewModel.personaRewriteEnabled)
     }
 
+    func testSavePersonaAppBindingPersistsBindingAndClearsDraft() throws {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let historyStore = InMemoryHistoryStore()
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        let persona = try XCTUnwrap(viewModel.personas.first)
+        viewModel.personaAppBindingDraftIdentifier = "com.tinyspeck.slackmacgap"
+        viewModel.personaAppBindingDraftPersonaID = persona.id
+
+        viewModel.savePersonaAppBinding()
+
+        XCTAssertEqual(settingsStore.personaAppBindings.count, 1)
+        XCTAssertEqual(settingsStore.personaAppBindings.first?.appIdentifier, "com.tinyspeck.slackmacgap")
+        XCTAssertEqual(settingsStore.personaAppBindings.first?.personaID, persona.id)
+        XCTAssertTrue(viewModel.personaAppBindingDraftIdentifier.isEmpty)
+    }
+
+    func testDeletePersonaRemovesAssociatedAppBindings() {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let customPersona = PersonaProfile(name: "Chat Reply", prompt: "Be casual.")
+        settingsStore.personas = settingsStore.personas + [customPersona]
+        settingsStore.savePersonaAppBinding(
+            appIdentifier: "com.tinyspeck.slackmacgap",
+            personaID: customPersona.id,
+        )
+        let historyStore = InMemoryHistoryStore()
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        viewModel.deletePersona(id: customPersona.id)
+
+        XCTAssertTrue(settingsStore.personaAppBindings.isEmpty)
+        XCTAssertTrue(viewModel.personaAppBindings.isEmpty)
+    }
+
+    func testSetPersonaAppBindingsEnabledUpdatesStore() {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let historyStore = InMemoryHistoryStore()
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        viewModel.setPersonaAppBindingsEnabled(false)
+
+        XCTAssertFalse(settingsStore.personaAppBindingsEnabled)
+        XCTAssertFalse(viewModel.personaAppBindingsEnabled)
+    }
+
+    func testUpdatePersonaAppBindingPersonaUpdatesStore() throws {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let historyStore = InMemoryHistoryStore()
+        let originalPersona = PersonaProfile(name: "Casual", prompt: "Casual")
+        let updatedPersona = PersonaProfile(name: "Formal", prompt: "Formal")
+        settingsStore.personas = settingsStore.personas + [originalPersona, updatedPersona]
+        settingsStore.savePersonaAppBinding(appIdentifier: "Slack", personaID: originalPersona.id)
+        let bindingID = try XCTUnwrap(settingsStore.personaAppBindings.first?.id)
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        viewModel.updatePersonaAppBindingPersona(id: bindingID, personaID: updatedPersona.id)
+
+        XCTAssertEqual(settingsStore.personaAppBindings.first?.personaID, updatedPersona.id)
+        XCTAssertEqual(viewModel.personaAppBindings.first?.personaID, updatedPersona.id)
+    }
+
+    func testSetPersonaAppBindingEnabledUpdatesStore() throws {
+        let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let settingsStore = SettingsStore(defaults: defaults)
+        let historyStore = InMemoryHistoryStore()
+        let persona = try XCTUnwrap(settingsStore.personas.first)
+        settingsStore.savePersonaAppBinding(appIdentifier: "Slack", personaID: persona.id)
+        let bindingID = try XCTUnwrap(settingsStore.personaAppBindings.first?.id)
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: historyStore,
+            initialSection: .personas,
+        )
+
+        viewModel.setPersonaAppBindingEnabled(id: bindingID, isEnabled: false)
+
+        XCTAssertFalse(settingsStore.personaAppBindings.first?.isEnabled ?? true)
+        XCTAssertFalse(viewModel.personaAppBindings.first?.isEnabled ?? true)
+    }
+
     // MARK: - Auto persona default when LLM becomes configured via Settings
 
     func testSwitchingToTypefluxCloudAutoSelectsTypefluxPersona() {

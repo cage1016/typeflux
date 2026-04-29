@@ -356,6 +356,28 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "persona.items") }
     }
 
+    var personaAppBindings: [PersonaAppBinding] {
+        get {
+            guard let data = defaults.data(forKey: "persona.appBindings") else {
+                return []
+            }
+            return (try? JSONDecoder().decode([PersonaAppBinding].self, from: data)) ?? []
+        }
+        set {
+            do {
+                let data = try JSONEncoder().encode(newValue)
+                defaults.set(data, forKey: "persona.appBindings")
+            } catch {
+                ErrorLogStore.shared.log("Failed to encode persona app bindings: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    var personaAppBindingsEnabled: Bool {
+        get { defaults.object(forKey: "persona.appBindingsEnabled") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "persona.appBindingsEnabled") }
+    }
+
     var personas: [PersonaProfile] {
         get {
             guard let data = personasJSON.data(using: .utf8), !personasJSON.isEmpty else {
@@ -379,6 +401,24 @@ final class SettingsStore {
     var activePersonaPrompt: String? {
         guard let activePersona else { return nil }
         return resolvedPersonaPrompt(for: activePersona)
+    }
+
+    func effectivePersona(appName: String?, bundleIdentifier: String?) -> PersonaProfile? {
+        if personaAppBindingsEnabled,
+           let binding = personaAppBinding(appName: appName, bundleIdentifier: bundleIdentifier),
+           let boundPersona = personas.first(where: { $0.id == binding.personaID })
+        {
+            return boundPersona
+        }
+
+        return activePersona
+    }
+
+    func effectivePersonaPrompt(appName: String?, bundleIdentifier: String?) -> String? {
+        guard let persona = effectivePersona(appName: appName, bundleIdentifier: bundleIdentifier) else {
+            return nil
+        }
+        return resolvedPersonaPrompt(for: persona)
     }
 
     func resolvedPersonaPrompt(for persona: PersonaProfile) -> String {
@@ -406,6 +446,57 @@ final class SettingsStore {
         personaSelectionIsExplicit = true
 
         NotificationCenter.default.post(name: .personaSelectionDidChange, object: self)
+    }
+
+    func savePersonaAppBinding(appIdentifier: String, personaID: UUID) {
+        let trimmedIdentifier = appIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedIdentifier = PersonaAppBinding.normalize(trimmedIdentifier)
+        guard !normalizedIdentifier.isEmpty else { return }
+
+        var bindings = personaAppBindings
+        if let index = bindings.firstIndex(where: { $0.normalizedAppIdentifier == normalizedIdentifier }) {
+            bindings[index].appIdentifier = trimmedIdentifier
+            bindings[index].personaID = personaID
+        } else {
+            // Prepend new bindings so the most recently created rule wins if users
+            // intentionally create overlapping manual identifiers.
+            bindings.insert(
+                PersonaAppBinding(
+                    appIdentifier: trimmedIdentifier,
+                    personaID: personaID,
+                ),
+                at: 0,
+            )
+        }
+        personaAppBindings = bindings
+    }
+
+    func removePersonaAppBinding(id: UUID) {
+        personaAppBindings = personaAppBindings.filter { $0.id != id }
+    }
+
+    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID) {
+        updatePersonaAppBinding(id: id) { $0.personaID = personaID }
+    }
+
+    func setPersonaAppBindingEnabled(id: UUID, isEnabled: Bool) {
+        updatePersonaAppBinding(id: id) { $0.isEnabled = isEnabled }
+    }
+
+    private func personaAppBinding(appName: String?, bundleIdentifier: String?) -> PersonaAppBinding? {
+        // Prefer bindings that match the focused app's bundle identifier because
+        // bundle IDs are stable across localizations. Only if no binding matches
+        // that bundle ID do we try the app name, so manual name-based bindings
+        // still work as a fallback.
+        personaAppBindings.first { $0.isEnabled && $0.matches(bundleIdentifier: bundleIdentifier, appName: nil) }
+            ?? personaAppBindings.first { $0.isEnabled && $0.matches(bundleIdentifier: nil, appName: appName) }
+    }
+
+    private func updatePersonaAppBinding(id: UUID, transform: (inout PersonaAppBinding) -> Void) {
+        var bindings = personaAppBindings
+        guard let index = bindings.firstIndex(where: { $0.id == id }) else { return }
+        transform(&bindings[index])
+        personaAppBindings = bindings
     }
 
     /// If the LLM is currently configured and the user has not yet explicitly

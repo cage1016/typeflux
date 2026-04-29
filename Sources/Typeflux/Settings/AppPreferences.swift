@@ -262,3 +262,65 @@ struct PersonaProfile: Codable, Identifiable, Equatable {
         try container.encode(kind, forKey: .kind)
     }
 }
+
+struct PersonaAppBinding: Codable, Identifiable, Equatable {
+    let id: UUID
+    var appIdentifier: String
+    var personaID: UUID
+    var isEnabled: Bool
+
+    init(id: UUID = UUID(), appIdentifier: String, personaID: UUID, isEnabled: Bool = true) {
+        self.id = id
+        self.appIdentifier = appIdentifier
+        self.personaID = personaID
+        self.isEnabled = isEnabled
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case appIdentifier
+        case personaID
+        case isEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        appIdentifier = try container.decode(String.self, forKey: .appIdentifier)
+        personaID = try container.decode(UUID.self, forKey: .personaID)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(appIdentifier, forKey: .appIdentifier)
+        try container.encode(personaID, forKey: .personaID)
+        try container.encode(isEnabled, forKey: .isEnabled)
+    }
+
+    var normalizedAppIdentifier: String {
+        Self.normalize(appIdentifier)
+    }
+
+    func matches(bundleIdentifier: String?, appName: String?) -> Bool {
+        let target = normalizedAppIdentifier
+        guard !target.isEmpty else { return false }
+
+        if Self.normalize(bundleIdentifier) == target {
+            return true
+        }
+
+        if Self.normalize(appName) == target {
+            return true
+        }
+
+        return false
+    }
+
+    static func normalize(_ value: String?) -> String {
+        value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
+    }
+}

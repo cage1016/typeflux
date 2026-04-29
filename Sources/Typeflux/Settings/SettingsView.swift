@@ -64,6 +64,36 @@ struct StudioView: View {
         case persona
     }
 
+    private enum PersonaAppPickerScope: String, CaseIterable, Sendable {
+        case running
+        case all
+
+        var title: String {
+            switch self {
+            case .running:
+                L("settings.personaAppBindings.picker.scope.running")
+            case .all:
+                L("settings.personaAppBindings.picker.scope.all")
+            }
+        }
+    }
+
+    private struct PersonaAppCandidate: Identifiable, Equatable, Sendable {
+        let id: String
+        let displayName: String
+        let bundleIdentifier: String?
+        let appURL: URL?
+        let isRunning: Bool
+
+        var preferredIdentifier: String {
+            if let bundleIdentifier, !bundleIdentifier.isEmpty {
+                return bundleIdentifier
+            }
+
+            return displayName
+        }
+    }
+
     @ObservedObject var viewModel: StudioViewModel
     @StateObject private var recorder = HotkeyRecorder()
     @State private var recordingTarget: ShortcutRecordingTarget?
@@ -72,7 +102,19 @@ struct StudioView: View {
     @State private var editingVocabularyEntry: VocabularyEntry?
     @State private var newVocabularyTerm = ""
     @State private var personaPendingDeletion: PersonaProfile?
+    @State private var personaAppBindingPendingDeletion: PersonaAppBinding?
+    @State private var isPersonaAppBindingsSheetPresented = false
+    @State private var isPersonaAppPickerPresented = false
+    @State private var personaAppPickerScope: PersonaAppPickerScope = .running
+    @State private var personaAppPickerSearchQuery = ""
+    @State private var personaAppCandidates: [PersonaAppCandidate] = []
+    @State private var personaAppRunningLookup: [String: URL] = [:]
+    @State private var personaAppInstalledLookup: [String: URL] = [:]
+    @State private var isLoadingPersonaAppCandidates = false
+    @State private var hasLoadedPersonaAppInstalledCandidates = false
+    @State private var personaAppCandidateLoadToken = UUID()
     @State private var localSTTPendingDelete: LocalSTTModel? = nil
+
     @State private var localSTTPendingRedownload: LocalSTTModel? = nil
     @State private var llmActivationMissingAPIKeyProviderName: String?
     @State private var isMCPServerDialogPresented = false
@@ -202,6 +244,9 @@ struct StudioView: View {
         .sheet(isPresented: $isMCPServerDialogPresented) {
             mcpServerDialog
         }
+        .sheet(isPresented: $isPersonaAppBindingsSheetPresented) {
+            personaAppBindingsSheet
+        }
         .confirmationDialog(
             L("agent.mcp.deleteDialog.title"),
             isPresented: Binding(
@@ -326,17 +371,23 @@ struct StudioView: View {
             } else if viewModel.currentSection == .personas {
                 Spacer()
 
-                Button(action: viewModel.beginCreatingPersona) {
-                    Image(systemName: "plus")
-                        .foregroundStyle(.white)
-                        .frame(
-                            width: StudioTheme.ControlSize.personaAddButton,
-                            height: StudioTheme.ControlSize.personaAddButton,
-                        )
-                        .background(Circle().fill(StudioTheme.accent))
-                        .contentShape(Circle())
+                HStack(spacing: StudioTheme.Spacing.medium) {
+                    StudioButton(
+                        title: L("settings.personaAppBindings.openButton"),
+                        systemImage: "app.badge",
+                        variant: .secondary,
+                    ) {
+                        isPersonaAppBindingsSheetPresented = true
+                    }
+
+                    StudioButton(
+                        title: L("settings.personas.newButton"),
+                        systemImage: "plus",
+                        variant: .secondary,
+                    ) {
+                        viewModel.beginCreatingPersona()
+                    }
                 }
-                .buttonStyle(StudioInteractiveButtonStyle())
             }
         }
     }
@@ -677,6 +728,696 @@ struct StudioView: View {
                 }
             }
         }
+    }
+
+    private var personaAppBindingsSheet: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                Text(L("settings.personaAppBindings.title"))
+                    .font(.studioDisplay(StudioTheme.Typography.subsectionTitle, weight: .semibold))
+                    .foregroundStyle(StudioTheme.textPrimary)
+
+                Spacer()
+
+                jobsCloseButton {
+                    isPersonaAppBindingsSheetPresented = false
+                }
+            }
+            .padding(.horizontal, StudioTheme.Spacing.large)
+            .padding(.top, StudioTheme.Spacing.large)
+            .padding(.bottom, StudioTheme.Spacing.medium)
+
+            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
+                    StudioCard {
+                        StudioSettingRow(
+                            title: L("settings.personaAppBindings.enabled.title"),
+                            subtitle: L("settings.personaAppBindings.enabled.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.personaAppBindingsEnabled },
+                                    set: { viewModel.setPersonaAppBindingsEnabled($0) },
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+                    }
+
+                    StudioCard {
+                        VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                            personaAppBindingsCardHeader(
+                                title: L("settings.personaAppBindings.addTitle"),
+                            )
+
+                            HStack(alignment: .bottom, spacing: StudioTheme.Spacing.medium) {
+                                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                                    Text(L("settings.personaAppBindings.appIdentifier"))
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+
+                                    HStack(spacing: StudioTheme.Spacing.xSmall) {
+                                        TextField(
+                                            L("settings.personaAppBindings.appIdentifierPlaceholder"),
+                                            text: Binding(
+                                                get: { viewModel.personaAppBindingDraftIdentifier },
+                                                set: {
+                                                    viewModel.personaAppBindingDraftIdentifier = $0
+                                                },
+                                            ),
+                                        )
+                                        .textFieldStyle(.plain)
+                                        .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                                        .foregroundStyle(StudioTheme.textPrimary)
+
+                                        Rectangle()
+                                            .fill(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder))
+                                            .frame(width: 1, height: 18)
+
+                                        StudioIconButton(
+                                            systemImage: "magnifyingglass",
+                                            variant: .ghost,
+                                            frame: 28,
+                                        ) {
+                                            personaAppPickerScope = .running
+                                            personaAppPickerSearchQuery = ""
+                                            isPersonaAppPickerPresented = true
+                                            loadPersonaAppCandidates(for: .running)
+                                        }
+                                        .studioTooltip(L("settings.personaAppBindings.searchApp"), yOffset: 34)
+                                    }
+                                    .padding(.leading, StudioTheme.Insets.textFieldHorizontal)
+                                    .padding(.trailing, 10)
+                                    .padding(.vertical, StudioTheme.Insets.textFieldVertical)
+                                    .background(
+                                        RoundedRectangle(
+                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                                        )
+                                        .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(
+                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                                        )
+                                        .stroke(
+                                            StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                                            lineWidth: StudioTheme.BorderWidth.thin,
+                                        ),
+                                    )
+                                }
+                                .frame(maxWidth: 360, alignment: .leading)
+
+                                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                                    Text(L("settings.personaAppBindings.persona"))
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+
+                                    StudioMenuPicker(
+                                        options: viewModel.personas.map { persona in
+                                            (label: persona.name, value: Optional(persona.id))
+                                        },
+                                        selection: Binding(
+                                            get: { viewModel.personaAppBindingDraftPersonaID },
+                                            set: { viewModel.personaAppBindingDraftPersonaID = $0 },
+                                        ),
+                                        width: 220,
+                                    )
+                                }
+
+                                Spacer(minLength: 0)
+
+                                StudioButton(
+                                    title: L("settings.personaAppBindings.add"),
+                                    systemImage: "plus",
+                                    variant: .primary,
+                                    isDisabled: !viewModel.canSavePersonaAppBinding,
+                                ) {
+                                    viewModel.savePersonaAppBinding()
+                                }
+                            }
+                        }
+                    }
+
+                    if viewModel.personaAppBindings.isEmpty {
+                        StudioCard {
+                            Text(L("settings.personaAppBindings.empty"))
+                                .font(.studioBody(StudioTheme.Typography.body))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        StudioCard(padding: StudioTheme.Insets.none) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                personaAppBindingsCardHeader(
+                                    title: L("settings.personaAppBindings.listTitle"),
+                                    padding: StudioTheme.Insets.cardDefault,
+                                )
+
+                                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                                ForEach(viewModel.personaAppBindings) { binding in
+                                    personaAppBindingRow(binding)
+
+                                    if binding.id != viewModel.personaAppBindings.last?.id {
+                                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(StudioTheme.Spacing.large)
+            }
+        }
+        .frame(width: 820, height: 680)
+        .background(StudioTheme.background)
+        .task {
+            refreshPersonaAppRunningLookup()
+            await preloadPersonaAppInstalledCandidatesIfNeeded()
+        }
+        .sheet(isPresented: $isPersonaAppPickerPresented) {
+            personaAppPickerSheet
+        }
+        .confirmationDialog(
+            L("settings.personaAppBindings.deleteDialog.title"),
+            isPresented: Binding(
+                get: { personaAppBindingPendingDeletion != nil },
+                set: { if !$0 { personaAppBindingPendingDeletion = nil } },
+            ),
+            titleVisibility: .visible,
+        ) {
+            Button(L("common.delete"), role: .destructive) {
+                guard let binding = personaAppBindingPendingDeletion else { return }
+                viewModel.removePersonaAppBinding(id: binding.id)
+                personaAppBindingPendingDeletion = nil
+            }
+            Button(L("common.cancel"), role: .cancel) {
+                personaAppBindingPendingDeletion = nil
+            }
+        } message: {
+            if let binding = personaAppBindingPendingDeletion {
+                Text(L("settings.personaAppBindings.deleteDialog.message", binding.appIdentifier))
+            }
+        }
+    }
+
+    @MainActor
+    private func personaAppBindingRow(_ binding: PersonaAppBinding) -> some View {
+        let metadata = personaAppMetadata(for: binding.appIdentifier)
+        let hasMatchingPersona = viewModel.personas.contains(where: { $0.id == binding.personaID })
+
+        return HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+            HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+                Group {
+                    if let image = metadata.icon {
+                        Image(nsImage: image)
+                            .resizable()
+                            .interpolation(.high)
+                    } else {
+                        Image(systemName: "app")
+                            .resizable()
+                            .scaledToFit()
+                            .padding(6)
+                            .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                        .fill(StudioTheme.surfaceMuted),
+                )
+
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                    Text(metadata.displayName)
+                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    Text(binding.appIdentifier)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            StudioMenuPicker(
+                options: [(label: L("settings.personaAppBindings.selectPersona"), value: nil as UUID?)]
+                    + viewModel.personas.map { persona in
+                        (label: persona.name, value: Optional(persona.id))
+                    },
+                selection: Binding(
+                    get: { hasMatchingPersona ? Optional(binding.personaID) : nil },
+                    set: { newPersonaID in
+                        guard let newPersonaID else { return }
+                        viewModel.updatePersonaAppBindingPersona(id: binding.id, personaID: newPersonaID)
+                    },
+                ),
+                width: 240,
+            )
+            .frame(width: 240, alignment: .center)
+
+            HStack(spacing: StudioTheme.Spacing.xSmall) {
+                StudioIconButton(
+                    systemImage: binding.isEnabled ? "pause.fill" : "play.fill",
+                    variant: .ghost,
+                ) {
+                    viewModel.setPersonaAppBindingEnabled(id: binding.id, isEnabled: !binding.isEnabled)
+                }
+                .studioTooltip(
+                    binding.isEnabled
+                        ? L("settings.personaAppBindings.binding.pause")
+                        : L("settings.personaAppBindings.binding.enable"),
+                    yOffset: 34,
+                )
+
+                StudioIconButton(
+                    systemImage: "trash",
+                    variant: .ghost,
+                ) {
+                    personaAppBindingPendingDeletion = binding
+                }
+                .studioTooltip(L("common.delete"), yOffset: 34)
+            }
+            .frame(width: 72, alignment: .trailing)
+        }
+        .padding(.horizontal, StudioTheme.Spacing.large)
+        .padding(.vertical, StudioTheme.Spacing.medium)
+        .opacity(binding.isEnabled ? 1 : 0.72)
+    }
+
+    private var personaAppPickerSheet: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                    Text(L("settings.personaAppBindings.picker.title"))
+                        .font(.studioDisplay(StudioTheme.Typography.subsectionTitle, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                    Text(L("settings.personaAppBindings.picker.subtitle"))
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+
+                Spacer()
+
+                jobsCloseButton {
+                    isPersonaAppPickerPresented = false
+                }
+            }
+            .padding(.horizontal, StudioTheme.Spacing.large)
+            .padding(.top, StudioTheme.Spacing.large)
+            .padding(.bottom, StudioTheme.Spacing.medium)
+
+            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+                StudioSegmentedPicker(
+                    options: PersonaAppPickerScope.allCases.map { (label: $0.title, value: $0) },
+                    selection: $personaAppPickerScope,
+                )
+
+                TextField(
+                    L("settings.personaAppBindings.picker.searchPlaceholder"),
+                    text: $personaAppPickerSearchQuery,
+                )
+                .textFieldStyle(.plain)
+                .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                .foregroundStyle(StudioTheme.textPrimary)
+                .padding(.horizontal, StudioTheme.Insets.textFieldHorizontal)
+                .padding(.vertical, StudioTheme.Insets.textFieldVertical)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                        .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                        .stroke(
+                            StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                            lineWidth: StudioTheme.BorderWidth.thin,
+                        ),
+                )
+            }
+            .padding(StudioTheme.Spacing.large)
+
+            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+            if isLoadingPersonaAppCandidates {
+                Spacer()
+                ProgressView()
+                    .controlSize(.small)
+                Spacer()
+            } else if filteredPersonaAppCandidates.isEmpty {
+                Spacer()
+                Text(L("settings.personaAppBindings.picker.empty"))
+                    .font(.studioBody(StudioTheme.Typography.body))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                Spacer()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredPersonaAppCandidates) { candidate in
+                            personaAppCandidateRow(candidate)
+
+                            if candidate.id != filteredPersonaAppCandidates.last?.id {
+                                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(width: 760, height: 620)
+        .background(StudioTheme.background)
+        .onAppear {
+            if personaAppCandidates.isEmpty {
+                loadPersonaAppCandidates(for: personaAppPickerScope)
+            }
+        }
+        .onChange(of: personaAppPickerScope) { newValue in
+            loadPersonaAppCandidates(for: newValue)
+        }
+    }
+
+    private var filteredPersonaAppCandidates: [PersonaAppCandidate] {
+        let query = personaAppPickerSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return personaAppCandidates }
+
+        return personaAppCandidates.filter { candidate in
+            candidate.displayName.localizedCaseInsensitiveContains(query)
+                || candidate.preferredIdentifier.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    @MainActor
+    private func personaAppCandidateRow(_ candidate: PersonaAppCandidate) -> some View {
+        HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+            Group {
+                if let image = personaAppIcon(for: candidate) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.high)
+                } else {
+                    Image(systemName: "app")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(6)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+            }
+            .frame(width: 40, height: 40)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                    .fill(StudioTheme.surfaceMuted),
+            )
+
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    Text(candidate.displayName)
+                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    if candidate.isRunning {
+                        StudioPill(title: L("settings.personaAppBindings.picker.runningBadge"))
+                    }
+                }
+
+                Text(candidate.preferredIdentifier)
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .textSelection(.enabled)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, StudioTheme.Spacing.large)
+        .padding(.vertical, StudioTheme.Spacing.medium)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.personaAppBindingDraftIdentifier = candidate.preferredIdentifier
+            isPersonaAppPickerPresented = false
+        }
+    }
+
+    @MainActor
+    private func personaAppMetadata(for identifier: String) -> (displayName: String, icon: NSImage?) {
+        let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cacheKey = trimmedIdentifier.lowercased()
+
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmedIdentifier) {
+            return (
+                displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            )
+        }
+
+        if let url = personaAppRunningLookup[cacheKey] {
+            return (
+                displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            )
+        }
+
+        if let url = personaAppInstalledLookup[cacheKey] {
+            return (
+                displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            )
+        }
+
+        return (trimmedIdentifier, nil)
+    }
+
+    @MainActor
+    private func personaAppIcon(for candidate: PersonaAppCandidate) -> NSImage? {
+        if let appURL = candidate.appURL {
+            return NSWorkspace.shared.icon(forFile: appURL.path)
+        }
+
+        if let bundleIdentifier = candidate.bundleIdentifier,
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
+        {
+            return NSWorkspace.shared.icon(forFile: appURL.path)
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func loadPersonaAppCandidates(for scope: PersonaAppPickerScope) {
+        let loadToken = UUID()
+        personaAppCandidateLoadToken = loadToken
+        isLoadingPersonaAppCandidates = true
+
+        Task {
+            let candidates = await Self.discoverPersonaAppCandidates(scope: scope)
+            await MainActor.run {
+                guard personaAppCandidateLoadToken == loadToken else { return }
+                personaAppCandidates = candidates
+                isLoadingPersonaAppCandidates = false
+            }
+        }
+    }
+
+    @MainActor
+    private func preloadPersonaAppInstalledCandidatesIfNeeded() async {
+        guard !hasLoadedPersonaAppInstalledCandidates else { return }
+
+        let candidates = await Self.loadInstalledPersonaAppCandidates()
+        var installedLookup: [String: URL] = [:]
+        for candidate in candidates {
+            guard let url = candidate.appURL else { continue }
+            installedLookup[candidate.displayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()] = url
+            installedLookup[url.deletingPathExtension().lastPathComponent.lowercased()] = url
+        }
+
+        personaAppInstalledLookup = installedLookup
+        hasLoadedPersonaAppInstalledCandidates = true
+    }
+
+    @MainActor
+    private func refreshPersonaAppRunningLookup() {
+        var runningLookup: [String: URL] = [:]
+
+        for application in NSWorkspace.shared.runningApplications {
+            guard let url = application.bundleURL else { continue }
+
+            if let localizedName = application.localizedName?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !localizedName.isEmpty
+            {
+                runningLookup[localizedName.lowercased()] = url
+            }
+
+            if let bundleIdentifier = application.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !bundleIdentifier.isEmpty
+            {
+                runningLookup[bundleIdentifier.lowercased()] = url
+            }
+        }
+
+        personaAppRunningLookup = runningLookup
+    }
+
+    private static func discoverPersonaAppCandidates(scope: PersonaAppPickerScope) async -> [PersonaAppCandidate] {
+        switch scope {
+        case .running:
+            return await MainActor.run {
+                runningPersonaAppCandidates()
+            }
+        case .all:
+            async let installed = loadInstalledPersonaAppCandidates()
+            let running = await MainActor.run {
+                runningPersonaAppCandidates()
+            }
+            return mergePersonaAppCandidates(await installed, running)
+        }
+    }
+
+    private nonisolated static func loadInstalledPersonaAppCandidates() async -> [PersonaAppCandidate] {
+        await Task.detached(priority: .userInitiated) {
+            Self.installedPersonaAppCandidates()
+        }.value
+    }
+
+    private func personaAppBindingsCardHeader(
+        title: String,
+        subtitle: String? = nil,
+        padding: CGFloat = 0,
+    ) -> some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+            Text(title)
+                .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
+                .foregroundStyle(StudioTheme.textPrimary)
+
+            if let subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(padding)
+    }
+
+    @MainActor
+    private static func runningPersonaAppCandidates() -> [PersonaAppCandidate] {
+        var seen = Set<String>()
+
+        return NSWorkspace.shared.runningApplications.compactMap { application in
+            guard application.activationPolicy != .prohibited else { return nil }
+
+            let displayName = application.localizedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let bundleIdentifier = application.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let appURL = application.bundleURL
+            let preferredIdentifier = bundleIdentifier?.isEmpty == false ? bundleIdentifier! : (displayName ?? "")
+            guard !preferredIdentifier.isEmpty else { return nil }
+
+            let candidateID = (bundleIdentifier?.isEmpty == false ? bundleIdentifier : appURL?.path) ?? preferredIdentifier
+            guard seen.insert(candidateID.lowercased()).inserted else { return nil }
+
+            return PersonaAppCandidate(
+                id: candidateID,
+                displayName: (displayName?.isEmpty == false ? displayName : appDisplayName(for: appURL)) ?? preferredIdentifier,
+                bundleIdentifier: bundleIdentifier,
+                appURL: appURL,
+                isRunning: true,
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func installedPersonaAppCandidates() -> [PersonaAppCandidate] {
+        let fileManager = FileManager.default
+        let searchRoots = Array(
+            Set(
+                fileManager.urls(for: .applicationDirectory, in: .localDomainMask)
+                    + fileManager.urls(for: .applicationDirectory, in: .systemDomainMask)
+                    + fileManager.urls(for: .applicationDirectory, in: .userDomainMask)
+                    + [
+                        URL(fileURLWithPath: "/Applications"),
+                        URL(fileURLWithPath: "/System/Applications"),
+                        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Applications"),
+                    ],
+            ),
+        )
+
+        var candidates: [PersonaAppCandidate] = []
+        var seen = Set<String>()
+
+        for root in searchRoots where fileManager.fileExists(atPath: root.path) {
+            guard let enumerator = fileManager.enumerator(
+                at: root,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles],
+            ) else {
+                continue
+            }
+
+            while let url = enumerator.nextObject() as? URL {
+                guard url.pathExtension.caseInsensitiveCompare("app") == .orderedSame else { continue }
+                enumerator.skipDescendants()
+
+                let bundleIdentifier = Bundle(url: url)?.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let displayName = appDisplayName(for: url) ?? url.deletingPathExtension().lastPathComponent
+                let candidateID = bundleIdentifier ?? url.path
+                guard seen.insert(candidateID.lowercased()).inserted else { continue }
+
+                candidates.append(
+                    PersonaAppCandidate(
+                        id: candidateID,
+                        displayName: displayName,
+                        bundleIdentifier: bundleIdentifier,
+                        appURL: url,
+                        isRunning: false,
+                    ),
+                )
+            }
+        }
+
+        return candidates.sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func mergePersonaAppCandidates(
+        _ first: [PersonaAppCandidate],
+        _ second: [PersonaAppCandidate],
+    ) -> [PersonaAppCandidate] {
+        var merged: [PersonaAppCandidate] = []
+        var seen = Set<String>()
+
+        for candidate in first + second {
+            guard seen.insert(candidate.id.lowercased()).inserted else { continue }
+            merged.append(candidate)
+        }
+
+        return merged.sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func appDisplayName(for url: URL?) -> String? {
+        guard let url else { return nil }
+
+        if let bundle = Bundle(url: url) {
+            if let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
+               !name.isEmpty
+            {
+                return name
+            }
+
+            if let name = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String,
+               !name.isEmpty
+            {
+                return name
+            }
+        }
+
+        return url.deletingPathExtension().lastPathComponent
     }
 
     private var personaLLMProviderOptions: [(label: String, value: StudioModelProviderID)] {

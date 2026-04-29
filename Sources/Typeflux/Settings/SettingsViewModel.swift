@@ -144,10 +144,14 @@ final class StudioViewModel: ObservableObject {
     @Published var personaRewriteEnabled: Bool
     @Published var personaHotkeyAppliesToSelection: Bool
     @Published var personas: [PersonaProfile]
+    @Published var personaAppBindings: [PersonaAppBinding]
+    @Published var personaAppBindingsEnabled: Bool
     @Published var selectedPersonaID: UUID?
     @Published private(set) var activePersonaID: String
     @Published var personaDraftName: String
     @Published var personaDraftPrompt: String
+    @Published var personaAppBindingDraftIdentifier: String
+    @Published var personaAppBindingDraftPersonaID: UUID?
     @Published private(set) var isCreatingPersonaDraft: Bool
     @Published var vocabularyEntries: [VocabularyEntry]
 
@@ -291,6 +295,8 @@ final class StudioViewModel: ObservableObject {
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
         personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         personas = currentPersonas
+        personaAppBindings = settingsStore.personaAppBindings
+        personaAppBindingsEnabled = settingsStore.personaAppBindingsEnabled
         let initialSelectedPersonaID = settingsStore.personaRewriteEnabled
             ? settingsStore.activePersona.map(\.id)
             : nil
@@ -299,6 +305,8 @@ final class StudioViewModel: ObservableObject {
         let initialPersona = currentPersonas.first(where: { $0.id == initialSelectedPersonaID })
         personaDraftName = initialPersona?.name ?? ""
         personaDraftPrompt = initialPersona.map { settingsStore.resolvedPersonaPrompt(for: $0) } ?? ""
+        personaAppBindingDraftIdentifier = ""
+        personaAppBindingDraftPersonaID = currentPersonas.first?.id
         isCreatingPersonaDraft = false
         vocabularyEntries = VocabularyStore.load()
         launchAtLogin = LaunchAtLoginManager.isEnabled
@@ -1520,6 +1528,50 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    var canSavePersonaAppBinding: Bool {
+        !personaAppBindingDraftIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && personaAppBindingDraftPersonaID != nil
+    }
+
+    func savePersonaAppBinding() {
+        let identifier = personaAppBindingDraftIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !identifier.isEmpty, let personaID = personaAppBindingDraftPersonaID else { return }
+
+        settingsStore.savePersonaAppBinding(appIdentifier: identifier, personaID: personaID)
+        personaAppBindings = settingsStore.personaAppBindings
+        personaAppBindingDraftIdentifier = ""
+        if let persona = personas.first(where: { $0.id == personaID }) {
+            showToast(L("settings.personaAppBindings.saved", persona.name))
+        } else {
+            showToast(L("settings.personaAppBindings.savedGeneric"))
+        }
+    }
+
+    func setPersonaAppBindingsEnabled(_ value: Bool) {
+        personaAppBindingsEnabled = value
+        settingsStore.personaAppBindingsEnabled = value
+    }
+
+    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID) {
+        settingsStore.updatePersonaAppBindingPersona(id: id, personaID: personaID)
+        personaAppBindings = settingsStore.personaAppBindings
+    }
+
+    func setPersonaAppBindingEnabled(id: UUID, isEnabled: Bool) {
+        settingsStore.setPersonaAppBindingEnabled(id: id, isEnabled: isEnabled)
+        personaAppBindings = settingsStore.personaAppBindings
+    }
+
+    func removePersonaAppBinding(id: UUID) {
+        settingsStore.removePersonaAppBinding(id: id)
+        personaAppBindings = settingsStore.personaAppBindings
+    }
+
+    func personaName(for binding: PersonaAppBinding) -> String {
+        personas.first(where: { $0.id == binding.personaID })?.name
+            ?? L("settings.personaAppBindings.missingPersona")
+    }
+
     func addVocabularyTerm(_ term: String, source: VocabularySource = .manual) {
         vocabularyEntries = VocabularyStore.add(term: term, source: source)
     }
@@ -1552,6 +1604,11 @@ final class StudioViewModel: ObservableObject {
         guard let persona = personas.first(where: { $0.id == id }), !persona.isSystem else { return }
         personas.removeAll { $0.id == id }
         persistPersonas()
+        settingsStore.personaAppBindings = settingsStore.personaAppBindings.filter { $0.personaID != id }
+        personaAppBindings = settingsStore.personaAppBindings
+        if personaAppBindingDraftPersonaID == id {
+            personaAppBindingDraftPersonaID = personas.first?.id
+        }
         if settingsStore.activePersonaID == id.uuidString {
             settingsStore.activePersonaID = personas.first?.id.uuidString ?? ""
             activePersonaID = settingsStore.activePersonaID
@@ -1607,6 +1664,8 @@ final class StudioViewModel: ObservableObject {
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
         personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         activePersonaID = settingsStore.activePersonaID
+        personaAppBindings = settingsStore.personaAppBindings
+        personaAppBindingsEnabled = settingsStore.personaAppBindingsEnabled
         selectedPersonaID = settingsStore.personaRewriteEnabled
             ? settingsStore.activePersona.map(\.id)
             : nil
