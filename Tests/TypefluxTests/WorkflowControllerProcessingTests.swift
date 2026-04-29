@@ -193,6 +193,10 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     }
 
     func testDefaultPersonaPickerTitleUsesGlobalScope() {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
         let controller = makeWorkflowController()
 
         XCTAssertEqual(

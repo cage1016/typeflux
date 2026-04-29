@@ -3,6 +3,19 @@ import XCTest
 
 @MainActor
 final class SettingsViewModelPersonaTests: XCTestCase {
+    private var originalLanguage: AppLanguage!
+
+    override func setUp() {
+        super.setUp()
+        originalLanguage = AppLocalization.shared.language
+    }
+
+    override func tearDown() {
+        AppLocalization.shared.setLanguage(originalLanguage)
+        originalLanguage = nil
+        super.tearDown()
+    }
+
     func testInitialSelectionIsNoneWhenPersonaRewriteIsDisabled() {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

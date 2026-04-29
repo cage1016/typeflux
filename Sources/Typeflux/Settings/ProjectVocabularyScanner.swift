@@ -60,7 +60,8 @@ enum ProjectVocabularyScanner {
             for term in terms {
                 let normalized = normalize(term)
                 guard isAcceptedTerm(term, normalized: normalized) else { continue }
-                scores[normalized, default: 0] += weight
+                let singleMentionBonus = weight == 1 && term.hasVocabularyDecoration ? 1 : 0
+                scores[normalized, default: 0] += weight + singleMentionBonus
                 let existing = preferredSurfaces[normalized]
                 preferredSurfaces[normalized] = preferredSurface(existing: existing, candidate: term)
             }
