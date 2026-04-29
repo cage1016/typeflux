@@ -274,8 +274,10 @@
 "overlay.timeout.title" = "처리 시간이 초과되었습니다.";
 "overlay.timeout.message" = "처리하는 데 120초 이상이 걸렸습니다. 다시 시도해 주세요.";
 "overlay.notice.title" = "공지사항";
-"overlay.personaPicker.switchTitle" = "페르소나 전환";
-"overlay.personaPicker.switchInstructions" = "위쪽 및 아래쪽을 사용하여 선택하고 Return을 사용하여 확인하거나 Esc을 사용하여 닫습니다.";
+"overlay.personaPicker.switchTitle" = "전역 페르소나 전환";
+"overlay.personaPicker.switchInstructions" = "현재 애플리케이션에 활성 앱 페르소나가 없을 때 사용할 전역 페르소나를 선택하세요.";
+"overlay.personaPicker.switchApplicationTitle" = "애플리케이션 페르소나 전환";
+"overlay.personaPicker.switchApplicationInstructions" = "현재 애플리케이션의 페르소나를 선택하세요. 전역 페르소나 설정은 변경되지 않습니다.";
 "overlay.personaPicker.applyTitle" = "페르소나 적용";
 "overlay.personaPicker.applyInstructions" = "선택한 텍스트를 다시 쓰려면 페르소나를 선택하세요. 적용하려면 Return을 누르고, 취소하려면 Esc을 누르세요.";
 
@@ -303,6 +305,8 @@
 "workflow.persona.waitForProcessing" = "페르소나를 전환하기 전에 처리가 완료될 때까지 기다리십시오.";
 "workflow.persona.switched" = "페르소나가 %@로 전환되었습니다.";
 "workflow.persona.switchedOff" = "페르소나가 꺼졌습니다.";
+"workflow.persona.applicationSwitched" = "애플리케이션 페르소나가 %@로 전환되었습니다.";
+"workflow.persona.applicationSwitchedOff" = "애플리케이션 페르소나가 꺼졌습니다.";
 "workflow.persona.disabled" = "페르소나가 비활성화되었습니다.";
 "workflow.ask.selectionRequired" = "무엇이든 물어보세요. 먼저 선택한 텍스트가 필요합니다.";
 "workflow.retry.audioMissing" = "재시도 실패: 오디오 파일이 없습니다.";

@@ -274,8 +274,10 @@
 "overlay.timeout.title" = "處理逾時";
 "overlay.timeout.message" = "處理時間超過 120 秒，請重試。";
 "overlay.notice.title" = "提示";
-"overlay.personaPicker.switchTitle" = "切換人設";
-"overlay.personaPicker.switchInstructions" = "使用上下方向鍵選擇，按 Enter 確認，按 Esc 關閉。";
+"overlay.personaPicker.switchTitle" = "切換全域人設";
+"overlay.personaPicker.switchInstructions" = "選擇目前應用未啟用應用人設時使用的全域人設。";
+"overlay.personaPicker.switchApplicationTitle" = "切換應用人設";
+"overlay.personaPicker.switchApplicationInstructions" = "為目前應用選擇人設。全域人設設定不會改變。";
 "overlay.personaPicker.applyTitle" = "套用人設";
 "overlay.personaPicker.applyInstructions" = "選擇一個人設來改寫目前選取的文字。按 Enter 套用，按 Esc 取消。";
 
@@ -303,6 +305,8 @@
 "workflow.persona.waitForProcessing" = "請等候目前處理完成後再切換人設。";
 "workflow.persona.switched" = "已切換到人設 %@。";
 "workflow.persona.switchedOff" = "已關閉人設。";
+"workflow.persona.applicationSwitched" = "已將目前應用人設切換到 %@。";
+"workflow.persona.applicationSwitchedOff" = "已關閉目前應用人設。";
 "workflow.persona.disabled" = "人設已關閉。";
 "workflow.ask.selectionRequired" = "「隨便問」需要先選取文字。";
 "workflow.retry.audioMissing" = "重試失敗：缺少音訊檔。";

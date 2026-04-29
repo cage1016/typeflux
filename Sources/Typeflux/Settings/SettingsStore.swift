@@ -419,6 +419,18 @@ final class SettingsStore {
         return activePersona
     }
 
+    func activePersonaAppBinding(appName: String?, bundleIdentifier: String?) -> PersonaAppBinding? {
+        guard personaAppBindingsEnabled,
+              let binding = personaAppBinding(appName: appName, bundleIdentifier: bundleIdentifier),
+              let personaID = binding.personaID,
+              personas.contains(where: { $0.id == personaID })
+        else {
+            return nil
+        }
+
+        return binding
+    }
+
     func effectivePersonaPrompt(appName: String?, bundleIdentifier: String?) -> String? {
         guard let persona = effectivePersona(appName: appName, bundleIdentifier: bundleIdentifier) else {
             return nil
@@ -502,6 +514,7 @@ final class SettingsStore {
         guard let index = bindings.firstIndex(where: { $0.id == id }) else { return }
         transform(&bindings[index])
         personaAppBindings = bindings
+        NotificationCenter.default.post(name: .personaSelectionDidChange, object: self)
     }
 
     /// If the LLM is currently configured and the user has not yet explicitly

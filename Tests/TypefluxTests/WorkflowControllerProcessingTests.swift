@@ -177,6 +177,53 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertNil(personaPrompt)
     }
 
+    func testApplicationPersonaPickerTitleUsesApplicationScope() throws {
+        let controller = makeWorkflowController()
+        let binding = PersonaAppBinding(appIdentifier: "com.apple.Notes", personaID: controller.settingsStore.personas[0].id)
+
+        XCTAssertEqual(
+            controller.personaPickerTitle(for: .switchApplication(binding)),
+            L("overlay.personaPicker.switchApplicationTitle"),
+        )
+    }
+
+    func testDefaultPersonaPickerTitleUsesGlobalScope() {
+        let controller = makeWorkflowController()
+
+        XCTAssertEqual(
+            controller.personaPickerTitle(for: .switchDefault),
+            L("overlay.personaPicker.switchTitle"),
+        )
+        XCTAssertEqual(L("overlay.personaPicker.switchTitle"), "Switch Global Persona")
+    }
+
+    func testApplicationPersonaSelectionUpdatesAppBindingWithoutChangingGlobalPersona() throws {
+        let targetPersona = PersonaProfile(name: "Release Notes", prompt: "Make it crisp.")
+        let controller = makeWorkflowController { settingsStore in
+            let globalPersona = settingsStore.personas[0]
+            let appPersona = settingsStore.personas[1]
+            settingsStore.personas = settingsStore.personas + [targetPersona]
+            settingsStore.applyPersonaSelection(globalPersona.id)
+            settingsStore.savePersonaAppBinding(
+                appIdentifier: "com.apple.Notes",
+                personaID: appPersona.id,
+            )
+        }
+        let binding = try XCTUnwrap(controller.settingsStore.personaAppBindings.first)
+        controller.personaPickerMode = .switchApplication(binding)
+        controller.personaPickerItems = controller.personaPickerEntries(includeNoneOption: true)
+        controller.personaPickerSelectedIndex = try XCTUnwrap(
+            controller.personaPickerItems.firstIndex(where: { $0.id == targetPersona.id }),
+        )
+        controller.isPersonaPickerPresented = true
+
+        controller.confirmPersonaSelection()
+
+        XCTAssertTrue(controller.settingsStore.personaRewriteEnabled)
+        XCTAssertEqual(controller.settingsStore.activePersonaID, controller.settingsStore.personas[0].id.uuidString)
+        XCTAssertEqual(controller.settingsStore.personaAppBindings.first?.personaID, targetPersona.id)
+    }
+
     func testGenerateRewriteThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 

@@ -1,4 +1,5 @@
 // swiftlint:disable file_length function_body_length line_length type_body_length
+import AppKit
 import Foundation
 import os
 
@@ -124,6 +125,7 @@ final class WorkflowController {
 
     enum PersonaPickerMode {
         case switchDefault
+        case switchApplication(PersonaAppBinding)
         case applySelection(PersonaSelectionContext)
     }
 
@@ -469,6 +471,9 @@ final class WorkflowController {
             logger.debug("snapshot: isFocusedTarget=\(selectionSnapshot.isFocusedTarget) isEditable=\(selectionSnapshot.isEditable) hasSelection=\(selectionSnapshot.hasSelection) source=\(selectionSnapshot.source) selectedText=\(selectionSnapshot.selectedText?.prefix(32) ?? "nil")")
 
             let selectedText = editingSelectedText(from: selectionSnapshot)
+            let frontmostApplicationContext = Self.frontmostApplicationContext()
+            let appName = selectionSnapshot.processName ?? frontmostApplicationContext.appName
+            let bundleIdentifier = selectionSnapshot.bundleIdentifier ?? frontmostApplicationContext.bundleIdentifier
             let mode: PersonaPickerMode
             let items: [PersonaPickerEntry]
 
@@ -476,6 +481,13 @@ final class WorkflowController {
                 logger.debug("mode=applySelection")
                 mode = .applySelection(PersonaSelectionContext(snapshot: selectionSnapshot, selectedText: selectedText))
                 items = personaPickerEntries(includeNoneOption: false)
+            } else if let appBinding = settingsStore.activePersonaAppBinding(
+                appName: appName,
+                bundleIdentifier: bundleIdentifier,
+            ) {
+                logger.debug("mode=switchApplication appName=\(appName ?? "nil") bundleIdentifier=\(bundleIdentifier ?? "nil")")
+                mode = .switchApplication(appBinding)
+                items = personaPickerEntries(includeNoneOption: true)
             } else {
                 logger.debug("mode=switchDefault  selectedText=\(selectedText ?? "nil")  hotkeyApplies=\(settingsStore.personaHotkeyAppliesToSelection)")
                 mode = .switchDefault
@@ -484,7 +496,12 @@ final class WorkflowController {
 
             guard !items.isEmpty else { return }
 
-            let activeID = settingsStore.personaRewriteEnabled ? UUID(uuidString: settingsStore.activePersonaID) : nil
+            let activeID = switch mode {
+            case .switchDefault, .applySelection:
+                settingsStore.personaRewriteEnabled ? UUID(uuidString: settingsStore.activePersonaID) : nil
+            case let .switchApplication(binding):
+                binding.personaID
+            }
             let selectedIndex = items.firstIndex(where: { $0.id == activeID }) ?? 0
 
             await MainActor.run {
@@ -507,6 +524,22 @@ final class WorkflowController {
                 )
             }
         }
+    }
+
+    private struct FrontmostApplicationContext {
+        let appName: String?
+        let bundleIdentifier: String?
+    }
+
+    private static func frontmostApplicationContext() -> FrontmostApplicationContext {
+        let application = NSWorkspace.shared.frontmostApplication
+        let bundleIdentifier = application?.bundleIdentifier == Bundle.main.bundleIdentifier
+            ? nil
+            : application?.bundleIdentifier
+        return FrontmostApplicationContext(
+            appName: application?.localizedName,
+            bundleIdentifier: bundleIdentifier,
+        )
     }
 
     func beginRecording(intent: RecordingIntent, startLocked: Bool) async {

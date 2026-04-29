@@ -276,8 +276,10 @@
 "overlay.timeout.title" = "Processing timed out";
 "overlay.timeout.message" = "Processing took longer than 120 seconds. Please try again.";
 "overlay.notice.title" = "Notice";
-"overlay.personaPicker.switchTitle" = "Switch Persona";
-"overlay.personaPicker.switchInstructions" = "Use Up and Down to choose, Return to confirm, or Esc to close.";
+"overlay.personaPicker.switchTitle" = "Switch Global Persona";
+"overlay.personaPicker.switchInstructions" = "Choose the global persona used when the current application has no active app persona.";
+"overlay.personaPicker.switchApplicationTitle" = "Switch Application Persona";
+"overlay.personaPicker.switchApplicationInstructions" = "Choose the persona for the current application. Global persona settings will not change.";
 "overlay.personaPicker.applyTitle" = "Apply Persona";
 "overlay.personaPicker.applyInstructions" = "Choose a persona to rewrite the selected text. Press Return to apply or Esc to cancel.";
 
@@ -305,6 +307,8 @@
 "workflow.persona.waitForProcessing" = "Please wait until processing finishes before switching persona.";
 "workflow.persona.switched" = "Persona switched to %@.";
 "workflow.persona.switchedOff" = "Persona switched off.";
+"workflow.persona.applicationSwitched" = "Application persona switched to %@.";
+"workflow.persona.applicationSwitchedOff" = "Application persona switched off.";
 "workflow.persona.disabled" = "Persona disabled.";
 "workflow.ask.selectionRequired" = "Ask Anything requires selected text first.";
 "workflow.retry.audioMissing" = "Retry failed: audio file is missing.";

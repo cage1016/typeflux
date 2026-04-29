@@ -276,8 +276,10 @@
 "overlay.timeout.title" = "处理超时";
 "overlay.timeout.message" = "处理时间超过 120 秒，请重试。";
 "overlay.notice.title" = "提示";
-"overlay.personaPicker.switchTitle" = "切换人设";
-"overlay.personaPicker.switchInstructions" = "使用上下方向键选择，按回车确认，按 Esc 关闭。";
+"overlay.personaPicker.switchTitle" = "切换全局人设";
+"overlay.personaPicker.switchInstructions" = "选择当前应用没有启用应用人设时使用的全局人设。";
+"overlay.personaPicker.switchApplicationTitle" = "切换应用人设";
+"overlay.personaPicker.switchApplicationInstructions" = "为当前应用选择人设。全局人设设置不会改变。";
 "overlay.personaPicker.applyTitle" = "应用人设";
 "overlay.personaPicker.applyInstructions" = "选择一个人设来改写当前选中文本。按回车应用，按 Esc 取消。";
 
@@ -305,6 +307,8 @@
 "workflow.persona.waitForProcessing" = "请等待当前处理完成后再切换人设。";
 "workflow.persona.switched" = "已切换到人设 %@。";
 "workflow.persona.switchedOff" = "已关闭人设。";
+"workflow.persona.applicationSwitched" = "已将当前应用人设切换到 %@。";
+"workflow.persona.applicationSwitchedOff" = "已关闭当前应用人设。";
 "workflow.persona.disabled" = "人设已关闭。";
 "workflow.ask.selectionRequired" = "“随便问”需要先选中文本。";
 "workflow.retry.audioMissing" = "重试失败：缺少音频文件。";

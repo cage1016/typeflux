@@ -274,8 +274,10 @@
 "overlay.timeout.title" = "処理がタイムアウトしました";
 "overlay.timeout.message" = "処理に 120 秒以上かかりました。もう一度試してください。";
 "overlay.notice.title" = "お知らせ";
-"overlay.personaPicker.switchTitle" = "ペルソナの切り替え";
-"overlay.personaPicker.switchInstructions" = "上下を使用して選択し、Return を使用して確認するか、Esc を使用して閉じます。";
+"overlay.personaPicker.switchTitle" = "グローバル ペルソナを切り替え";
+"overlay.personaPicker.switchInstructions" = "現在のアプリに有効なアプリ ペルソナがない場合に使うグローバル ペルソナを選択します。";
+"overlay.personaPicker.switchApplicationTitle" = "アプリのペルソナを切り替え";
+"overlay.personaPicker.switchApplicationInstructions" = "現在のアプリのペルソナを選択します。グローバル ペルソナ設定は変更されません。";
 "overlay.personaPicker.applyTitle" = "ペルソナの適用";
 "overlay.personaPicker.applyInstructions" = "選択したテキストを書き換えるペルソナを選択します。 Return を押して適用するか、Esc を押してキャンセルします。";
 
@@ -303,6 +305,8 @@
 "workflow.persona.waitForProcessing" = "処理が完了するまで待ってからペルソナを切り替えてください。";
 "workflow.persona.switched" = "ペルソナが %@ に切り替わりました。";
 "workflow.persona.switchedOff" = "ペルソナをオフにしました。";
+"workflow.persona.applicationSwitched" = "アプリのペルソナが %@ に切り替わりました。";
+"workflow.persona.applicationSwitchedOff" = "アプリのペルソナをオフにしました。";
 "workflow.persona.disabled" = "ペルソナ無効化。";
 "workflow.ask.selectionRequired" = "「何でも質問」では、最初にテキストを選択する必要があります。";
 "workflow.retry.audioMissing" = "再試行に失敗しました: 音声ファイルがありません。";

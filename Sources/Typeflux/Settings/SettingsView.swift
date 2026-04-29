@@ -163,14 +163,19 @@ struct StudioView: View {
     private let personaAppPickerFieldWidth: CGFloat = 220
     private let personaAppBindingControlHeight: CGFloat = 44
     private let personaAppBindingFieldVerticalPadding: CGFloat = 8
+    private let vocabularySearchCollapsedSize: CGFloat = 36
+    private let vocabularySearchExpandedWidth: CGFloat = 276
+    private let vocabularySearchAnimation = Animation.interpolatingSpring(stiffness: 180, damping: 24)
 
     @ObservedObject var viewModel: StudioViewModel
     @StateObject private var recorder = HotkeyRecorder()
     @State private var recordingTarget: ShortcutRecordingTarget?
     @State private var vocabularyFilter: VocabularyFilter = .all
+    @State private var isVocabularySearchExpanded = false
     @State private var isAddingVocabulary = false
     @State private var editingVocabularyEntry: VocabularyEntry?
     @State private var newVocabularyTerm = ""
+    @FocusState private var isVocabularySearchFocused: Bool
     @State private var personaPendingDeletion: PersonaProfile?
     @State private var personaAppBindingPendingDeletion: PersonaAppBinding?
     @State private var isPersonaAppBindingsSheetPresented = false
@@ -226,6 +231,11 @@ struct StudioView: View {
             .frame(
                 height: viewModel.currentSection == .models ? viewportHeight : nil, alignment: .top,
             )
+            .frame(
+                minHeight: viewModel.currentSection == .vocabulary ? viewportHeight : nil,
+                alignment: .topLeading,
+            )
+            .background(vocabularyOutsideTapTarget)
             .id(viewModel.currentSection)
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.15), value: viewModel.currentSection)
@@ -1773,33 +1783,7 @@ struct StudioView: View {
 
                 Spacer()
 
-                HStack(spacing: StudioTheme.Spacing.small) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(StudioTheme.textTertiary)
-
-                    TextField(L("vocabulary.search.placeholder"), text: $viewModel.searchQuery)
-                        .textFieldStyle(.plain)
-                        .font(.studioBody(StudioTheme.Typography.body))
-                        .foregroundStyle(StudioTheme.textPrimary)
-                        .frame(width: 220)
-                }
-                .padding(.horizontal, StudioTheme.Insets.textFieldHorizontal)
-                .padding(.vertical, StudioTheme.Insets.textFieldVertical)
-                .background(
-                    RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
-                    )
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
-                )
-                .overlay(
-                    RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
-                    )
-                    .stroke(
-                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                        lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
-                )
+                vocabularySearchControl
             }
 
             StudioCard {
@@ -2998,6 +2982,72 @@ struct StudioView: View {
     }
 
     @ViewBuilder
+    private var vocabularyOutsideTapTarget: some View {
+        if viewModel.currentSection == .vocabulary, isVocabularySearchExpanded {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    collapseVocabularySearch()
+                }
+        }
+    }
+
+    private var vocabularySearchControl: some View {
+        HStack(spacing: isVocabularySearchExpanded ? StudioTheme.Spacing.small : StudioTheme.Spacing.none) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+                .foregroundStyle(
+                    isVocabularySearchExpanded ? StudioTheme.textTertiary : StudioTheme.textSecondary,
+                )
+                .frame(width: vocabularySearchCollapsedSize, height: vocabularySearchCollapsedSize)
+
+            if isVocabularySearchExpanded {
+                TextField(L("vocabulary.search.placeholder"), text: $viewModel.searchQuery)
+                    .textFieldStyle(.plain)
+                    .font(.studioBody(StudioTheme.Typography.body))
+                    .foregroundStyle(StudioTheme.textPrimary)
+                    .lineLimit(1)
+                    .focused($isVocabularySearchFocused)
+                    .onSubmit {
+                        collapseVocabularySearch()
+                    }
+                    .onChange(of: isVocabularySearchFocused) { isFocused in
+                        if !isFocused {
+                            collapseVocabularySearch()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+        }
+        .padding(.trailing, isVocabularySearchExpanded ? StudioTheme.Insets.textFieldHorizontal : 0)
+        .frame(
+            width: isVocabularySearchExpanded ? vocabularySearchExpandedWidth : vocabularySearchCollapsedSize,
+            height: vocabularySearchCollapsedSize,
+            alignment: .leading,
+        )
+        .background(
+            Capsule()
+                .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+        )
+        .overlay(
+            Capsule()
+                .stroke(
+                    StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                    lineWidth: StudioTheme.BorderWidth.thin,
+                ),
+        )
+        .contentShape(Capsule())
+        .clipped()
+        .onTapGesture {
+            if !isVocabularySearchExpanded {
+                expandVocabularySearch()
+            }
+        }
+        .animation(vocabularySearchAnimation, value: isVocabularySearchExpanded)
+    }
+
+    @ViewBuilder
     private var vocabularyEmptyActions: some View {
         if vocabularyFilter == .otherApps, vocabularyCount(for: .otherApps) == 0 {
             HStack(spacing: StudioTheme.Spacing.small) {
@@ -3037,18 +3087,23 @@ struct StudioView: View {
             HStack(spacing: StudioTheme.Spacing.xSmall) {
                 Image(systemName: filter.iconName)
                     .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
+                    .fixedSize()
                 Text(filter.title)
                     .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text("\(vocabularyCount(for: filter))")
                     .font(.studioBody(StudioTheme.Typography.caption, weight: .bold))
                     .foregroundStyle(
                         vocabularyFilter == filter
                             ? StudioTheme.textPrimary : StudioTheme.textTertiary,
                     )
+                    .fixedSize()
             }
             .foregroundStyle(
                 vocabularyFilter == filter ? StudioTheme.textPrimary : StudioTheme.textSecondary,
             )
+            .lineLimit(1)
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
             .padding(.vertical, StudioTheme.Insets.pillVertical + 2)
             .background(
@@ -3159,6 +3214,24 @@ struct StudioView: View {
 
     private func vocabularyCount(for filter: VocabularyFilter) -> Int {
         viewModel.vocabularyEntries.count(where: { filter.matches($0.source) })
+    }
+
+    private func expandVocabularySearch() {
+        withAnimation(vocabularySearchAnimation) {
+            isVocabularySearchExpanded = true
+        }
+
+        DispatchQueue.main.async {
+            isVocabularySearchFocused = true
+        }
+    }
+
+    private func collapseVocabularySearch() {
+        isVocabularySearchFocused = false
+
+        withAnimation(vocabularySearchAnimation) {
+            isVocabularySearchExpanded = false
+        }
     }
 
     private var vocabularyMoreMenuLabel: some View {

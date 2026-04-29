@@ -5,6 +5,8 @@ extension WorkflowController {
         switch mode {
         case .switchDefault:
             L("overlay.personaPicker.switchTitle")
+        case .switchApplication:
+            L("overlay.personaPicker.switchApplicationTitle")
         case .applySelection:
             L("overlay.personaPicker.applyTitle")
         }
@@ -14,6 +16,8 @@ extension WorkflowController {
         switch mode {
         case .switchDefault:
             L("overlay.personaPicker.switchInstructions")
+        case .switchApplication:
+            L("overlay.personaPicker.switchApplicationInstructions")
         case .applySelection:
             L("overlay.personaPicker.applyInstructions")
         }
@@ -70,6 +74,17 @@ extension WorkflowController {
             } else {
                 Task { @MainActor in
                     self.overlayController.showNotice(message: L("workflow.persona.switchedOff"))
+                }
+            }
+        case let .switchApplication(binding):
+            settingsStore.updatePersonaAppBindingPersona(id: binding.id, personaID: selected.id)
+            if selected.id != nil {
+                Task { @MainActor in
+                    self.overlayController.showNotice(message: L("workflow.persona.applicationSwitched", selected.title))
+                }
+            } else {
+                Task { @MainActor in
+                    self.overlayController.showNotice(message: L("workflow.persona.applicationSwitchedOff"))
                 }
             }
         case let .applySelection(context):
