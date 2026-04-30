@@ -326,6 +326,8 @@
 "history.action.copyResult" = "結果をコピー";
 "history.action.copyTranscript" = "トランスクリプトをコピーする";
 "history.action.downloadAudio" = "音声をダウンロードする";
+"history.action.playAudio" = "音声を再生";
+"history.action.stopAudio" = "音声を停止";
 "history.action.deleteTranscript" = "トランスクリプトの削除";
 "history.action.exportMarkdown" = "Markdown をエクスポート";
 "history.detail.audioPath" = "オーディオパス";
@@ -379,6 +381,7 @@
 "history.toast.audioUnavailable" = "音声ファイルが利用できません。";
 "history.toast.audioDownloaded" = "音声がダウンロードされました。";
 "history.toast.audioDownloadFailed" = "音声のダウンロードに失敗しました。";
+"history.toast.audioPlaybackFailed" = "音声の再生に失敗しました。";
 "history.toast.transcriptDeleted" = "トランスクリプトは削除されました。";
 
 "vocabulary.source.manual" = "手動で追加";

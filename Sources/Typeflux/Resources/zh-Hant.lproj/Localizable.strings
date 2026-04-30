@@ -326,6 +326,8 @@
 "history.action.copyResult" = "複製結果";
 "history.action.copyTranscript" = "複製轉寫";
 "history.action.downloadAudio" = "下載音訊";
+"history.action.playAudio" = "播放音訊";
+"history.action.stopAudio" = "停止音訊";
 "history.action.deleteTranscript" = "刪除轉寫";
 "history.action.exportMarkdown" = "匯出 Markdown";
 "history.detail.audioPath" = "音訊路徑";
@@ -379,6 +381,7 @@
 "history.toast.audioUnavailable" = "音訊檔不可用。";
 "history.toast.audioDownloaded" = "音訊已下載。";
 "history.toast.audioDownloadFailed" = "下載音訊失敗。";
+"history.toast.audioPlaybackFailed" = "播放音訊失敗。";
 "history.toast.transcriptDeleted" = "轉寫已刪除。";
 
 "vocabulary.source.manual" = "手動新增";

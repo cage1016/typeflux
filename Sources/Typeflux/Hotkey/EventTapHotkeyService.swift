@@ -31,6 +31,7 @@ final class EventTapHotkeyService: HotkeyService {
     private var localMonitor: Any?
     private var arbiter = HotkeyGestureArbiter()
     private var pendingModifierActivationWorkItem: DispatchWorkItem?
+    private var accessibilityRetryWorkItem: DispatchWorkItem?
 
     init(settingsStore: SettingsStore) {
         self.settingsStore = settingsStore
@@ -65,6 +66,8 @@ final class EventTapHotkeyService: HotkeyService {
         localMonitor = nil
         pendingModifierActivationWorkItem?.cancel()
         pendingModifierActivationWorkItem = nil
+        accessibilityRetryWorkItem?.cancel()
+        accessibilityRetryWorkItem = nil
         arbiter = HotkeyGestureArbiter()
     }
 
@@ -85,9 +88,12 @@ final class EventTapHotkeyService: HotkeyService {
         ) else {
             ErrorLogStore.shared.log("Hotkey: failed to create CGEventTap, using NSEvent fallback")
             installNSEventMonitorFallback()
+            scheduleEventTapRetryAfterAccessibilityGrant()
             return
         }
 
+        accessibilityRetryWorkItem?.cancel()
+        accessibilityRetryWorkItem = nil
         eventTap = tap
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         runLoopSource = source
@@ -104,6 +110,26 @@ final class EventTapHotkeyService: HotkeyService {
             let shouldConsume = processNSEvent(event, canConsume: true)
             return shouldConsume ? nil : event
         }
+    }
+
+    private func scheduleEventTapRetryAfterAccessibilityGrant() {
+        guard !PrivacyGuard.isAccessibilityGranted() else { return }
+        guard accessibilityRetryWorkItem == nil else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            accessibilityRetryWorkItem = nil
+
+            guard PrivacyGuard.isAccessibilityGranted() else {
+                scheduleEventTapRetryAfterAccessibilityGrant()
+                return
+            }
+
+            ErrorLogStore.shared.log("Hotkey: accessibility granted, restarting event tap service")
+            start()
+        }
+        accessibilityRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
 
     private func handleNSEvent(_ event: NSEvent) {

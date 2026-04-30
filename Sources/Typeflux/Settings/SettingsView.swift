@@ -1731,6 +1731,10 @@ struct StudioView: View {
                                         onDownloadAudio: {
                                             viewModel.downloadAudio(id: record.id)
                                         },
+                                        onPlayAudio: {
+                                            viewModel.playAudio(id: record.id)
+                                        },
+                                        isAudioPlaying: viewModel.playingAudioRecordID == record.id,
                                         onDelete: {
                                             viewModel.deleteHistoryRecord(id: record.id)
                                         },
@@ -3563,6 +3567,10 @@ struct StudioView: View {
                             onDownloadAudio: {
                                 viewModel.downloadAudio(id: record.id)
                             },
+                            onPlayAudio: {
+                                viewModel.playAudio(id: record.id)
+                            },
+                            isAudioPlaying: viewModel.playingAudioRecordID == record.id,
                             onDelete: {
                                 viewModel.deleteHistoryRecord(id: record.id)
                             },
@@ -3792,6 +3800,10 @@ struct StudioView: View {
                             onDownloadAudio: {
                                 viewModel.downloadAudio(id: record.id)
                             },
+                            onPlayAudio: {
+                                viewModel.playAudio(id: record.id)
+                            },
+                            isAudioPlaying: viewModel.playingAudioRecordID == record.id,
                             onDelete: {
                                 viewModel.deleteHistoryRecord(id: record.id)
                             },

@@ -329,6 +329,35 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertTrue(eventRecorder.snapshot().contains("audio-start"))
     }
 
+    func testReleasingWhileAudioStartIsPendingStopsAfterStartCompletes() async {
+        let audioRecorder = BlockingStartAudioRecorder()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            sleep: { _ in },
+        )
+
+        let recordingTask = Task {
+            await controller.beginRecording(intent: .dictation, startLocked: false)
+        }
+        audioRecorder.waitUntilStartIsPending()
+
+        controller.hotkeyPressedAt = Date(timeIntervalSinceNow: -0.5)
+        controller.handlePressEnded()
+
+        XCTAssertTrue(controller.isRecording)
+        XCTAssertTrue(controller.shouldFinishRecordingAfterAudioStart)
+        XCTAssertEqual(audioRecorder.stopCallCount, 0)
+
+        audioRecorder.releasePendingStart()
+        await recordingTask.value
+        await audioRecorder.waitUntilStopCount(isAtLeast: 1)
+
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertFalse(controller.isAudioRecorderStarting)
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+        XCTAssertEqual(audioRecorder.stopCallCount, 1)
+    }
+
     func testNewPressIsIgnoredWhileAudioRecorderStopIsPending() async {
         let audioRecorder = BlockingStopAudioRecorder()
         let controller = makeWorkflowController(
@@ -563,6 +592,72 @@ private final class MockProcessingAudioRecorder: AudioRecorder {
         stops += 1
         lock.unlock()
         return AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+    }
+}
+
+private final class BlockingStartAudioRecorder: AudioRecorder, @unchecked Sendable {
+    private let lock = NSCondition()
+    private var starts = 0
+    private var stops = 0
+    private var startIsPending = false
+    private var shouldReleaseStart = false
+
+    var startCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return starts
+    }
+
+    var stopCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return stops
+    }
+
+    func start(
+        levelHandler _: @escaping (Float) -> Void,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+    ) throws {
+        lock.lock()
+        starts += 1
+        startIsPending = true
+        lock.broadcast()
+        while !shouldReleaseStart {
+            lock.wait()
+        }
+        lock.unlock()
+    }
+
+    func stop() throws -> AudioFile {
+        lock.lock()
+        stops += 1
+        lock.broadcast()
+        lock.unlock()
+        return AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+    }
+
+    func waitUntilStartIsPending() {
+        lock.lock()
+        while !startIsPending {
+            lock.wait()
+        }
+        lock.unlock()
+    }
+
+    func waitUntilStopCount(isAtLeast expectedCount: Int) async {
+        for _ in 0..<100 {
+            if stopCallCount >= expectedCount {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    func releasePendingStart() {
+        lock.lock()
+        shouldReleaseStart = true
+        lock.broadcast()
+        lock.unlock()
     }
 }
 

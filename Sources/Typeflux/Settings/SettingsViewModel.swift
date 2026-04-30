@@ -1,9 +1,51 @@
+import AVFoundation
 import AppKit
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
 // swiftlint:disable file_length
+protocol HistoryAudioPreviewPlaying: AnyObject {
+    var onPlaybackFinished: (() -> Void)? { get set }
+
+    func play(fileURL: URL) throws -> Bool
+    func stop()
+}
+
+final class AVFoundationHistoryAudioPreviewPlayer: NSObject, HistoryAudioPreviewPlaying, AVAudioPlayerDelegate {
+    var onPlaybackFinished: (() -> Void)?
+
+    private var player: AVAudioPlayer?
+
+    func play(fileURL: URL) throws -> Bool {
+        stop()
+
+        let nextPlayer = try AVAudioPlayer(contentsOf: fileURL)
+        nextPlayer.delegate = self
+        nextPlayer.currentTime = 0
+        _ = nextPlayer.prepareToPlay()
+
+        guard nextPlayer.play() else {
+            player = nil
+            return false
+        }
+
+        player = nextPlayer
+        return true
+    }
+
+    func stop() {
+        player?.stop()
+        player = nil
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully _: Bool) {
+        guard self.player === player else { return }
+        self.player = nil
+        onPlaybackFinished?()
+    }
+}
+
 private final class HistoryStoreSendableBox: @unchecked Sendable {
     let base: any HistoryStore
 
@@ -163,6 +205,7 @@ final class StudioViewModel: ObservableObject {
     @Published var personaHotkey: HotkeyBinding?
     @Published var historyRetentionPolicy: HistoryRetentionPolicy
     @Published private(set) var historyRecords: [HistoryRecord]
+    @Published private(set) var playingAudioRecordID: UUID?
     @Published var toastMessage: String?
     @Published var llmConnectionTestState: ConnectionTestState = .idle
     @Published var sttConnectionTestState: ConnectionTestState = .idle
@@ -194,6 +237,7 @@ final class StudioViewModel: ObservableObject {
     private var mcpTestTask: Task<Void, Never>?
     private var historyRefreshTask: Task<Void, Never>?
     private var historyRefreshGeneration = 0
+    private let audioPreviewPlayer: HistoryAudioPreviewPlaying
 
     // swiftlint:disable:next function_body_length
     init(
@@ -206,6 +250,7 @@ final class StudioViewModel: ObservableObject {
         localModelManager: LocalSTTModelManaging = LocalModelManager(),
         audioDeviceManager: AudioDeviceManager = AudioDeviceManager(),
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
+        audioPreviewPlayer: HistoryAudioPreviewPlaying = AVFoundationHistoryAudioPreviewPlayer(),
     ) {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
@@ -216,6 +261,7 @@ final class StudioViewModel: ObservableObject {
         self.notificationService = notificationService
         self.audioDeviceManager = audioDeviceManager
         self.onRetryHistory = onRetryHistory
+        self.audioPreviewPlayer = audioPreviewPlayer
 
         let currentPersonas = settingsStore.personas
 
@@ -377,7 +423,11 @@ final class StudioViewModel: ObservableObject {
                 self?.refreshAgentJobs()
             }
         }
-
+        audioPreviewPlayer.onPlaybackFinished = { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.playingAudioRecordID = nil
+            }
+        }
     }
 
     deinit {
@@ -397,6 +447,7 @@ final class StudioViewModel: ObservableObject {
             NotificationCenter.default.removeObserver(agentJobObserver)
         }
         historyRefreshTask?.cancel()
+        audioPreviewPlayer.stop()
     }
 
     var preferredColorScheme: ColorScheme? {
@@ -1957,7 +2008,45 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    func playAudio(id: UUID) {
+        if playingAudioRecordID == id {
+            audioPreviewPlayer.stop()
+            playingAudioRecordID = nil
+            return
+        }
+
+        guard
+            let record = historyRecords.first(where: { $0.id == id }),
+            let audioFilePath = record.audioFilePath,
+            !audioFilePath.isEmpty
+        else { return }
+
+        let sourceURL = URL(fileURLWithPath: audioFilePath)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            showToast(L("history.toast.audioUnavailable"))
+            return
+        }
+
+        do {
+            let didStartPlayback = try audioPreviewPlayer.play(fileURL: sourceURL)
+            if !didStartPlayback {
+                playingAudioRecordID = nil
+                showToast(L("history.toast.audioPlaybackFailed"))
+            } else {
+                playingAudioRecordID = id
+            }
+        } catch {
+            playingAudioRecordID = nil
+            showToast(L("history.toast.audioPlaybackFailed"))
+        }
+    }
+
     func deleteHistoryRecord(id: UUID) {
+        if playingAudioRecordID == id {
+            audioPreviewPlayer.stop()
+            playingAudioRecordID = nil
+        }
+
         historyStore.delete(id: id)
         historyRecords.removeAll { $0.id == id }
         displayedHistory.removeAll { $0.id == id }

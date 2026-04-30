@@ -4,6 +4,7 @@ import Foundation
 final class AVFoundationAudioRecorder: AudioRecorder {
     private static let outputMuteDelayWithStartCue: Duration = .milliseconds(1_225)
     private static let outputMuteDelayWithoutStartCue: Duration = .milliseconds(180)
+    private static let silentInputRecoveryDelay: Duration = .milliseconds(1_000)
 
     enum RecorderError: LocalizedError, Equatable {
         case inputDeviceUnavailable
@@ -30,9 +31,11 @@ final class AVFoundationAudioRecorder: AudioRecorder {
     private var levelHandler: ((Float) -> Void)?
     private var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
     private var muteTask: Task<Void, Never>?
+    private var silentInputRecoveryTask: Task<Void, Never>?
     private var isRecording = false
     private var isTapInstalled = false
     private var activeBufferCallbacks = 0
+    private var inputBufferCallbackCount = 0
 
     init(
         settingsStore: SettingsStore,
@@ -59,6 +62,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         defer { lifecycleLock.unlock() }
 
         stopInternal()
+        prepareEngineForRecordingSession()
 
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let now = Date()
@@ -116,7 +120,9 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
         stateCondition.lock()
         isRecording = true
+        let callbackCountAtStart = inputBufferCallbackCount
         stateCondition.unlock()
+        scheduleSilentInputRecoveryIfNeeded(callbackCountAtStart: callbackCountAtStart)
         if settingsStore.muteSystemOutputDuringRecording {
             scheduleMutedSessionStart()
         }
@@ -159,6 +165,8 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         stateCondition.unlock()
         muteTask?.cancel()
         muteTask = nil
+        silentInputRecoveryTask?.cancel()
+        silentInputRecoveryTask = nil
         outputMuter.endMutedSession()
 
         return AudioFile(fileURL: fileURL, duration: duration)
@@ -192,12 +200,23 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         stateCondition.unlock()
         muteTask?.cancel()
         muteTask = nil
+        silentInputRecoveryTask?.cancel()
+        silentInputRecoveryTask = nil
         outputMuter.endMutedSession()
     }
 
     private func rebuildAudioEngine() {
+        engine.stop()
+        engine.reset()
         engine = makeAudioEngine()
         isTapInstalled = false
+    }
+
+    private func prepareEngineForRecordingSession() {
+        // Bluetooth and aggregate input devices can reappear with a valid CoreAudio
+        // default device while an existing AVAudioEngine input node remains silent.
+        // Rebuilding here forces AVFoundation to bind to the current HAL device.
+        rebuildAudioEngine()
     }
 
     private func removeInputTapIfInstalled() {
@@ -220,6 +239,47 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         }
     }
 
+    private func scheduleSilentInputRecoveryIfNeeded(callbackCountAtStart: Int) {
+        silentInputRecoveryTask?.cancel()
+        silentInputRecoveryTask = Task { [weak self] in
+            guard let self else { return }
+            await sleep(Self.silentInputRecoveryDelay)
+            guard !Task.isCancelled else { return }
+            recoverSilentInputIfNeeded(callbackCountAtStart: callbackCountAtStart)
+        }
+    }
+
+    private func recoverSilentInputIfNeeded(callbackCountAtStart: Int) {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+
+        stateCondition.lock()
+        let shouldRecover = isRecording && inputBufferCallbackCount == callbackCountAtStart
+        stateCondition.unlock()
+        guard shouldRecover else { return }
+
+        NetworkDebugLogger.logMessage(
+            "[Audio Recorder] No input buffers received after start; rebuilding audio engine.",
+        )
+
+        do {
+            removeInputTapIfInstalled()
+            engine.stop()
+            rebuildAudioEngine()
+            let inputNode = engine.inputNode
+            let inputFormat = try configureInputDeviceAndResolveFormat(for: inputNode)
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, _ in
+                self?.handleInputBuffer(buffer)
+            }
+            isTapInstalled = true
+            engine.prepare()
+            try engine.start()
+        } catch {
+            NetworkDebugLogger.logError(context: "Silent input recovery failed", error: error)
+        }
+    }
+
     #if DEBUG
         var audioEngineIdentifierForTesting: ObjectIdentifier {
             ObjectIdentifier(engine)
@@ -227,6 +287,10 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
         func rebuildAudioEngineForTesting() {
             rebuildAudioEngine()
+        }
+
+        func prepareEngineForRecordingSessionForTesting() {
+            prepareEngineForRecordingSession()
         }
 
         func beginMutedSessionAfterDelayForTesting() {
@@ -248,24 +312,19 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         func resolvedInputDeviceIDForTesting() -> AudioDeviceID? {
             resolveInputDeviceID()
         }
+
+        func explicitInputDeviceIDForRecordingForTesting() -> AudioDeviceID? {
+            resolveExplicitInputDeviceIDForRecording()
+        }
     #endif
 
     private func resolveInputDeviceID() -> AudioDeviceID? {
-        let preferredID = settingsStore.preferredMicrophoneID
-        if !preferredID.isEmpty {
-            if let deviceID = audioDeviceManager.resolveInputDeviceID(for: preferredID) {
-                return deviceID
-            }
-
-            resetUnavailablePreferredMicrophone(preferredID: preferredID)
-        }
-
-        return audioDeviceManager.defaultInputDeviceID()
+        resolveInputDeviceIDForRecording()
     }
 
     private func configureInputDeviceAndResolveFormat(for inputNode: AVAudioInputNode) throws -> AVAudioFormat {
         let preferredID = settingsStore.preferredMicrophoneID
-        if let deviceID = resolveInputDeviceID() {
+        if let deviceID = resolveInputDeviceIDForRecording() {
             inputNode.auAudioUnit.setValue(Int(deviceID), forKey: "deviceID")
         }
 
@@ -284,14 +343,30 @@ final class AVFoundationAudioRecorder: AudioRecorder {
                 """,
             )
             resetUnavailablePreferredMicrophone(preferredID: preferredID)
-            if let defaultDeviceID = audioDeviceManager.defaultInputDeviceID() {
-                inputNode.auAudioUnit.setValue(Int(defaultDeviceID), forKey: "deviceID")
-            }
+            throw RecorderError.inputDeviceUnavailable
         }
 
         let automaticFormat = inputNode.inputFormat(forBus: 0)
         try Self.validateInputFormat(automaticFormat)
         return automaticFormat
+    }
+
+    private func resolveExplicitInputDeviceIDForRecording() -> AudioDeviceID? {
+        let preferredID = settingsStore.preferredMicrophoneID
+        guard !preferredID.isEmpty else {
+            return nil
+        }
+
+        if let deviceID = audioDeviceManager.resolveInputDeviceID(for: preferredID) {
+            return deviceID
+        }
+
+        resetUnavailablePreferredMicrophone(preferredID: preferredID)
+        return nil
+    }
+
+    private func resolveInputDeviceIDForRecording() -> AudioDeviceID? {
+        resolveExplicitInputDeviceIDForRecording() ?? audioDeviceManager.defaultInputDeviceID()
     }
 
     private func resetUnavailablePreferredMicrophone(preferredID: String) {
@@ -339,6 +414,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             let levelHandler = self.levelHandler
             let audioBufferHandler = self.audioBufferHandler
             activeBufferCallbacks += 1
+            inputBufferCallbackCount += 1
             stateCondition.unlock()
 
             defer {

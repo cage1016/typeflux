@@ -328,6 +328,8 @@
 "history.action.copyResult" = "Copy result";
 "history.action.copyTranscript" = "Copy transcript";
 "history.action.downloadAudio" = "Download audio";
+"history.action.playAudio" = "Play audio";
+"history.action.stopAudio" = "Stop audio";
 "history.action.deleteTranscript" = "Delete transcript";
 "history.action.exportMarkdown" = "Export Markdown";
 "history.detail.audioPath" = "Audio Path";
@@ -381,6 +383,7 @@
 "history.toast.audioUnavailable" = "Audio file is unavailable.";
 "history.toast.audioDownloaded" = "Audio downloaded.";
 "history.toast.audioDownloadFailed" = "Failed to download audio.";
+"history.toast.audioPlaybackFailed" = "Failed to play audio.";
 "history.toast.transcriptDeleted" = "Transcript deleted.";
 
 "vocabulary.source.manual" = "Manually added";

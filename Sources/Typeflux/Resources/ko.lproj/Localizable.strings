@@ -326,6 +326,8 @@
 "history.action.copyResult" = "결과 복사";
 "history.action.copyTranscript" = "성적표 복사";
 "history.action.downloadAudio" = "오디오 다운로드";
+"history.action.playAudio" = "오디오 재생";
+"history.action.stopAudio" = "오디오 정지";
 "history.action.deleteTranscript" = "성적표 삭제";
 "history.action.exportMarkdown" = "Markdown 내보내기";
 "history.detail.audioPath" = "오디오 경로";
@@ -379,6 +381,7 @@
 "history.toast.audioUnavailable" = "오디오 파일을 사용할 수 없습니다.";
 "history.toast.audioDownloaded" = "오디오가 다운로드되었습니다.";
 "history.toast.audioDownloadFailed" = "오디오를 다운로드하지 못했습니다.";
+"history.toast.audioPlaybackFailed" = "오디오를 재생하지 못했습니다.";
 "history.toast.transcriptDeleted" = "성적 증명서가 삭제되었습니다.";
 
 "vocabulary.source.manual" = "수동으로 추가됨";

@@ -328,6 +328,8 @@
 "history.action.copyResult" = "复制结果";
 "history.action.copyTranscript" = "复制转写";
 "history.action.downloadAudio" = "下载音频";
+"history.action.playAudio" = "播放音频";
+"history.action.stopAudio" = "停止音频";
 "history.action.deleteTranscript" = "删除转写";
 "history.action.exportMarkdown" = "导出 Markdown";
 "history.detail.audioPath" = "音频路径";
@@ -381,6 +383,7 @@
 "history.toast.audioUnavailable" = "音频文件不可用。";
 "history.toast.audioDownloaded" = "音频已下载。";
 "history.toast.audioDownloadFailed" = "下载音频失败。";
+"history.toast.audioPlaybackFailed" = "播放音频失败。";
 "history.toast.transcriptDeleted" = "转写已删除。";
 
 "vocabulary.source.manual" = "手动添加";

@@ -1096,11 +1096,14 @@ struct StudioHistoryRow: View {
     let onCopyResult: (() -> Void)?
     let onCopyTranscript: (() -> Void)?
     let onDownloadAudio: (() -> Void)?
+    let onPlayAudio: (() -> Void)?
+    let isAudioPlaying: Bool
     let onDelete: (() -> Void)?
     let onRetry: (() -> Void)?
 
     @State private var isExpanded = false
     @State private var isHovered = false
+    @State private var isAudioPathHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
@@ -1147,7 +1150,13 @@ struct StudioHistoryRow: View {
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
-                    historyDetailSection(title: L("history.detail.audioPath"), content: record.audioFilePath ?? L("history.detail.noAudioFile"))
+                    historyAudioPathSection(
+                        title: L("history.detail.audioPath"),
+                        content: record.audioFilePath ?? L("history.detail.noAudioFile"),
+                        canPlay: record.audioFilePath != nil,
+                        isPlaying: isAudioPlaying,
+                        playAction: onPlayAudio,
+                    )
                     historyDetailSection(
                         title: L("history.detail.rawTranscript"),
                         content: record.transcriptText,
@@ -1195,6 +1204,55 @@ struct StudioHistoryRow: View {
     private func historyIconButton(systemImage: String, helpText: String, action: @escaping () -> Void) -> some View {
         StudioIconButton(systemImage: systemImage, action: action)
             .studioTooltip(helpText, yOffset: 42)
+    }
+
+    @ViewBuilder
+    private func historyAudioPathSection(
+        title: String,
+        content: String?,
+        canPlay: Bool,
+        isPlaying: Bool,
+        playAction: (() -> Void)?,
+    ) -> some View {
+        if let content, !content.isEmpty {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                Text(title)
+                    .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                    .foregroundStyle(StudioTheme.textTertiary)
+
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
+                    Text(content)
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: StudioTheme.Spacing.small)
+
+                    if canPlay, let playAction {
+                        StudioIconButton(
+                            systemImage: isPlaying ? "stop.circle" : "play.circle",
+                            frame: 24,
+                            action: playAction,
+                        )
+                            .opacity(isAudioPathHovered ? 0.78 : 0)
+                            .allowsHitTesting(isAudioPathHovered)
+                            .animation(.easeOut(duration: 0.12), value: isAudioPathHovered)
+                            .studioTooltip(
+                                isPlaying ? L("history.action.stopAudio") : L("history.action.playAudio"),
+                                yOffset: 34,
+                            )
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(StudioTheme.Insets.cardDense)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                    .fill(StudioTheme.surfaceMuted.opacity(0.72)),
+            )
+            .onHover { isAudioPathHovered = $0 }
+        }
     }
 
     @ViewBuilder

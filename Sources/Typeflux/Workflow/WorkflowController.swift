@@ -81,6 +81,8 @@ final class WorkflowController {
     var currentSelectedText: String?
     var isRecording = false
     var isAudioRecorderStarted = false
+    var isAudioRecorderStarting = false
+    var shouldFinishRecordingAfterAudioStart = false
     var recordingMode: RecordingMode = .holdToTalk
     var recordingIntent: RecordingIntent = .dictation
     var hotkeyPressedAt: Date?
@@ -337,6 +339,8 @@ final class WorkflowController {
         isRecording = false
         let shouldStopAudioRecorder = isAudioRecorderStarted
         isAudioRecorderStarted = false
+        isAudioRecorderStarting = false
+        shouldFinishRecordingAfterAudioStart = false
         recordingMode = .holdToTalk
         recordingIntent = .dictation
         hotkeyPressedAt = nil
@@ -579,10 +583,26 @@ final class WorkflowController {
     func beginRecording(intent: RecordingIntent, startLocked: Bool) async {
         isRecording = true
         isAudioRecorderStarted = false
+        isAudioRecorderStarting = true
+        shouldFinishRecordingAfterAudioStart = false
         recordingMode = startLocked ? .locked : .holdToTalk
         recordingIntent = intent
         lastRetryableFailureRecord = nil
         NSLog("[Workflow] Recording started")
+
+        Task { @MainActor in
+            guard self.isRecording else { return }
+            appState.setStatus(.recording)
+            if startLocked {
+                if intent == .askSelection {
+                    overlayController.showLockedRecording(hintText: L("overlay.ask.guidance"))
+                } else {
+                    overlayController.showLockedRecording()
+                }
+            } else {
+                overlayController.show()
+            }
+        }
 
         do {
             try audioRecorder.start(
@@ -591,6 +611,7 @@ final class WorkflowController {
                 },
                 audioBufferHandler: { _ in },
             )
+            isAudioRecorderStarting = false
             isAudioRecorderStarted = true
 
             guard isRecording else {
@@ -599,18 +620,14 @@ final class WorkflowController {
                 return
             }
 
+            if shouldFinishRecordingAfterAudioStart {
+                shouldFinishRecordingAfterAudioStart = false
+                finishRecordingFromCurrentMode()
+                return
+            }
+
             Task { @MainActor in
                 guard self.isRecording else { return }
-                appState.setStatus(.recording)
-                if startLocked {
-                    if intent == .askSelection {
-                        overlayController.showLockedRecording(hintText: L("overlay.ask.guidance"))
-                    } else {
-                        overlayController.showLockedRecording()
-                    }
-                } else {
-                    overlayController.show()
-                }
                 soundEffectPlayer.play(.start)
             }
 
@@ -654,6 +671,8 @@ final class WorkflowController {
         } catch {
             isRecording = false
             isAudioRecorderStarted = false
+            isAudioRecorderStarting = false
+            shouldFinishRecordingAfterAudioStart = false
             recordingMode = .holdToTalk
             var record = HistoryRecord(
                 date: Date(),
@@ -718,6 +737,15 @@ final class WorkflowController {
         guard isRecording else { return }
 
         let shouldStopAudioRecorder = isAudioRecorderStarted
+        if !shouldStopAudioRecorder, isAudioRecorderStarting {
+            shouldFinishRecordingAfterAudioStart = true
+            recordingMode = .holdToTalk
+            hotkeyPressedAt = nil
+            recordingTimeoutTask?.cancel()
+            recordingTimeoutTask = nil
+            return
+        }
+
         isRecording = false
         if !shouldStopAudioRecorder {
             isAudioRecorderStarted = false

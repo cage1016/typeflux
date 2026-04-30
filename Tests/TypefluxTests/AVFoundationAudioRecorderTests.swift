@@ -32,6 +32,19 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         XCTAssertNotEqual(recorder.audioEngineIdentifierForTesting, originalIdentifier)
     }
 
+    func testPrepareEngineForRecordingSessionReplacesStaleEngineInstance() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let recorder = AVFoundationAudioRecorder(settingsStore: SettingsStore(defaults: defaults))
+        let originalIdentifier = recorder.audioEngineIdentifierForTesting
+
+        recorder.prepareEngineForRecordingSessionForTesting()
+
+        XCTAssertNotEqual(recorder.audioEngineIdentifierForTesting, originalIdentifier)
+    }
+
     func testResolvedInputDeviceUsesPreferredMicrophoneWhenAvailable() throws {
         let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -51,6 +64,40 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         XCTAssertEqual(settingsStore.preferredMicrophoneID, "external-mic")
     }
 
+    func testExplicitInputDeviceForRecordingIsNilInAutomaticMode() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9),
+        )
+
+        XCTAssertNil(recorder.explicitInputDeviceIDForRecordingForTesting())
+        XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 9)
+    }
+
+    func testExplicitInputDeviceForRecordingUsesPreferredMicrophoneWhenAvailable() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.preferredMicrophoneID = "external-mic"
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(
+                resolvedInputDeviceIDs: ["external-mic": 42],
+                defaultInputDeviceID: 7,
+            ),
+        )
+
+        XCTAssertEqual(recorder.explicitInputDeviceIDForRecordingForTesting(), 42)
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, "external-mic")
+    }
+
     func testResolvedInputDeviceFallsBackToDefaultWhenPreferredMicrophoneIsUnavailable() throws {
         let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -64,6 +111,22 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         )
 
         XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 7)
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, AudioDeviceManager.automaticDeviceID)
+    }
+
+    func testExplicitInputDeviceForRecordingFallsBackToAutomaticWhenPreferredMicrophoneIsUnavailable() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.preferredMicrophoneID = "disconnected-mic"
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7),
+        )
+
+        XCTAssertNil(recorder.explicitInputDeviceIDForRecordingForTesting())
         XCTAssertEqual(settingsStore.preferredMicrophoneID, AudioDeviceManager.automaticDeviceID)
     }
 
