@@ -2,7 +2,8 @@ import AVFoundation
 import Foundation
 
 final class AVFoundationAudioRecorder: AudioRecorder {
-    private static let outputMuteDelay: Duration = .milliseconds(180)
+    private static let outputMuteDelayWithStartCue: Duration = .milliseconds(1_225)
+    private static let outputMuteDelayWithoutStartCue: Duration = .milliseconds(180)
 
     enum RecorderError: LocalizedError, Equatable {
         case inputDeviceUnavailable
@@ -207,9 +208,12 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
     private func scheduleMutedSessionStart() {
         muteTask?.cancel()
+        let delay = settingsStore.soundEffectsEnabled
+            ? Self.outputMuteDelayWithStartCue
+            : Self.outputMuteDelayWithoutStartCue
         muteTask = Task { [weak self] in
             guard let self else { return }
-            await sleep(Self.outputMuteDelay)
+            await sleep(delay)
             let isRecording = currentRecordingState()
             guard !Task.isCancelled, isRecording else { return }
             outputMuter.beginMutedSession()

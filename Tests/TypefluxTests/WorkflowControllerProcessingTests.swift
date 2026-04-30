@@ -274,30 +274,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         }
     }
 
-    func testBeginRecordingPlaysStartCueBeforeStartingAudio() async {
-        let eventRecorder = ThreadSafeEventRecorder()
-        let audioRecorder = MockProcessingAudioRecorder {
-            eventRecorder.append("audio-start")
-        }
-        let controller = makeWorkflowController(
-            audioRecorder: audioRecorder,
-            soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
-            sleep: { duration in
-                eventRecorder.append("cue-sleep")
-                eventRecorder.append(duration: duration)
-            },
-        )
-
-        await controller.beginRecording(intent: .dictation, startLocked: false)
-
-        XCTAssertEqual(
-            eventRecorder.snapshot(),
-            ["cue-play", "cue-sleep", "audio-start"],
-        )
-        XCTAssertEqual(eventRecorder.durationSnapshot(), [.milliseconds(1_225)])
-    }
-
-    func testBeginRecordingDoesNotWaitForSelectionCaptureBeforeCueOrAudioStart() async throws {
+    func testBeginRecordingStartsAudioBeforeCueOrSelectionCapture() async throws {
         let eventRecorder = ThreadSafeEventRecorder()
         let audioStarted = expectation(description: "audio recorder started")
         let audioRecorder = MockProcessingAudioRecorder {
@@ -308,21 +285,67 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             textInjector: SlowSelectionTextInjector(eventRecorder: eventRecorder),
             audioRecorder: audioRecorder,
             soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
-            sleep: { _ in
-                eventRecorder.append("cue-sleep")
+            sleep: { duration in
+                eventRecorder.append("unexpected-sleep")
+                eventRecorder.append(duration: duration)
             },
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
         await fulfillment(of: [audioStarted], timeout: 0.5)
-        controller.cancelRecording()
+        await eventRecorder.waitUntilContains("cue-play")
 
         let events = eventRecorder.snapshot()
-        let cuePlayIndex = try XCTUnwrap(events.firstIndex(of: "cue-play"))
-        let cueSleepIndex = try XCTUnwrap(events.firstIndex(of: "cue-sleep"))
         let audioStartIndex = try XCTUnwrap(events.firstIndex(of: "audio-start"))
-        XCTAssertLessThan(cuePlayIndex, cueSleepIndex)
-        XCTAssertLessThan(cueSleepIndex, audioStartIndex)
+        let cuePlayIndex = try XCTUnwrap(events.firstIndex(of: "cue-play"))
+        let selectionStartIndex = try XCTUnwrap(events.firstIndex(of: "selection-start"))
+        XCTAssertLessThan(audioStartIndex, cuePlayIndex)
+        XCTAssertLessThan(audioStartIndex, selectionStartIndex)
+        XCTAssertFalse(events.contains("unexpected-sleep"))
+        XCTAssertEqual(eventRecorder.durationSnapshot(), [])
+
+        controller.cancelRecording()
+    }
+
+    func testReleasingAfterImmediateAudioStartStopsRecorder() async {
+        let eventRecorder = ThreadSafeEventRecorder()
+        let audioRecorder = MockProcessingAudioRecorder {
+            eventRecorder.append("audio-start")
+        }
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
+            sleep: { _ in },
+        )
+
+        await controller.beginRecording(intent: .dictation, startLocked: false)
+
+        controller.hotkeyPressedAt = Date(timeIntervalSinceNow: -0.5)
+        controller.handlePressEnded()
+        await audioRecorder.waitUntilStopCount(isAtLeast: 1)
+
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+        XCTAssertEqual(audioRecorder.stopCallCount, 1)
+        XCTAssertTrue(eventRecorder.snapshot().contains("audio-start"))
+    }
+
+    func testNewPressIsIgnoredWhileAudioRecorderStopIsPending() async {
+        let audioRecorder = BlockingStopAudioRecorder()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            sleep: { _ in },
+        )
+
+        await controller.beginRecording(intent: .dictation, startLocked: false)
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+
+        controller.finishRecordingFromCurrentMode()
+        audioRecorder.waitUntilStopIsPending()
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+        audioRecorder.releasePendingStop()
     }
 
     private func makeWorkflowController(
@@ -496,20 +519,98 @@ private final class MockProcessingHotkeyService: HotkeyService {
 
 private final class MockProcessingAudioRecorder: AudioRecorder {
     private let onStart: () -> Void
+    private let lock = NSLock()
+    private var starts = 0
+    private var stops = 0
 
     init(onStart: @escaping () -> Void = {}) {
         self.onStart = onStart
+    }
+
+    var startCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return starts
+    }
+
+    var stopCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return stops
+    }
+
+    func waitUntilStopCount(isAtLeast expectedCount: Int) async {
+        for _ in 0..<100 {
+            if stopCallCount >= expectedCount {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
     }
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
         audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
     ) throws {
+        lock.lock()
+        starts += 1
+        lock.unlock()
         onStart()
     }
 
     func stop() throws -> AudioFile {
-        AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+        lock.lock()
+        stops += 1
+        lock.unlock()
+        return AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+    }
+}
+
+private final class BlockingStopAudioRecorder: AudioRecorder, @unchecked Sendable {
+    private let lock = NSCondition()
+    private var starts = 0
+    private var stopIsPending = false
+    private var shouldReleaseStop = false
+
+    var startCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return starts
+    }
+
+    func start(
+        levelHandler _: @escaping (Float) -> Void,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+    ) throws {
+        lock.lock()
+        starts += 1
+        lock.unlock()
+    }
+
+    func stop() throws -> AudioFile {
+        lock.lock()
+        stopIsPending = true
+        lock.broadcast()
+        while !shouldReleaseStop {
+            lock.wait()
+        }
+        lock.unlock()
+        return AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+    }
+
+    func waitUntilStopIsPending() {
+        lock.lock()
+        while !stopIsPending {
+            lock.wait()
+        }
+        lock.unlock()
+    }
+
+    func releasePendingStop() {
+        lock.lock()
+        shouldReleaseStop = true
+        lock.broadcast()
+        lock.unlock()
     }
 }
 
@@ -560,6 +661,15 @@ private final class ThreadSafeEventRecorder: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return durations
+    }
+
+    func waitUntilContains(_ event: String) async {
+        for _ in 0..<100 {
+            if snapshot().contains(event) {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
     }
 }
 

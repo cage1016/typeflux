@@ -29,9 +29,6 @@ final class WorkflowController {
     static let automaticVocabularyEditRatioLimit: Double = 0.8
     static let localModelPreheatDebounce: Duration = .milliseconds(180)
     static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 120
-    // Matches the bundled start.mp3 duration so output muting cannot truncate the cue.
-    static let recordingStartCueLeadIn: Duration = .milliseconds(1_225)
-
     struct LLMRequestTimeoutError: LocalizedError {
         var errorDescription: String? {
             "Persona rewrite timed out after \(Int(WorkflowController.llmTimeoutAfterTranscriptionSeconds)) seconds, inserting transcript as fallback"
@@ -83,6 +80,7 @@ final class WorkflowController {
 
     var currentSelectedText: String?
     var isRecording = false
+    var isAudioRecorderStarted = false
     var recordingMode: RecordingMode = .holdToTalk
     var recordingIntent: RecordingIntent = .dictation
     var hotkeyPressedAt: Date?
@@ -337,12 +335,16 @@ final class WorkflowController {
     func cancelRecording() {
         guard isRecording else { return }
         isRecording = false
+        let shouldStopAudioRecorder = isAudioRecorderStarted
+        isAudioRecorderStarted = false
         recordingMode = .holdToTalk
         recordingIntent = .dictation
         hotkeyPressedAt = nil
         recordingTimeoutTask?.cancel()
         recordingTimeoutTask = nil
-        _ = try? audioRecorder.stop()
+        if shouldStopAudioRecorder {
+            _ = try? audioRecorder.stop()
+        }
         Task {
             await sttRouter.cancelPreparedRecording()
         }
@@ -395,6 +397,11 @@ final class WorkflowController {
     func handlePressBegan(intent: RecordingIntent, startLocked: Bool) {
         if isPersonaPickerPresented {
             dismissPersonaPicker()
+        }
+
+        if !isRecording, isAudioRecorderStarted {
+            NSLog("[Workflow] Audio recorder is still stopping, ignoring press")
+            return
         }
 
         if !PrivacyGuard.isRunningInAppBundle {
@@ -571,56 +578,11 @@ final class WorkflowController {
 
     func beginRecording(intent: RecordingIntent, startLocked: Bool) async {
         isRecording = true
+        isAudioRecorderStarted = false
         recordingMode = startLocked ? .locked : .holdToTalk
         recordingIntent = intent
         lastRetryableFailureRecord = nil
         NSLog("[Workflow] Recording started")
-
-        Task { @MainActor in
-            appState.setStatus(.recording)
-            if startLocked {
-                if intent == .askSelection {
-                    overlayController.showLockedRecording(hintText: L("overlay.ask.guidance"))
-                } else {
-                    overlayController.showLockedRecording()
-                }
-            } else {
-                overlayController.show()
-            }
-        }
-
-        selectionTask = Task { [weak self] in
-            guard let self else { return TextSelectionSnapshot() }
-            return await textInjector.getSelectionSnapshot()
-        }
-        if settingsStore.inputContextOptimizationEnabled {
-            let selectionTask = selectionTask
-            inputContextTask = Task { [weak self] in
-                guard let self else { return nil }
-                let selectionSnapshot = await selectionTask?.value ?? TextSelectionSnapshot()
-                let inputSnapshot = await textInjector.currentInputTextSnapshot()
-                let context = InputContextSnapshot.make(
-                    inputSnapshot: inputSnapshot,
-                    selectionSnapshot: selectionSnapshot,
-                )
-                InputContextSnapshot.logCapture(
-                    inputSnapshot: inputSnapshot,
-                    selectionSnapshot: selectionSnapshot,
-                    context: context,
-                )
-                return context
-            }
-        } else {
-            inputContextTask = nil
-        }
-
-        await Self.waitForRecordingStartCueIfNeeded(
-            leadIn: Self.recordingStartCueLeadIn,
-            playCue: { @MainActor in
-                self.soundEffectPlayer.play(.start)
-            },
-            sleep: sleep,
-        )
 
         do {
             try audioRecorder.start(
@@ -629,12 +591,16 @@ final class WorkflowController {
                 },
                 audioBufferHandler: { _ in },
             )
+            isAudioRecorderStarted = true
 
-            Task { [weak self] in
-                await self?.sttRouter.prepareForRecording()
+            guard isRecording else {
+                isAudioRecorderStarted = false
+                _ = try? audioRecorder.stop()
+                return
             }
 
             Task { @MainActor in
+                guard self.isRecording else { return }
                 appState.setStatus(.recording)
                 if startLocked {
                     if intent == .askSelection {
@@ -645,15 +611,8 @@ final class WorkflowController {
                 } else {
                     overlayController.show()
                 }
+                soundEffectPlayer.play(.start)
             }
-
-            await Self.waitForRecordingStartCueIfNeeded(
-                leadIn: Self.recordingStartCueLeadIn,
-                playCue: { @MainActor in
-                    self.soundEffectPlayer.play(.start)
-                },
-                sleep: sleep,
-            )
 
             selectionTask = Task { [weak self] in
                 guard let self else { return TextSelectionSnapshot() }
@@ -680,6 +639,10 @@ final class WorkflowController {
                 inputContextTask = nil
             }
 
+            Task { [weak self] in
+                await self?.sttRouter.prepareForRecording()
+            }
+
             // Set a timeout to auto-stop recording after 10 minutes
             recordingTimeoutTask?.cancel()
             recordingTimeoutTask = Task { [weak self] in
@@ -690,6 +653,7 @@ final class WorkflowController {
             }
         } catch {
             isRecording = false
+            isAudioRecorderStarted = false
             recordingMode = .holdToTalk
             var record = HistoryRecord(
                 date: Date(),
@@ -709,18 +673,6 @@ final class WorkflowController {
                 ErrorLogStore.shared.log(msg)
             }
         }
-    }
-
-    static func waitForRecordingStartCueIfNeeded(
-        leadIn: Duration,
-        playCue: @escaping @MainActor () -> Bool,
-        sleep: @escaping @Sendable (Duration) async -> Void,
-    ) async {
-        let didStartCue = await MainActor.run {
-            playCue()
-        }
-        guard didStartCue else { return }
-        await sleep(leadIn)
     }
 
     func handlePressEnded() {
@@ -765,13 +717,29 @@ final class WorkflowController {
     func finishRecordingFromCurrentMode() {
         guard isRecording else { return }
 
+        let shouldStopAudioRecorder = isAudioRecorderStarted
         isRecording = false
+        if !shouldStopAudioRecorder {
+            isAudioRecorderStarted = false
+        }
         recordingMode = .holdToTalk
         hotkeyPressedAt = nil
         recordingTimeoutTask?.cancel()
         recordingTimeoutTask = nil
         NSLog("[Workflow] Recording stopped")
         let recordingStoppedAt = Date()
+
+        guard shouldStopAudioRecorder else {
+            selectionTask?.cancel()
+            selectionTask = nil
+            inputContextTask?.cancel()
+            inputContextTask = nil
+            Task { @MainActor in
+                self.appState.setStatus(.idle)
+                self.overlayController.showNotice(message: L("workflow.recording.tooShort"))
+            }
+            return
+        }
 
         Task { [weak self] in
             guard let self else { return }
@@ -783,6 +751,7 @@ final class WorkflowController {
 
     func beginClarificationRecording() async {
         isRecording = true
+        isAudioRecorderStarted = false
         agentClarificationWindowController.updateRecordingState(.recording)
         NSLog("[Workflow] Clarification recording started")
 
@@ -791,8 +760,10 @@ final class WorkflowController {
                 levelHandler: { _ in },
                 audioBufferHandler: nil,
             )
+            isAudioRecorderStarted = true
         } catch {
             isRecording = false
+            isAudioRecorderStarted = false
             isClarificationRecording = false
             agentClarificationWindowController.updateRecordingState(.waitingForReply)
             NSLog("[Workflow] Clarification recording failed to start: \(error)")
@@ -802,6 +773,7 @@ final class WorkflowController {
     func finishClarificationRecording() {
         guard isRecording, isClarificationRecording else { return }
         isRecording = false
+        isAudioRecorderStarted = false
         isClarificationRecording = false
         agentClarificationWindowController.updateRecordingState(.transcribing)
         NSLog("[Workflow] Clarification recording stopped, transcribing")

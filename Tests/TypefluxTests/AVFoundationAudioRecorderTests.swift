@@ -110,6 +110,60 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         XCTAssertEqual(muter.beginCallCount, 1)
     }
 
+    func testDelayedMuteWaitsForStartCueWhenSoundEffectsAreEnabled() async throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.soundEffectsEnabled = true
+        settingsStore.muteSystemOutputDuringRecording = true
+
+        let sleepController = SleepController()
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            outputMuter: MockSystemAudioOutputMuter(),
+            sleep: { duration in
+                await sleepController.sleep(for: duration)
+            },
+        )
+
+        recorder.beginMutedSessionAfterDelayForTesting()
+        await sleepController.waitUntilSleeping()
+
+        let durations = await sleepController.recordedDurations()
+        XCTAssertEqual(durations, [.milliseconds(1_225)])
+        recorder.cancelMutedSessionForTesting()
+        await sleepController.resume()
+    }
+
+    func testDelayedMuteUsesShortDelayWhenSoundEffectsAreDisabled() async throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.soundEffectsEnabled = false
+        settingsStore.muteSystemOutputDuringRecording = true
+
+        let sleepController = SleepController()
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            outputMuter: MockSystemAudioOutputMuter(),
+            sleep: { duration in
+                await sleepController.sleep(for: duration)
+            },
+        )
+
+        recorder.beginMutedSessionAfterDelayForTesting()
+        await sleepController.waitUntilSleeping()
+
+        let durations = await sleepController.recordedDurations()
+        XCTAssertEqual(durations, [.milliseconds(180)])
+        recorder.cancelMutedSessionForTesting()
+        await sleepController.resume()
+    }
+
     func testStoppingBeforeDelayedMutePreventsMuteSession() async throws {
         let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -223,8 +277,10 @@ private final class MockSystemAudioOutputMuter: SystemAudioOutputMuting {
 private actor SleepController {
     private var continuation: CheckedContinuation<Void, Never>?
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var durations: [Duration] = []
 
-    func sleep(for _: Duration) async {
+    func sleep(for duration: Duration) async {
+        durations.append(duration)
         await withCheckedContinuation { continuation in
             self.continuation = continuation
             let waiters = self.waiters
@@ -248,6 +304,10 @@ private actor SleepController {
     func resume() {
         continuation?.resume()
         continuation = nil
+    }
+
+    func recordedDurations() -> [Duration] {
+        durations
     }
 }
 
