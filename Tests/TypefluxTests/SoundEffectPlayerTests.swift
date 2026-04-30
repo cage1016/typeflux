@@ -6,7 +6,6 @@ final class SoundEffectPlayerTests: XCTestCase {
 
     func testEffectRawValues() {
         XCTAssertEqual(SoundEffectPlayer.Effect.tip.rawValue, "tip")
-        XCTAssertEqual(SoundEffectPlayer.Effect.tipDone.rawValue, "tip-done")
         XCTAssertEqual(SoundEffectPlayer.Effect.done.rawValue, "done")
         XCTAssertEqual(SoundEffectPlayer.Effect.error.rawValue, "error")
     }
@@ -21,10 +20,6 @@ final class SoundEffectPlayerTests: XCTestCase {
         XCTAssertEqual(SoundEffectPlayer.Effect.tip.volume, 0.2, accuracy: 0.001)
     }
 
-    func testTipDoneVolume() {
-        XCTAssertEqual(SoundEffectPlayer.Effect.tipDone.volume, 0.21, accuracy: 0.001)
-    }
-
     func testErrorVolume() {
         XCTAssertEqual(SoundEffectPlayer.Effect.error.volume, 0.26, accuracy: 0.001)
     }
@@ -32,11 +27,10 @@ final class SoundEffectPlayerTests: XCTestCase {
     func testEachEffectHasDistinctVolume() {
         let volumes: Set<Float> = [
             SoundEffectPlayer.Effect.tip.volume,
-            SoundEffectPlayer.Effect.tipDone.volume,
             SoundEffectPlayer.Effect.done.volume,
             SoundEffectPlayer.Effect.error.volume,
         ]
-        XCTAssertEqual(volumes.count, 4)
+        XCTAssertEqual(volumes.count, 3)
     }
 
     @MainActor
@@ -50,7 +44,7 @@ final class SoundEffectPlayerTests: XCTestCase {
         }
 
         XCTAssertEqual(requestedURLs.count, SoundEffectPlayer.Effect.allCases.count)
-        XCTAssertEqual(Set(requestedURLs.map(\.lastPathComponent)), Set(["tip.mp3", "tip-done.mp3", "done.mp3", "error.mp3"]))
+        XCTAssertEqual(Set(requestedURLs.map(\.lastPathComponent)), Set(["tip.mp3", "done.mp3", "error.mp3"]))
     }
 
     @MainActor

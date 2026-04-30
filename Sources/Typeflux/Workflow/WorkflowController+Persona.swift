@@ -77,7 +77,7 @@ extension WorkflowController {
 
         let selected = personaPickerItems[personaPickerSelectedIndex]
         let mode = personaPickerMode
-        soundEffectPlayer.playAsync(.tipDone)
+        soundEffectPlayer.playAsync(.tip)
         dismissPersonaPicker(closeOverlay: false)
 
         switch mode {

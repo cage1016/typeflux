@@ -527,7 +527,6 @@ final class WorkflowController {
                 self.personaPickerItems = items
                 self.personaPickerSelectedIndex = selectedIndex
                 self.isPersonaPickerPresented = true
-                self.soundEffectPlayer.play(.tip)
                 self.overlayController.showPersonaPicker(
                     items: items.map {
                         OverlayController.PersonaPickerItem(

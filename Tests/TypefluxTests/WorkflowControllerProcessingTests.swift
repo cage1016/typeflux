@@ -234,17 +234,17 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(controller.settingsStore.personaAppBindings.first?.personaID, targetPersona.id)
     }
 
-    func testOpeningPersonaPickerPlaysTipCue() async {
+    func testOpeningPersonaPickerDoesNotPlayCue() async {
         let eventRecorder = ThreadSafeEventRecorder()
         let controller = makeWorkflowController(
             soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
         )
 
         controller.handlePersonaPickerRequested()
-        await eventRecorder.waitUntilContains("cue-play")
+        await waitForMainActorWork()
 
         XCTAssertTrue(controller.isPersonaPickerPresented)
-        XCTAssertTrue(eventRecorder.snapshot().contains("cue-play"))
+        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
     }
 
     func testOpeningPersonaPickerDoesNotPlayCueWhenSoundEffectsAreDisabled() async {
@@ -263,7 +263,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
     }
 
-    func testConfirmingPersonaSelectionPlaysTipDoneCue() async throws {
+    func testConfirmingPersonaSelectionPlaysTipCue() async throws {
         let eventRecorder = ThreadSafeEventRecorder()
         let controller = makeWorkflowController(
             soundEffectPlayer: makeNamedSoundEffectPlayer(eventRecorder: eventRecorder),
@@ -276,10 +276,10 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         controller.isPersonaPickerPresented = true
 
         controller.confirmPersonaSelection()
-        await eventRecorder.waitUntilContains("cue-play-tip-done")
+        await eventRecorder.waitUntilContains("cue-play-tip")
 
         XCTAssertFalse(controller.isPersonaPickerPresented)
-        XCTAssertTrue(eventRecorder.snapshot().contains("cue-play-tip-done"))
+        XCTAssertTrue(eventRecorder.snapshot().contains("cue-play-tip"))
     }
 
     func testConfirmingPersonaSelectionDoesNotPlayCueWhenSoundEffectsAreDisabled() async throws {
@@ -301,7 +301,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         await waitForMainActorWork()
 
         XCTAssertFalse(controller.isPersonaPickerPresented)
-        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play-tip-done"))
+        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play-tip"))
     }
 
     func testGenerateRewriteThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
