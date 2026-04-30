@@ -13,7 +13,6 @@ extension AVAudioPlayer: SoundEffectPlayback {}
 
 final class SoundEffectPlayer {
     enum Effect: String, CaseIterable {
-        case start
         case tip
         case tipDone = "tip-done"
         case done
@@ -21,8 +20,6 @@ final class SoundEffectPlayer {
 
         var volume: Float {
             switch self {
-            case .start:
-                0.18
             case .tip:
                 0.2
             case .tipDone:

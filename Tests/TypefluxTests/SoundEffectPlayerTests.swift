@@ -5,7 +5,6 @@ final class SoundEffectPlayerTests: XCTestCase {
     // MARK: - Effect Raw Values
 
     func testEffectRawValues() {
-        XCTAssertEqual(SoundEffectPlayer.Effect.start.rawValue, "start")
         XCTAssertEqual(SoundEffectPlayer.Effect.tip.rawValue, "tip")
         XCTAssertEqual(SoundEffectPlayer.Effect.tipDone.rawValue, "tip-done")
         XCTAssertEqual(SoundEffectPlayer.Effect.done.rawValue, "done")
@@ -13,10 +12,6 @@ final class SoundEffectPlayerTests: XCTestCase {
     }
 
     // MARK: - Volume Values
-
-    func testStartVolume() {
-        XCTAssertEqual(SoundEffectPlayer.Effect.start.volume, 0.18, accuracy: 0.001)
-    }
 
     func testDoneVolume() {
         XCTAssertEqual(SoundEffectPlayer.Effect.done.volume, 0.22, accuracy: 0.001)
@@ -36,13 +31,12 @@ final class SoundEffectPlayerTests: XCTestCase {
 
     func testEachEffectHasDistinctVolume() {
         let volumes: Set<Float> = [
-            SoundEffectPlayer.Effect.start.volume,
             SoundEffectPlayer.Effect.tip.volume,
             SoundEffectPlayer.Effect.tipDone.volume,
             SoundEffectPlayer.Effect.done.volume,
             SoundEffectPlayer.Effect.error.volume,
         ]
-        XCTAssertEqual(volumes.count, 5)
+        XCTAssertEqual(volumes.count, 4)
     }
 
     @MainActor
@@ -56,7 +50,7 @@ final class SoundEffectPlayerTests: XCTestCase {
         }
 
         XCTAssertEqual(requestedURLs.count, SoundEffectPlayer.Effect.allCases.count)
-        XCTAssertEqual(Set(requestedURLs.map(\.lastPathComponent)), Set(["start.mp3", "tip.mp3", "tip-done.mp3", "done.mp3", "error.mp3"]))
+        XCTAssertEqual(Set(requestedURLs.map(\.lastPathComponent)), Set(["tip.mp3", "tip-done.mp3", "done.mp3", "error.mp3"]))
     }
 
     @MainActor
@@ -71,15 +65,15 @@ final class SoundEffectPlayerTests: XCTestCase {
             return playback
         }
 
-        let playback = try XCTUnwrap(playbackByName["start"])
+        let playback = try XCTUnwrap(playbackByName["done"])
         playback.currentTime = 1.2
-        player.play(.start)
+        player.play(.done)
 
         XCTAssertEqual(requestedURLs.count, SoundEffectPlayer.Effect.allCases.count)
         XCTAssertEqual(playback.stopCallCount, 1)
         XCTAssertEqual(playback.currentTime, 0, accuracy: 0.001)
         XCTAssertEqual(playback.playCallCount, 1)
-        XCTAssertEqual(playback.volume, SoundEffectPlayer.Effect.start.volume, accuracy: 0.001)
+        XCTAssertEqual(playback.volume, SoundEffectPlayer.Effect.done.volume, accuracy: 0.001)
     }
 
     @MainActor
@@ -96,11 +90,11 @@ final class SoundEffectPlayerTests: XCTestCase {
         player.play(.tip)
 
         let tipPlayback = try XCTUnwrap(playbackByName["tip"])
-        let startPlayback = try XCTUnwrap(playbackByName["start"])
+        let donePlayback = try XCTUnwrap(playbackByName["done"])
 
         XCTAssertEqual(tipPlayback.playCallCount, 1)
-        XCTAssertEqual(startPlayback.stopCallCount, 1)
-        XCTAssertEqual(startPlayback.currentTime, 0, accuracy: 0.001)
+        XCTAssertEqual(donePlayback.stopCallCount, 1)
+        XCTAssertEqual(donePlayback.currentTime, 0, accuracy: 0.001)
     }
 
     @MainActor
@@ -115,13 +109,13 @@ final class SoundEffectPlayerTests: XCTestCase {
             return playback
         }
 
-        player.play(.start)
+        player.play(.done)
 
-        let startPlayback = try XCTUnwrap(playbackByName["start"])
+        let donePlayback = try XCTUnwrap(playbackByName["done"])
         let tipPlayback = try XCTUnwrap(playbackByName["tip"])
-        XCTAssertEqual(startPlayback.playCallCount, 0)
-        XCTAssertEqual(startPlayback.stopCallCount, 1)
-        XCTAssertEqual(startPlayback.currentTime, 0, accuracy: 0.001)
+        XCTAssertEqual(donePlayback.playCallCount, 0)
+        XCTAssertEqual(donePlayback.stopCallCount, 1)
+        XCTAssertEqual(donePlayback.currentTime, 0, accuracy: 0.001)
         XCTAssertEqual(tipPlayback.stopCallCount, 1)
         XCTAssertEqual(tipPlayback.currentTime, 0, accuracy: 0.001)
     }
@@ -134,7 +128,7 @@ final class SoundEffectPlayerTests: XCTestCase {
             playback
         }
 
-        XCTAssertTrue(player.play(.start))
+        XCTAssertTrue(player.play(.done))
     }
 
     @MainActor
@@ -145,7 +139,7 @@ final class SoundEffectPlayerTests: XCTestCase {
             MockSoundEffectPlayback()
         }
 
-        XCTAssertFalse(player.play(.start))
+        XCTAssertFalse(player.play(.done))
     }
 
     func testPlayAsyncSchedulesPlaybackOnMainActor() async throws {
@@ -155,20 +149,20 @@ final class SoundEffectPlayerTests: XCTestCase {
         let player = SoundEffectPlayer(settingsStore: settingsStore) { url in
             let playback = MockSoundEffectPlayback()
             playbackByName[url.deletingPathExtension().lastPathComponent] = playback
-            if url.lastPathComponent == "start.mp3" {
+            if url.lastPathComponent == "done.mp3" {
                 playback.playExpectation = playExpectation
             }
             return playback
         }
 
-        player.playAsync(.start)
+        player.playAsync(.done)
 
         await fulfillment(of: [playExpectation], timeout: 1.0)
 
-        let playback = try XCTUnwrap(playbackByName["start"])
+        let playback = try XCTUnwrap(playbackByName["done"])
         XCTAssertEqual(playback.playCallCount, 1)
         XCTAssertEqual(playback.stopCallCount, 1)
-        XCTAssertEqual(playback.volume, SoundEffectPlayer.Effect.start.volume, accuracy: 0.001)
+        XCTAssertEqual(playback.volume, SoundEffectPlayer.Effect.done.volume, accuracy: 0.001)
     }
 
     private func makeSettingsStore() throws -> SettingsStore {
