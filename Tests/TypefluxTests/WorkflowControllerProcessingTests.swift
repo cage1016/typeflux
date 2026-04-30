@@ -234,6 +234,76 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(controller.settingsStore.personaAppBindings.first?.personaID, targetPersona.id)
     }
 
+    func testOpeningPersonaPickerPlaysTipCue() async {
+        let eventRecorder = ThreadSafeEventRecorder()
+        let controller = makeWorkflowController(
+            soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
+        )
+
+        controller.handlePersonaPickerRequested()
+        await eventRecorder.waitUntilContains("cue-play")
+
+        XCTAssertTrue(controller.isPersonaPickerPresented)
+        XCTAssertTrue(eventRecorder.snapshot().contains("cue-play"))
+    }
+
+    func testOpeningPersonaPickerDoesNotPlayCueWhenSoundEffectsAreDisabled() async {
+        let eventRecorder = ThreadSafeEventRecorder()
+        let controller = makeWorkflowController(
+            soundEffectPlayer: makeRecordingSoundEffectPlayer(
+                eventRecorder: eventRecorder,
+                soundEffectsEnabled: false,
+            ),
+        )
+
+        controller.handlePersonaPickerRequested()
+        await waitForMainActorWork()
+
+        XCTAssertTrue(controller.isPersonaPickerPresented)
+        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
+    }
+
+    func testConfirmingPersonaSelectionPlaysTipDoneCue() async throws {
+        let eventRecorder = ThreadSafeEventRecorder()
+        let controller = makeWorkflowController(
+            soundEffectPlayer: makeNamedSoundEffectPlayer(eventRecorder: eventRecorder),
+        )
+        controller.personaPickerMode = .switchDefault
+        controller.personaPickerItems = controller.personaPickerEntries(includeNoneOption: true)
+        controller.personaPickerSelectedIndex = try XCTUnwrap(
+            controller.personaPickerItems.firstIndex { $0.id != nil },
+        )
+        controller.isPersonaPickerPresented = true
+
+        controller.confirmPersonaSelection()
+        await eventRecorder.waitUntilContains("cue-play-tip-done")
+
+        XCTAssertFalse(controller.isPersonaPickerPresented)
+        XCTAssertTrue(eventRecorder.snapshot().contains("cue-play-tip-done"))
+    }
+
+    func testConfirmingPersonaSelectionDoesNotPlayCueWhenSoundEffectsAreDisabled() async throws {
+        let eventRecorder = ThreadSafeEventRecorder()
+        let controller = makeWorkflowController(
+            soundEffectPlayer: makeNamedSoundEffectPlayer(
+                eventRecorder: eventRecorder,
+                soundEffectsEnabled: false,
+            ),
+        )
+        controller.personaPickerMode = .switchDefault
+        controller.personaPickerItems = controller.personaPickerEntries(includeNoneOption: true)
+        controller.personaPickerSelectedIndex = try XCTUnwrap(
+            controller.personaPickerItems.firstIndex { $0.id != nil },
+        )
+        controller.isPersonaPickerPresented = true
+
+        controller.confirmPersonaSelection()
+        await waitForMainActorWork()
+
+        XCTAssertFalse(controller.isPersonaPickerPresented)
+        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play-tip-done"))
+    }
+
     func testGenerateRewriteThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 
@@ -274,7 +344,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         }
     }
 
-    func testBeginRecordingStartsAudioBeforeCueOrSelectionCapture() async throws {
+    func testBeginRecordingStartsAudioBeforeCueSelectionOrDelay() async throws {
         let eventRecorder = ThreadSafeEventRecorder()
         let audioStarted = expectation(description: "audio recorder started")
         let audioRecorder = MockProcessingAudioRecorder {
@@ -293,18 +363,38 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
         await fulfillment(of: [audioStarted], timeout: 0.5)
-        await eventRecorder.waitUntilContains("cue-play")
 
         let events = eventRecorder.snapshot()
         let audioStartIndex = try XCTUnwrap(events.firstIndex(of: "audio-start"))
-        let cuePlayIndex = try XCTUnwrap(events.firstIndex(of: "cue-play"))
         let selectionStartIndex = try XCTUnwrap(events.firstIndex(of: "selection-start"))
-        XCTAssertLessThan(audioStartIndex, cuePlayIndex)
         XCTAssertLessThan(audioStartIndex, selectionStartIndex)
+        XCTAssertFalse(events.contains("cue-play"))
         XCTAssertFalse(events.contains("unexpected-sleep"))
         XCTAssertEqual(eventRecorder.durationSnapshot(), [])
 
         controller.cancelRecording()
+    }
+
+    func testBeginRecordingDoesNotPlayCueWhileAudioStartIsPending() async {
+        let eventRecorder = ThreadSafeEventRecorder()
+        let audioRecorder = BlockingStartAudioRecorder()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
+            sleep: { _ in },
+        )
+
+        let recordingTask = Task {
+            await controller.beginRecording(intent: .dictation, startLocked: false)
+        }
+        audioRecorder.waitUntilStartIsPending()
+
+        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
+        controller.finishRecordingFromCurrentMode()
+
+        audioRecorder.releasePendingStart()
+        await recordingTask.value
+        XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
     }
 
     func testReleasingAfterImmediateAudioStartStopsRecorder() async {
@@ -432,15 +522,38 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         )
     }
 
-    private func makeRecordingSoundEffectPlayer(eventRecorder: ThreadSafeEventRecorder) -> SoundEffectPlayer {
+    private func makeRecordingSoundEffectPlayer(
+        eventRecorder: ThreadSafeEventRecorder,
+        soundEffectsEnabled: Bool = true,
+    ) -> SoundEffectPlayer {
         let suiteName = "WorkflowControllerProcessingSoundTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         let settingsStore = SettingsStore(defaults: defaults)
-        settingsStore.soundEffectsEnabled = true
+        settingsStore.soundEffectsEnabled = soundEffectsEnabled
         return SoundEffectPlayer(settingsStore: settingsStore) { _ in
             MockSoundEffectPlayback(eventRecorder: eventRecorder)
         }
+    }
+
+    private func makeNamedSoundEffectPlayer(
+        eventRecorder: ThreadSafeEventRecorder,
+        soundEffectsEnabled: Bool = true,
+    ) -> SoundEffectPlayer {
+        let suiteName = "WorkflowControllerProcessingNamedSoundTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.soundEffectsEnabled = soundEffectsEnabled
+        return SoundEffectPlayer(settingsStore: settingsStore) { url in
+            let effectName = url.deletingPathExtension().lastPathComponent
+            return MockSoundEffectPlayback(eventRecorder: eventRecorder, eventName: "cue-play-\(effectName)")
+        }
+    }
+
+    private func waitForMainActorWork() async {
+        await MainActor.run {}
+        try? await Task.sleep(for: .milliseconds(20))
     }
 }
 
@@ -714,15 +827,17 @@ private final class MockSoundEffectPlayback: SoundEffectPlayback {
     var currentTime: TimeInterval = 0
 
     private let eventRecorder: ThreadSafeEventRecorder
+    private let eventName: String
 
-    init(eventRecorder: ThreadSafeEventRecorder) {
+    init(eventRecorder: ThreadSafeEventRecorder, eventName: String = "cue-play") {
         self.eventRecorder = eventRecorder
+        self.eventName = eventName
     }
 
     func prepareToPlay() -> Bool { true }
 
     func play() -> Bool {
-        eventRecorder.append("cue-play")
+        eventRecorder.append(eventName)
         return true
     }
 

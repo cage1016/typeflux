@@ -103,6 +103,8 @@ struct HotkeyGestureArbiter {
         }
 
         if let personaHotkey, personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
+            guard phase == .idle || phase == .pendingModifierActivation else { return [] }
+            phase = .idle
             return [.personaRequested]
         }
 
@@ -135,6 +137,7 @@ struct HotkeyGestureArbiter {
         modifierFlags: UInt,
         activationHotkey: HotkeyBinding?,
         askHotkey: HotkeyBinding?,
+        personaHotkey: HotkeyBinding? = nil,
     ) -> [HotkeyGestureEvent] {
         guard let activationHotkey else { return [] }
         guard activationHotkey.isModifierOnlyTrigger else { return [] }
@@ -143,7 +146,11 @@ struct HotkeyGestureArbiter {
         let activationModifierDown = isActivationModifierEvent && modifierFlags == activationHotkey.modifierFlags
 
         if activationModifierDown, phase == .idle {
-            if shouldDeferModifierActivation(activationHotkey: activationHotkey, askHotkey: askHotkey) {
+            if shouldDeferModifierActivation(
+                activationHotkey: activationHotkey,
+                askHotkey: askHotkey,
+                personaHotkey: personaHotkey,
+            ) {
                 phase = .pendingModifierActivation
                 return []
             }
@@ -175,10 +182,13 @@ struct HotkeyGestureArbiter {
     private func shouldDeferModifierActivation(
         activationHotkey: HotkeyBinding,
         askHotkey: HotkeyBinding?,
+        personaHotkey: HotkeyBinding?,
     ) -> Bool {
-        guard let askHotkey else { return false }
-        return activationHotkey.isModifierOnlyTrigger
-            && askHotkey.modifierFlags == activationHotkey.modifierFlags
-            && askHotkey.keyCode != activationHotkey.keyCode
+        guard activationHotkey.isModifierOnlyTrigger else { return false }
+        let competingHotkeys = [askHotkey, personaHotkey].compactMap { $0 }
+        return competingHotkeys.contains { hotkey in
+            hotkey.modifierFlags == activationHotkey.modifierFlags
+                && hotkey.keyCode != activationHotkey.keyCode
+        }
     }
 }

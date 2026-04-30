@@ -219,6 +219,7 @@ final class EventTapHotkeyService: HotkeyService {
                     modifierFlags: modifierFlags,
                     activationHotkey: activationHotkey,
                     askHotkey: askHotkey,
+                    personaHotkey: personaHotkey,
                 ),
             )
         }

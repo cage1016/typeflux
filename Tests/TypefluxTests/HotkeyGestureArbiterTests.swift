@@ -68,6 +68,61 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         XCTAssertEqual(arbiter.phase, .active(.ask))
     }
 
+    func testPersonaShortcutCancelsPendingModifierActivation() {
+        var arbiter = HotkeyGestureArbiter()
+        let rightCommandActivation = HotkeyBinding(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+        )
+        let commandPersona = HotkeyBinding(
+            keyCode: 35,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+        )
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            activationHotkey: rightCommandActivation,
+            askHotkey: nil,
+            personaHotkey: commandPersona,
+        )
+
+        let personaEvents = arbiter.handleKeyDown(
+            keyCode: 35,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            isRepeat: false,
+            activationHotkey: rightCommandActivation,
+            askHotkey: nil,
+            personaHotkey: commandPersona,
+        )
+
+        XCTAssertEqual(personaEvents, [.personaRequested])
+        XCTAssertEqual(arbiter.phase, .idle)
+        XCTAssertTrue(arbiter.handlePendingModifierActivationTimeout().isEmpty)
+    }
+
+    func testModifierOnlyActivationDefersForPersonaShortcutWithSameModifier() {
+        var arbiter = HotkeyGestureArbiter()
+        let rightCommandActivation = HotkeyBinding(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+        )
+        let commandPersona = HotkeyBinding(
+            keyCode: 35,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+        )
+
+        let events = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            activationHotkey: rightCommandActivation,
+            askHotkey: nil,
+            personaHotkey: commandPersona,
+        )
+
+        XCTAssertTrue(events.isEmpty)
+        XCTAssertTrue(arbiter.hasPendingModifierActivation)
+    }
+
     func testAskEndsEvenIfModifierWasReleasedFirst() {
         var arbiter = HotkeyGestureArbiter()
         _ = arbiter.handleFlagsChanged(
