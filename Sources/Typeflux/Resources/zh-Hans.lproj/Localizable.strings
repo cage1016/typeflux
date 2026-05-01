@@ -111,7 +111,7 @@
 "menu.quit" = "退出";
 "menu.status.ready" = "已就绪";
 "menu.status.recording" = "录音中…";
-"menu.status.processing" = "处理中…";
+"menu.status.processing" = "思考中…";
 "menu.status.failed" = "失败：%@";
 
 "appMenu.about" = "关于 %@";
@@ -274,7 +274,7 @@
 
 "overlay.recording.listening" = "正在聆听";
 "overlay.ask.guidance" = "你可以询问任何问题";
-"overlay.processing.transcribing" = "处理中";
+"overlay.processing.transcribing" = "思考中";
 "overlay.processing.thinking" = "思考中";
 "overlay.failure.title" = "处理失败";
 "overlay.timeout.title" = "处理超时";
@@ -986,4 +986,4 @@
 "agent.clarification.assistantSectionTitle" = "助手";
 "agent.clarification.hotkeyHint" = "按住快捷键录制回复";
 "agent.clarification.recordingHint" = "录音中... 说完后松开快捷键";
-"agent.clarification.transcribingHint" = "正在处理您的回复...";
+"agent.clarification.transcribingHint" = "思考中...";

@@ -111,7 +111,7 @@
 "menu.quit" = "やめる";
 "menu.status.ready" = "準備完了";
 "menu.status.recording" = "録音中です…";
-"menu.status.processing" = "最新のキャプチャを処理しています…";
+"menu.status.processing" = "思考中…";
 "menu.status.failed" = "失敗: %@";
 
 "appMenu.about" = "%@ について";
@@ -272,7 +272,7 @@
 
 "overlay.recording.listening" = "リスニング";
 "overlay.ask.guidance" = "選択したテキストについて何でも質問してください";
-"overlay.processing.transcribing" = "処理中";
+"overlay.processing.transcribing" = "思考中";
 "overlay.processing.thinking" = "思考中";
 "overlay.failure.title" = "処理に失敗しました";
 "overlay.timeout.title" = "処理がタイムアウトしました";
@@ -978,4 +978,4 @@
 "agent.clarification.assistantSectionTitle" = "アシスタント";
 "agent.clarification.hotkeyHint" = "ホットキーを押し続けて返答を録音";
 "agent.clarification.recordingHint" = "録音中... 完了したらホットキーを離してください";
-"agent.clarification.transcribingHint" = "返答を処理中...";
+"agent.clarification.transcribingHint" = "思考中...";

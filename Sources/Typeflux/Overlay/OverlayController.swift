@@ -134,6 +134,7 @@ struct OverlayFailureAction {
 final class OverlayController {
     private static let autoDismissDelay: TimeInterval = 6.0
     private static let shadowGutter: CGFloat = 32
+    private static let processingStatusLocalizationKey = "overlay.processing.thinking"
 
     struct PersonaPickerItem: Identifiable, Equatable {
         let id: String
@@ -309,10 +310,10 @@ final class OverlayController {
         ensureWindow()
         if model.presentation.isRecordingPreview {
             model.recordingPreviewExpanded = false
-            model.statusText = L("overlay.processing.transcribing")
+            model.statusText = L(Self.processingStatusLocalizationKey)
             model.recordingHintText = ""
             model.processingProgress = 0
-            model.processingPhase = 0
+            model.processingPhase = 1
             model.processingEpoch += 1
             refreshWindow()
 
@@ -331,11 +332,11 @@ final class OverlayController {
         ensureWindow()
         model.presentation = .processing
         model.recordingPreviewExpanded = false
-        model.statusText = L("overlay.processing.transcribing")
+        model.statusText = L(Self.processingStatusLocalizationKey)
         model.detailText = ""
         model.recordingHintText = ""
         model.processingProgress = 0
-        model.processingPhase = 0
+        model.processingPhase = 1
         model.processingEpoch += 1
         refreshWindow()
     }
@@ -350,11 +351,11 @@ final class OverlayController {
         dismissWorkItem = nil
         ensureWindow()
         model.presentation = .processing
-        model.statusText = L("overlay.processing.thinking")
+        model.statusText = L(Self.processingStatusLocalizationKey)
         model.detailText = ""
         model.recordingHintText = ""
         model.processingProgress = 0
-        model.processingPhase = 0
+        model.processingPhase = 1
         model.processingEpoch += 1
         refreshWindow()
     }
@@ -364,22 +365,29 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.transitionToLLMPhase() }
             return
         }
+        var shouldRefresh = false
         if model.presentation.isRecordingPreview {
             cancelPendingPresentationTransition()
             ensureWindow()
             model.presentation = .processing
             model.recordingPreviewExpanded = false
+            model.statusText = L(Self.processingStatusLocalizationKey)
             model.detailText = ""
             model.recordingHintText = ""
             model.processingProgress = 0
-            model.processingPhase = 0
+            model.processingPhase = 1
             model.processingEpoch += 1
+            shouldRefresh = true
         }
         guard model.presentation.isProcessing else { return }
-        guard model.processingPhase == 0 else { return }
-        model.statusText = L("overlay.processing.thinking")
-        model.processingPhase = 1
-        refreshWindow()
+        if model.processingPhase == 0 {
+            model.statusText = L(Self.processingStatusLocalizationKey)
+            model.processingPhase = 1
+            shouldRefresh = true
+        }
+        if shouldRefresh {
+            refreshWindow()
+        }
     }
 
     func showFailure(message: String) {
@@ -1899,15 +1907,13 @@ private struct ThinkingProgressCapsule: View {
         .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
         .onAppear {
-            startTranscribingPhase()
+            startProcessingPhase()
         }
         .onChange(of: epoch) { _ in
-            // Fresh session: reset and start from zero
             displayProgress = 0
-            startTranscribingPhase()
+            startProcessingPhase()
         }
         .onChange(of: phase) { newPhase in
-            // Seamlessly continue the bar from ~50% toward ~85%
             guard newPhase == 1, progress < 1 else { return }
             withAnimation(.easeOut(duration: 2.0)) {
                 displayProgress = 0.85
@@ -1922,10 +1928,11 @@ private struct ThinkingProgressCapsule: View {
         }
     }
 
-    private func startTranscribingPhase() {
+    private func startProcessingPhase() {
         guard progress < 1 else { return }
+        let targetProgress: CGFloat = phase == 1 ? 0.85 : 0.5
         withAnimation(.easeOut(duration: 1.5)) {
-            displayProgress = 0.5
+            displayProgress = targetProgress
         }
     }
 }
@@ -1964,11 +1971,11 @@ private struct ProcessingTranscriptCapsule: View {
         .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
         .onAppear {
-            startTranscribingPhase()
+            startProcessingPhase()
         }
         .onChange(of: epoch) { _ in
             displayProgress = 0
-            startTranscribingPhase()
+            startProcessingPhase()
         }
         .onChange(of: phase) { newPhase in
             guard newPhase == 1, progress < 1 else { return }
@@ -2013,10 +2020,11 @@ private struct ProcessingTranscriptCapsule: View {
         )
     }
 
-    private func startTranscribingPhase() {
+    private func startProcessingPhase() {
         guard progress < 1 else { return }
+        let targetProgress: CGFloat = phase == 1 ? 0.85 : 0.5
         withAnimation(.easeOut(duration: 1.5)) {
-            displayProgress = 0.5
+            displayProgress = targetProgress
         }
     }
 }

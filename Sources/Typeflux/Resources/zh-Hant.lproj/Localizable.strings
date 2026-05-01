@@ -111,7 +111,7 @@
 "menu.quit" = "結束";
 "menu.status.ready" = "已就緒";
 "menu.status.recording" = "錄音中…";
-"menu.status.processing" = "處理中…";
+"menu.status.processing" = "思考中…";
 "menu.status.failed" = "失敗：%@";
 
 "appMenu.about" = "關於 %@";
@@ -272,7 +272,7 @@
 
 "overlay.recording.listening" = "正在聆聽";
 "overlay.ask.guidance" = "你可以詢問任何問題";
-"overlay.processing.transcribing" = "處理中";
+"overlay.processing.transcribing" = "思考中";
 "overlay.processing.thinking" = "思考中";
 "overlay.failure.title" = "處理失敗";
 "overlay.timeout.title" = "處理逾時";
@@ -982,4 +982,4 @@
 "agent.clarification.assistantSectionTitle" = "助手";
 "agent.clarification.hotkeyHint" = "按住快捷鍵錄製回覆";
 "agent.clarification.recordingHint" = "錄音中... 說完後鬆開快捷鍵";
-"agent.clarification.transcribingHint" = "正在處理您的回覆...";
+"agent.clarification.transcribingHint" = "思考中...";

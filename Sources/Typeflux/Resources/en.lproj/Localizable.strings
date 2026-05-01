@@ -111,7 +111,7 @@
 "menu.quit" = "Quit";
 "menu.status.ready" = "Ready";
 "menu.status.recording" = "Recording in progress…";
-"menu.status.processing" = "Processing latest capture…";
+"menu.status.processing" = "Thinking…";
 "menu.status.failed" = "Failed: %@";
 
 "appMenu.about" = "About %@";
@@ -274,7 +274,7 @@
 
 "overlay.recording.listening" = "Listening";
 "overlay.ask.guidance" = "Ask anything about the selected text";
-"overlay.processing.transcribing" = "Processing";
+"overlay.processing.transcribing" = "Thinking";
 "overlay.processing.thinking" = "Thinking";
 "overlay.failure.title" = "Processing failed";
 "overlay.timeout.title" = "Processing timed out";
@@ -986,4 +986,4 @@
 "agent.clarification.assistantSectionTitle" = "Assistant";
 "agent.clarification.hotkeyHint" = "Press and hold your hotkey to record a reply";
 "agent.clarification.recordingHint" = "Recording... release hotkey when done";
-"agent.clarification.transcribingHint" = "Processing your reply...";
+"agent.clarification.transcribingHint" = "Thinking...";
