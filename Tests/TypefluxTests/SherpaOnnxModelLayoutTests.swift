@@ -27,7 +27,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testSenseVoiceSmallRuntimeDirectory() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
-        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts")
+        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts")
     }
 
     func testSenseVoiceSmallModelDirectory() throws {
@@ -39,7 +39,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
         XCTAssertEqual(
             layout.runtimeArchiveURL.absoluteString,
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2",
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts.tar.bz2",
         )
     }
 
@@ -75,7 +75,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         )
         XCTAssertEqual(
             LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .huggingFace).absoluteString,
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2",
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts.tar.bz2",
         )
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .senseVoiceSmall, source: .huggingFace))
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .whisperLocal, source: .huggingFace))
@@ -96,7 +96,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         )
         XCTAssertEqual(
             LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .modelScope).absoluteString,
-            "https://sourceforge.net/projects/sherpa-onnx.mirror/files/v1.12.35/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts.tar.bz2/download",
+            "https://sourceforge.net/projects/sherpa-onnx.mirror/files/v1.13.0/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts.tar.bz2/download",
         )
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .senseVoiceSmall, source: .modelScope))
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .qwen3ASR, source: .modelScope))
@@ -171,7 +171,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testQwen3ASRRuntimeDirectory() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .qwen3ASR))
-        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts")
+        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts")
     }
 
     func testQwen3ASRModelDirectory() throws {
@@ -191,7 +191,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testFunASRRuntimeDirectory() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
-        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts")
+        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts")
     }
 
     func testFunASRModelDirectory() throws {
@@ -246,7 +246,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         let executableURL = layout.runtimeExecutableURL(storageURL: storage)
         XCTAssertEqual(
             executableURL.path,
-            "/models/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline",
+            "/models/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline",
         )
     }
 
@@ -256,7 +256,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         let libURL = layout.runtimeLibraryURL(storageURL: storage)
         XCTAssertEqual(
             libURL.path,
-            "/models/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib",
+            "/models/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/lib",
         )
     }
 

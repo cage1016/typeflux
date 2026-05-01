@@ -34,8 +34,8 @@ final class LocalModelTranscriberTests: XCTestCase {
         let text = try await transcriber.transcribe(audioFile: audioFile)
 
         XCTAssertEqual(text, "你好 Typeflux")
-        XCTAssertEqual(runner.lastExecutablePath, modelFolder.appendingPathComponent("sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline").path)
-        XCTAssertEqual(runner.lastEnvironment?["DYLD_LIBRARY_PATH"], modelFolder.appendingPathComponent("sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib").path)
+        XCTAssertEqual(runner.lastExecutablePath, modelFolder.appendingPathComponent("sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline").path)
+        XCTAssertEqual(runner.lastEnvironment?["DYLD_LIBRARY_PATH"], modelFolder.appendingPathComponent("sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/lib").path)
         XCTAssertTrue(runner.lastArguments.contains("--sense-voice-language=auto"))
         XCTAssertTrue(runner.lastArguments.contains("--sense-voice-use-itn=true"))
         XCTAssertTrue(runner.lastArguments.contains(where: { $0.hasPrefix("--sense-voice-model=") }))
@@ -104,8 +104,8 @@ final class LocalModelTranscriberTests: XCTestCase {
         let text = try await transcriber.transcribe(audioFile: audioFile)
 
         XCTAssertEqual(text, "你好 Typeflux")
-        XCTAssertEqual(runner.lastExecutablePath, modelFolder.appendingPathComponent("sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline").path)
-        XCTAssertEqual(runner.lastEnvironment?["DYLD_LIBRARY_PATH"], modelFolder.appendingPathComponent("sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib").path)
+        XCTAssertEqual(runner.lastExecutablePath, modelFolder.appendingPathComponent("sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/bin/sherpa-onnx-offline").path)
+        XCTAssertEqual(runner.lastEnvironment?["DYLD_LIBRARY_PATH"], modelFolder.appendingPathComponent("sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/lib").path)
         XCTAssertTrue(runner.lastArguments.contains(where: { $0.hasPrefix("--paraformer=") }))
         XCTAssertTrue(runner.lastArguments.contains(where: { $0.hasPrefix("--tokens=") }))
         XCTAssertEqual(runner.lastArguments.last, audioFile.fileURL.path)
@@ -723,6 +723,36 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertFalse(layout.isInstalled(storageURL: modelFolder, fileManager: .default))
     }
 
+    func testFunASRLayoutAcceptsParaformerTokens() throws {
+        let modelFolder = try makeSherpaModelFolder(for: .funASR)
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+
+        XCTAssertTrue(layout.isInstalled(storageURL: modelFolder, fileManager: .default))
+    }
+
+    func testFunASRLayoutAcceptsTokensWhenValidationPrefixSplitsUTF8Scalar() throws {
+        let modelFolder = try makeSherpaModelFolder(for: .funASR)
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+        let modelDirectory = modelFolder.appendingPathComponent(layout.modelRootDirectory, isDirectory: true)
+        let tokensData = Data(("<blank> 0\n" + String(repeating: "稞\n", count: 100)).utf8)
+
+        XCTAssertNil(String(data: tokensData.prefix(256), encoding: .utf8))
+
+        try tokensData.write(to: modelDirectory.appendingPathComponent("tokens.txt"))
+
+        XCTAssertTrue(layout.isInstalled(storageURL: modelFolder, fileManager: .default))
+    }
+
+    func testFunASRLayoutRejectsSenseVoiceTokens() throws {
+        let modelFolder = try makeSherpaModelFolder(for: .funASR)
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+        let modelDirectory = modelFolder.appendingPathComponent(layout.modelRootDirectory, isDirectory: true)
+
+        try senseVoiceTokensFixtureData().write(to: modelDirectory.appendingPathComponent("tokens.txt"))
+
+        XCTAssertFalse(layout.isInstalled(storageURL: modelFolder, fileManager: .default))
+    }
+
     func testSherpaInstallerRetriesTransientArchiveDownloadFailures() async throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
         let modelArtifact = try XCTUnwrap(LocalModelDownloadCatalog.sherpaOnnxModelArtifact(
@@ -1005,7 +1035,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             )
         case .funASR:
             try senseVoiceModelFixtureData().write(to: modelDirectory.appendingPathComponent("model.int8.onnx"))
-            try senseVoiceTokensFixtureData().write(to: modelDirectory.appendingPathComponent("tokens.txt"))
+            try funASRTokensFixtureData().write(to: modelDirectory.appendingPathComponent("tokens.txt"))
         }
 
         return root
@@ -1097,6 +1127,9 @@ final class LocalModelTranscriberTests: XCTestCase {
         case "model.int8.onnx":
             return senseVoiceModelFixtureData()
         case "tokens.txt":
+            if relativePath.contains("paraformer") {
+                return funASRTokensFixtureData()
+            }
             return senseVoiceTokensFixtureData()
         default:
             return Data("fixture".utf8)
@@ -1114,6 +1147,17 @@ final class LocalModelTranscriberTests: XCTestCase {
             <s> 1
             </s> 2
             ▁the 3
+            """.utf8,
+        )
+    }
+
+    private func funASRTokensFixtureData() -> Data {
+        Data(
+            """
+            <blank> 0
+            <s> 1
+            </s> 2
+            <OOV> 3
             """.utf8,
         )
     }

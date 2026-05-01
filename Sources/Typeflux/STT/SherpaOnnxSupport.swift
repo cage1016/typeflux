@@ -20,6 +20,7 @@ enum SherpaOnnxModelArtifact: Equatable {
 }
 
 struct SherpaOnnxModelLayout {
+    let model: LocalSTTModel
     let runtimeArchiveURL: URL
     let runtimeRootDirectory: String
     let modelArtifact: SherpaOnnxModelArtifact
@@ -47,6 +48,7 @@ struct SherpaOnnxModelLayout {
                 return nil
             }
             return SherpaOnnxModelLayout(
+                model: model,
                 runtimeArchiveURL: LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: downloadSource),
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
@@ -69,6 +71,7 @@ struct SherpaOnnxModelLayout {
                 return nil
             }
             return SherpaOnnxModelLayout(
+                model: model,
                 runtimeArchiveURL: LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: downloadSource),
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
@@ -93,6 +96,7 @@ struct SherpaOnnxModelLayout {
                 return nil
             }
             return SherpaOnnxModelLayout(
+                model: model,
                 runtimeArchiveURL: LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: downloadSource),
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
@@ -125,8 +129,15 @@ struct SherpaOnnxModelLayout {
     }
 
     func isInstalled(storageURL: URL, fileManager: FileManager = .default) -> Bool {
-        requiredRelativePaths.allSatisfy { relativePath in
-            hasUsableItem(
+        missingOrUnusableRelativePaths(storageURL: storageURL, fileManager: fileManager).isEmpty
+    }
+
+    func missingOrUnusableRelativePaths(
+        storageURL: URL,
+        fileManager: FileManager = .default,
+    ) -> [String] {
+        requiredRelativePaths.filter { relativePath in
+            !hasUsableItem(
                 at: storageURL.appendingPathComponent(relativePath, isDirectory: false),
                 relativePath: relativePath,
                 fileManager: fileManager,
@@ -166,44 +177,52 @@ struct SherpaOnnxModelLayout {
     private func hasValidModelAsset(at url: URL, relativePath: String, fileManager: FileManager) -> Bool {
         switch relativePath {
         case let path where path.hasSuffix("/tokens.txt"):
-            return hasValidSenseVoiceTokensFile(at: url)
+            return hasValidTokensFile(at: url)
         case let path where path.hasSuffix("/model.int8.onnx"):
-            return hasValidSenseVoiceModelFile(at: url, fileManager: fileManager)
+            return hasValidOnnxModelFile(at: url, fileManager: fileManager)
         default:
             return true
         }
     }
 
-    private func hasValidSenseVoiceTokensFile(at url: URL) -> Bool {
-        guard let data = try? Data(contentsOf: url),
-              let prefix = String(data: data.prefix(256), encoding: .utf8)?
-              .trimmingCharacters(in: .whitespacesAndNewlines)
-        else {
+    private func hasValidTokensFile(at url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url), !data.isEmpty else {
             return false
         }
 
+        let prefix = textPrefix(from: data)
         guard !isMirrorErrorResponse(prefix) else {
             return false
         }
 
-        return prefix.contains("<unk> 0")
+        switch model {
+        case .senseVoiceSmall:
+            return prefix.contains("<unk> 0")
+        case .funASR:
+            return prefix.contains("<blank> 0")
+        case .qwen3ASR, .whisperLocal, .whisperLocalLarge:
+            return true
+        }
     }
 
-    private func hasValidSenseVoiceModelFile(at url: URL, fileManager: FileManager) -> Bool {
+    private func hasValidOnnxModelFile(at url: URL, fileManager: FileManager) -> Bool {
         let attributes = try? fileManager.attributesOfItem(atPath: url.path)
         let fileSize = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
         guard fileSize >= 1_000_000 else {
-            guard let data = try? Data(contentsOf: url),
-                  let prefix = String(data: data.prefix(256), encoding: .utf8)?
-                  .trimmingCharacters(in: .whitespacesAndNewlines)
-            else {
+            guard let data = try? Data(contentsOf: url), !data.isEmpty else {
                 return false
             }
 
+            let prefix = textPrefix(from: data)
             return !isMirrorErrorResponse(prefix)
         }
 
         return true
+    }
+
+    private func textPrefix(from data: Data, maxBytes: Int = 512) -> String {
+        String(decoding: data.prefix(maxBytes), as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func isMirrorErrorResponse(_ text: String) -> Bool {
@@ -339,11 +358,21 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             extractedRootDirectoryName: layout.modelRootDirectory,
         )
 
-        guard layout.isInstalled(storageURL: storageURL, fileManager: fileManager) else {
+        let missingOrUnusablePaths = layout.missingOrUnusableRelativePaths(
+            storageURL: storageURL,
+            fileManager: fileManager,
+        )
+        guard missingOrUnusablePaths.isEmpty else {
+            NetworkDebugLogger.logMessage(
+                "[Local Model Download] model=\(model.displayName) source=\(downloadSource.displayName) validation=failed missingOrUnusablePaths=\(missingOrUnusablePaths.joined(separator: ","))"
+            )
             throw NSError(
                 domain: "SherpaOnnxModelInstaller",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.modelAssetsMissing", model.displayName)],
+                userInfo: [
+                    NSLocalizedDescriptionKey: L("localSTT.error.modelAssetsMissing", model.displayName),
+                    "MissingOrUnusablePaths": missingOrUnusablePaths,
+                ],
             )
         }
 
