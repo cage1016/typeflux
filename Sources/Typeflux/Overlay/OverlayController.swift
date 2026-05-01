@@ -89,6 +89,7 @@ final class OverlayController {
     private var lastPositionedFrame: NSRect?
     private var lastPositionedPresentation: OverlayViewModel.Presentation?
     private var pendingFrameAnimationWorkItem: DispatchWorkItem?
+    private var pendingPresentationWorkItem: DispatchWorkItem?
 
     init(appState: AppStateStore) {
         self.appState = appState
@@ -133,10 +134,13 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.show(hintText: hintText) }
             return
         }
+        pendingPresentationWorkItem?.cancel()
+        pendingPresentationWorkItem = nil
         dismissWorkItem?.cancel()
         dismissWorkItem = nil
         ensureWindow()
         model.presentation = .recordingHold
+        model.recordingPreviewExpanded = false
         model.statusText = L("overlay.recording.listening")
         model.detailText = ""
         model.recordingHintText = hintText ?? ""
@@ -178,10 +182,13 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showLockedRecording(hintText: hintText) }
             return
         }
+        pendingPresentationWorkItem?.cancel()
+        pendingPresentationWorkItem = nil
         dismissWorkItem?.cancel()
         dismissWorkItem = nil
         ensureWindow()
         model.presentation = .recordingLocked
+        model.recordingPreviewExpanded = false
         model.recordingHintText = hintText ?? ""
         refreshWindow()
     }
@@ -203,6 +210,7 @@ final class OverlayController {
         default:
             return
         }
+        model.recordingPreviewExpanded = true
         refreshWindow()
     }
 
@@ -211,10 +219,35 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showProcessing() }
             return
         }
+        pendingPresentationWorkItem?.cancel()
+        pendingPresentationWorkItem = nil
         dismissWorkItem?.cancel()
         dismissWorkItem = nil
         ensureWindow()
+        if model.presentation.isRecordingPreview {
+            model.recordingPreviewExpanded = false
+            model.statusText = L("overlay.processing.transcribing")
+            model.recordingHintText = ""
+            model.processingProgress = 0
+            model.processingPhase = 0
+            model.processingEpoch += 1
+            refreshWindow()
+
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.showProcessingImmediately()
+            }
+            pendingPresentationWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.40, execute: workItem)
+            return
+        }
+        showProcessingImmediately()
+    }
+
+    private func showProcessingImmediately() {
+        pendingPresentationWorkItem = nil
+        ensureWindow()
         model.presentation = .processing
+        model.recordingPreviewExpanded = false
         model.statusText = L("overlay.processing.transcribing")
         model.detailText = ""
         model.recordingHintText = ""
@@ -598,13 +631,13 @@ final class OverlayController {
             let presentation = model.presentation
             let workItem = DispatchWorkItem { [weak self, weak window] in
                 guard let self, let window, self.model.presentation == presentation else { return }
-                self.animateWindow(window, to: targetFrame, duration: 0.28)
+                self.animateWindow(window, to: targetFrame, duration: 0.30)
                 self.lastPositionedFrame = targetFrame
             }
             pendingFrameAnimationWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: workItem)
         } else if shouldAnimate {
-            animateWindow(window, to: targetFrame, duration: model.presentation.isRecordingPreview ? 0.34 : 0.26)
+            animateWindow(window, to: targetFrame, duration: model.presentation.isRecordingPreview ? 0.38 : 0.28)
             lastPositionedFrame = targetFrame
         } else {
             window.setFrame(targetFrame, display: true)
@@ -630,8 +663,12 @@ final class OverlayController {
                 interactive: false,
             )
         case .recordingHoldPreview:
+            let isExpanded = model.recordingPreviewExpanded
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 16,
+                size: recordingOverlaySize(
+                    baseWidth: isExpanded ? 428 : 146,
+                    baseHeight: isExpanded ? 218 : 112,
+                ), anchor: .bottom, offset: 16,
                 interactive: false,
             )
         case .recordingLocked:
@@ -639,8 +676,12 @@ final class OverlayController {
                 size: recordingOverlaySize(baseWidth: 196, baseHeight: 120), anchor: .bottom, offset: 16, interactive: true,
             )
         case .recordingLockedPreview:
+            let isExpanded = model.recordingPreviewExpanded
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 16,
+                size: recordingOverlaySize(
+                    baseWidth: isExpanded ? 428 : 196,
+                    baseHeight: isExpanded ? 218 : 120,
+                ), anchor: .bottom, offset: 16,
                 interactive: true,
             )
         case .processing:
@@ -912,6 +953,7 @@ final class OverlayViewModel: ObservableObject {
     @Published var statusText: String = ""
     @Published var detailText: String = ""
     @Published var recordingHintText: String = ""
+    @Published var recordingPreviewExpanded: Bool = false
     @Published var level: Float = 0
     @Published var processingProgress: CGFloat = 0
     @Published var processingEpoch: Int = 0
@@ -982,7 +1024,7 @@ final class OverlayViewModel: ObservableObject {
 private struct OverlayView: View {
     @ObservedObject var model: OverlayViewModel
 
-    private let recordingMotion = Animation.easeInOut(duration: 0.34)
+    private let recordingMotion = Animation.easeInOut(duration: 0.38)
 
     var body: some View {
         if usesWindowChrome {
@@ -991,11 +1033,11 @@ private struct OverlayView: View {
                 case .recordingHold:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: false) }
                 case .recordingHoldPreview:
-                    recordingStack { recordingMorphCapsule(expanded: true, showControls: false) }
+                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: false) }
                 case .recordingLocked:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: true) }
                 case .recordingLockedPreview:
-                    recordingStack { recordingMorphCapsule(expanded: true, showControls: true) }
+                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true) }
                 case .processing:
                     processingCapsule
                 case .transcriptPreview:
@@ -1016,11 +1058,11 @@ private struct OverlayView: View {
                 case .recordingHold:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: false) }
                 case .recordingHoldPreview:
-                    recordingStack { recordingMorphCapsule(expanded: true, showControls: false) }
+                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: false) }
                 case .recordingLocked:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: true) }
                 case .recordingLockedPreview:
-                    recordingStack { recordingMorphCapsule(expanded: true, showControls: true) }
+                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true) }
                 case .processing:
                     processingCapsule
                 case .transcriptPreview:
@@ -1595,6 +1637,7 @@ private struct MorphingRecordingCapsule: View {
         )
         .shadow(color: Color.black.opacity(0.26), radius: 18, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
+        .animation(.easeInOut(duration: 0.38), value: expanded)
     }
 
     @ViewBuilder
