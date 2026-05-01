@@ -182,7 +182,7 @@ private enum AliCloudAudioConverter {
 
 // MARK: - FunASR Session (DashScope WebSocket protocol)
 
-private actor AliCloudFunASRSession: PCM16RealtimeTranscriptionSession {
+actor AliCloudFunASRSession: PCM16RealtimeTranscriptionSession {
     static func run(
         pcmData: Data,
         model: String,
