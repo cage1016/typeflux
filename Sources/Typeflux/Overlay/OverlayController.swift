@@ -598,13 +598,13 @@ final class OverlayController {
             let presentation = model.presentation
             let workItem = DispatchWorkItem { [weak self, weak window] in
                 guard let self, let window, self.model.presentation == presentation else { return }
-                self.animateWindow(window, to: targetFrame, duration: 0.18)
+                self.animateWindow(window, to: targetFrame, duration: 0.28)
                 self.lastPositionedFrame = targetFrame
             }
             pendingFrameAnimationWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: workItem)
         } else if shouldAnimate {
-            animateWindow(window, to: targetFrame, duration: 0.22)
+            animateWindow(window, to: targetFrame, duration: model.presentation.isRecordingPreview ? 0.34 : 0.26)
             lastPositionedFrame = targetFrame
         } else {
             window.setFrame(targetFrame, display: true)
@@ -631,7 +631,7 @@ final class OverlayController {
             )
         case .recordingHoldPreview:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 18,
+                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 16,
                 interactive: false,
             )
         case .recordingLocked:
@@ -640,7 +640,7 @@ final class OverlayController {
             )
         case .recordingLockedPreview:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 18,
+                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 16,
                 interactive: true,
             )
         case .processing:
@@ -981,22 +981,21 @@ final class OverlayViewModel: ObservableObject {
 
 private struct OverlayView: View {
     @ObservedObject var model: OverlayViewModel
-    @Namespace private var recordingCapsuleNamespace
 
-    private let recordingMotion = Animation.easeInOut(duration: 0.18)
+    private let recordingMotion = Animation.easeInOut(duration: 0.34)
 
     var body: some View {
         if usesWindowChrome {
             Group {
                 switch model.presentation {
                 case .recordingHold:
-                    recordingStack { recordingCapsule }
+                    recordingStack { recordingMorphCapsule(expanded: false, showControls: false) }
                 case .recordingHoldPreview:
-                    recordingStack { recordingPreviewStack(showControls: false) }
+                    recordingStack { recordingMorphCapsule(expanded: true, showControls: false) }
                 case .recordingLocked:
-                    recordingStack { lockedRecordingCapsule }
+                    recordingStack { recordingMorphCapsule(expanded: false, showControls: true) }
                 case .recordingLockedPreview:
-                    recordingStack { recordingPreviewStack(showControls: true) }
+                    recordingStack { recordingMorphCapsule(expanded: true, showControls: true) }
                 case .processing:
                     processingCapsule
                 case .transcriptPreview:
@@ -1015,13 +1014,13 @@ private struct OverlayView: View {
             Group {
                 switch model.presentation {
                 case .recordingHold:
-                    recordingStack { recordingCapsule }
+                    recordingStack { recordingMorphCapsule(expanded: false, showControls: false) }
                 case .recordingHoldPreview:
-                    recordingStack { recordingPreviewStack(showControls: false) }
+                    recordingStack { recordingMorphCapsule(expanded: true, showControls: false) }
                 case .recordingLocked:
-                    recordingStack { lockedRecordingCapsule }
+                    recordingStack { recordingMorphCapsule(expanded: false, showControls: true) }
                 case .recordingLockedPreview:
-                    recordingStack { recordingPreviewStack(showControls: true) }
+                    recordingStack { recordingMorphCapsule(expanded: true, showControls: true) }
                 case .processing:
                     processingCapsule
                 case .transcriptPreview:
@@ -1076,15 +1075,6 @@ private struct OverlayView: View {
         }
     }
 
-    private var recordingCapsule: some View {
-        OverlayCapsule {
-            LevelWaveform(level: model.level, activeColor: Color.white.opacity(0.95))
-                .frame(width: 38, height: 14)
-        }
-        .matchedGeometryEffect(id: "recording-capsule", in: recordingCapsuleNamespace)
-        .transition(capsuleTransition)
-    }
-
     private func recordingStack(@ViewBuilder content: () -> some View) -> some View {
         VStack(spacing: 10) {
             if !model.recordingHintText.isEmpty {
@@ -1125,53 +1115,16 @@ private struct OverlayView: View {
         )
     }
 
-    private var lockedRecordingCapsule: some View {
-        LockedRecordingCapsule(
+    private func recordingMorphCapsule(expanded: Bool, showControls: Bool) -> some View {
+        MorphingRecordingCapsule(
+            text: model.detailText,
             level: model.level,
+            expanded: expanded,
+            showControls: showControls,
             onCancel: model.requestCancel,
             onConfirm: model.requestConfirm,
         )
-        .matchedGeometryEffect(id: "recording-capsule", in: recordingCapsuleNamespace)
-        .transition(capsuleTransition)
-    }
-
-    private func recordingPreviewStack(showControls: Bool) -> some View {
-        VStack(spacing: 10) {
-            recordingPreviewCard
-                .transition(previewCardTransition)
-            if showControls {
-                lockedRecordingCapsule
-            } else {
-                recordingCapsule
-            }
-        }
         .fixedSize(horizontal: true, vertical: true)
-    }
-
-    private var recordingPreviewCard: some View {
-        LiveTranscriptPreviewCard(width: 360) {
-            LiveTranscriptPreviewText(text: model.detailText)
-        }
-    }
-
-    private var capsuleTransition: AnyTransition {
-        .asymmetric(
-            insertion: .scale(scale: 0.94, anchor: .bottom).combined(with: .opacity),
-            removal: .opacity,
-        )
-    }
-
-    private var previewCardTransition: AnyTransition {
-        .asymmetric(
-            insertion: .modifier(
-                active: PreviewCardMotionModifier(opacity: 0, yOffset: 7, blurRadius: 3),
-                identity: PreviewCardMotionModifier(opacity: 1, yOffset: 0, blurRadius: 0),
-            ),
-            removal: .modifier(
-                active: PreviewCardMotionModifier(opacity: 0, yOffset: 0, blurRadius: 2),
-                identity: PreviewCardMotionModifier(opacity: 1, yOffset: 0, blurRadius: 0),
-            ),
-        )
     }
 
     private var previewCard: some View {
@@ -1602,16 +1555,79 @@ private struct LockedRecordingCapsule: View {
     }
 }
 
-private struct PreviewCardMotionModifier: ViewModifier {
-    let opacity: Double
-    let yOffset: CGFloat
-    let blurRadius: CGFloat
+private struct MorphingRecordingCapsule: View {
+    let text: String
+    let level: Float
+    let expanded: Bool
+    let showControls: Bool
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
 
-    func body(content: Content) -> some View {
-        content
-            .opacity(opacity)
-            .offset(y: yOffset)
-            .blur(radius: blurRadius)
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: expanded ? 22 : 999, style: .continuous)
+        let width: CGFloat = expanded ? 360 : (showControls ? 114 : 78)
+        let height: CGFloat = expanded ? 127 : 35
+
+        ZStack(alignment: .bottom) {
+            if expanded {
+                LiveTranscriptPreviewText(text: text)
+                    .padding(.horizontal, 15)
+                    .padding(.top, 12)
+                    .padding(.bottom, 43)
+                    .opacity(expanded ? 1 : 0)
+                    .transition(.opacity)
+            }
+
+            controlsRow
+                .frame(height: showControls ? 24 : 14)
+                .padding(.horizontal, showControls ? 7 : 20)
+                .padding(.bottom, showControls ? 5.5 : 10.5)
+        }
+        .frame(width: width, height: height, alignment: .bottom)
+        .background(.ultraThinMaterial, in: shape)
+        .background(
+            shape
+                .fill(Color.black.opacity(0.74)),
+        )
+        .overlay(
+            shape
+                .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.9),
+        )
+        .shadow(color: Color.black.opacity(0.26), radius: 18, x: 0, y: 12)
+        .environment(\.colorScheme, .dark)
+    }
+
+    @ViewBuilder
+    private var controlsRow: some View {
+        if showControls {
+            HStack(spacing: 7) {
+                roundIconButton(systemName: "xmark", action: onCancel)
+
+                LevelWaveform(level: level, activeColor: Color.white.opacity(0.95))
+                    .frame(width: 38, height: 14)
+
+                roundIconButton(systemName: "checkmark", action: onConfirm, inverted: true)
+            }
+        } else {
+            LevelWaveform(level: level, activeColor: Color.white.opacity(0.95))
+                .frame(width: 38, height: 14)
+        }
+    }
+
+    private func roundIconButton(
+        systemName: String, action: @escaping () -> Void, inverted: Bool = false,
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(inverted ? Color.black.opacity(0.9) : Color.white.opacity(0.96))
+                .frame(width: 24, height: 24)
+                .background(
+                    Circle()
+                        .fill(inverted ? Color.white.opacity(0.98) : Color.white.opacity(0.22)),
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -1654,36 +1670,6 @@ private struct LiveTranscriptPreviewText: View {
                 proxy.scrollTo(bottomID, anchor: .bottom)
             }
         }
-    }
-}
-
-private struct LiveTranscriptPreviewCard<Content: View>: View {
-    let width: CGFloat
-    @ViewBuilder var content: Content
-
-    init(width: CGFloat, @ViewBuilder content: () -> Content) {
-        self.width = width
-        self.content = content()
-    }
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-
-        content
-            .padding(.horizontal, 15)
-            .padding(.vertical, 11)
-            .frame(width: width, alignment: .leading)
-            .background(.ultraThinMaterial, in: shape)
-            .background(
-                shape
-                    .fill(Color.black.opacity(0.74)),
-            )
-            .overlay(
-                shape
-                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.9),
-            )
-            .shadow(color: Color.black.opacity(0.26), radius: 18, x: 0, y: 12)
-            .environment(\.colorScheme, .dark)
     }
 }
 
