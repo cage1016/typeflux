@@ -7,7 +7,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
     private let ask = HotkeyBinding.defaultAsk
     private let persona = HotkeyBinding.defaultPersona
 
-    func testModifierOnlyActivationWaitsForArbitrationBeforeBeginning() {
+    func testModifierOnlyActivationBeginsImmediatelyWhileArbitrating() {
         var arbiter = HotkeyGestureArbiter()
 
         let events = arbiter.handleFlagsChanged(
@@ -17,11 +17,11 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             askHotkey: ask,
         )
 
-        XCTAssertTrue(events.isEmpty)
+        XCTAssertEqual(events, [.begin(.activation)])
         XCTAssertTrue(arbiter.hasPendingModifierActivation)
 
         let timeoutEvents = arbiter.handlePendingModifierActivationTimeout()
-        XCTAssertEqual(timeoutEvents, [.begin(.activation)])
+        XCTAssertTrue(timeoutEvents.isEmpty)
         XCTAssertEqual(arbiter.phase, .active(.activation))
     }
 
@@ -95,7 +95,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             personaHotkey: commandPersona,
         )
 
-        XCTAssertEqual(personaEvents, [.personaRequested])
+        XCTAssertEqual(personaEvents, [.cancel(.activation), .personaRequested])
         XCTAssertEqual(arbiter.phase, .idle)
         XCTAssertTrue(arbiter.handlePendingModifierActivationTimeout().isEmpty)
     }
@@ -119,7 +119,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             personaHotkey: commandPersona,
         )
 
-        XCTAssertTrue(events.isEmpty)
+        XCTAssertEqual(events, [.begin(.activation)])
         XCTAssertTrue(arbiter.hasPendingModifierActivation)
     }
 

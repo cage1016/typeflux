@@ -113,6 +113,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         do {
             engine.prepare()
             try engine.start()
+            RecordingStartupLatencyTrace.shared.mark("audio.engine_start_return")
         } catch {
             stopInternal()
             throw error
@@ -416,6 +417,8 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             activeBufferCallbacks += 1
             inputBufferCallbackCount += 1
             stateCondition.unlock()
+
+            RecordingStartupLatencyTrace.shared.markFirstAudioBuffer()
 
             defer {
                 stateCondition.lock()

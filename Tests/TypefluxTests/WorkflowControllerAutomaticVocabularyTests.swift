@@ -457,6 +457,7 @@ private final class MockWorkflowHotkeyService: HotkeyService {
     var onActivationTap: (() -> Void)?
     var onActivationPressBegan: (() -> Void)?
     var onActivationPressEnded: (() -> Void)?
+    var onActivationCancelled: (() -> Void)?
     var onAskPressBegan: (() -> Void)?
     var onAskPressEnded: (() -> Void)?
     var onPersonaPickerRequested: (() -> Void)?

@@ -373,6 +373,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(eventRecorder.durationSnapshot(), [])
 
         controller.cancelRecording()
+        await waitForMainActorWork()
     }
 
     func testBeginRecordingDoesNotPlayCueWhileAudioStartIsPending() async {
@@ -417,6 +418,63 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(audioRecorder.startCallCount, 1)
         XCTAssertEqual(audioRecorder.stopCallCount, 1)
         XCTAssertTrue(eventRecorder.snapshot().contains("audio-start"))
+    }
+
+    func testAskPressDuringActiveDictationPromotesExistingRecording() async {
+        let audioRecorder = MockProcessingAudioRecorder()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            sleep: { _ in },
+        )
+
+        await controller.beginRecording(intent: .dictation, startLocked: false)
+
+        controller.handlePressBegan(intent: .askSelection, startLocked: true)
+
+        XCTAssertEqual(controller.recordingIntent, .askSelection)
+        XCTAssertEqual(controller.recordingMode, .locked)
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+
+        controller.cancelRecording()
+        await waitForMainActorWork()
+    }
+
+    func testActivationTapAfterEndingLockedAskRecordingIsSuppressed() async {
+        let audioRecorder = MockProcessingAudioRecorder()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            sleep: { _ in },
+        )
+
+        await controller.beginRecording(intent: .askSelection, startLocked: true)
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        XCTAssertNotNil(controller.suppressActivationTapUntil)
+
+        controller.handleActivationTap()
+
+        XCTAssertNil(controller.suppressActivationTapUntil)
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+        await audioRecorder.waitUntilStopCount(isAtLeast: 1)
+        await waitForMainActorWork()
+    }
+
+    func testActivationTapWhileHoldingDictationLocksExistingRecording() async {
+        let audioRecorder = MockProcessingAudioRecorder()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            sleep: { _ in },
+        )
+
+        await controller.beginRecording(intent: .dictation, startLocked: false)
+
+        controller.handleActivationTap()
+
+        XCTAssertEqual(controller.recordingMode, .locked)
+        XCTAssertEqual(audioRecorder.startCallCount, 1)
+
+        controller.cancelRecording()
+        await waitForMainActorWork()
     }
 
     func testReleasingWhileAudioStartIsPendingStopsAfterStartCompletes() async {
@@ -650,6 +708,7 @@ private final class MockProcessingHotkeyService: HotkeyService {
     var onActivationTap: (() -> Void)?
     var onActivationPressBegan: (() -> Void)?
     var onActivationPressEnded: (() -> Void)?
+    var onActivationCancelled: (() -> Void)?
     var onAskPressBegan: (() -> Void)?
     var onAskPressEnded: (() -> Void)?
     var onPersonaPickerRequested: (() -> Void)?

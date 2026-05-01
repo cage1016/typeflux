@@ -10,6 +10,7 @@ enum HotkeyGestureEvent: Equatable {
     case activationTapped
     case begin(HotkeyAction)
     case end(HotkeyAction)
+    case cancel(HotkeyAction)
     case personaRequested
 }
 
@@ -104,8 +105,11 @@ struct HotkeyGestureArbiter {
 
         if let personaHotkey, personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
             guard phase == .idle || phase == .pendingModifierActivation else { return [] }
+            let shouldCancelPendingActivation = phase == .pendingModifierActivation
             phase = .idle
-            return [.personaRequested]
+            return shouldCancelPendingActivation
+                ? [.cancel(.activation), .personaRequested]
+                : [.personaRequested]
         }
 
         return []
@@ -152,7 +156,7 @@ struct HotkeyGestureArbiter {
                 personaHotkey: personaHotkey,
             ) {
                 phase = .pendingModifierActivation
-                return []
+                return [.begin(.activation)]
             }
 
             phase = .active(.activation)
@@ -176,7 +180,7 @@ struct HotkeyGestureArbiter {
     mutating func handlePendingModifierActivationTimeout() -> [HotkeyGestureEvent] {
         guard phase == .pendingModifierActivation else { return [] }
         phase = .active(.activation)
-        return [.begin(.activation)]
+        return []
     }
 
     private func shouldDeferModifierActivation(

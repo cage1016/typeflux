@@ -43,6 +43,15 @@ final class WorkflowController {
     enum RecordingIntent {
         case dictation
         case askSelection
+
+        var traceName: String {
+            switch self {
+            case .dictation:
+                "dictation"
+            case .askSelection:
+                "ask"
+            }
+        }
     }
 
     enum ApplyOutcome {
@@ -83,6 +92,8 @@ final class WorkflowController {
     var isAudioRecorderStarted = false
     var isAudioRecorderStarting = false
     var shouldFinishRecordingAfterAudioStart = false
+    var pendingRecordingStartID: UUID?
+    var suppressActivationTapUntil: Date?
     var recordingMode: RecordingMode = .holdToTalk
     var recordingIntent: RecordingIntent = .dictation
     var hotkeyPressedAt: Date?
@@ -230,6 +241,9 @@ final class WorkflowController {
         hotkeyService.onActivationPressEnded = { [weak self] in
             self?.handlePressEnded()
         }
+        hotkeyService.onActivationCancelled = { [weak self] in
+            self?.cancelRecording()
+        }
         hotkeyService.onAskPressBegan = { [weak self] in
             self?.handlePressBegan(intent: .askSelection, startLocked: true)
         }
@@ -341,6 +355,8 @@ final class WorkflowController {
         isAudioRecorderStarted = false
         isAudioRecorderStarting = false
         shouldFinishRecordingAfterAudioStart = false
+        pendingRecordingStartID = nil
+        suppressActivationTapUntil = nil
         recordingMode = .holdToTalk
         recordingIntent = .dictation
         hotkeyPressedAt = nil
@@ -395,16 +411,46 @@ final class WorkflowController {
     }
 
     func handleActivationTap() {
+        if let suppressActivationTapUntil, Date() < suppressActivationTapUntil {
+            self.suppressActivationTapUntil = nil
+            RecordingStartupLatencyTrace.shared.mark("workflow.activation_tap_suppressed")
+            return
+        }
+        suppressActivationTapUntil = nil
         handlePressBegan(intent: .dictation, startLocked: true)
     }
 
     func handlePressBegan(intent: RecordingIntent, startLocked: Bool) {
+        RecordingStartupLatencyTrace.shared.mark("workflow.press_began.\(intent.traceName)")
         if isPersonaPickerPresented {
             dismissPersonaPicker()
         }
 
         if !isRecording, isAudioRecorderStarted {
             NSLog("[Workflow] Audio recorder is still stopping, ignoring press")
+            return
+        }
+
+        if isRecording {
+            if intent == .askSelection, recordingIntent == .dictation {
+                promoteActiveRecordingToAskSelection()
+                return
+            }
+
+            if startLocked, recordingMode == .holdToTalk {
+                lockActiveRecording()
+                return
+            }
+
+            guard recordingMode == .locked else {
+                NSLog("[Workflow] Already recording, ignoring press")
+                return
+            }
+
+            if !startLocked {
+                suppressActivationTapUntil = Date().addingTimeInterval(Self.tapToLockThreshold + 0.2)
+            }
+            confirmLockedRecording()
             return
         }
 
@@ -423,7 +469,6 @@ final class WorkflowController {
         // If the agent is waiting for a clarification reply, intercept the hotkey press
         // to start a clarification recording instead of cancelling the agent session.
         if pendingClarificationContinuation != nil {
-            guard !isRecording else { return }
             isClarificationRecording = true
             Task { [weak self] in await self?.beginClarificationRecording() }
             return
@@ -431,19 +476,38 @@ final class WorkflowController {
 
         hotkeyPressedAt = startLocked ? nil : Date()
 
-        if isRecording {
-            guard recordingMode == .locked else {
-                NSLog("[Workflow] Already recording, ignoring press")
-                return
-            }
-
-            confirmLockedRecording()
-            return
-        }
-
         cancelCurrentProcessing(resetUI: false, reason: L("workflow.cancel.newRecording"))
+        isRecording = true
+        isAudioRecorderStarted = false
+        isAudioRecorderStarting = true
+        shouldFinishRecordingAfterAudioStart = false
+        recordingMode = startLocked ? .locked : .holdToTalk
+        recordingIntent = intent
+        let startID = UUID()
+        pendingRecordingStartID = startID
         Task { [weak self] in
-            await self?.beginRecording(intent: intent, startLocked: startLocked)
+            await self?.beginRecording(intent: intent, startLocked: startLocked, startID: startID)
+        }
+    }
+
+    private func promoteActiveRecordingToAskSelection() {
+        RecordingStartupLatencyTrace.shared.mark("workflow.promote_to_ask")
+        recordingIntent = .askSelection
+        recordingMode = .locked
+        hotkeyPressedAt = nil
+        Task { @MainActor in
+            guard self.isRecording else { return }
+            self.overlayController.showLockedRecording(hintText: L("overlay.ask.guidance"))
+        }
+    }
+
+    private func lockActiveRecording() {
+        RecordingStartupLatencyTrace.shared.mark("workflow.lock_active_recording")
+        recordingMode = .locked
+        hotkeyPressedAt = nil
+        Task { @MainActor in
+            guard self.isRecording else { return }
+            self.overlayController.showLockedRecording()
         }
     }
 
@@ -580,21 +644,30 @@ final class WorkflowController {
         return nil
     }
 
-    func beginRecording(intent: RecordingIntent, startLocked: Bool) async {
+    func beginRecording(intent: RecordingIntent, startLocked: Bool, startID: UUID? = nil) async {
+        if let startID, pendingRecordingStartID != startID {
+            RecordingStartupLatencyTrace.shared.mark("workflow.begin_recording_cancelled")
+            return
+        }
+        RecordingStartupLatencyTrace.shared.mark("workflow.begin_recording")
+        let effectiveIntent = recordingIntent == .askSelection && intent == .dictation
+            ? RecordingIntent.askSelection
+            : intent
+        let effectiveStartLocked = recordingMode == .locked || startLocked
         isRecording = true
         isAudioRecorderStarted = false
         isAudioRecorderStarting = true
         shouldFinishRecordingAfterAudioStart = false
-        recordingMode = startLocked ? .locked : .holdToTalk
-        recordingIntent = intent
+        recordingMode = effectiveStartLocked ? .locked : .holdToTalk
+        recordingIntent = effectiveIntent
         lastRetryableFailureRecord = nil
         NSLog("[Workflow] Recording started")
 
         Task { @MainActor in
             guard self.isRecording else { return }
             appState.setStatus(.recording)
-            if startLocked {
-                if intent == .askSelection {
+            if effectiveStartLocked {
+                if effectiveIntent == .askSelection {
                     overlayController.showLockedRecording(hintText: L("overlay.ask.guidance"))
                 } else {
                     overlayController.showLockedRecording()
@@ -605,14 +678,17 @@ final class WorkflowController {
         }
 
         do {
+            RecordingStartupLatencyTrace.shared.mark("workflow.audio_start_enter")
             try audioRecorder.start(
                 levelHandler: { [weak self] level in
                     self?.overlayController.updateLevel(level)
                 },
                 audioBufferHandler: { _ in },
             )
+            RecordingStartupLatencyTrace.shared.mark("workflow.audio_start_return")
             isAudioRecorderStarting = false
             isAudioRecorderStarted = true
+            pendingRecordingStartID = nil
 
             guard isRecording else {
                 isAudioRecorderStarted = false
@@ -667,8 +743,10 @@ final class WorkflowController {
             isRecording = false
             isAudioRecorderStarted = false
             isAudioRecorderStarting = false
-            shouldFinishRecordingAfterAudioStart = false
-            recordingMode = .holdToTalk
+        shouldFinishRecordingAfterAudioStart = false
+        pendingRecordingStartID = nil
+        suppressActivationTapUntil = nil
+        recordingMode = .holdToTalk
             var record = HistoryRecord(
                 date: Date(),
                 recordingStatus: .failed,
@@ -745,6 +823,7 @@ final class WorkflowController {
         if !shouldStopAudioRecorder {
             isAudioRecorderStarted = false
         }
+        pendingRecordingStartID = nil
         recordingMode = .holdToTalk
         hotkeyPressedAt = nil
         recordingTimeoutTask?.cancel()
