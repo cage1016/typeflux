@@ -34,7 +34,8 @@ protocol TypefluxCloudLLMIntegratedTranscriber: TypefluxCloudScenarioAwareTransc
 
 // MARK: - Main Transcriber
 
-final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, TypefluxCloudLLMIntegratedTranscriber {
+final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, TypefluxCloudLLMIntegratedTranscriber,
+    RealtimeTranscriptionSessionFactory {
     private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "TypefluxOfficialTranscriber")
 
     func transcribeStream(
@@ -85,6 +86,30 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
                 onLLMChunk: onLLMChunk,
             )
         }
+    }
+
+    func makeRealtimeTranscriptionSession(
+        scenario: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> any RealtimeTranscriptionSession {
+        let token = await MainActor.run { AuthState.shared.accessToken }
+        guard let token, !token.isEmpty else {
+            throw TypefluxOfficialASRError.notLoggedIn
+        }
+
+        let baseURLs = await Self.realtimeCandidateBaseURLs()
+        guard let baseURL = baseURLs.first else {
+            throw TypefluxOfficialASRError.connectionFailed("No Typeflux Cloud endpoint configured.")
+        }
+
+        return BufferedRealtimeTranscriptionSession(
+            upstream: TypefluxOfficialRealtimePCMStream(
+                apiBaseURL: baseURL.absoluteString,
+                token: token,
+                scenario: scenario,
+                onUpdate: onUpdate,
+            ),
+        )
     }
 
     static func testConnection() async throws -> String {
@@ -138,6 +163,12 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
             }
         }
         throw lastError ?? TypefluxOfficialASRError.connectionFailed("All endpoints failed.")
+    }
+
+    private static func realtimeCandidateBaseURLs() async -> [URL] {
+        let urls = await CloudEndpointRegistry.shared.orderedEndpoints()
+        if !urls.isEmpty { return urls }
+        return [URL(string: AppServerConfiguration.apiBaseURL)].compactMap { $0 }
     }
 }
 
@@ -406,11 +437,10 @@ private actor TypefluxOfficialASRSession {
 
         // Stream audio chunks
         let chunkSize = CloudASRAudioConverter.chunkSize
-        var offset = 0
-        while offset < pcmData.count {
-            let end = min(offset + chunkSize, pcmData.count)
-            let chunk = pcmData[offset ..< end]
-            try await socketTask.send(.data(Data(chunk)))
+        var offset = pcmData.startIndex
+        while offset < pcmData.endIndex {
+            let end = pcmData.index(offset, offsetBy: chunkSize, limitedBy: pcmData.endIndex) ?? pcmData.endIndex
+            try await socketTask.send(.data(Data(pcmData[offset ..< end])))
             offset = end
         }
 
@@ -513,6 +543,177 @@ private actor TypefluxOfficialASRSession {
         default:
             break
         }
+    }
+
+    private func assembleTranscript() -> String {
+        var parts = finalSegments
+        if !currentPartialText.isEmpty {
+            parts.append(currentPartialText)
+        }
+        return parts.joined()
+    }
+}
+
+private actor TypefluxOfficialRealtimePCMStream: PCM16RealtimeTranscriptionSession {
+    private let apiBaseURL: String
+    private let token: String
+    private let scenario: TypefluxCloudScenario
+    private let onUpdate: @Sendable (TranscriptionSnapshot) async -> Void
+    private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "TypefluxOfficialRealtimePCMStream")
+
+    private var urlSession: URLSession?
+    private var socketTask: URLSessionWebSocketTask?
+    private var receiveTask: Task<Void, Never>?
+    private var finalSegments: [String] = []
+    private var currentPartialText = ""
+    private var completed = false
+    private var sessionError: Error?
+
+    init(
+        apiBaseURL: String,
+        token: String,
+        scenario: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) {
+        self.apiBaseURL = apiBaseURL
+        self.token = token
+        self.scenario = scenario
+        self.onUpdate = onUpdate
+    }
+
+    func start() async throws {
+        let request = try TypefluxOfficialASRRequestFactory.makeWebSocketRequest(
+            apiBaseURL: apiBaseURL,
+            token: token,
+            scenario: scenario,
+        )
+        let session = URLSession(configuration: .default)
+        let socketTask = session.webSocketTask(with: request)
+        self.urlSession = session
+        self.socketTask = socketTask
+        socketTask.resume()
+
+        let audioConfig: [String: Any] = [
+            "format": "pcm",
+            "sample_rate": 16000,
+            "channel": 1,
+            "lang": "auto",
+        ]
+        let startMessage: [String: Any] = ["type": "start", "config": ["audio": audioConfig]]
+        try await sendJSON(startMessage)
+
+        receiveTask = Task { [weak self] in
+            await self?.receiveLoop()
+        }
+    }
+
+    func appendPCM16(_ data: Data) async throws {
+        guard !data.isEmpty else { return }
+        guard let socketTask else {
+            throw TypefluxOfficialASRError.connectionFailed("Realtime WebSocket is not connected.")
+        }
+        try await socketTask.send(.data(Data(data)))
+    }
+
+    func finish() async throws -> String {
+        try await sendJSON(["type": "stop"])
+        await receiveTask?.value
+
+        if let sessionError {
+            throw sessionError
+        }
+
+        let transcript = assembleTranscript()
+        if !transcript.isEmpty {
+            await onUpdate(TranscriptionSnapshot(text: transcript, isFinal: true))
+        }
+        await close()
+        return transcript
+    }
+
+    func cancel() async {
+        await close()
+    }
+
+    private func close() async {
+        completed = true
+        receiveTask?.cancel()
+        receiveTask = nil
+        socketTask?.cancel(with: .normalClosure, reason: nil)
+        socketTask = nil
+        urlSession?.finishTasksAndInvalidate()
+        urlSession = nil
+    }
+
+    private func receiveLoop() async {
+        while !completed, !Task.isCancelled {
+            do {
+                guard let socketTask else { break }
+                let message = try await socketTask.receive()
+                switch message {
+                case .string(let text):
+                    await handleTextMessage(text)
+                case .data(let data):
+                    if let text = String(data: data, encoding: .utf8) {
+                        await handleTextMessage(text)
+                    }
+                @unknown default:
+                    break
+                }
+            } catch {
+                if !Task.isCancelled,
+                   TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
+                       completed: completed,
+                       finalSegments: finalSegments,
+                   ) {
+                    logger.error("WebSocket receive error: \(error.localizedDescription)")
+                    sessionError = sessionError ?? TypefluxOfficialASRError.unexpectedClose
+                }
+                completed = true
+            }
+        }
+    }
+
+    private func handleTextMessage(_ text: String) async {
+        guard let data = text.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = json["type"] as? String
+        else { return }
+
+        switch type {
+        case "partial":
+            currentPartialText = json["text"] as? String ?? ""
+            await onUpdate(TranscriptionSnapshot(text: assembleTranscript(), isFinal: false))
+        case "final":
+            let finalText = json["text"] as? String ?? ""
+            if !finalText.isEmpty {
+                finalSegments.append(finalText)
+            }
+            currentPartialText = ""
+            await onUpdate(TranscriptionSnapshot(text: assembleTranscript(), isFinal: true))
+        case "event":
+            if (json["text"] as? String) == "completed" {
+                completed = true
+            }
+        case "error":
+            let errorText = json["error"] as? String ?? "Unknown error"
+            logger.error("ASR server error: \(errorText)")
+            sessionError = TypefluxOfficialASRError.serverError(errorText)
+            completed = true
+        default:
+            break
+        }
+    }
+
+    private func sendJSON(_ json: [String: Any]) async throws {
+        guard let socketTask else {
+            throw TypefluxOfficialASRError.connectionFailed("Realtime WebSocket is not connected.")
+        }
+        let data = try JSONSerialization.data(withJSONObject: json)
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw TypefluxOfficialASRError.connectionFailed("Failed to encode realtime message.")
+        }
+        try await socketTask.send(.string(text))
     }
 
     private func assembleTranscript() -> String {

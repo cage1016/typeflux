@@ -94,7 +94,10 @@ extension WorkflowController {
                 throw LLMRequestTimeoutError()
             }
             defer { group.cancelAll() }
-            return try await group.next()!
+            guard let result = try await group.next() else {
+                throw CancellationError()
+            }
+            return result
         }
     }
 
@@ -331,6 +334,10 @@ extension WorkflowController {
         do {
             let audioFile = try audioRecorder.stop()
             _ = await liveTranscriptionPreviewer?.finish()
+            let realtimeTranscriptionSession = activeRealtimeTranscriptionSession
+            let realtimeAudioBufferPump = activeRealtimeAudioBufferPump
+            activeRealtimeTranscriptionSession = nil
+            activeRealtimeAudioBufferPump = nil
             isAudioRecorderStarted = false
             let audioFileReadyAt = Date()
             let recordingIntent = recordingIntent
@@ -348,6 +355,8 @@ extension WorkflowController {
 
             if validatedAudioFile.duration < Self.minimumRecordingDuration {
                 try? FileManager.default.removeItem(at: validatedAudioFile.fileURL)
+                realtimeAudioBufferPump?.cancel()
+                await realtimeTranscriptionSession?.cancel()
                 await sttRouter.cancelPreparedRecording()
                 await MainActor.run {
                     self.appState.setStatus(.idle)
@@ -358,6 +367,8 @@ extension WorkflowController {
 
             if !audioAnalysis.containsAudibleSignal {
                 try? FileManager.default.removeItem(at: validatedAudioFile.fileURL)
+                realtimeAudioBufferPump?.cancel()
+                await realtimeTranscriptionSession?.cancel()
                 await sttRouter.cancelPreparedRecording()
                 await MainActor.run {
                     self.appState.setStatus(.idle)
@@ -417,8 +428,10 @@ extension WorkflowController {
             startProcessingTimeout(sessionID: sessionID)
             processingTask = Task { [weak self] in
                 guard let self else { return }
+                await realtimeAudioBufferPump?.finishInput()
                 await process(
                     audioFile: validatedAudioFile,
+                    realtimeTranscriptionSession: realtimeTranscriptionSession,
                     record: record,
                     selectionSnapshot: selectionSnapshot,
                     selectedText: selectedText,
@@ -438,6 +451,10 @@ extension WorkflowController {
             }
         } catch {
             await liveTranscriptionPreviewer?.cancel()
+            activeRealtimeAudioBufferPump?.cancel()
+            await activeRealtimeTranscriptionSession?.cancel()
+            activeRealtimeTranscriptionSession = nil
+            activeRealtimeAudioBufferPump = nil
             isAudioRecorderStarted = false
             let msg = "Processing failed: \(error.localizedDescription)"
             ErrorLogStore.shared.log(msg)
@@ -526,6 +543,7 @@ extension WorkflowController {
     // swiftlint:disable:next cyclomatic_complexity
     func process(
         audioFile: AudioFile,
+        realtimeTranscriptionSession: (any RealtimeTranscriptionSession)? = nil,
         record: HistoryRecord,
         selectionSnapshot: TextSelectionSnapshot,
         selectedText: String?,
@@ -576,7 +594,20 @@ extension WorkflowController {
             let transcribedText: String
             var mergedLLMResult: String?
 
-            if canMergeWithLLM, let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !resolvedPersonaPrompt.isEmpty {
+            if let realtimeTranscriptionSession {
+                do {
+                    transcribedText = try await realtimeTranscriptionSession.finish()
+                } catch {
+                    NetworkDebugLogger.logError(
+                        context: "Realtime STT session failed; falling back to recorded audio",
+                        error: error,
+                    )
+                    transcribedText = try await sttRouter.transcribeStream(
+                        audioFile: audioFile,
+                        scenario: cloudScenario,
+                    ) { _ in }
+                }
+            } else if canMergeWithLLM, let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !resolvedPersonaPrompt.isEmpty {
                 let mergedResult = try await performMergedCloudTranscription(
                     audioFile: audioFile,
                     personaPrompt: resolvedPersonaPrompt,

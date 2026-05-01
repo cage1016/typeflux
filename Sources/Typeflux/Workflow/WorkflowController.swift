@@ -103,6 +103,8 @@ final class WorkflowController {
     var selectionTask: Task<TextSelectionSnapshot, Never>?
     var inputContextTask: Task<InputContextSnapshot?, Never>?
     var processingTask: Task<Void, Never>?
+    var activeRealtimeTranscriptionSession: (any RealtimeTranscriptionSession)?
+    var activeRealtimeAudioBufferPump: RealtimeAudioBufferPump?
     var automaticVocabularyObservationTask: Task<Void, Never>?
     /// Latest snapshot of the currently running automatic-vocabulary observation.
     /// Kept in sync by the observation task so that an incoming `scheduleAutomatic…`
@@ -368,8 +370,12 @@ final class WorkflowController {
         if shouldStopAudioRecorder {
             _ = try? audioRecorder.stop()
         }
+        activeRealtimeAudioBufferPump?.cancel()
+        activeRealtimeAudioBufferPump = nil
         Task {
             await liveTranscriptionPreviewer?.cancel()
+            await activeRealtimeTranscriptionSession?.cancel()
+            activeRealtimeTranscriptionSession = nil
             await sttRouter.cancelPreparedRecording()
         }
         selectionTask?.cancel()
@@ -717,13 +723,31 @@ final class WorkflowController {
             if usesLivePreview {
                 await livePreviewer?.prepareForStart()
             }
+            let realtimeSession = await sttRouter.makeRealtimeTranscriptionSession(
+                scenario: effectiveIntent == .askSelection ? .askAnything : .voiceInput,
+                onUpdate: { [weak self] snapshot in
+                    let trimmed = snapshot.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    Task { @MainActor [weak self] in
+                        guard let self, self.isRecording else { return }
+                        self.overlayController.updateRecordingPreviewText(trimmed)
+                    }
+                },
+            )
+            let realtimeAudioBufferPump = realtimeSession.map { RealtimeAudioBufferPump(session: $0) }
+            activeRealtimeTranscriptionSession = realtimeSession
+            activeRealtimeAudioBufferPump = realtimeAudioBufferPump
+            await realtimeSession?.start()
             try audioRecorder.start(
                 levelHandler: { [weak self] level in
                     self?.overlayController.updateLevel(level)
                 },
-                audioBufferHandler: usesLivePreview ? { buffer in
+                audioBufferHandler: (usesLivePreview || realtimeSession != nil) ? { buffer in
+                    realtimeAudioBufferPump?.append(buffer)
                     Task {
-                        await livePreviewer?.append(buffer)
+                        if usesLivePreview {
+                            await livePreviewer?.append(buffer)
+                        }
                     }
                 } : nil,
             )
@@ -739,6 +763,10 @@ final class WorkflowController {
                 isAudioRecorderStarted = false
                 _ = try? audioRecorder.stop()
                 Task { await livePreviewer?.cancel() }
+                realtimeAudioBufferPump?.cancel()
+                Task { await realtimeSession?.cancel() }
+                activeRealtimeTranscriptionSession = nil
+                activeRealtimeAudioBufferPump = nil
                 return
             }
 
@@ -787,13 +815,17 @@ final class WorkflowController {
             }
         } catch {
             Task { await liveTranscriptionPreviewer?.cancel() }
+            activeRealtimeAudioBufferPump?.cancel()
+            Task { await activeRealtimeTranscriptionSession?.cancel() }
+            activeRealtimeTranscriptionSession = nil
+            activeRealtimeAudioBufferPump = nil
             isRecording = false
             isAudioRecorderStarted = false
             isAudioRecorderStarting = false
-        shouldFinishRecordingAfterAudioStart = false
-        pendingRecordingStartID = nil
-        suppressActivationTapUntil = nil
-        recordingMode = .holdToTalk
+            shouldFinishRecordingAfterAudioStart = false
+            pendingRecordingStartID = nil
+            suppressActivationTapUntil = nil
+            recordingMode = .holdToTalk
             var record = HistoryRecord(
                 date: Date(),
                 recordingStatus: .failed,

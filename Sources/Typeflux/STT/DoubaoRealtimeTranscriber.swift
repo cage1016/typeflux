@@ -3,7 +3,7 @@ import Compression
 import Darwin
 import Foundation
 
-final class DoubaoRealtimeTranscriber: RecordingPrewarmingTranscriber {
+final class DoubaoRealtimeTranscriber: RecordingPrewarmingTranscriber, RealtimeTranscriptionSessionFactory {
     private let settingsStore: SettingsStore
     private let connectionCoordinator = DoubaoPreparedConnectionCoordinator()
 
@@ -83,6 +83,29 @@ final class DoubaoRealtimeTranscriber: RecordingPrewarmingTranscriber {
             hotwords: hotwords,
             connectionCoordinator: connectionCoordinator,
             onUpdate: onUpdate,
+        )
+    }
+
+    func makeRealtimeTranscriptionSession(
+        scenario _: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> any RealtimeTranscriptionSession {
+        guard let configuration = currentConfiguration() else {
+            throw NSError(
+                domain: "DoubaoRealtimeTranscriber",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Doubao credentials are not configured."],
+            )
+        }
+        return BufferedRealtimeTranscriptionSession(
+            upstream: DoubaoRealtimeSession(
+                appID: configuration.appID,
+                accessToken: configuration.accessToken,
+                resourceID: configuration.resourceID,
+                hotwords: VocabularyStore.activeTerms(),
+                connectionCoordinator: connectionCoordinator,
+                onUpdate: onUpdate,
+            ),
         )
     }
 
@@ -362,7 +385,9 @@ private enum DoubaoConnectionTester {
                 throw DoubaoConnectionTestTimeout()
             }
 
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                throw CancellationError()
+            }
             group.cancelAll()
             return result
         }
@@ -382,7 +407,7 @@ private enum DoubaoConnectionTester {
 
 private struct DoubaoConnectionTestTimeout: Error {}
 
-private actor DoubaoRealtimeSession {
+private actor DoubaoRealtimeSession: PCM16RealtimeTranscriptionSession {
     static func run(
         pcmData: Data,
         appID: String,
@@ -393,7 +418,6 @@ private actor DoubaoRealtimeSession {
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
         let session = DoubaoRealtimeSession(
-            pcmData: pcmData,
             appID: appID,
             accessToken: accessToken,
             resourceID: resourceID,
@@ -401,10 +425,11 @@ private actor DoubaoRealtimeSession {
             connectionCoordinator: connectionCoordinator,
             onUpdate: onUpdate,
         )
-        return try await session.execute()
+        try await session.start()
+        try await session.appendPCM16(pcmData)
+        return try await session.finish()
     }
 
-    private let pcmData: Data
     private let appID: String
     private let accessToken: String
     private let resourceID: String
@@ -420,8 +445,7 @@ private actor DoubaoRealtimeSession {
     private var receiveTask: Task<Void, Never>?
     private var didSendAudioEnd = false
 
-    private init(
-        pcmData: Data,
+    init(
         appID: String,
         accessToken: String,
         resourceID: String,
@@ -429,7 +453,6 @@ private actor DoubaoRealtimeSession {
         connectionCoordinator: DoubaoPreparedConnectionCoordinator,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) {
-        self.pcmData = pcmData
         self.appID = appID
         self.accessToken = accessToken
         self.resourceID = resourceID
@@ -438,13 +461,7 @@ private actor DoubaoRealtimeSession {
         self.onUpdate = onUpdate
     }
 
-    private func execute() async throws -> String {
-        defer {
-            receiveTask?.cancel()
-            activeConnection?.close()
-            activeConnection = nil
-        }
-
+    func start() async throws {
         try await prepareActiveConnection(preferPrepared: true)
 
         let payload = DoubaoProtocol.buildClientRequest(uid: UUID().uuidString, hotwords: hotwords)
@@ -463,14 +480,20 @@ private actor DoubaoRealtimeSession {
             details: "client_request hotwords=\(hotwords.count)",
         )
         try await sendWithRetry(.data(requestMessage), description: "client_request")
+    }
 
-        var offset = 0
+    func appendPCM16(_ data: Data) async throws {
+        var offset = data.startIndex
         var chunkCount = 0
-        while offset < pcmData.count {
-            let end = min(offset + DoubaoAudioConverter.chunkSize, pcmData.count)
-            let chunk = pcmData[offset ..< end]
+        while offset < data.endIndex {
+            let end = data.index(
+                offset,
+                offsetBy: DoubaoAudioConverter.chunkSize,
+                limitedBy: data.endIndex,
+            ) ?? data.endIndex
+            let chunk = Data(data[offset ..< end])
             try await sendWithRetry(
-                .data(DoubaoProtocol.encodeAudioPacket(audioData: Data(chunk), isLast: false)),
+                .data(DoubaoProtocol.encodeAudioPacket(audioData: chunk, isLast: false)),
                 description: "audio_chunk_\(chunkCount + 1)",
             )
             offset = end
@@ -479,8 +502,17 @@ private actor DoubaoRealtimeSession {
         NetworkDebugLogger.logWebSocketEvent(
             provider: "Doubao Realtime ASR",
             phase: "send",
-            details: "audio_chunks=\(chunkCount) audio_bytes=\(pcmData.count)",
+            details: "audio_chunks=\(chunkCount) audio_bytes=\(data.count)",
         )
+    }
+
+    func finish() async throws -> String {
+        defer {
+            receiveTask?.cancel()
+            receiveTask = nil
+            activeConnection?.close()
+            activeConnection = nil
+        }
         NetworkDebugLogger.logWebSocketEvent(provider: "Doubao Realtime ASR", phase: "send", details: "audio_end")
         try await sendWithRetry(
             .data(DoubaoProtocol.encodeAudioPacket(audioData: Data(), isLast: true)),
@@ -495,6 +527,14 @@ private actor DoubaoRealtimeSession {
             await onUpdate(TranscriptionSnapshot(text: finalText, isFinal: true))
         }
         return finalText
+    }
+
+    func cancel() async {
+        receiveTask?.cancel()
+        receiveTask = nil
+        activeConnection?.close()
+        activeConnection = nil
+        markFinished()
     }
 
     private func prepareActiveConnection(preferPrepared: Bool) async throws {
@@ -591,14 +631,14 @@ private actor DoubaoRealtimeSession {
                         phase: "closed_after_audio_end",
                         details: "text_length=\(lastSnapshot.text.count)",
                     )
-                    finish()
+                    markFinished()
                     break
                 }
                 NetworkDebugLogger.logError(context: "Doubao realtime receive loop failed", error: error)
                 if lastSnapshot.text.isEmpty {
                     signalError(error)
                 } else {
-                    finish()
+                    markFinished()
                 }
                 break
             }
@@ -614,7 +654,7 @@ private actor DoubaoRealtimeSession {
                     phase: "server_error_after_text",
                     details: NetworkDebugLogger.describe(error: DoubaoProtocol.decodeServerError(data)),
                 )
-                finish()
+                markFinished()
                 return
             }
             let error = DoubaoProtocol.decodeServerError(data)
@@ -631,7 +671,7 @@ private actor DoubaoRealtimeSession {
         guard !snapshot.text.isEmpty, snapshot.text != lastSnapshot.text || snapshot.isFinal != lastSnapshot.isFinal else {
             if snapshot.isFinal {
                 NetworkDebugLogger.logWebSocketEvent(provider: "Doubao Realtime ASR", phase: "final")
-                finish()
+                markFinished()
             }
             return
         }
@@ -644,7 +684,7 @@ private actor DoubaoRealtimeSession {
         )
         await onUpdate(snapshot)
         if snapshot.isFinal {
-            finish()
+            markFinished()
         }
     }
 
@@ -667,7 +707,7 @@ private actor DoubaoRealtimeSession {
         }
     }
 
-    private func finish() {
+    private func markFinished() {
         guard !didFinish else { return }
         didFinish = true
         finishContinuation?.resume()
@@ -930,7 +970,7 @@ enum DoubaoProtocol {
             ],
             "request": request,
         ]
-        return try! JSONSerialization.data(withJSONObject: payload)
+        return (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
     }
 
     static func encodeMessage(
