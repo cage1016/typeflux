@@ -19,4 +19,11 @@ enum WorkflowOverlayPresentationPolicy {
         // dialog while it is still labelled as thinking.
         false
     }
+
+    static func shouldShowLLMStreamingPreviewForPersonaSelectionApplication() -> Bool {
+        // Applying a persona to selected text has the same UX shape as post-dictation
+        // rewriting: the user should see a stable thinking state until the final text is
+        // applied or intentionally presented in a result dialog.
+        false
+    }
 }

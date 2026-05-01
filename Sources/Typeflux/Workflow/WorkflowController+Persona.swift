@@ -170,7 +170,8 @@ extension WorkflowController {
                         appSystemContext: AppSystemContext(snapshot: context.snapshot),
                     ),
                     sessionID: sessionID,
-                    showsStreamingPreview: !shouldShowResultDialog,
+                    showsStreamingPreview: WorkflowOverlayPresentationPolicy
+                        .shouldShowLLMStreamingPreviewForPersonaSelectionApplication(),
                 )
                 try ensureProcessingIsActive(sessionID)
 
