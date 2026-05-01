@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 private final class TransparentHostingView<Content: View>: NSHostingView<Content> {
@@ -85,6 +86,9 @@ final class OverlayController {
     private var dismissWorkItem: DispatchWorkItem?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var lastPositionedFrame: NSRect?
+    private var lastPositionedPresentation: OverlayViewModel.Presentation?
+    private var pendingFrameAnimationWorkItem: DispatchWorkItem?
 
     init(appState: AppStateStore) {
         self.appState = appState
@@ -576,9 +580,46 @@ final class OverlayController {
             y = frame.maxY - metrics.offset - metrics.size.height
         }
 
-        window.setContentSize(metrics.size)
-        window.setFrameOrigin(NSPoint(x: x, y: y))
+        let contentRect = NSRect(origin: NSPoint(x: x, y: y), size: metrics.size)
+        let targetFrame = window.frameRect(forContentRect: contentRect)
+        let previousPresentation = lastPositionedPresentation
+        let previousFrame = lastPositionedFrame
+        let isShrinkingAfterPreview = previousPresentation?.isRecordingPreview == true
+            && !model.presentation.isRecordingPreview
+            && previousFrame.map { targetFrame.height < $0.height } == true
+        let shouldAnimate = window.isVisible
+            && previousFrame != nil
+            && targetFrame != previousFrame
+
+        pendingFrameAnimationWorkItem?.cancel()
+        pendingFrameAnimationWorkItem = nil
+
+        if isShrinkingAfterPreview {
+            let presentation = model.presentation
+            let workItem = DispatchWorkItem { [weak self, weak window] in
+                guard let self, let window, self.model.presentation == presentation else { return }
+                self.animateWindow(window, to: targetFrame, duration: 0.18)
+                self.lastPositionedFrame = targetFrame
+            }
+            pendingFrameAnimationWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: workItem)
+        } else if shouldAnimate {
+            animateWindow(window, to: targetFrame, duration: 0.22)
+            lastPositionedFrame = targetFrame
+        } else {
+            window.setFrame(targetFrame, display: true)
+            lastPositionedFrame = targetFrame
+        }
+        lastPositionedPresentation = model.presentation
         window.ignoresMouseEvents = !metrics.interactive
+    }
+
+    private func animateWindow(_ window: NSWindow, to targetFrame: NSRect, duration: TimeInterval) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            window.animator().setFrame(targetFrame, display: true)
+        }
     }
 
     private func metrics(for presentation: OverlayViewModel.Presentation) -> OverlayMetrics {
@@ -861,6 +902,10 @@ final class OverlayViewModel: ObservableObject {
         case failure
         case personaPicker
         case resultDialog
+
+        var isRecordingPreview: Bool {
+            self == .recordingHoldPreview || self == .recordingLockedPreview
+        }
     }
 
     @Published var presentation: Presentation = .recordingHold
@@ -936,6 +981,9 @@ final class OverlayViewModel: ObservableObject {
 
 private struct OverlayView: View {
     @ObservedObject var model: OverlayViewModel
+    @Namespace private var recordingCapsuleNamespace
+
+    private let recordingMotion = Animation.easeInOut(duration: 0.18)
 
     var body: some View {
         if usesWindowChrome {
@@ -990,6 +1038,7 @@ private struct OverlayView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: contentAlignment)
             .padding(containerPadding)
+            .animation(recordingMotion, value: model.presentation)
         }
     }
 
@@ -1032,6 +1081,8 @@ private struct OverlayView: View {
             LevelWaveform(level: model.level, activeColor: Color.white.opacity(0.95))
                 .frame(width: 38, height: 14)
         }
+        .matchedGeometryEffect(id: "recording-capsule", in: recordingCapsuleNamespace)
+        .transition(capsuleTransition)
     }
 
     private func recordingStack(@ViewBuilder content: () -> some View) -> some View {
@@ -1080,11 +1131,14 @@ private struct OverlayView: View {
             onCancel: model.requestCancel,
             onConfirm: model.requestConfirm,
         )
+        .matchedGeometryEffect(id: "recording-capsule", in: recordingCapsuleNamespace)
+        .transition(capsuleTransition)
     }
 
     private func recordingPreviewStack(showControls: Bool) -> some View {
         VStack(spacing: 10) {
             recordingPreviewCard
+                .transition(previewCardTransition)
             if showControls {
                 lockedRecordingCapsule
             } else {
@@ -1098,6 +1152,26 @@ private struct OverlayView: View {
         LiveTranscriptPreviewCard(width: 360) {
             LiveTranscriptPreviewText(text: model.detailText)
         }
+    }
+
+    private var capsuleTransition: AnyTransition {
+        .asymmetric(
+            insertion: .scale(scale: 0.94, anchor: .bottom).combined(with: .opacity),
+            removal: .opacity,
+        )
+    }
+
+    private var previewCardTransition: AnyTransition {
+        .asymmetric(
+            insertion: .modifier(
+                active: PreviewCardMotionModifier(opacity: 0, yOffset: 7, blurRadius: 3),
+                identity: PreviewCardMotionModifier(opacity: 1, yOffset: 0, blurRadius: 0),
+            ),
+            removal: .modifier(
+                active: PreviewCardMotionModifier(opacity: 0, yOffset: 0, blurRadius: 2),
+                identity: PreviewCardMotionModifier(opacity: 1, yOffset: 0, blurRadius: 0),
+            ),
+        )
     }
 
     private var previewCard: some View {
@@ -1525,6 +1599,19 @@ private struct LockedRecordingCapsule: View {
                 )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct PreviewCardMotionModifier: ViewModifier {
+    let opacity: Double
+    let yOffset: CGFloat
+    let blurRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .offset(y: yOffset)
+            .blur(radius: blurRadius)
     }
 }
 
