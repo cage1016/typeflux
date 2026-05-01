@@ -85,6 +85,7 @@ final class WorkflowController {
     let askAnswerWindowController: AskAnswerWindowController
     let agentClarificationWindowController: AgentClarificationWindowController
     let soundEffectPlayer: SoundEffectPlayer
+    let liveTranscriptionPreviewer: (any LiveTranscriptionPreviewing)?
     let sleep: @Sendable (Duration) async -> Void
 
     var currentSelectedText: String?
@@ -159,6 +160,7 @@ final class WorkflowController {
         askAnswerWindowController: AskAnswerWindowController,
         agentClarificationWindowController: AgentClarificationWindowController,
         soundEffectPlayer: SoundEffectPlayer,
+        liveTranscriptionPreviewer: (any LiveTranscriptionPreviewing)? = nil,
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
         },
@@ -180,6 +182,7 @@ final class WorkflowController {
         self.askAnswerWindowController = askAnswerWindowController
         self.agentClarificationWindowController = agentClarificationWindowController
         self.soundEffectPlayer = soundEffectPlayer
+        self.liveTranscriptionPreviewer = liveTranscriptionPreviewer
         self.sleep = sleep
         self.overlayController.setRecordingActionHandlers(
             onCancel: { [weak self] in
@@ -366,6 +369,7 @@ final class WorkflowController {
             _ = try? audioRecorder.stop()
         }
         Task {
+            await liveTranscriptionPreviewer?.cancel()
             await sttRouter.cancelPreparedRecording()
         }
         selectionTask?.cancel()
@@ -377,6 +381,30 @@ final class WorkflowController {
             overlayController.dismiss(after: 0.3)
         }
         NSLog("[Workflow] Recording cancelled")
+    }
+
+    func shouldUseLiveTranscriptionPreview() -> Bool {
+        settingsStore.sttProvider == .localModel && liveTranscriptionPreviewer != nil
+    }
+
+    func startLiveTranscriptionPreviewIfNeeded(_ previewer: (any LiveTranscriptionPreviewing)?) {
+        guard let previewer, settingsStore.sttProvider == .localModel else { return }
+
+        Task { [weak self] in
+            do {
+                try await previewer.start { [weak self] text in
+                    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    Task { @MainActor [weak self] in
+                        guard let self, self.isRecording else { return }
+                        self.overlayController.updateRecordingPreviewText(trimmed)
+                    }
+                }
+            } catch {
+                NetworkDebugLogger.logError(context: "Live transcription preview failed to start", error: error)
+                await previewer.cancel()
+            }
+        }
     }
 
     func startProcessingTimeout(sessionID: UUID) {
@@ -679,20 +707,33 @@ final class WorkflowController {
 
         do {
             RecordingStartupLatencyTrace.shared.mark("workflow.audio_start_enter")
+            let livePreviewer = liveTranscriptionPreviewer
+            let usesLivePreview = shouldUseLiveTranscriptionPreview()
+            if usesLivePreview {
+                await livePreviewer?.prepareForStart()
+            }
             try audioRecorder.start(
                 levelHandler: { [weak self] level in
                     self?.overlayController.updateLevel(level)
                 },
-                audioBufferHandler: { _ in },
+                audioBufferHandler: usesLivePreview ? { buffer in
+                    Task {
+                        await livePreviewer?.append(buffer)
+                    }
+                } : nil,
             )
             RecordingStartupLatencyTrace.shared.mark("workflow.audio_start_return")
             isAudioRecorderStarting = false
             isAudioRecorderStarted = true
             pendingRecordingStartID = nil
+            if usesLivePreview {
+                startLiveTranscriptionPreviewIfNeeded(livePreviewer)
+            }
 
             guard isRecording else {
                 isAudioRecorderStarted = false
                 _ = try? audioRecorder.stop()
+                Task { await livePreviewer?.cancel() }
                 return
             }
 
@@ -740,6 +781,7 @@ final class WorkflowController {
                 self?.finishRecordingFromCurrentMode()
             }
         } catch {
+            Task { await liveTranscriptionPreviewer?.cancel() }
             isRecording = false
             isAudioRecorderStarted = false
             isAudioRecorderStarting = false
@@ -836,6 +878,7 @@ final class WorkflowController {
             selectionTask = nil
             inputContextTask?.cancel()
             inputContextTask = nil
+            Task { await liveTranscriptionPreviewer?.cancel() }
             Task { @MainActor in
                 self.appState.setStatus(.idle)
                 self.overlayController.showNotice(message: L("workflow.recording.tooShort"))

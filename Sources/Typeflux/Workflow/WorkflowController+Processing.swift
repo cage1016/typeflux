@@ -321,6 +321,7 @@ extension WorkflowController {
     func finishRecordingAndProcess(recordingStoppedAt: Date) async {
         do {
             let audioFile = try audioRecorder.stop()
+            _ = await liveTranscriptionPreviewer?.finish()
             isAudioRecorderStarted = false
             let audioFileReadyAt = Date()
             let recordingIntent = recordingIntent
@@ -427,6 +428,7 @@ extension WorkflowController {
                 }
             }
         } catch {
+            await liveTranscriptionPreviewer?.cancel()
             isAudioRecorderStarted = false
             let msg = "Processing failed: \(error.localizedDescription)"
             ErrorLogStore.shared.log(msg)
@@ -976,8 +978,12 @@ extension WorkflowController {
         let task = Task { [weak self] in
             guard let self else { return }
             defer {
-                Task {
+                Task { [weak self] in
+                    guard let self else { return }
                     await self.agentExecutionRegistry.finish(jobID: jobID)
+                    await MainActor.run {
+                        self.finishDetachedAskOverlayIfStillProcessing(sessionID: sessionID)
+                    }
                 }
             }
 
@@ -1011,8 +1017,7 @@ extension WorkflowController {
                 enforceHistoryRetentionPolicy()
                 await MainActor.run {
                     guard self.processingSessionID == sessionID else { return }
-                    self.lastRetryableFailureRecord = nil
-                    self.appState.setStatus(.idle)
+                    self.finishDetachedAskOverlay(dismiss: true)
                 }
             } catch is CancellationError {
                 await failDetachedAgentAskTask(
@@ -1065,8 +1070,7 @@ extension WorkflowController {
             record.pipelineTiming = pipelineTiming
             await MainActor.run {
                 if self.processingSessionID == sessionID {
-                    self.lastRetryableFailureRecord = nil
-                    self.appState.setStatus(.idle)
+                    self.finishDetachedAskOverlay(dismiss: false)
                 }
                 self.presentAskAnswer(
                     question: transcribedText,
@@ -1096,11 +1100,7 @@ extension WorkflowController {
 
             await MainActor.run {
                 guard self.processingSessionID == sessionID else { return }
-                self.lastRetryableFailureRecord = nil
-                self.appState.setStatus(.idle)
-                if outcome == .inserted {
-                    self.overlayController.dismissSoon()
-                }
+                self.finishDetachedAskOverlay(dismiss: outcome == .inserted)
             }
         }
 
@@ -1125,6 +1125,10 @@ extension WorkflowController {
             saveHistoryRecord(record)
             logPipelineEvent("pipeline-cancelled", for: record)
             enforceHistoryRetentionPolicy()
+            await MainActor.run {
+                guard self.processingSessionID == sessionID else { return }
+                self.finishDetachedAskOverlay(dismiss: true)
+            }
             return
         }
 
@@ -1142,6 +1146,25 @@ extension WorkflowController {
             self.overlayController.showFailure(message: errorMessage)
             self.overlayController.dismiss(after: 3.0)
         }
+    }
+
+    @MainActor
+    private func finishDetachedAskOverlay(dismiss: Bool) {
+        lastRetryableFailureRecord = nil
+        appState.setStatus(.idle)
+        if dismiss {
+            overlayController.dismissSoon()
+        }
+    }
+
+    @MainActor
+    private func finishDetachedAskOverlayIfStillProcessing(sessionID: UUID) {
+        guard processingSessionID == sessionID else { return }
+        if appState.status == .processing {
+            lastRetryableFailureRecord = nil
+            appState.setStatus(.idle)
+        }
+        overlayController.dismissProcessingIfVisible()
     }
 
     // Thread-safe accumulator for LLM streaming chunks captured in @Sendable closures.

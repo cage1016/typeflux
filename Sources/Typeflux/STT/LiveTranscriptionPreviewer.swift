@@ -2,6 +2,14 @@ import AVFoundation
 import Foundation
 import Speech
 
+protocol LiveTranscriptionPreviewing: AnyObject {
+    func prepareForStart() async
+    func start(onTextUpdate: @escaping @Sendable (String) -> Void) async throws
+    func append(_ buffer: AVAudioPCMBuffer) async
+    func finish() async -> String
+    func cancel() async
+}
+
 protocol LivePreviewBackend: Actor {
     func start(onTextUpdate: @escaping @Sendable (String) -> Void) async throws
     func append(_ buffer: AVAudioPCMBuffer) async
@@ -9,7 +17,7 @@ protocol LivePreviewBackend: Actor {
     func cancel() async
 }
 
-actor LiveTranscriptionPreviewer {
+actor LiveTranscriptionPreviewer: LiveTranscriptionPreviewing {
     private enum State {
         case idle
         case starting
@@ -17,24 +25,30 @@ actor LiveTranscriptionPreviewer {
     }
 
     private let settingsStore: SettingsStore
-    private let openAIBackendFactory: @Sendable () -> any LivePreviewBackend
-    private let appleBackendFactory: @Sendable () -> any LivePreviewBackend
+    private let localBackendFactory: () -> any LivePreviewBackend
+    private let openAIBackendFactory: () -> any LivePreviewBackend
+    private let appleBackendFactory: () -> any LivePreviewBackend
     private var backend: (any LivePreviewBackend)?
     private var state: State = .idle
     private var pendingBuffers: [AVAudioPCMBuffer] = []
 
     init(settingsStore: SettingsStore) {
         self.settingsStore = settingsStore
+        localBackendFactory = { UnavailableLivePreviewBackend(providerName: "Local model") }
         openAIBackendFactory = { OpenAIRealtimePreviewBackend(settingsStore: settingsStore) }
         appleBackendFactory = { AppleSpeechPreviewBackend() }
     }
 
     init(
         settingsStore: SettingsStore,
-        openAIBackendFactory: @escaping @Sendable () -> any LivePreviewBackend,
-        appleBackendFactory: @escaping @Sendable () -> any LivePreviewBackend,
+        localBackendFactory: @escaping () -> any LivePreviewBackend = {
+            UnavailableLivePreviewBackend(providerName: "Local model")
+        },
+        openAIBackendFactory: @escaping () -> any LivePreviewBackend,
+        appleBackendFactory: @escaping () -> any LivePreviewBackend,
     ) {
         self.settingsStore = settingsStore
+        self.localBackendFactory = localBackendFactory
         self.openAIBackendFactory = openAIBackendFactory
         self.appleBackendFactory = appleBackendFactory
     }
@@ -52,6 +66,15 @@ actor LiveTranscriptionPreviewer {
         case .idle, .running:
             await stopBackend(clearPendingBuffers: true)
             state = .starting
+        }
+
+        if settingsStore.sttProvider == .localModel {
+            let local = localBackendFactory()
+            try await local.start(onTextUpdate: onTextUpdate)
+            backend = local
+            state = .running
+            await flushPendingBuffers()
+            return
         }
 
         if OpenAIRealtimePreviewBackend.isSupported(settingsStore: settingsStore) {
@@ -145,6 +168,30 @@ actor LiveTranscriptionPreviewer {
             pendingBuffers = []
         }
     }
+}
+
+actor UnavailableLivePreviewBackend: LivePreviewBackend {
+    private let providerName: String
+
+    init(providerName: String) {
+        self.providerName = providerName
+    }
+
+    func start(onTextUpdate _: @escaping @Sendable (String) -> Void) async throws {
+        throw NSError(
+            domain: "UnavailableLivePreviewBackend",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "\(providerName) live preview is not configured."],
+        )
+    }
+
+    func append(_: AVAudioPCMBuffer) async {}
+
+    func finish() async -> String {
+        ""
+    }
+
+    func cancel() async {}
 }
 
 actor AppleSpeechPreviewBackend: LivePreviewBackend {

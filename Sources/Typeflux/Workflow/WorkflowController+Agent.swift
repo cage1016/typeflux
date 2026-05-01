@@ -145,11 +145,15 @@ extension WorkflowController {
     ) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             pendingClarificationContinuation = continuation
-            agentClarificationWindowController.show(
-                question: question,
-                selectedText: selectedText,
-                modelResponse: modelResponse,
-            )
+            Task { @MainActor in
+                self.overlayController.dismissProcessingImmediatelyIfVisible()
+                self.appState.setStatus(.idle)
+                self.agentClarificationWindowController.show(
+                    question: question,
+                    selectedText: selectedText,
+                    modelResponse: modelResponse,
+                )
+            }
         }
     }
 

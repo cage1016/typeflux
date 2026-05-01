@@ -1016,6 +1016,8 @@ final class LocalModelTranscriberTests: XCTestCase {
             .write(to: runtimeLibURL.appendingPathComponent("libsherpa-onnx-c-api.dylib"))
         try sherpaRuntimeFixtureData(useMachO: useMachORuntime)
             .write(to: runtimeLibURL.appendingPathComponent("libonnxruntime.dylib"))
+        try sherpaRuntimeFixtureData(useMachO: useMachORuntime)
+            .write(to: runtimeLibURL.appendingPathComponent(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName))
 
         let modelDirectory = root.appendingPathComponent(layout.modelRootDirectory, isDirectory: true)
         try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)

@@ -149,6 +149,7 @@ final class BundledModelAutoSetupTests: XCTestCase {
         )
         try machOMagic.write(to: runtimeLibURL.appendingPathComponent("libsherpa-onnx-c-api.dylib"))
         try machOMagic.write(to: runtimeLibURL.appendingPathComponent("libonnxruntime.dylib"))
+        try machOMagic.write(to: runtimeLibURL.appendingPathComponent(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName))
 
         let modelDirectory = storageURL.appendingPathComponent(layout.modelRootDirectory, isDirectory: true)
         try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)

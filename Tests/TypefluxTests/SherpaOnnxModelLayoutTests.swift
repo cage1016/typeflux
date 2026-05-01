@@ -162,7 +162,10 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testSenseVoiceSmallRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
-        XCTAssertEqual(layout.requiredRelativePaths.count, 5)
+        XCTAssertEqual(layout.requiredRelativePaths.count, 6)
+        XCTAssertTrue(layout.requiredRelativePaths.contains(
+            "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+        ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt"))
     }
@@ -181,6 +184,9 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testQwen3ASRRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .qwen3ASR))
+        XCTAssertTrue(layout.requiredRelativePaths.contains(
+            "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+        ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/encoder.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/decoder.int8.onnx"))
@@ -201,7 +207,10 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testFunASRRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
-        XCTAssertEqual(layout.requiredRelativePaths.count, 5)
+        XCTAssertEqual(layout.requiredRelativePaths.count, 6)
+        XCTAssertTrue(layout.requiredRelativePaths.contains(
+            "sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+        ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-paraformer-zh-small-2024-03-09/model.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-paraformer-zh-small-2024-03-09/tokens.txt"))
     }
@@ -279,6 +288,41 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         try FileManager.default.createDirectory(at: tmpURL, withIntermediateDirectories: true)
 
         XCTAssertFalse(layout.isInstalled(storageURL: tmpURL))
+    }
+
+    func testIsInstalledReportsMissingVersionedOnnxRuntimeLibrary() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
+        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tmpURL) }
+
+        for relativePath in layout.requiredRelativePaths where !relativePath.hasSuffix(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName) {
+            let fullURL = tmpURL.appendingPathComponent(relativePath, isDirectory: false)
+            try FileManager.default.createDirectory(
+                at: fullURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+            )
+
+            switch fullURL.lastPathComponent {
+            case "sherpa-onnx-offline":
+                try machOFixtureData().write(to: fullURL)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: NSNumber(value: Int16(0o755))],
+                    ofItemAtPath: fullURL.path,
+                )
+            case let name where name.hasSuffix(".dylib"):
+                try machOFixtureData().write(to: fullURL)
+            case "tokens.txt":
+                try Data("<unk> 0\n<s> 1\n</s> 2\n".utf8).write(to: fullURL)
+            default:
+                try Data(repeating: 0x5A, count: 1_048_576).write(to: fullURL)
+            }
+        }
+
+        XCTAssertFalse(layout.isInstalled(storageURL: tmpURL))
+        XCTAssertEqual(
+            layout.missingOrUnusableRelativePaths(storageURL: tmpURL),
+            ["\(layout.runtimeRootDirectory)/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"],
+        )
     }
 
     func testIsInstalledReturnsTrueWhenDirectoriesExist() throws {
@@ -429,5 +473,9 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
             modelFolder: "/tmp/models",
         )
         XCTAssertNil(decoder.parseJSONTranscript(stdoutLine: "{invalid json"))
+    }
+
+    private func machOFixtureData() -> Data {
+        Data([0xCF, 0xFA, 0xED, 0xFE, 0x46, 0x49, 0x58, 0x54, 0x55, 0x52, 0x45])
     }
 }

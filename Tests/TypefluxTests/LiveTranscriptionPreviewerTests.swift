@@ -3,6 +3,30 @@ import AVFoundation
 import XCTest
 
 final class LiveTranscriptionPreviewerTests: XCTestCase {
+    func testStartUsesLocalBackendForLocalModelProvider() async throws {
+        let settingsStore = SettingsStore()
+        settingsStore.sttProvider = .localModel
+
+        let localBackend = MockLivePreviewBackend()
+        let openAIBackend = MockLivePreviewBackend()
+        let appleBackend = MockLivePreviewBackend()
+        let previewer = LiveTranscriptionPreviewer(
+            settingsStore: settingsStore,
+            localBackendFactory: { localBackend },
+            openAIBackendFactory: { openAIBackend },
+            appleBackendFactory: { appleBackend },
+        )
+
+        try await previewer.start(onTextUpdate: { _ in })
+
+        let localStartCount = await localBackend.startCount()
+        let openAIStartCount = await openAIBackend.startCount()
+        let appleStartCount = await appleBackend.startCount()
+        XCTAssertEqual(localStartCount, 1)
+        XCTAssertEqual(openAIStartCount, 0)
+        XCTAssertEqual(appleStartCount, 0)
+    }
+
     func testPrepareForStartPreservesPendingBuffersUntilBackendStarts() async throws {
         let settingsStore = SettingsStore()
         settingsStore.whisperBaseURL = ""
@@ -25,6 +49,27 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
         let firstFrameCount = await backend.appendedFrameCounts.first
         XCTAssertEqual(appendedCount, 1)
         XCTAssertEqual(firstFrameCount, 4)
+    }
+
+    func testLocalModelBackendTranscribesChunkAfterEnoughAudio() async throws {
+        let transcriber = MockLivePreviewTranscriber(result: "hello")
+        let backend = LocalModelLivePreviewBackend {
+            transcriber
+        }
+        let updateReceived = expectation(description: "live preview update received")
+
+        try await backend.start { text in
+            XCTAssertEqual(text, "hello")
+            updateReceived.fulfill()
+        }
+
+        let buffer = try makeTestBuffer(sampleCount: 40_000)
+        await backend.append(buffer)
+
+        await fulfillment(of: [updateReceived], timeout: 1.0)
+        let transcribeCallCount = await transcriber.transcribeCallCount()
+        XCTAssertEqual(transcribeCallCount, 1)
+        _ = await backend.finish()
     }
 
     private func makeTestBuffer(sampleCount: AVAudioFrameCount) throws -> AVAudioPCMBuffer {
@@ -53,8 +98,11 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
 
 actor MockLivePreviewBackend: LivePreviewBackend {
     private(set) var appendedFrameCounts: [AVAudioFrameCount] = []
+    private(set) var startCallCount = 0
 
-    func start(onTextUpdate _: @escaping @Sendable (String) -> Void) async throws {}
+    func start(onTextUpdate _: @escaping @Sendable (String) -> Void) async throws {
+        startCallCount += 1
+    }
 
     func append(_ buffer: AVAudioPCMBuffer) async {
         appendedFrameCounts.append(buffer.frameLength)
@@ -65,4 +113,26 @@ actor MockLivePreviewBackend: LivePreviewBackend {
     }
 
     func cancel() async {}
+
+    func startCount() -> Int {
+        startCallCount
+    }
+}
+
+private actor MockLivePreviewTranscriber: Transcriber {
+    private let result: String
+    private var calls = 0
+
+    init(result: String) {
+        self.result = result
+    }
+
+    func transcribe(audioFile _: AudioFile) async throws -> String {
+        calls += 1
+        return result
+    }
+
+    func transcribeCallCount() -> Int {
+        calls
+    }
 }

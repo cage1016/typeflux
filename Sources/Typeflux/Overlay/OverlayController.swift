@@ -442,6 +442,26 @@ final class OverlayController {
         }
     }
 
+    func dismissProcessingIfVisible() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.dismissProcessingIfVisible() }
+            return
+        }
+
+        guard model.presentation == .processing else { return }
+        dismissSoon()
+    }
+
+    func dismissProcessingImmediatelyIfVisible() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.dismissProcessingImmediatelyIfVisible() }
+            return
+        }
+
+        guard model.presentation == .processing else { return }
+        dismissImmediately()
+    }
+
     /// Immediately hides the overlay window and resets state, running synchronously
     /// on the main thread. Use this before returning focus to the original application
     /// so the panel is guaranteed to be hidden before activation.
@@ -525,7 +545,7 @@ final class OverlayController {
         )
 
         switch presentation {
-        case .recordingHoldPreview, .recordingLockedPreview, .transcriptPreview, .notice:
+        case .transcriptPreview, .notice:
             return WindowChromeStyle(background: background, cornerRadius: 14)
         case .failure:
             return WindowChromeStyle(background: background, cornerRadius: 16)
@@ -569,7 +589,7 @@ final class OverlayController {
             )
         case .recordingHoldPreview:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 344, baseHeight: 118), anchor: .bottom, offset: 24,
+                size: recordingOverlaySize(baseWidth: 392, baseHeight: 174), anchor: .bottom, offset: 24,
                 interactive: false,
             )
         case .recordingLocked:
@@ -578,7 +598,7 @@ final class OverlayController {
             )
         case .recordingLockedPreview:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 344, baseHeight: 124), anchor: .bottom, offset: 24,
+                size: recordingOverlaySize(baseWidth: 392, baseHeight: 174), anchor: .bottom, offset: 24,
                 interactive: true,
             )
         case .processing:
@@ -923,11 +943,11 @@ private struct OverlayView: View {
                 case .recordingHold:
                     recordingStack { recordingCapsule }
                 case .recordingHoldPreview:
-                    recordingStack { recordingPreviewCard(showControls: false) }
+                    recordingStack { recordingPreviewStack(showControls: false) }
                 case .recordingLocked:
                     recordingStack { lockedRecordingCapsule }
                 case .recordingLockedPreview:
-                    recordingStack { recordingPreviewCard(showControls: true) }
+                    recordingStack { recordingPreviewStack(showControls: true) }
                 case .processing:
                     processingCapsule
                 case .transcriptPreview:
@@ -948,11 +968,11 @@ private struct OverlayView: View {
                 case .recordingHold:
                     recordingStack { recordingCapsule }
                 case .recordingHoldPreview:
-                    recordingStack { recordingPreviewCard(showControls: false) }
+                    recordingStack { recordingPreviewStack(showControls: false) }
                 case .recordingLocked:
                     recordingStack { lockedRecordingCapsule }
                 case .recordingLockedPreview:
-                    recordingStack { recordingPreviewCard(showControls: true) }
+                    recordingStack { recordingPreviewStack(showControls: true) }
                 case .processing:
                     processingCapsule
                 case .transcriptPreview:
@@ -974,8 +994,7 @@ private struct OverlayView: View {
 
     private var usesWindowChrome: Bool {
         switch model.presentation {
-        case .recordingHoldPreview, .recordingLockedPreview, .transcriptPreview, .notice, .failure,
-             .personaPicker, .resultDialog:
+        case .transcriptPreview, .notice, .failure, .personaPicker, .resultDialog:
             true
         default:
             false
@@ -1062,44 +1081,21 @@ private struct OverlayView: View {
         )
     }
 
-    private func recordingPreviewCard(showControls: Bool) -> some View {
-        OverlayCompactToast(width: 344, hostedInWindowChrome: true) {
-            VStack(alignment: .leading, spacing: 10) {
-                if showControls {
-                    HStack(spacing: 8) {
-                        Button(action: model.requestCancel) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color.white.opacity(0.96))
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(Color.white.opacity(0.18)))
-                        }
-                        .buttonStyle(.plain)
-
-                        LevelWaveform(level: model.level, activeColor: Color.white.opacity(0.95))
-                            .frame(width: 38, height: 14)
-
-                        Spacer(minLength: 0)
-
-                        Button(action: model.requestConfirm) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color.black.opacity(0.9))
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(Color.white.opacity(0.98)))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    LevelWaveform(level: model.level, activeColor: Color.white.opacity(0.95))
-                        .frame(width: 38, height: 14)
-                }
-
-                Text("“\(model.detailText)”")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.84))
-                    .lineLimit(2)
+    private func recordingPreviewStack(showControls: Bool) -> some View {
+        VStack(spacing: 10) {
+            recordingPreviewCard
+            if showControls {
+                lockedRecordingCapsule
+            } else {
+                recordingCapsule
             }
+        }
+        .fixedSize(horizontal: true, vertical: true)
+    }
+
+    private var recordingPreviewCard: some View {
+        OverlayCompactToast(width: 360) {
+            LiveTranscriptPreviewText(text: model.detailText)
         }
     }
 
@@ -1528,6 +1524,48 @@ private struct LockedRecordingCapsule: View {
                 )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct LiveTranscriptPreviewText: View {
+    let text: String
+    private let bottomID = "live-transcript-preview-bottom"
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("“\(text)”")
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.86))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id(bottomID)
+                }
+            }
+            .frame(height: 72)
+            .onAppear {
+                scrollToLatest(using: proxy, animated: false)
+            }
+            .onChange(of: text) { _ in
+                scrollToLatest(using: proxy, animated: true)
+            }
+        }
+    }
+
+    private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
+        DispatchQueue.main.async {
+            if animated {
+                withAnimation(.easeOut(duration: 0.16)) {
+                    proxy.scrollTo(bottomID, anchor: .bottom)
+                }
+            } else {
+                proxy.scrollTo(bottomID, anchor: .bottom)
+            }
+        }
     }
 }
 

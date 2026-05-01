@@ -27,6 +27,15 @@ struct SherpaOnnxModelLayout {
     let modelRootDirectory: String
     let requiredRelativePaths: [String]
 
+    private static var runtimeRequiredRelativePaths: [String] {
+        [
+            "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
+            "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
+            "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libonnxruntime.dylib",
+            "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)",
+        ]
+    }
+
     var modelArchiveURL: URL? {
         modelArtifact.archiveURL
     }
@@ -53,10 +62,7 @@ struct SherpaOnnxModelLayout {
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
                 modelRootDirectory: modelRootDirectory,
-                requiredRelativePaths: [
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libonnxruntime.dylib",
+                requiredRelativePaths: runtimeRequiredRelativePaths + [
                     "\(modelRootDirectory)/model.int8.onnx",
                     "\(modelRootDirectory)/tokens.txt",
                 ],
@@ -76,10 +82,7 @@ struct SherpaOnnxModelLayout {
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
                 modelRootDirectory: modelRootDirectory,
-                requiredRelativePaths: [
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libonnxruntime.dylib",
+                requiredRelativePaths: runtimeRequiredRelativePaths + [
                     "\(modelRootDirectory)/conv_frontend.onnx",
                     "\(modelRootDirectory)/encoder.int8.onnx",
                     "\(modelRootDirectory)/decoder.int8.onnx",
@@ -101,10 +104,7 @@ struct SherpaOnnxModelLayout {
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
                 modelRootDirectory: modelRootDirectory,
-                requiredRelativePaths: [
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
-                    "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libonnxruntime.dylib",
+                requiredRelativePaths: runtimeRequiredRelativePaths + [
                     "\(modelRootDirectory)/model.int8.onnx",
                     "\(modelRootDirectory)/tokens.txt",
                 ],
