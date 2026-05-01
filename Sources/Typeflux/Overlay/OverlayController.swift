@@ -14,6 +14,83 @@ private final class OverlayPanel: NSPanel {
     }
 }
 
+private final class RoundedVisualEffectView: NSVisualEffectView {
+    var preferredCornerRadius: CGFloat?
+
+    override func layout() {
+        super.layout()
+        layer?.cornerRadius = preferredCornerRadius ?? bounds.height / 2
+    }
+}
+
+private struct RoundedVisualEffectBlur: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    let cornerRadius: CGFloat?
+
+    func makeNSView(context _: Context) -> RoundedVisualEffectView {
+        let view = RoundedVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        view.isEmphasized = true
+        view.wantsLayer = true
+        view.layer?.masksToBounds = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+        view.preferredCornerRadius = cornerRadius
+        return view
+    }
+
+    func updateNSView(_ nsView: RoundedVisualEffectView, context _: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+        nsView.state = .active
+        nsView.isEmphasized = true
+        nsView.preferredCornerRadius = cornerRadius
+        nsView.needsLayout = true
+    }
+}
+
+private struct FrostedShapeBackground<S: InsettableShape>: View {
+    let shape: S
+    let cornerRadius: CGFloat?
+    let tintOpacity: Double
+    let strokeOpacity: Double
+    let lineWidth: CGFloat
+
+    init(
+        shape: S,
+        cornerRadius: CGFloat? = nil,
+        tintOpacity: Double = 0.30,
+        strokeOpacity: Double = 0.16,
+        lineWidth: CGFloat = 0.9,
+    ) {
+        self.shape = shape
+        self.cornerRadius = cornerRadius
+        self.tintOpacity = tintOpacity
+        self.strokeOpacity = strokeOpacity
+        self.lineWidth = lineWidth
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedVisualEffectBlur(
+                material: .popover,
+                blendingMode: .behindWindow,
+                cornerRadius: cornerRadius,
+            )
+            .allowsHitTesting(false)
+
+            shape
+                .fill(Color.black.opacity(tintOpacity))
+        }
+        .overlay(
+            shape
+                .strokeBorder(Color.white.opacity(strokeOpacity), lineWidth: lineWidth),
+        )
+    }
+}
+
 /// CGEventTap callback — intercepts and consumes keyboard events (Return/Esc/arrows)
 /// system-wide so the panel never needs to steal focus from the original app.
 private func overlayEventTapCallback(
@@ -153,6 +230,7 @@ final class OverlayController {
             let view = OverlayView(model: model)
             let hosting = TransparentHostingView(rootView: view)
             hosting.wantsLayer = true
+            hosting.layer?.isOpaque = false
             hosting.layer?.backgroundColor = NSColor.clear.cgColor
             let metrics = metrics(for: .recordingHold)
             let panel = OverlayPanel(
@@ -171,6 +249,7 @@ final class OverlayController {
             ]
             panel.contentView = hosting
             panel.contentView?.wantsLayer = true
+            panel.contentView?.layer?.isOpaque = false
             panel.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
 
             window = panel
@@ -200,6 +279,7 @@ final class OverlayController {
         }
 
         model.detailText = text
+        model.recordingPreviewExpanded = true
         switch model.presentation {
         case .recordingHold:
             model.presentation = .recordingHoldPreview
@@ -210,7 +290,6 @@ final class OverlayController {
         default:
             return
         }
-        model.recordingPreviewExpanded = true
         refreshWindow()
     }
 
@@ -557,6 +636,7 @@ final class OverlayController {
         guard let window, let contentView = window.contentView else { return }
 
         contentView.wantsLayer = true
+        contentView.layer?.isOpaque = false
         contentView.layer?.cornerCurve = .continuous
 
         if let chrome = windowChrome(for: model.presentation) {
@@ -725,7 +805,10 @@ final class OverlayController {
             return NSSize(width: baseWidth, height: baseHeight)
         }
 
-        let estimatedHintWidth = min(360, max(baseWidth, CGFloat(model.recordingHintText.count) * 10.0 + 44))
+        let estimatedHintWidth = max(
+            baseWidth,
+            min(420, CGFloat(model.recordingHintText.count) * 10.0 + 44),
+        )
         return NSSize(width: estimatedHintWidth, height: baseHeight + 36)
     }
 
@@ -1134,16 +1217,13 @@ private struct OverlayView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(
-                Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.34))
-                    .background(
-                        .ultraThinMaterial,
-                        in: Capsule(style: .continuous),
-                    ),
-            )
-            .overlay(
-                Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 0.8),
+                FrostedShapeBackground(
+                    shape: Capsule(style: .continuous),
+                    cornerRadius: nil,
+                    tintOpacity: 0.08,
+                    strokeOpacity: 0.14,
+                    lineWidth: 0.8,
+                ),
             )
             .fixedSize(horizontal: true, vertical: true)
     }
@@ -1570,14 +1650,16 @@ private struct LockedRecordingCapsule: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 5.5)
         .background(
-            Capsule(style: .continuous)
-                .fill(Color.black.opacity(0.9))
-                .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(Color.white.opacity(0.22), lineWidth: 1.2),
-                ),
+            FrostedShapeBackground(
+                shape: Capsule(style: .continuous),
+                cornerRadius: nil,
+                tintOpacity: 0.10,
+                strokeOpacity: 0.16,
+                lineWidth: 1.0,
+            ),
         )
-        .shadow(color: Color.black.opacity(0.28), radius: 16, x: 0, y: 12)
+        .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
+        .environment(\.colorScheme, .dark)
     }
 
     private func roundIconButton(
@@ -1626,16 +1708,16 @@ private struct MorphingRecordingCapsule: View {
                 .padding(.bottom, showControls ? 5.5 : 10.5)
         }
         .frame(width: width, height: height, alignment: .bottom)
-        .background(.ultraThinMaterial, in: shape)
         .background(
-            shape
-                .fill(Color.black.opacity(0.74)),
+            FrostedShapeBackground(
+                shape: shape,
+                cornerRadius: expanded ? 22 : nil,
+                tintOpacity: 0.10,
+                strokeOpacity: 0.15,
+                lineWidth: 0.9,
+            ),
         )
-        .overlay(
-            shape
-                .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.9),
-        )
-        .shadow(color: Color.black.opacity(0.26), radius: 18, x: 0, y: 12)
+        .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
         .animation(.easeInOut(duration: 0.38), value: expanded)
     }
@@ -1682,7 +1764,7 @@ private struct LiveTranscriptPreviewText: View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("“\(text)”")
+                    Text(text)
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.86))
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1727,8 +1809,13 @@ private struct ThinkingProgressCapsule: View {
         let capsuleShape = Capsule(style: .continuous)
 
         ZStack {
-            capsuleShape
-                .fill(Color.black.opacity(0.9))
+            FrostedShapeBackground(
+                shape: capsuleShape,
+                cornerRadius: nil,
+                tintOpacity: 0.10,
+                strokeOpacity: 0.16,
+                lineWidth: 1.0,
+            )
 
             GeometryReader { geo in
                 let width = max(0, geo.size.width)
@@ -1742,9 +1829,6 @@ private struct ThinkingProgressCapsule: View {
             }
             .mask(capsuleShape)
 
-            capsuleShape
-                .stroke(Color.white.opacity(0.22), lineWidth: 1.2)
-
             Text(title)
                 .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(Color.white.opacity(0.92))
@@ -1754,7 +1838,8 @@ private struct ThinkingProgressCapsule: View {
         }
         .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
         .compositingGroup()
-        .shadow(color: Color.black.opacity(0.28), radius: 16, x: 0, y: 12)
+        .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
+        .environment(\.colorScheme, .dark)
         .onAppear {
             startTranscribingPhase()
         }
@@ -1801,14 +1886,16 @@ private struct OverlayCapsule<Content: View>: View {
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, 10.5)
             .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.88))
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.22), lineWidth: 1.2),
-                    ),
+                FrostedShapeBackground(
+                    shape: Capsule(),
+                    cornerRadius: nil,
+                    tintOpacity: 0.10,
+                    strokeOpacity: 0.16,
+                    lineWidth: 1.0,
+                ),
             )
-            .shadow(color: Color.black.opacity(0.28), radius: 16, x: 0, y: 12)
+            .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
+            .environment(\.colorScheme, .dark)
     }
 }
 
