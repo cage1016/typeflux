@@ -55,6 +55,7 @@ struct OverlayFailureAction {
 
 final class OverlayController {
     private static let autoDismissDelay: TimeInterval = 6.0
+    private static let shadowGutter: CGFloat = 32
 
     struct PersonaPickerItem: Identifiable, Equatable {
         let id: String
@@ -584,26 +585,26 @@ final class OverlayController {
         switch presentation {
         case .recordingHold:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 118, baseHeight: 72), anchor: .bottom, offset: 24,
+                size: recordingOverlaySize(baseWidth: 146, baseHeight: 112), anchor: .bottom, offset: 16,
                 interactive: false,
             )
         case .recordingHoldPreview:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 392, baseHeight: 174), anchor: .bottom, offset: 24,
+                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 18,
                 interactive: false,
             )
         case .recordingLocked:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 158, baseHeight: 66), anchor: .bottom, offset: 26, interactive: true,
+                size: recordingOverlaySize(baseWidth: 196, baseHeight: 120), anchor: .bottom, offset: 16, interactive: true,
             )
         case .recordingLockedPreview:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 392, baseHeight: 174), anchor: .bottom, offset: 24,
+                size: recordingOverlaySize(baseWidth: 428, baseHeight: 218), anchor: .bottom, offset: 18,
                 interactive: true,
             )
         case .processing:
             return OverlayMetrics(
-                size: NSSize(width: processingOverlayWidth(), height: 72), anchor: .bottom, offset: 24,
+                size: NSSize(width: processingOverlayWidth() + Self.shadowGutter * 2, height: 112), anchor: .bottom, offset: 16,
                 interactive: false,
             )
         case .transcriptPreview:
@@ -1012,13 +1013,13 @@ private struct OverlayView: View {
     private var containerPadding: EdgeInsets {
         switch model.presentation {
         case .recordingHold, .processing:
-            EdgeInsets(top: 16, leading: 18, bottom: 16, trailing: 18)
+            EdgeInsets(top: 28, leading: 34, bottom: 42, trailing: 34)
         case .recordingHoldPreview:
-            EdgeInsets(top: 12, leading: 16, bottom: 16, trailing: 16)
+            EdgeInsets(top: 30, leading: 34, bottom: 42, trailing: 34)
         case .recordingLocked:
-            EdgeInsets(top: 15, leading: 14, bottom: 15, trailing: 14)
+            EdgeInsets(top: 28, leading: 34, bottom: 46, trailing: 34)
         case .recordingLockedPreview:
-            EdgeInsets(top: 12, leading: 16, bottom: 16, trailing: 16)
+            EdgeInsets(top: 30, leading: 34, bottom: 46, trailing: 34)
         case .transcriptPreview, .notice, .failure:
             EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
         case .personaPicker, .resultDialog:
@@ -1094,7 +1095,7 @@ private struct OverlayView: View {
     }
 
     private var recordingPreviewCard: some View {
-        OverlayCompactToast(width: 360) {
+        LiveTranscriptPreviewCard(width: 360) {
             LiveTranscriptPreviewText(text: model.detailText)
         }
     }
@@ -1566,6 +1567,36 @@ private struct LiveTranscriptPreviewText: View {
                 proxy.scrollTo(bottomID, anchor: .bottom)
             }
         }
+    }
+}
+
+private struct LiveTranscriptPreviewCard<Content: View>: View {
+    let width: CGFloat
+    @ViewBuilder var content: Content
+
+    init(width: CGFloat, @ViewBuilder content: () -> Content) {
+        self.width = width
+        self.content = content()
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+
+        content
+            .padding(.horizontal, 15)
+            .padding(.vertical, 11)
+            .frame(width: width, alignment: .leading)
+            .background(.ultraThinMaterial, in: shape)
+            .background(
+                shape
+                    .fill(Color.black.opacity(0.74)),
+            )
+            .overlay(
+                shape
+                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.9),
+            )
+            .shadow(color: Color.black.opacity(0.26), radius: 18, x: 0, y: 12)
+            .environment(\.colorScheme, .dark)
     }
 }
 
