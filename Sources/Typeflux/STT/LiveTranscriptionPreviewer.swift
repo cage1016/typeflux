@@ -68,7 +68,7 @@ actor LiveTranscriptionPreviewer: LiveTranscriptionPreviewing {
             state = .starting
         }
 
-        if settingsStore.sttProvider == .localModel {
+        if shouldUseLocalBackend {
             let local = localBackendFactory()
             try await local.start(onTextUpdate: onTextUpdate)
             backend = local
@@ -167,6 +167,11 @@ actor LiveTranscriptionPreviewer: LiveTranscriptionPreviewing {
         if clearPendingBuffers {
             pendingBuffers = []
         }
+    }
+
+    private var shouldUseLocalBackend: Bool {
+        settingsStore.sttProvider == .localModel
+            || (settingsStore.sttProvider == .typefluxOfficial && settingsStore.localOptimizationEnabled)
     }
 }
 

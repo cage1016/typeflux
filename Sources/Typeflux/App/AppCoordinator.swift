@@ -34,8 +34,16 @@ final class AppCoordinator {
                 settingsStore: settingsStore,
                 localBackendFactory: {
                     LocalModelLivePreviewBackend(
-                        settingsStore: settingsStore,
-                        modelManager: localModelManager,
+                        transcriberFactory: {
+                            if settingsStore.sttProvider == .typefluxOfficial {
+                                return self.di.autoModelDownloadService.makeTranscriberIfReady()
+                                    ?? UnavailableTranscriber(providerName: "Typeflux Cloud local optimization model")
+                            }
+                            return LocalModelTranscriber(
+                                settingsStore: settingsStore,
+                                modelManager: localModelManager,
+                            )
+                        },
                     )
                 },
                 openAIBackendFactory: { OpenAIRealtimePreviewBackend(settingsStore: settingsStore) },

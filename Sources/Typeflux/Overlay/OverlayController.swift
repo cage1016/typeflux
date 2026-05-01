@@ -359,7 +359,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.transitionToLLMPhase() }
             return
         }
-        guard model.presentation == .processing else { return }
+        guard model.presentation.isProcessing else { return }
         guard model.processingPhase == 0 else { return }
         model.statusText = L("overlay.processing.thinking")
         model.processingPhase = 1
@@ -469,7 +469,11 @@ final class OverlayController {
             return
         }
         model.detailText = text
-        if model.presentation == .transcriptPreview {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if model.presentation.isProcessing {
+            model.presentation = trimmed.isEmpty ? .processing : .processingPreview
+            refreshWindow()
+        } else if model.presentation == .transcriptPreview {
             model.presentation = .processing
             refreshWindow()
         }
@@ -549,7 +553,7 @@ final class OverlayController {
             return
         }
 
-        if model.presentation == .processing {
+        if model.presentation.isProcessing {
             model.processingProgress = 1
             dismiss(after: 0.18)
         } else if model.presentation == .notice || model.presentation == .resultDialog {
@@ -565,7 +569,7 @@ final class OverlayController {
             return
         }
 
-        guard model.presentation == .processing else { return }
+        guard model.presentation.isProcessing else { return }
         dismissSoon()
     }
 
@@ -575,7 +579,7 @@ final class OverlayController {
             return
         }
 
-        guard model.presentation == .processing else { return }
+        guard model.presentation.isProcessing else { return }
         dismissImmediately()
     }
 
@@ -769,6 +773,11 @@ final class OverlayController {
                 size: NSSize(width: processingOverlayWidth() + Self.shadowGutter * 2, height: 112), anchor: .bottom, offset: 16,
                 interactive: false,
             )
+        case .processingPreview:
+            return OverlayMetrics(
+                size: NSSize(width: 428, height: 218), anchor: .bottom, offset: 16,
+                interactive: false,
+            )
         case .transcriptPreview:
             return OverlayMetrics(
                 size: NSSize(width: 344, height: 108), anchor: .bottom, offset: 80,
@@ -951,7 +960,7 @@ final class OverlayController {
         }
 
         switch model.presentation {
-        case .processing:
+        case .processing, .processingPreview:
             if keyCode == 53 {
                 model.requestCancel()
                 return true
@@ -1021,6 +1030,7 @@ final class OverlayViewModel: ObservableObject {
         case recordingLocked
         case recordingLockedPreview
         case processing
+        case processingPreview
         case transcriptPreview
         case notice
         case failure
@@ -1029,6 +1039,10 @@ final class OverlayViewModel: ObservableObject {
 
         var isRecordingPreview: Bool {
             self == .recordingHoldPreview || self == .recordingLockedPreview
+        }
+
+        var isProcessing: Bool {
+            self == .processing || self == .processingPreview
         }
     }
 
@@ -1123,6 +1137,8 @@ private struct OverlayView: View {
                     recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true) }
                 case .processing:
                     processingCapsule
+                case .processingPreview:
+                    processingTranscriptCapsule
                 case .transcriptPreview:
                     previewCard
                 case .notice:
@@ -1148,6 +1164,8 @@ private struct OverlayView: View {
                     recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true) }
                 case .processing:
                     processingCapsule
+                case .processingPreview:
+                    processingTranscriptCapsule
                 case .transcriptPreview:
                     previewCard
                 case .notice:
@@ -1178,7 +1196,7 @@ private struct OverlayView: View {
     private var contentAlignment: Alignment {
         switch model.presentation {
         case .recordingHold, .recordingHoldPreview, .recordingLocked, .recordingLockedPreview,
-             .processing, .notice, .transcriptPreview, .failure, .personaPicker, .resultDialog:
+             .processing, .processingPreview, .notice, .transcriptPreview, .failure, .personaPicker, .resultDialog:
             .bottom
         }
     }
@@ -1187,6 +1205,8 @@ private struct OverlayView: View {
         switch model.presentation {
         case .recordingHold, .processing:
             EdgeInsets(top: 28, leading: 34, bottom: 42, trailing: 34)
+        case .processingPreview:
+            EdgeInsets(top: 30, leading: 34, bottom: 42, trailing: 34)
         case .recordingHoldPreview:
             EdgeInsets(top: 30, leading: 34, bottom: 42, trailing: 34)
         case .recordingLocked:
@@ -1235,6 +1255,17 @@ private struct OverlayView: View {
             epoch: model.processingEpoch,
             phase: model.processingPhase,
         )
+    }
+
+    private var processingTranscriptCapsule: some View {
+        ProcessingTranscriptCapsule(
+            text: model.detailText,
+            title: model.statusText.isEmpty ? L("overlay.processing.thinking") : model.statusText,
+            progress: model.processingProgress,
+            epoch: model.processingEpoch,
+            phase: model.processingPhase,
+        )
+        .fixedSize(horizontal: true, vertical: true)
     }
 
     private func recordingMorphCapsule(expanded: Bool, showControls: Bool) -> some View {
@@ -1862,6 +1893,97 @@ private struct ThinkingProgressCapsule: View {
                 }
             }
         }
+    }
+
+    private func startTranscribingPhase() {
+        guard progress < 1 else { return }
+        withAnimation(.easeOut(duration: 1.5)) {
+            displayProgress = 0.5
+        }
+    }
+}
+
+private struct ProcessingTranscriptCapsule: View {
+    let text: String
+    let title: String
+    let progress: CGFloat
+    let epoch: Int
+    let phase: Int
+    @State private var displayProgress: CGFloat = 0
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+
+        ZStack(alignment: .bottom) {
+            LiveTranscriptPreviewText(text: text)
+                .padding(.horizontal, 15)
+                .padding(.top, 12)
+                .padding(.bottom, 43)
+
+            processingRow
+                .frame(width: 132, height: 35)
+                .padding(.bottom, 0)
+        }
+        .frame(width: 360, height: 127, alignment: .bottom)
+        .background(
+            FrostedShapeBackground(
+                shape: shape,
+                cornerRadius: 22,
+                tintOpacity: 0.10,
+                strokeOpacity: 0.15,
+                lineWidth: 0.9,
+            ),
+        )
+        .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 12)
+        .environment(\.colorScheme, .dark)
+        .onAppear {
+            startTranscribingPhase()
+        }
+        .onChange(of: epoch) { _ in
+            displayProgress = 0
+            startTranscribingPhase()
+        }
+        .onChange(of: phase) { newPhase in
+            guard newPhase == 1, progress < 1 else { return }
+            withAnimation(.easeOut(duration: 2.0)) {
+                displayProgress = 0.85
+            }
+        }
+        .onChange(of: progress) { newValue in
+            if newValue >= 1 {
+                withAnimation(.easeOut(duration: 0.22)) {
+                    displayProgress = 1
+                }
+            }
+        }
+    }
+
+    private var processingRow: some View {
+        let capsuleShape = Capsule(style: .continuous)
+
+        return ZStack {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Color.white.opacity(0.08)
+                    Rectangle()
+                        .fill(Color.white.opacity(0.24))
+                        .frame(width: max(0, geo.size.width * displayProgress))
+                }
+            }
+            .mask(capsuleShape)
+
+            Text(title)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .padding(.horizontal, 12)
+        }
+        .clipShape(capsuleShape)
+        .overlay(
+            capsuleShape
+                .stroke(Color.white.opacity(0.13), lineWidth: 0.8),
+        )
     }
 
     private func startTranscribingPhase() {

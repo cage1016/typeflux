@@ -1,6 +1,18 @@
 import AVFoundation
 import Foundation
 
+struct UnavailableTranscriber: Transcriber {
+    let providerName: String
+
+    func transcribe(audioFile _: AudioFile) async throws -> String {
+        throw NSError(
+            domain: "UnavailableTranscriber",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "\(providerName) is not ready."],
+        )
+    }
+}
+
 actor LocalModelLivePreviewBackend: LivePreviewBackend {
     private static let minimumChunkDuration: TimeInterval = 2.4
 

@@ -18,6 +18,15 @@ extension WorkflowController {
         let completedAt: Date
     }
 
+    var shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider: Bool {
+        switch settingsStore.sttProvider {
+        case .aliCloud, .doubaoRealtime, .googleCloud, .typefluxOfficial:
+            true
+        default:
+            false
+        }
+    }
+
     func generateRewrite(
         request: LLMRewriteRequest,
         sessionID: UUID,
@@ -542,10 +551,6 @@ extension WorkflowController {
                 personaPrompt: personaPrompt,
                 inputContext: inputContext,
             )
-            let shouldKeepProcessingCapsule =
-                requiresRewrite(selectedText: selectedText, personaPrompt: personaPrompt)
-                    && !multimodalHandlesPersona
-
             pipelineTiming.transcriptionStartedAt = Date()
             record.pipelineTiming = pipelineTiming
             saveHistoryRecord(record)
@@ -577,7 +582,6 @@ extension WorkflowController {
                     personaPrompt: resolvedPersonaPrompt,
                     selectionSnapshot: selectionSnapshot,
                     cloudScenario: cloudScenario,
-                    shouldKeepProcessingCapsule: shouldKeepProcessingCapsule,
                     sessionID: sessionID,
                 )
                 transcribedText = mergedResult.transcript
@@ -586,15 +590,7 @@ extension WorkflowController {
                 transcribedText = try await sttRouter.transcribeStream(
                     audioFile: audioFile,
                     scenario: cloudScenario,
-                ) { [weak self] snapshot in
-                    guard let self, !snapshot.text.isEmpty else { return }
-                    guard !shouldKeepProcessingCapsule else { return }
-                    await MainActor.run {
-                        if self.processingSessionID == sessionID {
-                            self.overlayController.updateStreamingText(snapshot.text)
-                        }
-                    }
-                }
+                ) { _ in }
             }
 
             try ensureProcessingIsActive(sessionID)
@@ -1228,24 +1224,17 @@ extension WorkflowController {
         personaPrompt: String,
         selectionSnapshot: TextSelectionSnapshot,
         cloudScenario: TypefluxCloudScenario,
-        shouldKeepProcessingCapsule: Bool,
         sessionID: UUID,
     ) async throws -> (transcript: String, rewritten: String?) {
         let llmConfig = buildASRLLMConfig(personaPrompt: personaPrompt, selectionSnapshot: selectionSnapshot)
         let llmBuffer = LLMStreamBuffer()
+        let suppressStreamingPreview = shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider
 
         return try await sttRouter.transcribeStreamWithLLMRewrite(
             audioFile: audioFile,
             llmConfig: llmConfig,
             scenario: cloudScenario,
-            onASRUpdate: { [weak self] snapshot in
-                guard let self, !snapshot.text.isEmpty, !shouldKeepProcessingCapsule else { return }
-                await MainActor.run {
-                    if self.processingSessionID == sessionID {
-                        self.overlayController.updateStreamingText(snapshot.text)
-                    }
-                }
-            },
+            onASRUpdate: { _ in },
             onLLMStart: { [weak self] in
                 guard let self else { return }
                 await MainActor.run {
@@ -1256,6 +1245,7 @@ extension WorkflowController {
             },
             onLLMChunk: { [weak self] chunk in
                 guard let self else { return }
+                guard !suppressStreamingPreview else { return }
                 llmBuffer.append(chunk)
                 let current = llmBuffer.text
                 await MainActor.run {
@@ -1330,6 +1320,7 @@ extension WorkflowController {
                         vocabularyTerms: VocabularyStore.activeTerms(),
                     ),
                     sessionID: sessionID,
+                    showsStreamingPreview: !shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider,
                     timeout: Self.llmTimeoutAfterTranscriptionSeconds,
                 )
 

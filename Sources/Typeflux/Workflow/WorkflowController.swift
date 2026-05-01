@@ -384,11 +384,16 @@ final class WorkflowController {
     }
 
     func shouldUseLiveTranscriptionPreview() -> Bool {
-        settingsStore.sttProvider == .localModel && liveTranscriptionPreviewer != nil
+        guard liveTranscriptionPreviewer != nil else { return false }
+        if settingsStore.sttProvider == .localModel {
+            return true
+        }
+        return settingsStore.sttProvider == .typefluxOfficial
+            && settingsStore.localOptimizationEnabled
     }
 
     func startLiveTranscriptionPreviewIfNeeded(_ previewer: (any LiveTranscriptionPreviewing)?) {
-        guard let previewer, settingsStore.sttProvider == .localModel else { return }
+        guard let previewer, shouldUseLiveTranscriptionPreview() else { return }
 
         Task { [weak self] in
             do {

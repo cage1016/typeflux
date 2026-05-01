@@ -479,7 +479,7 @@ private actor TypefluxOfficialASRSession {
             }
             currentPartialText = ""
             let display = assembleTranscript()
-            await onASRUpdate(TranscriptionSnapshot(text: display, isFinal: false))
+            await onASRUpdate(TranscriptionSnapshot(text: display, isFinal: true))
 
         case "event":
             let eventText = json["text"] as? String ?? ""

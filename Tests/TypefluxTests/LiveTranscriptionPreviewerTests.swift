@@ -27,8 +27,35 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
         XCTAssertEqual(appleStartCount, 0)
     }
 
+    func testStartUsesLocalBackendForTypefluxCloudWhenLocalOptimizationIsEnabled() async throws {
+        let settingsStore = SettingsStore()
+        settingsStore.sttProvider = .typefluxOfficial
+        settingsStore.localOptimizationEnabled = true
+
+        let localBackend = MockLivePreviewBackend()
+        let openAIBackend = MockLivePreviewBackend()
+        let appleBackend = MockLivePreviewBackend()
+        let previewer = LiveTranscriptionPreviewer(
+            settingsStore: settingsStore,
+            localBackendFactory: { localBackend },
+            openAIBackendFactory: { openAIBackend },
+            appleBackendFactory: { appleBackend },
+        )
+
+        try await previewer.start(onTextUpdate: { _ in })
+
+        let localStartCount = await localBackend.startCount()
+        let openAIStartCount = await openAIBackend.startCount()
+        let appleStartCount = await appleBackend.startCount()
+        XCTAssertEqual(localStartCount, 1)
+        XCTAssertEqual(openAIStartCount, 0)
+        XCTAssertEqual(appleStartCount, 0)
+    }
+
     func testPrepareForStartPreservesPendingBuffersUntilBackendStarts() async throws {
         let settingsStore = SettingsStore()
+        settingsStore.sttProvider = .whisperAPI
+        settingsStore.localOptimizationEnabled = false
         settingsStore.whisperBaseURL = ""
         settingsStore.whisperModel = "whisper-1"
 
