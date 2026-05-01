@@ -81,6 +81,24 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .whisperLocal, source: .huggingFace))
     }
 
+    func testSherpaProbeURLsUseModelAssetsOnly() {
+        let runtimeArchiveURL = LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .huggingFace)
+
+        let senseVoiceURLs = LocalModelDownloadCatalog.probeURLs(for: .senseVoiceSmall, source: .huggingFace)
+        XCTAssertEqual(senseVoiceURLs, [
+            LocalModelDownloadURLCatalog.url(for: .senseVoiceHuggingFaceModel),
+            LocalModelDownloadURLCatalog.url(for: .senseVoiceHuggingFaceTokens),
+        ])
+        XCTAssertFalse(senseVoiceURLs.contains(runtimeArchiveURL))
+
+        let funASRURLs = LocalModelDownloadCatalog.probeURLs(for: .funASR, source: .huggingFace)
+        XCTAssertEqual(funASRURLs, [
+            LocalModelDownloadURLCatalog.url(for: .funASRHuggingFaceModel),
+            LocalModelDownloadURLCatalog.url(for: .funASRHuggingFaceTokens),
+        ])
+        XCTAssertFalse(funASRURLs.contains(runtimeArchiveURL))
+    }
+
     func testDownloadCatalogProvidesChinaMirrorLocations() throws {
         XCTAssertEqual(
             LocalModelDownloadCatalog.whisperKitModelRepository(source: .modelScope),

@@ -70,11 +70,15 @@ cp "$ROOT_DIR/app/Typeflux.icns" "$APP_BUNDLE/Contents/Resources/Typeflux.icns"
 cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/Typeflux_Typeflux.bundle"
 
 rm -rf "$APP_BUNDLE/Contents/Resources/BundledModels"
+rm -rf "$APP_BUNDLE/Contents/Resources/LocalRuntimes"
+SHERPA_RUNTIME_ROOT="$APP_BUNDLE/Contents/Resources/LocalRuntimes/sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts"
+"${ROOT_DIR}/scripts/install_bundled_sherpa_runtime.sh" "$SHERPA_RUNTIME_ROOT"
+
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
   # Directory name must match LocalSTTModel.senseVoiceSmall.defaultModelIdentifier
   # so that BundledLocalModelLocator resolves the bundled copy at runtime.
   BUNDLED_SENSEVOICE_DIR="$APP_BUNDLE/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small"
-  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$BUNDLED_SENSEVOICE_DIR"
+  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$BUNDLED_SENSEVOICE_DIR" "$SHERPA_RUNTIME_ROOT"
 
   expected_model_file="$BUNDLED_SENSEVOICE_DIR/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"
   if [[ ! -f "$expected_model_file" ]]; then
@@ -118,16 +122,17 @@ fi
 
 # Notarization requires every Mach-O inside the bundle to carry a Developer ID
 # signature, a secure timestamp, and the hardened runtime. The `full` variant
-# bundles third-party sherpa-onnx binaries under Contents/Resources that ship
-# unsigned from upstream, so we must sign them individually before the outer
-# bundle is sealed. `codesign --deep` is deprecated for this and does not cover
-# arbitrary Mach-O files under Contents/Resources.
+# used to be the only variant with third-party sherpa-onnx binaries; now every
+# variant ships the shared local runtime under Contents/Resources/LocalRuntimes.
+# These upstream binaries must be signed individually before the outer bundle is
+# sealed. `codesign --deep` is deprecated for this and does not cover arbitrary
+# Mach-O files under Contents/Resources.
 sign_nested_binaries() {
   local identity="$1"
   local adhoc="$2"
-  local search_root="$APP_BUNDLE/Contents/Resources/BundledModels"
+  local resources_root="$APP_BUNDLE/Contents/Resources"
 
-  [[ -d "$search_root" ]] || return 0
+  [[ -d "$resources_root" ]] || return 0
 
   local -a nested_args
   if [[ "$adhoc" == true ]]; then
@@ -147,7 +152,7 @@ sign_nested_binaries() {
       echo "Signing nested binary: ${candidate#$APP_BUNDLE/}"
       codesign "${nested_args[@]}" "$candidate"
     fi
-  done < <(find "$search_root" -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' \) -print0)
+  done < <(find "$resources_root/LocalRuntimes" "$resources_root/BundledModels" -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' \) -print0 2>/dev/null)
 }
 
 # Sign the bundle if an identity is available.

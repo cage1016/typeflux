@@ -25,9 +25,10 @@ struct SherpaOnnxModelLayout {
     let runtimeRootDirectory: String
     let modelArtifact: SherpaOnnxModelArtifact
     let modelRootDirectory: String
+    let modelRequiredRelativePaths: [String]
     let requiredRelativePaths: [String]
 
-    private static var runtimeRequiredRelativePaths: [String] {
+    static var runtimeRequiredRelativePaths: [String] {
         [
             "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/bin/sherpa-onnx-offline",
             "\(LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName)/lib/libsherpa-onnx-c-api.dylib",
@@ -62,7 +63,7 @@ struct SherpaOnnxModelLayout {
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
                 modelRootDirectory: modelRootDirectory,
-                requiredRelativePaths: runtimeRequiredRelativePaths + [
+                modelRequiredRelativePaths: [
                     "\(modelRootDirectory)/model.int8.onnx",
                     "\(modelRootDirectory)/tokens.txt",
                 ],
@@ -82,7 +83,7 @@ struct SherpaOnnxModelLayout {
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
                 modelRootDirectory: modelRootDirectory,
-                requiredRelativePaths: runtimeRequiredRelativePaths + [
+                modelRequiredRelativePaths: [
                     "\(modelRootDirectory)/conv_frontend.onnx",
                     "\(modelRootDirectory)/encoder.int8.onnx",
                     "\(modelRootDirectory)/decoder.int8.onnx",
@@ -104,12 +105,29 @@ struct SherpaOnnxModelLayout {
                 runtimeRootDirectory: LocalModelDownloadCatalog.sherpaOnnxRuntimeDirectoryName,
                 modelArtifact: modelArtifact,
                 modelRootDirectory: modelRootDirectory,
-                requiredRelativePaths: runtimeRequiredRelativePaths + [
+                modelRequiredRelativePaths: [
                     "\(modelRootDirectory)/model.int8.onnx",
                     "\(modelRootDirectory)/tokens.txt",
                 ],
             )
         }
+    }
+
+    init(
+        model: LocalSTTModel,
+        runtimeArchiveURL: URL,
+        runtimeRootDirectory: String,
+        modelArtifact: SherpaOnnxModelArtifact,
+        modelRootDirectory: String,
+        modelRequiredRelativePaths: [String],
+    ) {
+        self.model = model
+        self.runtimeArchiveURL = runtimeArchiveURL
+        self.runtimeRootDirectory = runtimeRootDirectory
+        self.modelArtifact = modelArtifact
+        self.modelRootDirectory = modelRootDirectory
+        self.modelRequiredRelativePaths = modelRequiredRelativePaths
+        requiredRelativePaths = Self.runtimeRequiredRelativePaths + modelRequiredRelativePaths
     }
 
     func runtimeExecutableURL(storageURL: URL) -> URL {
@@ -132,11 +150,45 @@ struct SherpaOnnxModelLayout {
         missingOrUnusableRelativePaths(storageURL: storageURL, fileManager: fileManager).isEmpty
     }
 
+    func isRuntimeInstalled(storageURL: URL, fileManager: FileManager = .default) -> Bool {
+        missingOrUnusableRuntimeRelativePaths(storageURL: storageURL, fileManager: fileManager).isEmpty
+    }
+
+    func isModelInstalled(storageURL: URL, fileManager: FileManager = .default) -> Bool {
+        missingOrUnusableModelRelativePaths(storageURL: storageURL, fileManager: fileManager).isEmpty
+    }
+
     func missingOrUnusableRelativePaths(
         storageURL: URL,
         fileManager: FileManager = .default,
     ) -> [String] {
         requiredRelativePaths.filter { relativePath in
+            !hasUsableItem(
+                at: storageURL.appendingPathComponent(relativePath, isDirectory: false),
+                relativePath: relativePath,
+                fileManager: fileManager,
+            )
+        }
+    }
+
+    func missingOrUnusableRuntimeRelativePaths(
+        storageURL: URL,
+        fileManager: FileManager = .default,
+    ) -> [String] {
+        Self.runtimeRequiredRelativePaths.filter { relativePath in
+            !hasUsableItem(
+                at: storageURL.appendingPathComponent(relativePath, isDirectory: false),
+                relativePath: relativePath,
+                fileManager: fileManager,
+            )
+        }
+    }
+
+    func missingOrUnusableModelRelativePaths(
+        storageURL: URL,
+        fileManager: FileManager = .default,
+    ) -> [String] {
+        modelRequiredRelativePaths.filter { relativePath in
             !hasUsableItem(
                 at: storageURL.appendingPathComponent(relativePath, isDirectory: false),
                 relativePath: relativePath,
@@ -260,6 +312,61 @@ struct SherpaOnnxModelLayout {
     }
 }
 
+protocol SherpaOnnxRuntimeLocating {
+    func runtimeRootURL(for layout: SherpaOnnxModelLayout, fileManager: FileManager) -> URL?
+}
+
+struct BundledSherpaOnnxRuntimeLocator: SherpaOnnxRuntimeLocating {
+    let explicitRuntimeRootURL: URL?
+
+    init(explicitRuntimeRootURL: URL? = nil) {
+        self.explicitRuntimeRootURL = explicitRuntimeRootURL
+    }
+
+    func runtimeRootURL(for layout: SherpaOnnxModelLayout, fileManager: FileManager = .default) -> URL? {
+        for candidateURL in candidateRuntimeRootURLs(for: layout) {
+            let storageURL = candidateURL.deletingLastPathComponent()
+            if candidateURL.lastPathComponent == layout.runtimeRootDirectory,
+               layout.isRuntimeInstalled(storageURL: storageURL, fileManager: fileManager)
+            {
+                return candidateURL
+            }
+        }
+        return nil
+    }
+
+    private func candidateRuntimeRootURLs(for layout: SherpaOnnxModelLayout) -> [URL] {
+        if let explicitRuntimeRootURL {
+            return [explicitRuntimeRootURL]
+        }
+
+        var urls: [URL] = []
+        if let resourceURL = Bundle.main.resourceURL {
+            urls.append(
+                resourceURL
+                    .appendingPathComponent("LocalRuntimes", isDirectory: true)
+                    .appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+            )
+        }
+        if let resourceURL = Bundle.appResources.resourceURL {
+            urls.append(
+                resourceURL
+                    .appendingPathComponent("LocalRuntimes", isDirectory: true)
+                    .appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+            )
+        }
+        urls.append(
+            Bundle.main.bundleURL
+                .appendingPathComponent("Contents/Resources", isDirectory: true)
+                .appendingPathComponent("LocalRuntimes", isDirectory: true)
+                .appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+        )
+
+        var seenPaths = Set<String>()
+        return urls.filter { seenPaths.insert($0.path).inserted }
+    }
+}
+
 protocol SherpaOnnxModelInstalling {
     func prepareModel(
         _ model: LocalSTTModel,
@@ -297,15 +404,18 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
     private let fileManager: FileManager
     private let processRunner: ProcessCommandRunning
     private let archiveDownloader: SherpaOnnxArchiveDownloading
+    private let runtimeLocator: SherpaOnnxRuntimeLocating
 
     init(
         fileManager: FileManager = .default,
         processRunner: ProcessCommandRunning = ProcessCommandRunner(),
         archiveDownloader: SherpaOnnxArchiveDownloading = URLSessionSherpaOnnxArchiveDownloader(),
+        runtimeLocator: SherpaOnnxRuntimeLocating = BundledSherpaOnnxRuntimeLocator(),
     ) {
         self.fileManager = fileManager
         self.processRunner = processRunner
         self.archiveDownloader = archiveDownloader
+        self.runtimeLocator = runtimeLocator
     }
 
     func prepareModel(
@@ -323,40 +433,47 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         }
 
         try fileManager.createDirectory(at: storageURL, withIntermediateDirectories: true)
-        try? pruneRuntimePayload(in: storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
+        try installBundledRuntimeIfAvailable(layout: layout, storageURL: storageURL)
+        if !layout.isRuntimeInstalled(storageURL: storageURL, fileManager: fileManager) {
+            try? pruneRuntimePayload(in: storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
+        }
         if layout.isInstalled(storageURL: storageURL, fileManager: fileManager) {
             return storageURL.path
         }
 
-        onUpdate?(LocalSTTPreparationUpdate(
-            message: L("localSTT.prepare.runtimeDownloading"),
-            progress: 0.15,
-            storagePath: storageURL.path,
-            source: nil,
-        ))
-        NetworkDebugLogger.logMessage(
-            "[Local Model Download] model=\(model.displayName) source=\(downloadSource.displayName) kind=sherpa-runtime url=\(layout.runtimeArchiveURL.absoluteString)"
-        )
-        try await downloadAndExtract(
-            archiveURL: layout.runtimeArchiveURL,
-            destinationURL: storageURL,
-            extractedRootDirectoryName: layout.runtimeRootDirectory,
-            archiveFileName: "\(layout.runtimeRootDirectory).tar.bz2",
-        )
-        try pruneRuntimePayload(in: storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
+        if !layout.isRuntimeInstalled(storageURL: storageURL, fileManager: fileManager) {
+            onUpdate?(LocalSTTPreparationUpdate(
+                message: L("localSTT.prepare.runtimeDownloading"),
+                progress: 0.15,
+                storagePath: storageURL.path,
+                source: nil,
+            ))
+            NetworkDebugLogger.logMessage(
+                "[Local Model Download] model=\(model.displayName) source=\(downloadSource.displayName) kind=sherpa-runtime url=\(layout.runtimeArchiveURL.absoluteString)"
+            )
+            try await downloadAndExtract(
+                archiveURL: layout.runtimeArchiveURL,
+                destinationURL: storageURL,
+                extractedRootDirectoryName: layout.runtimeRootDirectory,
+                archiveFileName: "\(layout.runtimeRootDirectory).tar.bz2",
+            )
+            try pruneRuntimePayload(in: storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
+        }
 
-        onUpdate?(LocalSTTPreparationUpdate(
-            message: L("localSTT.prepare.modelDownloading", model.displayName),
-            progress: 0.55,
-            storagePath: storageURL.path,
-            source: nil,
-        ))
-        logModelArtifactDownload(modelArtifact: layout.modelArtifact, model: model, source: downloadSource)
-        try await prepareModelArtifact(
-            layout.modelArtifact,
-            destinationURL: storageURL,
-            extractedRootDirectoryName: layout.modelRootDirectory,
-        )
+        if !layout.isModelInstalled(storageURL: storageURL, fileManager: fileManager) {
+            onUpdate?(LocalSTTPreparationUpdate(
+                message: L("localSTT.prepare.modelDownloading", model.displayName),
+                progress: 0.55,
+                storagePath: storageURL.path,
+                source: nil,
+            ))
+            logModelArtifactDownload(modelArtifact: layout.modelArtifact, model: model, source: downloadSource)
+            try await prepareModelArtifact(
+                layout.modelArtifact,
+                destinationURL: storageURL,
+                extractedRootDirectoryName: layout.modelRootDirectory,
+            )
+        }
 
         let missingOrUnusablePaths = layout.missingOrUnusableRelativePaths(
             storageURL: storageURL,
@@ -384,6 +501,28 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         ))
 
         return storageURL.path
+    }
+
+    private func installBundledRuntimeIfAvailable(layout: SherpaOnnxModelLayout, storageURL: URL) throws {
+        guard let runtimeRootURL = runtimeLocator.runtimeRootURL(for: layout, fileManager: fileManager) else {
+            return
+        }
+
+        let targetURL = storageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+        if let existingDestination = try? fileManager.destinationOfSymbolicLink(atPath: targetURL.path) {
+            if existingDestination == runtimeRootURL.path {
+                return
+            }
+            try fileManager.removeItem(at: targetURL)
+        } else if fileManager.fileExists(atPath: targetURL.path) {
+            try fileManager.removeItem(at: targetURL)
+        }
+
+        try fileManager.createDirectory(at: targetURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try fileManager.createSymbolicLink(at: targetURL, withDestinationURL: runtimeRootURL)
+        NetworkDebugLogger.logMessage(
+            "[Local Model Download] kind=sherpa-runtime source=bundled path=\(runtimeRootURL.path)"
+        )
     }
 
     private func logModelArtifactDownload(
@@ -415,7 +554,9 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             extractedRootDirectoryName,
             isDirectory: true,
         )
-        if fileManager.fileExists(atPath: extractedRootURL.path) {
+        if (try? fileManager.destinationOfSymbolicLink(atPath: extractedRootURL.path)) != nil {
+            try fileManager.removeItem(at: extractedRootURL)
+        } else if fileManager.fileExists(atPath: extractedRootURL.path) {
             try fileManager.removeItem(at: extractedRootURL)
         }
 

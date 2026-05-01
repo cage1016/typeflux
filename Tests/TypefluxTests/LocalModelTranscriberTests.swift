@@ -947,6 +947,48 @@ final class LocalModelTranscriberTests: XCTestCase {
         )
     }
 
+    func testSherpaInstallerLinksBundledRuntimeAndDownloadsOnlyModelAssets() async throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+        let bundledRuntimeStorage = try makeSherpaModelFolder(for: .senseVoiceSmall)
+        let bundledRuntimeRoot = bundledRuntimeStorage.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+        let fixturesRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("typeflux-sherpa-fixtures-\(UUID().uuidString)", isDirectory: true)
+        let installRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("typeflux-sherpa-install-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: bundledRuntimeStorage)
+            try? FileManager.default.removeItem(at: fixturesRoot)
+            try? FileManager.default.removeItem(at: installRoot)
+        }
+        try FileManager.default.createDirectory(at: fixturesRoot, withIntermediateDirectories: true)
+
+        guard case let .files(files) = try XCTUnwrap(LocalModelDownloadCatalog.sherpaOnnxModelArtifact(
+            for: .funASR,
+            source: .huggingFace,
+        )) else {
+            return XCTFail("Expected file-based FunASR artifact for Hugging Face")
+        }
+
+        let installer = SherpaOnnxModelInstaller(
+            fileManager: .default,
+            processRunner: ProcessCommandRunner(),
+            archiveDownloader: StaticArchiveDownloader(
+                archiveMap: try makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
+            ),
+            runtimeLocator: BundledSherpaOnnxRuntimeLocator(explicitRuntimeRootURL: bundledRuntimeRoot),
+        )
+
+        let preparedPath = try await installer.prepareModel(.funASR, at: installRoot, downloadSource: .huggingFace)
+
+        XCTAssertEqual(preparedPath, installRoot.path)
+        let linkedRuntimeRoot = installRoot.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+        XCTAssertEqual(
+            try FileManager.default.destinationOfSymbolicLink(atPath: linkedRuntimeRoot.path),
+            bundledRuntimeRoot.path,
+        )
+        XCTAssertTrue(layout.isInstalled(storageURL: installRoot, fileManager: .default))
+    }
+
     private func makeSherpaModelFolder(for model: LocalSTTModel) throws -> URL {
         try makeSherpaModelFolder(for: model, useMachORuntime: true)
     }

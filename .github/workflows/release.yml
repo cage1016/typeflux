@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/typeflux-bundled-models
-          key: typeflux-bundled-models-${{ runner.os }}-${{ hashFiles('scripts/install_bundled_sensevoice.sh') }}
+          key: typeflux-bundled-models-${{ runner.os }}-${{ hashFiles('scripts/install_bundled_sensevoice.sh', 'scripts/install_bundled_sherpa_runtime.sh') }}
           restore-keys: |
             typeflux-bundled-models-${{ runner.os }}-
 

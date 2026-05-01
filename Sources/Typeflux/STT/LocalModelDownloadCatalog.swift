@@ -127,10 +127,12 @@ enum LocalModelDownloadCatalog {
             [whisperKitModelRepositoryURL(source: source)]
         case .senseVoiceSmall:
             [
-                sherpaOnnxRuntimeArchiveURL(source: source),
                 LocalModelDownloadURLCatalog.url(for: source == .huggingFace
                     ? .senseVoiceHuggingFaceModel
                     : .senseVoiceChinaMirrorModel),
+                LocalModelDownloadURLCatalog.url(for: source == .huggingFace
+                    ? .senseVoiceHuggingFaceTokens
+                    : .senseVoiceChinaMirrorTokens),
             ]
         case .qwen3ASR:
             switch source {
@@ -141,10 +143,12 @@ enum LocalModelDownloadCatalog {
             }
         case .funASR:
             [
-                sherpaOnnxRuntimeArchiveURL(source: source),
                 LocalModelDownloadURLCatalog.url(for: source == .huggingFace
                     ? .funASRHuggingFaceModel
                     : .funASRChinaMirrorModel),
+                LocalModelDownloadURLCatalog.url(for: source == .huggingFace
+                    ? .funASRHuggingFaceTokens
+                    : .funASRChinaMirrorTokens),
             ]
         }
     }
