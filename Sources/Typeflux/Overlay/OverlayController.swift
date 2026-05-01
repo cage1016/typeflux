@@ -225,6 +225,11 @@ final class OverlayController {
         refreshWindow()
     }
 
+    private func cancelPendingPresentationTransition() {
+        pendingPresentationWorkItem?.cancel()
+        pendingPresentationWorkItem = nil
+    }
+
     private func ensureWindow() {
         if window == nil {
             let view = OverlayView(model: model)
@@ -298,8 +303,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showProcessing() }
             return
         }
-        pendingPresentationWorkItem?.cancel()
-        pendingPresentationWorkItem = nil
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         dismissWorkItem = nil
         ensureWindow()
@@ -323,7 +327,7 @@ final class OverlayController {
     }
 
     private func showProcessingImmediately() {
-        pendingPresentationWorkItem = nil
+        cancelPendingPresentationTransition()
         ensureWindow()
         model.presentation = .processing
         model.recordingPreviewExpanded = false
@@ -341,6 +345,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showLLMProcessing() }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         dismissWorkItem = nil
         ensureWindow()
@@ -359,10 +364,22 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.transitionToLLMPhase() }
             return
         }
+        if model.presentation.isRecordingPreview {
+            cancelPendingPresentationTransition()
+            ensureWindow()
+            model.presentation = .processing
+            model.recordingPreviewExpanded = false
+            model.detailText = ""
+            model.recordingHintText = ""
+            model.processingProgress = 0
+            model.processingPhase = 0
+            model.processingEpoch += 1
+        }
         guard model.presentation.isProcessing else { return }
         guard model.processingPhase == 0 else { return }
         model.statusText = L("overlay.processing.thinking")
         model.processingPhase = 1
+        refreshWindow()
     }
 
     func showFailure(message: String) {
@@ -370,6 +387,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showFailure(message: message) }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .failure
@@ -384,6 +402,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showRetryableFailure(message: message) }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .failure
@@ -404,6 +423,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showTimeoutFailure() }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .failure
@@ -424,6 +444,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showFailureWithActions(message: message, actions: actions) }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .failure
@@ -484,6 +505,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.showNotice(message: message) }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         model.presentation = .notice
         model.statusText = L("overlay.notice.title")
@@ -499,6 +521,7 @@ final class OverlayController {
             }
             return
         }
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .resultDialog
@@ -524,6 +547,7 @@ final class OverlayController {
             return
         }
 
+        cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .personaPicker
@@ -552,6 +576,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.dismissSoon() }
             return
         }
+        cancelPendingPresentationTransition()
 
         if model.presentation.isProcessing {
             model.processingProgress = 1
@@ -589,6 +614,7 @@ final class OverlayController {
     func dismissImmediately() {
         let work = { [weak self] in
             guard let self else { return }
+            cancelPendingPresentationTransition()
             dismissWorkItem?.cancel()
             dismissWorkItem = nil
             window?.orderOut(nil)
@@ -610,6 +636,7 @@ final class OverlayController {
             DispatchQueue.main.async { [weak self] in self?.dismiss(after: delay) }
             return
         }
+        cancelPendingPresentationTransition()
         if model.presentation == .failure, delay > 0 {
             return
         }

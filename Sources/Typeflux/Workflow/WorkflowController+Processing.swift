@@ -1351,7 +1351,8 @@ extension WorkflowController {
                         vocabularyTerms: VocabularyStore.activeTerms(),
                     ),
                     sessionID: sessionID,
-                    showsStreamingPreview: !shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider,
+                    showsStreamingPreview: WorkflowOverlayPresentationPolicy
+                        .shouldShowLLMStreamingPreviewAfterTranscription(),
                     timeout: Self.llmTimeoutAfterTranscriptionSeconds,
                 )
 
