@@ -51,42 +51,92 @@ private struct RoundedVisualEffectBlur: NSViewRepresentable {
     }
 }
 
-private struct FrostedShapeBackground<S: InsettableShape>: View {
+private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
     let shape: S
     let cornerRadius: CGFloat?
     let tintOpacity: Double
     let strokeOpacity: Double
     let lineWidth: CGFloat
+    let interactive: Bool
 
     init(
         shape: S,
         cornerRadius: CGFloat? = nil,
-        tintOpacity: Double = 0.30,
+        tintOpacity: Double = 0.08,
         strokeOpacity: Double = 0.16,
         lineWidth: CGFloat = 0.9,
+        interactive: Bool = false,
     ) {
         self.shape = shape
         self.cornerRadius = cornerRadius
         self.tintOpacity = tintOpacity
         self.strokeOpacity = strokeOpacity
         self.lineWidth = lineWidth
+        self.interactive = interactive
     }
 
     var body: some View {
-        ZStack {
-            RoundedVisualEffectBlur(
-                material: .popover,
-                blendingMode: .behindWindow,
-                cornerRadius: cornerRadius,
-            )
-            .allowsHitTesting(false)
+        Group {
+            if #available(macOS 26.0, *) {
+                ZStack {
+                    shape
+                        .fill(Color.clear)
+                        .glassEffect(
+                            Glass.clear
+                                .interactive(interactive)
+                                .tint(Color.white.opacity(tintOpacity)),
+                            in: shape,
+                        )
 
-            shape
-                .fill(Color.black.opacity(tintOpacity))
+                    shape
+                        .fill(Color.black.opacity(0.18))
+                        .allowsHitTesting(false)
+                }
+            } else {
+                ZStack {
+                    RoundedVisualEffectBlur(
+                        material: .popover,
+                        blendingMode: .behindWindow,
+                        cornerRadius: cornerRadius,
+                    )
+                    .allowsHitTesting(false)
+
+                    shape
+                        .fill(Color.black.opacity(tintOpacity))
+                }
+            }
         }
         .overlay(
             shape
-                .strokeBorder(Color.white.opacity(strokeOpacity), lineWidth: lineWidth),
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(strokeOpacity + 0.08),
+                            Color.white.opacity(strokeOpacity * 0.35),
+                            Color.white.opacity(strokeOpacity),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing,
+                    ),
+                    lineWidth: lineWidth,
+                ),
+        )
+        .overlay(
+            shape
+                .inset(by: lineWidth + 0.6)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.20),
+                            Color.clear,
+                            Color.white.opacity(0.07),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom,
+                    ),
+                    lineWidth: 0.6,
+                )
+                .blendMode(.screen),
         )
     }
 }
@@ -1272,10 +1322,10 @@ private struct OverlayView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(
-                FrostedShapeBackground(
+                LiquidGlassShapeBackground(
                     shape: Capsule(style: .continuous),
                     cornerRadius: nil,
-                    tintOpacity: 0.08,
+                    tintOpacity: 0.05,
                     strokeOpacity: 0.14,
                     lineWidth: 0.8,
                 ),
@@ -1716,12 +1766,13 @@ private struct LockedRecordingCapsule: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 5.5)
         .background(
-            FrostedShapeBackground(
+            LiquidGlassShapeBackground(
                 shape: Capsule(style: .continuous),
                 cornerRadius: nil,
-                tintOpacity: 0.10,
+                tintOpacity: 0.05,
                 strokeOpacity: 0.16,
                 lineWidth: 1.0,
+                interactive: true,
             ),
         )
         .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
@@ -1738,8 +1789,13 @@ private struct LockedRecordingCapsule: View {
                 .frame(width: 24, height: 24)
                 .background(
                     Circle()
-                        .fill(inverted ? Color.white.opacity(0.98) : Color.white.opacity(0.22)),
+                        .fill(inverted ? Color.white.opacity(0.92) : Color.black.opacity(0.20)),
                 )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(inverted ? 0.46 : 0.22), lineWidth: 0.8),
+                )
+                .shadow(color: Color.black.opacity(0.20), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -1775,12 +1831,13 @@ private struct MorphingRecordingCapsule: View {
         }
         .frame(width: width, height: height, alignment: .bottom)
         .background(
-            FrostedShapeBackground(
+            LiquidGlassShapeBackground(
                 shape: shape,
                 cornerRadius: expanded ? 22 : nil,
-                tintOpacity: 0.10,
+                tintOpacity: expanded ? 0.06 : 0.045,
                 strokeOpacity: 0.15,
                 lineWidth: 0.9,
+                interactive: showControls,
             ),
         )
         .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 12)
@@ -1815,8 +1872,13 @@ private struct MorphingRecordingCapsule: View {
                 .frame(width: 24, height: 24)
                 .background(
                     Circle()
-                        .fill(inverted ? Color.white.opacity(0.98) : Color.white.opacity(0.22)),
+                        .fill(inverted ? Color.white.opacity(0.92) : Color.black.opacity(0.20)),
                 )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(inverted ? 0.46 : 0.22), lineWidth: 0.8),
+                )
+                .shadow(color: Color.black.opacity(0.20), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -1832,7 +1894,8 @@ private struct LiveTranscriptPreviewText: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(text)
                         .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.86))
+                        .foregroundStyle(Color.white.opacity(0.96))
+                        .shadow(color: Color.black.opacity(0.55), radius: 3, x: 0, y: 1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -1875,10 +1938,10 @@ private struct ThinkingProgressCapsule: View {
         let capsuleShape = Capsule(style: .continuous)
 
         ZStack {
-            FrostedShapeBackground(
+            LiquidGlassShapeBackground(
                 shape: capsuleShape,
                 cornerRadius: nil,
-                tintOpacity: 0.10,
+                tintOpacity: 0.05,
                 strokeOpacity: 0.16,
                 lineWidth: 1.0,
             )
@@ -1960,10 +2023,10 @@ private struct ProcessingTranscriptCapsule: View {
         }
         .frame(width: 360, height: 127, alignment: .bottom)
         .background(
-            FrostedShapeBackground(
+            LiquidGlassShapeBackground(
                 shape: shape,
                 cornerRadius: 22,
-                tintOpacity: 0.10,
+                tintOpacity: 0.06,
                 strokeOpacity: 0.15,
                 lineWidth: 0.9,
             ),
@@ -2016,7 +2079,7 @@ private struct ProcessingTranscriptCapsule: View {
         .clipShape(capsuleShape)
         .overlay(
             capsuleShape
-                .stroke(Color.white.opacity(0.13), lineWidth: 0.8),
+                .stroke(Color.white.opacity(0.18), lineWidth: 0.8),
         )
     }
 
@@ -2043,10 +2106,10 @@ private struct OverlayCapsule<Content: View>: View {
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, 10.5)
             .background(
-                FrostedShapeBackground(
+                LiquidGlassShapeBackground(
                     shape: Capsule(),
                     cornerRadius: nil,
-                    tintOpacity: 0.10,
+                    tintOpacity: 0.05,
                     strokeOpacity: 0.16,
                     lineWidth: 1.0,
                 ),
@@ -2177,6 +2240,7 @@ private struct LevelWaveform: View {
                         width: 2.3,
                         height: OverlayWaveformMetrics.barHeight(for: index, level: level),
                     )
+                    .shadow(color: Color.black.opacity(0.34), radius: 1.6, x: 0, y: 0.6)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
