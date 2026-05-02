@@ -6,13 +6,17 @@ import Typeflux
 struct TypefluxCLI {
     static func main() async {
         var arguments = Array(CommandLine.arguments.dropFirst())
-        guard arguments.first == "batch-wav" else {
+        switch arguments.first {
+        case "batch-wav":
+            arguments.removeFirst()
+            let exitCode = await TypefluxBatchCommand.run(arguments: arguments)
+            exit(Int32(exitCode))
+        case "process-audio":
+            arguments.removeFirst()
+            let exitCode = await TypefluxAudioProcessCommand.run(arguments: arguments)
+            exit(Int32(exitCode))
+        default:
             TypefluxApplication.run()
-            return
         }
-
-        arguments.removeFirst()
-        let exitCode = await TypefluxBatchCommand.run(arguments: arguments)
-        exit(Int32(exitCode))
     }
 }
