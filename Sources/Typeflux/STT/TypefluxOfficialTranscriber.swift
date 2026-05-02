@@ -573,7 +573,7 @@ enum TypefluxOfficialASRRequestFactory {
 
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        TypefluxCloudRequestHeaders.applyScenario(scenario, to: &request)
+        TypefluxCloudRequestHeaders.applyCloudHeaders(scenario: scenario, to: &request)
         return request
     }
 }

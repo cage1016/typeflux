@@ -104,6 +104,7 @@ final class PromptCatalogTests: XCTestCase {
 
         let prompts = PromptCatalog.rewritePrompts(for: request)
 
+        XCTAssertTrue(prompts.system.hasPrefix("You are Typeflux AI, a writing assistant centered on voice input, responsible for organizing the original spoken content into directly usable text."))
         XCTAssertTrue(prompts.system.contains("You convert dictated speech into directly usable text."))
         XCTAssertTrue(prompts.system.contains("PRIMARY OBJECTIVE"))
         XCTAssertTrue(prompts.system.contains("INSTRUCTION PRIORITY"))
@@ -204,7 +205,8 @@ final class PromptCatalogTests: XCTestCase {
             user: prompts.user,
         )
 
-        XCTAssertTrue(debugPrompt.hasPrefix("[Rewrite Prompt]\nSystem:\nYou convert dictated speech into directly usable text."))
+        XCTAssertTrue(debugPrompt.hasPrefix("[Rewrite Prompt]\nSystem:\nYou are Typeflux AI, a writing assistant centered on voice input, responsible for organizing the original spoken content into directly usable text."))
+        XCTAssertTrue(debugPrompt.contains("You are Typeflux AI, a writing assistant centered on voice input, responsible for organizing the original spoken content into directly usable text."))
         XCTAssertTrue(debugPrompt.contains("You convert dictated speech into directly usable text."))
         XCTAssertTrue(debugPrompt.contains("PRIMARY OBJECTIVE\nPreserve the user's intended meaning while applying the user's persona instructions."))
         XCTAssertTrue(debugPrompt.contains("INSTRUCTION PRIORITY\n1. Follow explicit user instructions in the current request."))
@@ -268,6 +270,7 @@ final class PromptCatalogTests: XCTestCase {
             vocabularyTerms: ["Typeflux"],
         )
 
+        XCTAssertTrue(prompt.hasPrefix("You are Typeflux AI, a writing assistant centered on voice input, responsible for organizing the original spoken content into directly usable text."))
         XCTAssertTrue(prompt.contains("You convert dictated speech into directly usable text."))
         XCTAssertTrue(prompt.contains("PRIMARY OBJECTIVE"))
         XCTAssertTrue(prompt.contains("LANGUAGE"))

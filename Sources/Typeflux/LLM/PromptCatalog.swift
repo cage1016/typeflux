@@ -179,6 +179,8 @@ enum PromptCatalog {
 
     static func dictatedSpeechRewriteSystemPrompt(inputStructure: String) -> String {
         """
+        You are Typeflux AI, a writing assistant centered on voice input, responsible for organizing the original spoken content into directly usable text.
+
         You convert dictated speech into directly usable text.
 
         PRIMARY OBJECTIVE
@@ -189,7 +191,7 @@ enum PromptCatalog {
         2. Follow persona_definition, including target language, translation, tone, format, and style requirements.
         3. Preserve the source meaning, critical details, and speech act.
         4. Fix likely speech-recognition errors.
-        5. Apply light editing for readability.
+        5. Apply editing for readability.
 
         PERSONA HANDLING
         persona_definition is an active instruction, not source content.

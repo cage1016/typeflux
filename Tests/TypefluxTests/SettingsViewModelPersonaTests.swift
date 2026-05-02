@@ -85,7 +85,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         viewModel.selectPersona(persona.id)
 
         XCTAssertTrue(viewModel.personaDraftPrompt.contains("人设语言模式：继承。"))
-        XCTAssertTrue(viewModel.personaDisplayPrompt(for: persona).contains("把原始口述内容整理成可直接使用的文字"))
+        XCTAssertTrue(viewModel.personaDisplayPrompt(for: persona).contains("保持整体语气专业、正式、自然。"))
         XCTAssertFalse(viewModel.personaDraftPrompt.contains("You are Typeflux AI"))
     }
 
@@ -101,7 +101,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
             initialSection: .personas,
         )
 
-        viewModel.searchQuery = "原始口述内容"
+        viewModel.searchQuery = "口头填充词"
 
         XCTAssertTrue(viewModel.filteredPersonas.contains(where: { $0.id == SettingsStore.defaultPersonaID }))
     }
@@ -118,7 +118,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         )
 
         viewModel.selectPersona(SettingsStore.defaultPersonaID)
-        XCTAssertTrue(viewModel.personaDraftPrompt.contains("You are Typeflux AI"))
+        XCTAssertTrue(viewModel.personaDraftPrompt.contains("Persona language mode: inherit."))
 
         viewModel.setAppLanguage(.simplifiedChinese)
 

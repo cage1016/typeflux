@@ -24,6 +24,22 @@ final class CloudRequestExecutorTests: XCTestCase {
         XCTAssertEqual(calls, [urlA])
     }
 
+    func testExecuteAddsCloudClientHeaders() async throws {
+        let session = StubSession()
+        await session.setHandler { request in
+            XCTAssertNotNil(request.value(forHTTPHeaderField: "User-Agent"))
+            XCTAssertNotNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientIDField))
+            XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientOSField), "macOS")
+            return (Data("ok".utf8), Self.httpResponse(url: request.url!, status: 200))
+        }
+        let selector = CloudEndpointSelector(baseURLs: [urlA], prober: NoOpProber())
+        let executor = CloudRequestExecutor(selector: selector, session: session)
+
+        _ = try await executor.execute { base in
+            URLRequest(url: base.appendingPathComponent("api/v1/me"))
+        }
+    }
+
     func testExecuteFailsOverOnHTTP5xx() async throws {
         let session = StubSession()
         await session.setHandler { [urlA] request in

@@ -66,7 +66,8 @@ struct CloudRequestExecutor: Sendable {
         var lastError: Error?
         for (index, endpoint) in endpoints.enumerated() {
             try Task.checkCancellation()
-            let request = build(endpoint)
+            var request = build(endpoint)
+            TypefluxCloudRequestHeaders.applyClientInfo(to: &request)
             let start = ContinuousClock.now
 
             do {
