@@ -22,6 +22,26 @@ public enum TypefluxBatchCommand {
     }
 }
 
+public enum TypefluxAudioProcessCommand {
+    public static func run(arguments: [String]) async -> Int {
+        do {
+            if arguments.contains("--help") || arguments.contains("-h") {
+                FileHandle.standardOutput.write(Data((SingleAudioConfiguration.helpText + "\n").utf8))
+                return 0
+            }
+            let config = try SingleAudioConfiguration(arguments: arguments)
+            try await SingleAudioProcessor(config: config).run()
+            return 0
+        } catch let error as BatchCommandError {
+            FileHandle.standardError.write(Data((error.message + "\n").utf8))
+            return 2
+        } catch {
+            FileHandle.standardError.write(Data(("Error: \(error.localizedDescription)\n").utf8))
+            return 1
+        }
+    }
+}
+
 private struct BatchCommandError: LocalizedError {
     let message: String
 
@@ -189,6 +209,161 @@ private enum PersonaSelector {
     case promptFile(URL)
 }
 
+private struct SingleAudioConfiguration {
+    let audioURL: URL
+    let sttProviderOverride: STTProvider?
+    let sttModelOverride: String?
+    let localSTTModelOverride: LocalSTTModel?
+    let personaSelector: PersonaSelector?
+    let noPersona: Bool
+    let includeTranscript: Bool
+
+    init(arguments: [String]) throws {
+        var parser = ArgumentParser(arguments: arguments)
+
+        let explicitAudio = parser.consumeValue("--audio") ?? parser.consumeValue("--input")
+        if let raw = parser.consumeValue("--stt-provider") {
+            guard let provider = STTProvider(rawValue: raw) else {
+                throw BatchCommandError(message: "Unsupported --stt-provider value: \(raw)")
+            }
+            sttProviderOverride = provider
+        } else {
+            sttProviderOverride = nil
+        }
+
+        sttModelOverride = parser.consumeValue("--stt-model")
+
+        if let raw = parser.consumeValue("--local-stt-model") {
+            guard let model = LocalSTTModel(rawValue: raw) else {
+                throw BatchCommandError(message: "Unsupported --local-stt-model value: \(raw)")
+            }
+            localSTTModelOverride = model
+        } else {
+            localSTTModelOverride = nil
+        }
+
+        noPersona = parser.consumeFlag("--no-persona")
+        includeTranscript = parser.consumeFlag("--include-transcript")
+
+        let personaID = parser.consumeValue("--persona-id")
+        let personaName = parser.consumeValue("--persona-name")
+        let personaPromptFile = parser.consumeValue("--persona-prompt-file")
+        let selectors = [personaID, personaName, personaPromptFile].compactMap { $0 }
+        guard selectors.count <= 1 else {
+            throw BatchCommandError(message: "Use only one persona selector: --persona-id, --persona-name, or --persona-prompt-file.")
+        }
+        if let personaID {
+            guard let uuid = UUID(uuidString: personaID) else {
+                throw BatchCommandError(message: "Invalid --persona-id value: \(personaID)")
+            }
+            personaSelector = .id(uuid)
+        } else if let personaName {
+            personaSelector = .name(personaName)
+        } else if let personaPromptFile {
+            personaSelector = .promptFile(Self.resolvedURL(personaPromptFile, isDirectory: false))
+        } else {
+            personaSelector = nil
+        }
+
+        let remaining = parser.remaining
+        let rawAudio: String
+        if let explicitAudio {
+            rawAudio = explicitAudio
+            guard remaining.isEmpty else {
+                throw BatchCommandError(message: "Unexpected arguments: \(remaining.joined(separator: " "))")
+            }
+        } else if remaining.count == 1 {
+            rawAudio = remaining[0]
+        } else if remaining.isEmpty {
+            throw BatchCommandError(message: "Missing required audio file path.\n\n\(Self.helpText)")
+        } else {
+            throw BatchCommandError(message: "Unexpected arguments: \(remaining.joined(separator: " "))")
+        }
+
+        audioURL = Self.resolvedURL(rawAudio, isDirectory: false)
+    }
+
+    private static func resolvedURL(_ path: String, isDirectory: Bool) -> URL {
+        let expanded = (path as NSString).expandingTildeInPath
+        if expanded.hasPrefix("/") {
+            return URL(fileURLWithPath: expanded, isDirectory: isDirectory)
+        }
+        let cwd = FileManager.default.currentDirectoryPath
+        return URL(fileURLWithPath: cwd, isDirectory: true)
+            .appendingPathComponent(expanded, isDirectory: isDirectory)
+    }
+
+    private static var sttProviderTable: String {
+        let rows = STTProvider.allCases.map { provider in
+            [provider.rawValue, provider.displayName]
+        }
+        return markdownTable(headers: ["Value", "Display name"], rows: rows)
+    }
+
+    private static var localSTTModelTable: String {
+        let rows = LocalSTTModel.allCases.map { model in
+            [model.rawValue, model.displayName, model.defaultModelIdentifier]
+        }
+        return markdownTable(headers: ["Value", "Display name", "Default model identifier"], rows: rows)
+    }
+
+    private static var personaTable: String {
+        let settingsStore = SettingsStore()
+        let rows = settingsStore.personas.map { persona in
+            [persona.name, persona.id.uuidString, persona.kind.rawValue]
+        }
+        return markdownTable(headers: ["Name (--persona-name)", "ID (--persona-id)", "Kind"], rows: rows)
+    }
+
+    private static func markdownTable(headers: [String], rows: [[String]]) -> String {
+        let header = "| " + headers.map(escapeMarkdownTableCell).joined(separator: " | ") + " |"
+        let divider = "| " + headers.map { _ in "---" }.joined(separator: " | ") + " |"
+        let body = rows.map { row in
+            "| " + row.map(escapeMarkdownTableCell).joined(separator: " | ") + " |"
+        }
+        return ([header, divider] + body).joined(separator: "\n")
+    }
+
+    private static func escapeMarkdownTableCell(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "|", with: "\\|")
+    }
+
+    fileprivate static var helpText: String {
+        """
+    Usage:
+      Typeflux process-audio <audio-file> [--stt-provider <provider>] [--stt-model <model>] [--persona-id <uuid>|--persona-name <name>|--persona-prompt-file <path>] [options]
+      Typeflux process-audio --audio <audio-file> [options]
+
+    Options:
+      --audio <path>                   Audio file to process. A positional audio path is also accepted.
+      --stt-provider <provider>        Optional STT provider override. See table below.
+      --stt-model <model>              Optional provider-specific speech model override.
+      --local-stt-model <model>        Optional local STT model override. See table below.
+      --persona-id <uuid>              Optional saved persona selector by ID.
+      --persona-name <name>            Optional saved persona selector by name.
+      --persona-prompt-file <path>     Optional prompt file selector instead of a saved persona.
+      --no-persona                     Only transcribe; print the transcript as the final result.
+      --include-transcript             When a persona rewrite runs, print both transcript and final result.
+
+    Output:
+      The final processed text is written to stdout. Progress and timing are written to stderr.
+
+    Parameter Tables:
+
+    STT providers (--stt-provider):
+    \(sttProviderTable)
+
+    Local STT models (--local-stt-model):
+    \(localSTTModelTable)
+
+    Personas (--persona-name / --persona-id):
+    \(personaTable)
+    """
+    }
+}
+
 private struct ArgumentParser {
     private var arguments: [String]
 
@@ -212,6 +387,269 @@ private struct ArgumentParser {
         arguments.remove(at: valueIndex)
         arguments.remove(at: index)
         return value
+    }
+}
+
+private final class SingleAudioProcessor {
+    private let config: SingleAudioConfiguration
+    private let fileManager = FileManager.default
+
+    init(config: SingleAudioConfiguration) {
+        self.config = config
+    }
+
+    func run() async throws {
+        guard fileManager.fileExists(atPath: config.audioURL.path) else {
+            throw BatchCommandError(message: "Audio file does not exist: \(config.audioURL.path)")
+        }
+
+        let settingsStore = try makeSettingsStore()
+        let persona = try resolvePersona(settingsStore: settingsStore)
+        try applyPersonaForProviderInternalRewrite(persona, settingsStore: settingsStore)
+
+        let sttRouter = makeSTTRouter(settingsStore: settingsStore)
+        let llmService = makeLLMService(settingsStore: settingsStore)
+        let audioFile = try makeAudioFile(config.audioURL)
+
+        writeStandardError("Transcribing \(config.audioURL.lastPathComponent) with \(sttModelDescription(settingsStore: settingsStore))")
+        let sttStartedAt = Date()
+        let transcript = try await sttRouter.transcribeStream(audioFile: audioFile, scenario: .voiceInput) { _ in }
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let sttMilliseconds = milliseconds(since: sttStartedAt)
+
+        let finalText: String
+        let llmMilliseconds: Int
+        let trimmedPersona = persona.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedPersona.isEmpty {
+            finalText = transcript
+            llmMilliseconds = 0
+        } else if settingsStore.sttProvider.handlesPersonaInternally {
+            finalText = transcript
+            llmMilliseconds = 0
+        } else {
+            guard settingsStore.isLLMConfigured else {
+                throw BatchCommandError(message: "LLM is not configured for persona rewriting.")
+            }
+            writeStandardError("Rewriting with persona: \(persona.name)")
+            let llmStartedAt = Date()
+            finalText = try await rewrite(
+                transcript: transcript,
+                personaPrompt: trimmedPersona,
+                llmService: llmService,
+            )
+            llmMilliseconds = milliseconds(since: llmStartedAt)
+        }
+
+        if config.includeTranscript, finalText != transcript {
+            FileHandle.standardOutput.write(Data(("Transcript:\n\(transcript)\n\nFinal:\n\(finalText)\n").utf8))
+        } else {
+            FileHandle.standardOutput.write(Data((finalText + "\n").utf8))
+        }
+
+        let totalMilliseconds = sttMilliseconds + llmMilliseconds
+        writeStandardError(
+            "Completed in \(totalMilliseconds)ms (stt=\(sttMilliseconds)ms, llm=\(llmMilliseconds)ms, persona=\(persona.name))",
+        )
+    }
+
+    private func makeSettingsStore() throws -> SettingsStore {
+        let sourceSuite = ProcessInfo.processInfo.environment["TYPEFLUX_USER_DEFAULTS_SUITE"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let sourceDefaults = sourceSuite.flatMap(UserDefaults.init(suiteName:))
+            ?? UserDefaults(suiteName: "ai.gulu.app.typeflux")
+            ?? .standard
+        let processSuite = "ai.gulu.app.typeflux.process-audio.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: processSuite) ?? .standard
+        sourceDefaults.dictionaryRepresentation().forEach { key, value in
+            defaults.set(value, forKey: key)
+        }
+
+        if let sttProviderOverride = config.sttProviderOverride {
+            defaults.set(sttProviderOverride.rawValue, forKey: "stt.provider")
+        }
+        if let localSTTModelOverride = config.localSTTModelOverride {
+            defaults.set(localSTTModelOverride.rawValue, forKey: "stt.local.model")
+            defaults.set(localSTTModelOverride.defaultModelIdentifier, forKey: "stt.local.modelIdentifier")
+        }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        if let sttModelOverride = config.sttModelOverride {
+            try applySTTModelOverride(sttModelOverride, provider: settingsStore.sttProvider, defaults: defaults)
+        }
+        return settingsStore
+    }
+
+    private func applySTTModelOverride(_ rawModel: String, provider: STTProvider, defaults: UserDefaults) throws {
+        let model = rawModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !model.isEmpty else {
+            throw BatchCommandError(message: "--stt-model cannot be empty.")
+        }
+
+        switch provider {
+        case .freeModel:
+            defaults.set(model, forKey: "stt.free.model")
+        case .whisperAPI:
+            defaults.set(model, forKey: "stt.whisper.model")
+        case .localModel:
+            if let localModel = LocalSTTModel(rawValue: model) {
+                defaults.set(localModel.rawValue, forKey: "stt.local.model")
+                defaults.set(localModel.defaultModelIdentifier, forKey: "stt.local.modelIdentifier")
+            } else if let localModel = LocalSTTModel.allCases.first(where: { $0.defaultModelIdentifier == model }) {
+                defaults.set(localModel.rawValue, forKey: "stt.local.model")
+                defaults.set(localModel.defaultModelIdentifier, forKey: "stt.local.modelIdentifier")
+            } else {
+                defaults.set(model, forKey: "stt.local.modelIdentifier")
+            }
+        case .multimodalLLM:
+            defaults.set(model, forKey: "stt.multimodal.model")
+        case .doubaoRealtime:
+            defaults.set(model, forKey: "stt.doubao.resourceID")
+        case .googleCloud:
+            defaults.set(model, forKey: "stt.google.model")
+        case .groq:
+            defaults.set(model, forKey: "stt.groq.model")
+        case .appleSpeech, .aliCloud, .typefluxOfficial:
+            throw BatchCommandError(message: "--stt-model is not supported for provider \(provider.rawValue).")
+        }
+    }
+
+    private func makeSTTRouter(settingsStore: SettingsStore) -> STTRouter {
+        let localModelManager = LocalModelManager()
+        return STTRouter(
+            settingsStore: settingsStore,
+            whisper: WhisperAPITranscriber(settingsStore: settingsStore),
+            freeSTT: FreeSTTTranscriber(settingsStore: settingsStore),
+            appleSpeech: AppleSpeechTranscriber(),
+            localModel: LocalModelTranscriber(settingsStore: settingsStore, modelManager: localModelManager),
+            multimodal: MultimodalLLMTranscriber(settingsStore: settingsStore),
+            aliCloud: AliCloudRealtimeTranscriber(settingsStore: settingsStore),
+            doubaoRealtime: DoubaoRealtimeTranscriber(settingsStore: settingsStore),
+            googleCloud: GoogleCloudSpeechTranscriber(settingsStore: settingsStore),
+            groq: WhisperAPITranscriber(
+                settingsStore: settingsStore,
+                baseURLOverride: "https://api.groq.com/openai/v1",
+                apiKeyOverride: { [settingsStore] in settingsStore.groqSTTAPIKey },
+                modelOverride: { [settingsStore] in settingsStore.groqSTTModel },
+            ),
+            typefluxOfficial: TypefluxOfficialTranscriber(),
+        )
+    }
+
+    private func makeLLMService(settingsStore: SettingsStore) -> LLMService {
+        LLMRouter(
+            settingsStore: settingsStore,
+            openAICompatible: OpenAICompatibleLLMService(settingsStore: settingsStore),
+            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager()),
+        )
+    }
+
+    private func resolvePersona(settingsStore: SettingsStore) throws -> (name: String, prompt: String, id: UUID?) {
+        if config.noPersona {
+            return ("none", "", nil)
+        }
+
+        switch config.personaSelector {
+        case .id(let id):
+            guard let persona = settingsStore.personas.first(where: { $0.id == id }) else {
+                throw BatchCommandError(message: "No saved persona found for id: \(id.uuidString)")
+            }
+            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona), persona.id)
+        case .name(let name):
+            guard let persona = settingsStore.personas.first(where: { $0.name == name }) else {
+                throw BatchCommandError(message: "No saved persona found named: \(name)")
+            }
+            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona), persona.id)
+        case .promptFile(let url):
+            let prompt = try String(contentsOf: url, encoding: .utf8)
+            return (url.lastPathComponent, prompt, nil)
+        case .none:
+            guard let persona = settingsStore.activePersona else {
+                return ("none", "", nil)
+            }
+            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona), persona.id)
+        }
+    }
+
+    private func applyPersonaForProviderInternalRewrite(
+        _ persona: (name: String, prompt: String, id: UUID?),
+        settingsStore: SettingsStore,
+    ) throws {
+        let trimmedPrompt = persona.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrompt.isEmpty else {
+            settingsStore.activePersonaID = ""
+            return
+        }
+
+        if let id = persona.id {
+            settingsStore.activePersonaID = id.uuidString
+            return
+        }
+
+        var personas = settingsStore.personas
+        let temporaryPersona = PersonaProfile(name: persona.name, prompt: trimmedPrompt)
+        personas.append(temporaryPersona)
+        settingsStore.personas = personas
+        settingsStore.activePersonaID = temporaryPersona.id.uuidString
+    }
+
+    private func makeAudioFile(_ url: URL) throws -> AudioFile {
+        let file = try AVAudioFile(forReading: url)
+        let sampleRate = file.processingFormat.sampleRate
+        let duration = sampleRate > 0 ? Double(file.length) / sampleRate : 0
+        return AudioFile(fileURL: url, duration: duration)
+    }
+
+    private func rewrite(transcript: String, personaPrompt: String, llmService: LLMService) async throws -> String {
+        let request = LLMRewriteRequest(
+            mode: .rewriteTranscript,
+            sourceText: transcript,
+            spokenInstruction: nil,
+            personaPrompt: personaPrompt,
+            vocabularyTerms: VocabularyStore.activeTerms(),
+        )
+
+        var output = ""
+        let stream = llmService.streamRewrite(request: request)
+        for try await chunk in stream {
+            output += chunk
+        }
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func sttModelDescription(settingsStore: SettingsStore) -> String {
+        switch settingsStore.sttProvider {
+        case .freeModel:
+            settingsStore.freeSTTModel
+        case .whisperAPI:
+            OpenAIAudioModelCatalog.resolvedWhisperModel(
+                settingsStore.whisperModel,
+                endpoint: OpenAIAudioModelCatalog.resolvedWhisperEndpoint(settingsStore.whisperBaseURL),
+            )
+        case .appleSpeech:
+            "appleSpeech"
+        case .localModel:
+            settingsStore.localSTTModelIdentifier
+        case .multimodalLLM:
+            settingsStore.multimodalLLMModel
+        case .aliCloud:
+            settingsStore.aliCloudModel
+        case .doubaoRealtime:
+            settingsStore.doubaoResourceID
+        case .googleCloud:
+            settingsStore.googleCloudModel
+        case .groq:
+            settingsStore.groqSTTModel
+        case .typefluxOfficial:
+            "default"
+        }
+    }
+
+    private func milliseconds(since start: Date) -> Int {
+        max(0, Int(Date().timeIntervalSince(start) * 1000))
+    }
+
+    private func writeStandardError(_ message: String) {
+        FileHandle.standardError.write(Data((message + "\n").utf8))
     }
 }
 
