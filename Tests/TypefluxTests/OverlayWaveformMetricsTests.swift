@@ -6,7 +6,7 @@ final class OverlayWaveformMetricsTests: XCTestCase {
         let quietHeight = OverlayWaveformMetrics.barHeight(for: 4, level: 0)
         let speakingHeight = OverlayWaveformMetrics.barHeight(for: 4, level: 0.2)
 
-        XCTAssertGreaterThan(speakingHeight - quietHeight, 3.5)
+        XCTAssertGreaterThan(speakingHeight - quietHeight, 4.6)
     }
 
     func testLevelsClampToCapsuleWaveformBounds() {
