@@ -1,262 +1,262 @@
-# Typeflux 本地模型架构详解
+# Typeflux Local Model Architecture
 
-> 本文面向对本地模型、语音识别、推理引擎等概念尚不熟悉的读者。如果你已经了解这些基础知识，可以直接跳到 [架构总览](#3-架构总览) 一节。
+> This document is written for readers who are new to concepts like local models, speech recognition, and inference engines. If you are already familiar with these topics, feel free to skip ahead to [Architecture Overview](#3-architecture-overview).
 
 ---
 
-## 1. 为什么要有"本地模型"
+## 1. Why Do We Need "Local Models"?
 
-Typeflux 的核心体验是：**按住快捷键说话，松手后文字自动插入到你正在使用的 App 中**。
+The core Typeflux experience is simple: **hold a hotkey, speak, release, and the transcribed text is automatically inserted into the app you are using**.
 
-在这条链路里，最关键的一步是 **语音转文字（Speech-to-Text，简称 STT）** —— 把你嘴巴说出来的声音信号，变成屏幕上可以编辑的文字。实现这一步有两条路：
+The most critical step in this workflow is **Speech-to-Text (STT)** -- converting the audio signal from your voice into editable text on screen. There are two ways to accomplish this:
 
-| | 云端转写 | 本地转写 |
+| | Cloud Transcription | Local Transcription |
 |---|---|---|
-| 工作方式 | 把音频发到远程服务器，服务器跑模型转写后返回结果 | 在你自己的 Mac 上跑模型，就地完成转写 |
-| 优势 | 模型大、精度高、不占本地资源 | 离线可用、免费、速度快、隐私好 |
-| 劣势 | 需要网络、可能收费、音频数据要出设备 | 需要本地算力，模型文件需要下载或内置 |
+| How it works | Audio is sent to a remote server, which runs the model and returns the result | The model runs directly on your own Mac, completing transcription on-device |
+| Advantages | Larger models, higher accuracy, no local compute needed | Works offline, free, fast, and private |
+| Disadvantages | Requires network, may cost money, audio data leaves your device | Requires local compute; model files must be downloaded or bundled |
 
-Typeflux 两条路都支持。本文专门讲解 **本地转写** 这条路的实现。
+Typeflux supports both approaches. This document focuses exclusively on how **local transcription** works.
 
-一句话总结：**本地模型 = 把"听懂你说的话"这件事，在你自己的电脑上完成，不经过任何服务器。**
-
----
-
-## 2. 两个最容易混淆的概念：运行时 vs 模型
-
-初学者最容易搞混的，就是"运行时"和"模型"这两个词。用一个类比来说明：
-
-> **运行时 = 播放器（比如 VLC）**
-> **模型 = 电影文件（比如一个 .mkv）**
-
-- **播放器** 知道怎么解码视频、怎么渲染画面、怎么输出声音。但它自己不包含任何电影内容——你给它不同的电影文件，它就播放不同的电影。
-
-- **电影文件** 包含了实际的影像内容。但它自己不会"播放"——你必须用一个播放器去打开它。
-
-在语音识别的世界里：
-
-- **运行时（Runtime）** 是一个推理引擎，它知道怎么把音频数据喂给模型、怎么执行计算、怎么拿到结果。它本身不包含任何"语音知识"。
-- **模型（Model）** 是一堆训练好的神经网络权重文件（本质上是巨大的数字矩阵）。它存储了"听到什么声音 → 应该输出什么文字"的所有经验。
-
-两者独立下载、独立存储。Typeflux 在需要的时候把它们组合起来工作。
+In one sentence: **a local model means the entire "understanding what you said" process happens on your own computer, without involving any server.**
 
 ---
 
-## 3. 架构总览
+## 2. Two Easily Confused Concepts: Runtime vs. Model
 
-Typeflux 支持五个本地模型，背后是两套完全不同的运行时：
+The two terms that beginners most often mix up are "runtime" and "model." Here is an analogy:
+
+> **Runtime = a media player (like VLC)**
+> **Model = a movie file (like an .mkv)**
+
+- The **player** knows how to decode video, render frames, and output audio. But it does not contain any movie content itself -- give it a different movie file, and it plays a different movie.
+
+- The **movie file** contains the actual visual content. But it cannot "play" by itself -- you need a player to open it.
+
+In the world of speech recognition:
+
+- A **Runtime** is an inference engine. It knows how to feed audio data into a model, execute the computation, and retrieve the results. It contains no "speech knowledge" on its own.
+- A **Model** is a collection of trained neural network weights (essentially huge numerical matrices). It encodes all the learned knowledge about "what sound maps to what text."
+
+The two are downloaded and stored independently. Typeflux combines them when needed.
+
+---
+
+## 3. Architecture Overview
+
+Typeflux supports five local models, backed by two entirely different runtimes:
 
 ```
-                         STTRouter（路由层）
+                         STTRouter (Routing Layer)
                               │
                               ▼
-                     LocalModelTranscriber（本地转写总控）
+                     LocalModelTranscriber (Local Transcription Controller)
                        │                │
                        ▼                ▼
-              ┌─ WhisperKit 运行时 ─┐   ┌─ Sherpa-ONNX 运行时 ─┐
-              │  (Apple CoreML)     │   │  (ONNX Runtime)       │
-              │                     │   │                       │
-              │  ● whisperLocal     │   │  ● senseVoiceSmall    │
-              │  ● whisperLocalLarge│   │  ● qwen3ASR           │
-              └─────────────────────┘   │  ● funASR             │
-                                        └───────────────────────┘
+              ┌─ WhisperKit Runtime ─┐   ┌─ Sherpa-ONNX Runtime ─┐
+              │  (Apple CoreML)      │   │  (ONNX Runtime)        │
+              │                      │   │                        │
+              │  ● whisperLocal      │   │  ● senseVoiceSmall     │
+              │  ● whisperLocalLarge │   │  ● qwen3ASR            │
+              └──────────────────────┘   │  ● funASR              │
+                                         └────────────────────────┘
 ```
 
-下面分别展开。
+The following sections cover each runtime in detail.
 
 ---
 
-## 4. 运行时 A：WhisperKit（苹果原生方案）
+## 4. Runtime A: WhisperKit (Apple-Native Approach)
 
-### 它是什么
+### What It Is
 
-WhisperKit 是开源社区 [Argmax](https://github.com/argmaxinc/WhisperKit) 开发的一个 Swift 库。它把 OpenAI 开源的 **Whisper** 语音识别模型转换成了苹果的 CoreML 格式，可以直接在 Apple Silicon 芯片的 **Neural Engine（神经引擎）** 上高速运行。
+WhisperKit is an open-source Swift library developed by [Argmax](https://github.com/argmaxinc/WhisperKit). It converts OpenAI's open-source **Whisper** speech recognition model into Apple's CoreML format, enabling it to run at high speed on the **Neural Engine** built into Apple Silicon chips.
 
-### 模型文件长什么样
+### What the Model Files Look Like
 
-WhisperKit 的模型是一组 CoreML 编译后的目录：
+WhisperKit models are organized as a set of compiled CoreML directories:
 
 ```
 whisperkit-medium/
-├── MelSpectrogram.mlmodelc/    ← 音频频谱分析组件
+├── MelSpectrogram.mlmodelc/    ← Audio spectrogram analysis component
 │   ├── model.mlmodel
 │   └── weights/weight.bin
-├── AudioEncoder.mlmodelc/      ← 音频特征编码组件
+├── AudioEncoder.mlmodelc/      ← Audio feature encoding component
 │   ├── model.mlmodel
 │   └── weights/weight.bin
-└── TextDecoder.mlmodelc/       ← 文字解码组件
+└── TextDecoder.mlmodelc/       ← Text decoding component
     ├── model.mlmodel
     └── weights/weight.bin
 ```
 
-这三个组件构成了一条流水线：
+These three components form a pipeline:
 
-1. **MelSpectrogram（梅尔频谱）**：把原始音频波形转换成一种"频谱图"——横轴是时间，纵轴是频率，颜色深浅表示能量大小。这是语音识别的标准输入格式。
-2. **AudioEncoder（音频编码器）**：读取频谱图，提取出有意义的语音特征向量。可以理解为"听出了这段声音里说了什么音素、什么语调"。
-3. **TextDecoder（文字解码器）**：根据特征向量，一个字一个字地生成最终的文字输出。
+1. **MelSpectrogram**: Converts raw audio waveforms into a "spectrogram" -- time on the horizontal axis, frequency on the vertical axis, and color intensity representing energy. This is the standard input format for speech recognition.
+2. **AudioEncoder**: Reads the spectrogram and extracts meaningful speech feature vectors. Think of it as "figuring out which phonemes and intonations are present in the audio."
+3. **TextDecoder**: Takes the feature vectors and generates the final text output, one token at a time.
 
-### 工作方式
+### How It Works
 
-WhisperKit 是**进程内**运行的——它的代码直接编译进 Typeflux 的主进程：
+WhisperKit runs **in-process** -- its code is compiled directly into Typeflux's main process:
 
 ```
-Typeflux 进程
-  ├── 你的 App 逻辑
-  └── WhisperKit 库
-       └── CoreML 推理（在 Neural Engine / GPU / CPU 上执行）
+Typeflux Process
+  ├── Your App Logic
+  └── WhisperKit Library
+       └── CoreML Inference (executed on Neural Engine / GPU / CPU)
 ```
 
-- **优势**：可以拿到流式进度回调（边跑边显示部分结果），延迟低。
-- **代价**：medium 模型约 1.5GB，large-v3 约 3GB。加载到内存后非常吃资源。
-- **适用场景**：对转写质量要求高、Mac 内存充足的情况。
+- **Advantages**: Supports streaming progress callbacks (partial results are displayed as they arrive) and has low latency.
+- **Trade-offs**: The medium model is roughly 1.5 GB; the large-v3 model is about 3 GB. Once loaded into memory, they consume significant resources.
+- **Best for**: Situations where transcription quality is a priority and the Mac has sufficient memory.
 
-### 代码中的关键类型
+### Key Types in the Code
 
-| 类型 | 职责 |
-|------|------|
-| `WhisperKitTranscriber` | 封装 WhisperKit 库的调用，负责创建 pipeline 和执行转写 |
-| `LocalModelTranscriber` | 本地转写的总控，内部维护一个 `whisperKitCache` 缓存已加载的 WhisperKit 实例 |
+| Type | Responsibility |
+|------|----------------|
+| `WhisperKitTranscriber` | Wraps the WhisperKit library; handles pipeline creation and transcription execution |
+| `LocalModelTranscriber` | The main controller for local transcription; maintains a `whisperKitCache` for loaded WhisperKit instances |
 
-缓存策略：WhisperKit 实例按 `"模型名|模型路径"` 作为 key 缓存。开启内存优化后，30 分钟不使用会自动释放；关闭内存优化则常驻内存。
+Caching strategy: WhisperKit instances are cached with a key of `"model name|model path"`. When memory optimization is enabled, instances unused for 30 minutes are automatically released; otherwise they remain in memory.
 
 ---
 
-## 5. 运行时 B：Sherpa-ONNX（跨平台方案）
+## 5. Runtime B: Sherpa-ONNX (Cross-Platform Approach)
 
-### 它是什么
+### What It Is
 
-Sherpa-ONNX 是 [k2-fsa](https://github.com/k2-fsa/sherpa-onnx) 项目开发的语音处理工具包，底层使用微软的 **ONNX Runtime** 作为推理引擎。它提供了一个命令行程序 `sherpa-onnx-offline`，你把音频文件喂给它，它吐出转写文字。
+Sherpa-ONNX is a speech processing toolkit developed by the [k2-fsa](https://github.com/k2-fsa/sherpa-onnx) project. It uses Microsoft's **ONNX Runtime** as its inference engine. It provides a command-line program called `sherpa-onnx-offline` that accepts an audio file as input and outputs the transcription.
 
-### "量化"是什么意思
+### What "Quantization" Means
 
-你会注意到模型文件名里有 `int8` 字样（如 `model.int8.onnx`）。这是 **量化（Quantization）** 的意思：
+You will notice that some model filenames contain the `int8` suffix (e.g., `model.int8.onnx`). This refers to **quantization**:
 
-- 神经网络的权重本来是 32 位浮点数（float32），一个数字占 4 字节。
-- **int8 量化** 把它压缩成 8 位整数，只占 1 字节。
-- 效果：**模型体积缩小约 4 倍，精度损失通常在 1-2% 以内**。
+- Neural network weights are originally stored as 32-bit floating-point numbers (float32), with each value taking 4 bytes.
+- **int8 quantization** compresses them into 8-bit integers, taking only 1 byte each.
+- The result: **the model is roughly 4 times smaller, with accuracy loss typically within 1--2%**.
 
-这就是 SenseVoice 模型只有 47MB 而 Whisper medium 要 1.5GB 的主要原因之一。
+This is one of the main reasons why the SenseVoice model is only 47 MB while Whisper medium requires 1.5 GB.
 
-### 模型文件长什么样
+### What the Model Files Look Like
 
-不同模型的文件结构略有不同：
+Different models have slightly different file structures:
 
-**SenseVoice Small（47MB，默认模型）：**
+**SenseVoice Small (47 MB, the default model):**
 ```
 sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/
-├── model.int8.onnx      ← 量化后的神经网络权重
-└── tokens.txt            ← 词表（模型能识别的字和词）
+├── model.int8.onnx      ← Quantized neural network weights
+└── tokens.txt            ← Vocabulary (characters and words the model can recognize)
 ```
 
-**Qwen3-ASR 0.6B（Qwen 语音模型）：**
+**Qwen3-ASR 0.6B (Qwen speech model):**
 ```
 sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/
-├── conv_frontend.onnx    ← 音频前端卷积网络
-├── encoder.int8.onnx     ← 编码器
-├── decoder.int8.onnx     ← 解码器
+├── conv_frontend.onnx    ← Audio frontend convolutional network
+├── encoder.int8.onnx     ← Encoder
+├── decoder.int8.onnx     ← Decoder
 └── tokenizer/
-    ├── merges.txt        ← BPE 分词的合并规则
+    ├── merges.txt        ← BPE tokenization merge rules
     ├── tokenizer_config.json
-    └── vocab.json         ← 词表
+    └── vocab.json         ← Vocabulary
 ```
 
-**FunASR / Paraformer：**
+**FunASR / Paraformer:**
 ```
 sherpa-onnx-paraformer-zh-small-2024-03-09/
 ├── model.int8.onnx
 └── tokens.txt
 ```
 
-### 工作方式
+### How It Works
 
-Sherpa-ONNX 是**进程外**运行的——Typeflux 会启动一个独立的子进程来执行转写：
+Sherpa-ONNX runs **out-of-process** -- Typeflux spawns a separate child process to perform transcription:
 
 ```
-Typeflux 进程                    子进程
-  │                                │
-  │  1. 把音频转成 WAV 格式         │
-  │  2. spawn Process              │
-  │ ──────────────────────────────▶│  sherpa-onnx-offline
-  │                                │    --sense-voice-model=model.int8.onnx
-  │                                │    --tokens=tokens.txt
-  │                                │    audio.wav
-  │  3. 读取 stdout 输出            │
-  │ ◀──────────────────────────────│  → 输出转写文字
-  │  4. 子进程退出，内存释放         │
+Typeflux Process                    Child Process
+  │                                   │
+  │  1. Convert audio to WAV format   │
+  │  2. Spawn Process                 │
+  │ ────────────────────────────────▶│  sherpa-onnx-offline
+  │                                   │    --sense-voice-model=model.int8.onnx
+  │                                   │    --tokens=tokens.txt
+  │                                   │    audio.wav
+  │  3. Read stdout output            │
+  │ ◀────────────────────────────────│  → Outputs transcription text
+  │  4. Child process exits, memory released
 ```
 
-- **优势**：模型跑完即释放内存，不占用主进程资源；进程崩溃不影响主 App。
-- **代价**：没有中间进度反馈，只能等全部完成。
-- **适用场景**：日常快速语音输入（按住说话松开插入），响应速度比绝对精度更重要。
+- **Advantages**: Memory is freed as soon as the model finishes; no resources are consumed in the main process; a crash in the child process does not affect the main app.
+- **Trade-offs**: No intermediate progress feedback -- you must wait for the entire process to finish.
+- **Best for**: Everyday quick voice input (hold-to-talk, release-to-insert), where response speed matters more than absolute accuracy.
 
-### 代码中的关键类型
+### Key Types in the Code
 
-| 类型 | 职责 |
-|------|------|
-| `SherpaOnnxCommandLineDecoder` | 底层通用解码器：准备参数、启动子进程、解析 stdout 输出 |
-| `SenseVoiceTranscriber` | SenseVoice 专用包装，设置 `--sense-voice-*` 系列参数 |
-| `Qwen3ASRTranscriber` | Qwen3-ASR 专用包装，设置 `--qwen3-asr-*` 系列参数 |
-| `FunASRTranscriber` | FunASR/Paraformer 专用包装，设置 `--paraformer` 参数 |
-| `AudioFileTranscoder` | 音频格式转换：把各种格式统一转成 16-bit PCM WAV |
+| Type | Responsibility |
+|------|----------------|
+| `SherpaOnnxCommandLineDecoder` | Low-level generic decoder: prepares arguments, spawns the child process, parses stdout output |
+| `SenseVoiceTranscriber` | SenseVoice-specific wrapper; sets the `--sense-voice-*` arguments |
+| `Qwen3ASRTranscriber` | Qwen3-ASR-specific wrapper; sets the `--qwen3-asr-*` arguments |
+| `FunASRTranscriber` | FunASR/Paraformer-specific wrapper; sets the `--paraformer` argument |
+| `AudioFileTranscoder` | Audio format conversion: normalizes various formats to 16-bit PCM WAV |
 
 ---
 
-## 6. "CoreML" 和 "ONNX" 是什么
+## 6. What Are "CoreML" and "ONNX"?
 
-这两个词是两种**模型文件格式标准**：
+These two terms refer to two different **model file format standards**:
 
-| 格式 | 主导方 | 特点 |
-|------|--------|------|
-| **CoreML** | Apple | 苹果平台专用，能利用 Neural Engine 硬件加速，只能在 macOS/iOS 上跑 |
-| **ONNX** | 微软（开源社区维护） | 跨平台标准，Windows/Linux/macOS 都能跑，不一定能用专用硬件 |
+| Format | Maintained By | Characteristics |
+|--------|---------------|-----------------|
+| **CoreML** | Apple | Apple-platform exclusive; can leverage Neural Engine hardware acceleration; only runs on macOS/iOS |
+| **ONNX** | Microsoft (open-source community maintained) | Cross-platform standard; works on Windows/Linux/macOS; may not use specialized hardware |
 
-打个比方：CoreML 就像 `.mov` 格式（苹果生态优化），ONNX 就像 `.mp4` 格式（到处都能放）。模型训练完成后，需要转换成特定格式才能在对应的运行时中运行。
+An analogy: CoreML is like `.mov` (optimized for the Apple ecosystem), while ONNX is like `.mp4` (plays everywhere). After a model is trained, it must be converted into the appropriate format for the target runtime.
 
 ---
 
-## 7. 运行时二进制文件：Sherpa-ONNX 的"引擎包"
+## 7. Runtime Binaries: Sherpa-ONNX's "Engine Package"
 
-Sherpa-ONNX 作为进程外方案，需要一组可执行文件才能工作。Typeflux 使用的运行时包是 `sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts`，包含：
+Since Sherpa-ONNX runs out-of-process, it requires a set of executable files to function. The runtime package used by Typeflux is `sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts`, which contains:
 
 ```
 sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/
 ├── bin/
-│   └── sherpa-onnx-offline      ← 主程序（接收音频，输出文字）
+│   └── sherpa-onnx-offline      ← Main program (accepts audio, outputs text)
 └── lib/
-    ├── libsherpa-onnx-c-api.dylib      ← Sherpa-ONNX 核心库
-    ├── libonnxruntime.dylib             ← ONNX Runtime 推理引擎
-    └── libonnxruntime.1.24.4.dylib      ← ONNX Runtime 版本库
+    ├── libsherpa-onnx-c-api.dylib      ← Sherpa-ONNX core library
+    ├── libonnxruntime.dylib             ← ONNX Runtime inference engine
+    └── libonnxruntime.1.24.4.dylib      ← ONNX Runtime versioned library
 ```
 
-- `sherpa-onnx-offline` 是实际执行推理的命令行工具
-- 动态库（`.dylib`）提供推理所需的底层运算支持
-- `osx-universal2` 表示同时支持 Intel 和 Apple Silicon Mac
-- `no-tts` 表示不包含文本转语音功能（Typeflux 只需要语音转文字）
+- `sherpa-onnx-offline` is the command-line tool that actually performs inference.
+- The dynamic libraries (`.dylib`) provide the low-level computation support needed for inference.
+- `osx-universal2` means it supports both Intel and Apple Silicon Macs.
+- `no-tts` means text-to-speech functionality is not included (Typeflux only needs speech-to-text).
 
-这些文件可以**从网上下载**，也可以**内置在 .app 包里**（见第 9 节）。
+These files can be **downloaded from the internet** or **bundled inside the .app package** (see Section 9).
 
 ---
 
-## 8. 文件存储布局
+## 8. File Storage Layout
 
-所有本地模型相关文件统一存放在 `~/Library/Application Support/Typeflux/LocalModels/` 下：
+All local model-related files are stored under `~/Library/Application Support/Typeflux/LocalModels/`:
 
 ```
 ~/Library/Application Support/Typeflux/LocalModels/
 ├── senseVoiceSmall/
 │   └── sensevoice-small/
-│       ├── sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/   ← 运行时
+│       ├── sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/   ← Runtime
 │       │   ├── bin/sherpa-onnx-offline
 │       │   └── lib/*.dylib
-│       ├── sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/  ← 模型
+│       ├── sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/  ← Model
 │       │   ├── model.int8.onnx
 │       │   └── tokens.txt
-│       └── prepared.json                                         ← 就绪标记
+│       └── prepared.json                                         ← Ready marker
 │
 ├── qwen3ASR/
 │   └── <identifier>/
-│       ├── sherpa-onnx-v1.13.0-.../                             ← 运行时（可能共享）
-│       ├── sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/          ← 模型
+│       ├── sherpa-onnx-v1.13.0-.../                             ← Runtime (may be shared)
+│       ├── sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/          ← Model
 │       └── prepared.json
 │
 ├── whisperLocal/
@@ -266,10 +266,10 @@ sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/
 │       ├── TextDecoder.mlmodelc/
 │       └── prepared.json
 │
-└── ...（其他模型同理）
+└── ... (other models follow the same pattern)
 ```
 
-每个模型目录下的 `prepared.json` 记录了这个模型的元信息：
+Each model directory contains a `prepared.json` file that records the model's metadata:
 
 ```json
 {
@@ -281,198 +281,198 @@ sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/
 }
 ```
 
-App 在使用模型前会检查这个文件——如果存在且路径有效，说明模型已就绪；否则触发下载。
+Before using a model, the app checks for this file -- if it exists and the path is valid, the model is considered ready; otherwise, a download is triggered.
 
 ---
 
-## 9. 内置（Bundled）模型机制
+## 9. Bundled Model Mechanism
 
-App 构建时可以选择两个变体：
+The app can be built in two variants:
 
-| 变体 | 内置内容 | 首次使用体验 | 安装包大小 |
-|------|----------|-------------|-----------|
-| **Minimal** | 仅内置 Sherpa-ONNX 运行时二进制文件 | 首次使用时需要下载模型文件（约 47MB） | 较小 |
-| **Full** | 运行时 + SenseVoice 模型文件全部内置 | 开箱即用，无需下载 | 较大 |
+| Variant | What Is Bundled | First-Use Experience | App Size |
+|---------|-----------------|---------------------|----------|
+| **Minimal** | Only Sherpa-ONNX runtime binaries | Model files must be downloaded on first use (about 47 MB) | Smaller |
+| **Full** | Runtime + SenseVoice model files included | Works out of the box, no download needed | Larger |
 
-内置的文件放在 `.app` 包内：
+Bundled files are placed inside the `.app` package:
 
 ```
 Typeflux.app/Contents/Resources/
 ├── BundledModels/
 │   └── senseVoiceSmall/
 │       └── sensevoice-small/
-│           ├── sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/  ← 内置模型
-│           └── sherpa-onnx-v1.13.0-.../ → 符号链接到 LocalRuntimes
+│           ├── sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/  ← Bundled model
+│           └── sherpa-onnx-v1.13.0-.../ → Symlink to LocalRuntimes
 └── LocalRuntimes/
-    └── sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/            ← 内置运行时
+    └── sherpa-onnx-v1.13.0-osx-universal2-shared-no-tts/            ← Bundled runtime
         ├── bin/sherpa-onnx-offline
         └── lib/*.dylib
 ```
 
-App 启动时，`BundledLocalModelLocator` 会在三个候选路径中搜索内置模型。找到后，`LocalModelManager` 会创建一个**符号链接（symlink）**，把内置模型链接到 `LocalModels/` 目录下。这样所有下游代码都统一用同一个路径查找，不需要区分"内置的"还是"下载的"。
+At app launch, `BundledLocalModelLocator` searches three candidate paths for bundled models. Once found, `LocalModelManager` creates a **symbolic link (symlink)** that points the bundled model into the `LocalModels/` directory. This way, all downstream code uses the same path regardless of whether the model was bundled or downloaded.
 
 ---
 
-## 10. 模型下载机制
+## 10. Model Download Mechanism
 
-当用户选择的模型不在本地时，Typeflux 会自动下载。
+When a user-selected model is not available locally, Typeflux automatically downloads it.
 
-### 下载源选择
+### Download Source Selection
 
-每个模型都有两个下载源：
+Each model has two download sources:
 
-| 源 | 地址 | 适用场景 |
-|----|------|----------|
-| **HuggingFace** | `huggingface.co` | 国际用户，默认选择 |
-| **中国镜像** | `hf-mirror.com` / ModelScope | 国内用户，速度更快 |
+| Source | URL | Best For |
+|--------|-----|----------|
+| **HuggingFace** | `huggingface.co` | International users (default) |
+| **China Mirror** | `hf-mirror.com` / ModelScope | Users in China (faster speeds) |
 
-`NetworkLocalModelDownloadSourceResolver` 会**同时探测所有源的延迟**（用 HEAD 请求），然后按响应速度排序，优先使用最快的源。
+`NetworkLocalModelDownloadSourceResolver` **simultaneously probes all sources for latency** (using HEAD requests), then ranks them by response speed and prioritizes the fastest one.
 
-### 自动下载（AutoModelDownloadService）
+### Auto-Download (AutoModelDownloadService)
 
-除了用户主动选择触发的下载，Typeflux 还有一套后台自动下载机制：
+In addition to user-triggered downloads, Typeflux has a background auto-download mechanism:
 
-- **触发时机**：App 启动时，以及用户开启"本地优化"设置时
-- **默认目标**：SenseVoice Small（无论 CPU 架构，因为它最轻量）
-- **重试策略**：指数退避 —— 立即重试 → 1 分钟后 → 3 分钟后 → 9 分钟后 → ... 最长间隔 3 小时
-- **状态持久化**：下载状态保存在 `UserDefaults` 中，App 重启后不会从头开始
+- **When it triggers**: At app launch, and when the user enables the "local optimization" setting.
+- **Default target**: SenseVoice Small (regardless of CPU architecture, since it is the lightest).
+- **Retry strategy**: Exponential backoff -- immediate retry, then after 1 minute, 3 minutes, 9 minutes, and so on, up to a maximum interval of 3 hours.
+- **State persistence**: Download state is saved in `UserDefaults`, so restarting the app does not start the download from scratch.
 
-自动下载的意义在于：**即使用户选的是云端转写方案，本地模型也在后台悄悄准备好，随时可以作为备用方案。**
-
----
-
-## 11. 端到端转写流程
-
-把上面所有组件串起来，一次本地语音转写的完整流程如下：
-
-### WhisperKit 路径（进程内）
-
-```
-[用户操作] 按住快捷键
-    │
-    ▼
-[录音] AudioRecorder 通过 AVFoundation 采集麦克风音频
-    │
-    ▼
-[预热] prepareForRecording() → 提前加载 WhisperKit pipeline 到内存
-    │      （等用户说话的这段时间不要浪费）
-    ▼
-[用户操作] 松开快捷键
-    │
-    ▼
-[路由] LocalModelTranscriber 读取设置，确认使用 whisperLocal / whisperLocalLarge
-    │
-    ▼
-[查找模型] preparedModelInfo() → 先查内置，再查 prepared.json，都没有则触发下载
-    │
-    ▼
-[转写] WhisperKitTranscriber.transcribe(音频路径)
-    │   ├── 内部调用 WhisperKit 库的 pipeline.transcribe()
-    │   ├── CoreML 在 Neural Engine 上执行推理
-    │   └── 进度回调 → 可以实时显示部分转写结果
-    │
-    ▼
-[输出] 拿到完整转写文字
-    │
-    ▼
-[后续] 可选 LLM 润色 → TextInjector 注入文字到前台 App
-```
-
-### Sherpa-ONNX 路径（进程外）
-
-```
-[用户操作] 按住快捷键
-    │
-    ▼
-[录音] AudioRecorder 采集麦克风音频
-    │
-    ▼
-[用户操作] 松开快捷键
-    │
-    ▼
-[路由] LocalModelTranscriber 读取设置，确认使用 senseVoiceSmall / qwen3ASR / funASR
-    │
-    ▼
-[查找模型] preparedModelInfo() → 检查模型和运行时是否就绪
-    │
-    ▼
-[转码] AudioFileTranscoder 把音频转成 16-bit PCM WAV 格式
-    │
-    ▼
-[转写] SherpaOnnxCommandLineDecoder
-    │   ├── 构造命令行参数（模型路径、语言、token 数限制等）
-    │   ├── 启动子进程：sherpa-onnx-offline <参数> <音频文件>
-    │   ├── 设置 DYLD_LIBRARY_PATH 指向运行时的 lib/ 目录
-    │   └── 读取子进程 stdout 输出（纯文字或 JSON）
-    │
-    ▼
-[输出] 拿到转写文字
-    │
-    ▼
-[后续] 可选 LLM 润色 → TextInjector 注入文字到前台 App
-```
+The purpose of auto-downloading is: **even if the user has selected a cloud transcription service, the local model is quietly prepared in the background, ready to serve as a fallback at any time.**
 
 ---
 
-## 12. 多级降级策略
+## 11. End-to-End Transcription Flow
 
-Typeflux 不会因为某一个转写方案失败就彻底罢工。`STTRouter` 实现了一条多级降级链：
+Tying all the components together, here is the complete flow for a single local transcription:
+
+### WhisperKit Path (In-Process)
 
 ```
-主转写方案（用户选择的云端/本地方案）
-    │ 失败
+[User Action] Hold down the hotkey
+    │
     ▼
-自动本地模型（AutoModelDownloadService 下载的 SenseVoice）
-    │ 失败
+[Recording] AudioRecorder captures microphone audio via AVFoundation
+    │
     ▼
-Apple Speech 框架（macOS 系统自带的语音识别）
-    │ 失败
+[Warm-up] prepareForRecording() → Pre-loads the WhisperKit pipeline into memory
+    │      (Don't waste the time while the user is still speaking)
     ▼
-报错
+[User Action] Release the hotkey
+    │
+    ▼
+[Routing] LocalModelTranscriber reads settings, selects whisperLocal / whisperLocalLarge
+    │
+    ▼
+[Model Lookup] preparedModelInfo() → Check bundled first, then prepared.json, trigger download if neither exists
+    │
+    ▼
+[Transcription] WhisperKitTranscriber.transcribe(audio path)
+    │   ├── Internally calls the WhisperKit library's pipeline.transcribe()
+    │   ├── CoreML executes inference on the Neural Engine
+    │   └── Progress callbacks → Partial transcription results can be displayed in real time
+    │
+    ▼
+[Output] Receive the complete transcription text
+    │
+    ▼
+[Next Steps] Optional LLM polishing → TextInjector inserts text into the foreground app
 ```
 
-具体规则：
+### Sherpa-ONNX Path (Out-of-Process)
 
-- **如果用户选的是 Typeflux Official 云端方案**：先跑本地自动模型（节省云端额度），本地失败再走云端，云端也失败则降级到 Apple Speech。
-- **如果用户选的是其他云端方案**：云端失败后，先试本地自动模型，再降级到 Apple Speech。
-- **如果用户选的就是本地方案**：本地失败后，直接降级到 Apple Speech。
-
-这意味着：**即使你在坐飞机没有网络，Typeflux 依然可以工作。**
-
----
-
-## 13. 五个模型怎么选
-
-| 模型 | 大小 | 中文质量 | 英文质量 | 速度 | 适用场景 |
-|------|------|---------|---------|------|---------|
-| **SenseVoice Small** (默认) | 47MB | ★★★★ | ★★★ | 快 | 日常中文语音输入，性价比最高 |
-| **Qwen3-ASR** | ~300MB | ★★★★ | ★★★★ | 中等 | 中英混合场景较多 |
-| **FunASR / Paraformer** | ~80MB | ★★★ | ★★ | 快 | 纯中文场景，资源紧张时 |
-| **WhisperKit Medium** | ~1.5GB | ★★★★ | ★★★★★ | 较慢 | 对英文质量要求高，内存充足 |
-| **WhisperKit Large-v3** | ~3GB | ★★★★ | ★★★★★ | 慢 | 追求最高精度，不在意资源消耗 |
-
-**选择建议**：如果你不确定选什么，**保持默认的 SenseVoice Small 就好**。它小、快、中文效果好，是 Typeflux 按住说话松开插入这种快速交互场景下的最优解。
-
----
-
-## 14. 关键设计决策回顾
-
-1. **两套运行时并存**：WhisperKit（进程内、流式、高质量但重）和 Sherpa-ONNX（进程外、批量、轻量但无进度反馈）。不同场景用不同方案，而不是一刀切。
-
-2. **运行时与模型解耦**：运行时和模型独立下载、独立存储、独立版本管理。这使得升级模型不需要重新安装运行时，反之亦然。
-
-3. **双下载源 + 延迟探测**：HuggingFace 和中国镜像并存，实时探测速度选择最优源，确保国内外用户都有好的体验。
-
-4. **激进的降级链**：主方案 → 本地自动方案 → Apple Speech。任何一层失败都不会让 App 罢工。
-
-5. **Lazy + Eager 加载策略**：WhisperKit 在用户还在说话时就开始预热（eager），Sherpa 模型因为是进程外调用无需预热。资源消耗和响应速度之间取得了平衡。
-
-6. **内置 + 按需下载**：Full 变体开箱即用，Minimal 变体首次使用时自动下载。通过符号链接统一路径，代码无需感知差异。
+```
+[User Action] Hold down the hotkey
+    │
+    ▼
+[Recording] AudioRecorder captures microphone audio
+    │
+    ▼
+[User Action] Release the hotkey
+    │
+    ▼
+[Routing] LocalModelTranscriber reads settings, selects senseVoiceSmall / qwen3ASR / funASR
+    │
+    ▼
+[Model Lookup] preparedModelInfo() → Checks whether the model and runtime are ready
+    │
+    ▼
+[Transcoding] AudioFileTranscoder converts audio to 16-bit PCM WAV format
+    │
+    ▼
+[Transcription] SherpaOnnxCommandLineDecoder
+    │   ├── Constructs command-line arguments (model path, language, token limit, etc.)
+    │   ├── Spawns child process: sherpa-onnx-offline <args> <audio file>
+    │   ├── Sets DYLD_LIBRARY_PATH to point to the runtime's lib/ directory
+    │   └── Reads the child process's stdout output (plain text or JSON)
+    │
+    ▼
+[Output] Receive the transcription text
+    │
+    ▼
+[Next Steps] Optional LLM polishing → TextInjector inserts text into the foreground app
+```
 
 ---
 
-## 15. 相关文档
+## 12. Multi-Level Fallback Strategy
 
-- [LOCAL_ASR_BENCHMARK.md](./LOCAL_ASR_BENCHMARK.md) — 本地 ASR 模型基准测试
-- [BUILD_CONFIGURATION.md](./BUILD_CONFIGURATION.md) — 构建与签名配置（包含内置模型构建变体）
-- [MAKE_COMMANDS.md](./MAKE_COMMANDS.md) — Makefile 命令参考
+Typeflux does not give up entirely just because one transcription method fails. `STTRouter` implements a multi-level fallback chain:
+
+```
+Primary transcription method (user-selected cloud/local method)
+    │ Failure
+    ▼
+Auto local model (SenseVoice downloaded by AutoModelDownloadService)
+    │ Failure
+    ▼
+Apple Speech framework (macOS built-in speech recognition)
+    │ Failure
+    ▼
+Error
+```
+
+The specific rules are:
+
+- **If the user selected the Typeflux Official cloud service**: Try the local auto-model first (to save cloud credits). If that fails, fall back to the cloud service. If the cloud also fails, fall back to Apple Speech.
+- **If the user selected another cloud service**: Cloud failure triggers a try of the local auto-model first, then Apple Speech.
+- **If the user selected a local method**: Local failure triggers a direct fallback to Apple Speech.
+
+This means: **even if you are on an airplane with no network, Typeflux can still work.**
+
+---
+
+## 13. How to Choose Among the Five Models
+
+| Model | Size | Chinese Quality | English Quality | Speed | Best For |
+|-------|------|-----------------|-----------------|-------|----------|
+| **SenseVoice Small** (default) | 47 MB | ★★★★ | ★★★ | Fast | Everyday Chinese voice input; best value for size |
+| **Qwen3-ASR** | ~300 MB | ★★★★ | ★★★★ | Medium | Frequent Chinese-English mixed scenarios |
+| **FunASR / Paraformer** | ~80 MB | ★★★ | ★★ | Fast | Chinese-only scenarios with limited resources |
+| **WhisperKit Medium** | ~1.5 GB | ★★★★ | ★★★★★ | Slower | High English quality requirements with ample memory |
+| **WhisperKit Large-v3** | ~3 GB | ★★★★ | ★★★★★ | Slow | Maximum accuracy, unconcerned about resource usage |
+
+**Recommendation**: If you are unsure which to choose, **stick with the default SenseVoice Small**. It is small, fast, and handles Chinese well -- the optimal choice for Typeflux's hold-to-talk, release-to-insert quick-interaction workflow.
+
+---
+
+## 14. Key Design Decisions Revisited
+
+1. **Two runtimes coexist**: WhisperKit (in-process, streaming, high quality but heavy) and Sherpa-ONNX (out-of-process, batch, lightweight but no progress feedback). Different scenarios use different approaches rather than a one-size-fits-all solution.
+
+2. **Runtime and model decoupling**: Runtimes and models are downloaded, stored, and versioned independently. This means upgrading a model does not require reinstalling the runtime, and vice versa.
+
+3. **Dual download sources + latency probing**: HuggingFace and China mirrors coexist, with real-time speed detection to select the optimal source, ensuring a good experience for users worldwide.
+
+4. **Aggressive fallback chain**: Primary method -> local auto-model -> Apple Speech. Failure at any layer does not bring the app to a halt.
+
+5. **Lazy + Eager loading strategy**: WhisperKit begins warming up while the user is still speaking (eager), while Sherpa models require no warm-up since they run out-of-process. This strikes a balance between resource consumption and response speed.
+
+6. **Bundled + on-demand download**: The Full variant works out of the box; the Minimal variant downloads automatically on first use. Symlinks unify the paths so that downstream code does not need to distinguish between bundled and downloaded models.
+
+---
+
+## 15. Related Documents
+
+- [LOCAL_ASR_BENCHMARK.md](./LOCAL_ASR_BENCHMARK.md) — Local ASR model benchmarks
+- [BUILD_CONFIGURATION.md](./BUILD_CONFIGURATION.md) — Build and signing configuration (including bundled model build variants)
+- [MAKE_COMMANDS.md](./MAKE_COMMANDS.md) — Makefile command reference
