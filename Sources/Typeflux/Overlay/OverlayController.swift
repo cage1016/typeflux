@@ -55,6 +55,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
     let shape: S
     let cornerRadius: CGFloat?
     let tintOpacity: Double
+    let scrimOpacity: Double
     let strokeOpacity: Double
     let lineWidth: CGFloat
     let interactive: Bool
@@ -63,6 +64,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
         shape: S,
         cornerRadius: CGFloat? = nil,
         tintOpacity: Double = 0.08,
+        scrimOpacity: Double = 0.18,
         strokeOpacity: Double = 0.16,
         lineWidth: CGFloat = 0.9,
         interactive: Bool = false,
@@ -70,6 +72,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
         self.shape = shape
         self.cornerRadius = cornerRadius
         self.tintOpacity = tintOpacity
+        self.scrimOpacity = scrimOpacity
         self.strokeOpacity = strokeOpacity
         self.lineWidth = lineWidth
         self.interactive = interactive
@@ -89,7 +92,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
                         )
 
                     shape
-                        .fill(Color.black.opacity(0.18))
+                        .fill(Color.black.opacity(scrimOpacity))
                         .allowsHitTesting(false)
                 }
             } else {
@@ -1470,12 +1473,14 @@ private struct OverlayView: View {
                             .font(.system(size: 19, weight: .semibold))
                             .foregroundStyle(Color.white.opacity(0.98))
                             .lineLimit(1)
+                            .shadow(color: Color.black.opacity(0.36), radius: 3, x: 0, y: 1)
 
                         Text(model.detailText)
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color.white.opacity(0.62))
+                            .foregroundStyle(Color.white.opacity(0.72))
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
+                            .shadow(color: Color.black.opacity(0.32), radius: 2, x: 0, y: 1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -1484,16 +1489,17 @@ private struct OverlayView: View {
                 Button(action: model.requestPersonaCancel) {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.52))
+                        .foregroundStyle(Color.white.opacity(0.72))
                         .frame(width: 26, height: 26)
                         .background(
                             Circle()
-                                .fill(Color.white.opacity(0.06)),
+                                .fill(Color.black.opacity(0.18)),
                         )
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.06), lineWidth: 0.8),
+                                .stroke(Color.white.opacity(0.20), lineWidth: 0.8),
                         )
+                        .shadow(color: Color.black.opacity(0.18), radius: 5, x: 0, y: 2)
                 }
                 .buttonStyle(.plain)
             }
@@ -1525,31 +1531,36 @@ private struct OverlayView: View {
         .padding(.top, 18)
         .padding(.bottom, 16)
         .frame(width: 458, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.black.opacity(0.52))
-                .background(
-                    .regularMaterial,
-                    in: RoundedRectangle(cornerRadius: 24, style: .continuous),
+        .background(personaPickerGlassBackground)
+        .shadow(color: Color.black.opacity(0.30), radius: 24, x: 0, y: 16)
+    }
+
+    private var personaPickerGlassBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+
+        return LiquidGlassShapeBackground(
+            shape: shape,
+            cornerRadius: 24,
+            tintOpacity: 0.08,
+            scrimOpacity: 0.28,
+            strokeOpacity: 0.18,
+            lineWidth: 1.0,
+            interactive: true,
+        )
+        .overlay(
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.08),
+                            Color.clear,
+                            Color.black.opacity(0.10),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing,
+                    ),
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.16),
-                                    Color.white.opacity(0.05),
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom,
-                            ),
-                            lineWidth: 0.9,
-                        ),
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.black.opacity(0.35), lineWidth: 0.6),
-                ),
+                .allowsHitTesting(false),
         )
     }
 
@@ -1559,10 +1570,11 @@ private struct OverlayView: View {
         case .none:
             EmptyView()
         case .global:
-            Image(systemName: "globe")
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.92))
-                .frame(width: 42, height: 42)
+                Image(systemName: "globe")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .frame(width: 42, height: 42)
+                    .shadow(color: Color.black.opacity(0.35), radius: 4, x: 0, y: 2)
         case let .application(icon):
             if let icon {
                 Image(nsImage: icon)
@@ -1574,6 +1586,7 @@ private struct OverlayView: View {
                     .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(Color.white.opacity(0.92))
                     .frame(width: 42, height: 42)
+                    .shadow(color: Color.black.opacity(0.35), radius: 4, x: 0, y: 2)
             }
         }
     }
@@ -1634,24 +1647,30 @@ private struct OverlayView: View {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(
                     isSelected
-                        ? Color.accentColor.opacity(0.26)
-                        : Color.white.opacity(0.045),
+                        ? Color.accentColor.opacity(0.34)
+                        : Color.black.opacity(0.16),
                 )
                 .frame(width: 40, height: 40)
                 .overlay(
                     Text(String(item.title.prefix(2)).uppercased())
                         .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.7)),
+                        .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.78)),
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .stroke(Color.white.opacity(isSelected ? 0.20 : 0.10), lineWidth: 0.8),
                 )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.white.opacity(isSelected ? 0.98 : 0.94))
+                    .shadow(color: Color.black.opacity(0.34), radius: 2, x: 0, y: 1)
                 Text(item.subtitle)
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(isSelected ? 0.7 : 0.5))
+                    .foregroundStyle(Color.white.opacity(isSelected ? 0.76 : 0.58))
                     .lineLimit(2)
+                    .shadow(color: Color.black.opacity(0.25), radius: 2, x: 0, y: 1)
             }
 
             Spacer(minLength: 0)
@@ -1659,7 +1678,7 @@ private struct OverlayView: View {
             if isSelected {
                 ZStack {
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(Color.accentColor.opacity(0.95))
                     Image(systemName: "checkmark")
                         .font(.system(size: 9.5, weight: .bold))
                         .foregroundStyle(Color.white)
@@ -1673,14 +1692,14 @@ private struct OverlayView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     isSelected
-                        ? Color.accentColor.opacity(0.11)
-                        : Color.white.opacity(0.02),
+                        ? Color.accentColor.opacity(0.18)
+                        : Color.black.opacity(0.10),
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(
                             isSelected
-                                ? Color.accentColor.opacity(0.92) : Color.white.opacity(0.045),
+                                ? Color.accentColor.opacity(0.95) : Color.white.opacity(0.08),
                             lineWidth: isSelected ? 1.15 : 0.8,
                         ),
                 )
