@@ -1373,7 +1373,7 @@ private struct OverlayView: View {
             HStack(spacing: 10) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.43, green: 0.56, blue: 1.0))
+                    .foregroundStyle(StudioTheme.accent)
 
                 Text("“\(model.detailText)”")
                     .font(.system(size: 12.5, weight: .medium))
@@ -1448,7 +1448,7 @@ private struct OverlayView: View {
             VStack(alignment: .leading, spacing: 8) {
                 cardHeader(
                     icon: "info.circle",
-                    accent: Color(red: 0.43, green: 0.56, blue: 1.0),
+                    accent: StudioTheme.accent,
                     title: model.statusText,
                     dismissible: true,
                     titleSize: 13.5,
@@ -1596,7 +1596,7 @@ private struct OverlayView: View {
             VStack(alignment: .leading, spacing: 10) {
                 cardHeader(
                     icon: "info.circle",
-                    accent: Color(red: 0.43, green: 0.56, blue: 1.0),
+                    accent: StudioTheme.accent,
                     title: model.statusText,
                     dismissible: true,
                     titleSize: 13.5,
@@ -1647,7 +1647,7 @@ private struct OverlayView: View {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(
                     isSelected
-                        ? Color.accentColor.opacity(0.34)
+                        ? StudioTheme.accent.opacity(0.34)
                         : Color.black.opacity(0.16),
                 )
                 .frame(width: 40, height: 40)
@@ -1678,7 +1678,7 @@ private struct OverlayView: View {
             if isSelected {
                 ZStack {
                     Circle()
-                        .fill(Color.accentColor.opacity(0.95))
+                        .fill(StudioTheme.accent.opacity(0.95))
                     Image(systemName: "checkmark")
                         .font(.system(size: 9.5, weight: .bold))
                         .foregroundStyle(Color.white)
@@ -1692,14 +1692,14 @@ private struct OverlayView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     isSelected
-                        ? Color.accentColor.opacity(0.18)
+                        ? StudioTheme.accent.opacity(0.18)
                         : Color.black.opacity(0.10),
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(
                             isSelected
-                                ? Color.accentColor.opacity(0.95) : Color.white.opacity(0.08),
+                                ? StudioTheme.accent.opacity(0.95) : Color.white.opacity(0.08),
                             lineWidth: isSelected ? 1.15 : 0.8,
                         ),
                 )

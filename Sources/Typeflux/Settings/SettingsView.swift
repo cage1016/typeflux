@@ -914,10 +914,6 @@ struct StudioView: View {
                                         .font(.studioBody(StudioTheme.Typography.bodyLarge))
                                         .foregroundStyle(StudioTheme.textPrimary)
 
-                                        Rectangle()
-                                            .fill(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder))
-                                            .frame(width: 1, height: 18)
-
                                         StudioIconButton(
                                             systemImage: "magnifyingglass",
                                             variant: .ghost,

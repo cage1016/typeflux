@@ -1283,10 +1283,6 @@ struct StudioSuggestedTextInputCard<LabelTrailing: View>: View {
 
                 if !normalizedSuggestions.isEmpty {
                     HStack(spacing: StudioTheme.Spacing.xSmall) {
-                        Rectangle()
-                            .fill(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder))
-                            .frame(width: 1, height: 18)
-
                         ZStack {
                             Menu {
                                 ForEach(normalizedSuggestions, id: \.self) { suggestion in
