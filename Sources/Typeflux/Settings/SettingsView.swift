@@ -1013,7 +1013,7 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.windowBackground)
+        .background(StudioTheme.modalSurface)
         .task {
             refreshPersonaAppRunningLookup()
             await preloadPersonaAppInstalledCandidatesIfNeeded()
@@ -1210,7 +1210,7 @@ struct StudioView: View {
             }
         }
         .frame(width: 760, height: 620)
-        .background(StudioTheme.windowBackground)
+        .background(StudioTheme.modalSurface)
         .onAppear {
             if personaAppCandidates.isEmpty {
                 loadPersonaAppCandidates(for: personaAppPickerScope)
@@ -2551,6 +2551,7 @@ struct StudioView: View {
         }
         .padding(StudioTheme.Insets.cardDefault)
         .frame(width: 520)
+        .background(StudioTheme.modalSurface)
     }
 
     private func mcpKeyValueEditor(label: String, hint: String, text: Binding<String>) -> some View {
@@ -3180,6 +3181,7 @@ struct StudioView: View {
         }
         .padding(32)
         .frame(width: 520)
+        .background(StudioTheme.modalSurface)
     }
 
     private func submitVocabularyTerm() {
@@ -5719,7 +5721,7 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.windowBackground)
+        .background(StudioTheme.modalSurface)
         .confirmationDialog(
             L("agent.jobs.clearAllDialog.title"),
             isPresented: $showingClearAllJobsConfirmation,

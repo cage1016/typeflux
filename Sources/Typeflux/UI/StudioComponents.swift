@@ -436,14 +436,19 @@ private struct StudioButtonChromeModifier: ViewModifier {
                 .fill(StudioTheme.accent)
                 .brightness(isPressed ? -0.06 : (isLoading ? -0.03 : 0))
         case .secondary:
-            StudioLiquidGlassBackground(
-                shape: buttonShape,
-                cornerRadius: StudioTheme.CornerRadius.xLarge,
-                tintOpacity: isPressed ? 0.18 : StudioTheme.Opacity.glassControlTint,
-                scrimOpacity: isPressed ? 0.26 : StudioTheme.Opacity.glassControlScrim,
-                interactive: true,
-            )
-                .brightness(isPressed ? -0.03 : (isLoading ? -0.015 : 0))
+            ZStack {
+                StudioLiquidGlassBackground(
+                    shape: buttonShape,
+                    cornerRadius: StudioTheme.CornerRadius.xLarge,
+                    tintOpacity: isPressed ? 0.18 : StudioTheme.Opacity.glassControlTint,
+                    scrimOpacity: isPressed ? 0.26 : StudioTheme.Opacity.glassControlScrim,
+                    interactive: true,
+                )
+
+                buttonShape
+                    .fill(isPressed ? StudioTheme.controlSurface : StudioTheme.selectionSurface)
+            }
+            .brightness(isPressed ? -0.03 : (isLoading ? -0.015 : 0))
         case .ghost:
             buttonShape
                 .fill(isPressed ? StudioTheme.controlSurface : (isLoading ? StudioTheme.controlSurface.opacity(0.62) : Color.clear))
@@ -949,6 +954,9 @@ struct StudioCard<Content: View>: View {
                 )
 
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(StudioTheme.cardSurface)
+
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .fill(selectionOverlay)
             },
         )
@@ -1393,7 +1401,7 @@ struct StudioHistoryRow: View {
         }
         .padding(.horizontal, StudioTheme.Insets.historyRowHorizontal)
         .padding(.vertical, StudioTheme.Insets.historyRowVertical)
-        .background(StudioTheme.rowSurface)
+        .background(Color.clear)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
