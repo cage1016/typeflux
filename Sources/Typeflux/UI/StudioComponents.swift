@@ -369,6 +369,7 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
                 }
             }
         }
+        .clipShape(shape)
         .overlay(
             shape
                 .strokeBorder(
@@ -593,13 +594,23 @@ struct StudioShell<Content: View>: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                     .background(
-                        StudioLiquidGlassBackground(
-                            shape: RoundedRectangle(cornerRadius: StudioTheme.Layout.shellCornerRadius, style: .continuous),
-                            cornerRadius: StudioTheme.Layout.shellCornerRadius,
-                            material: .underWindowBackground,
-                            tintOpacity: StudioTheme.Opacity.glassSurfaceTint,
-                            scrimOpacity: StudioTheme.Opacity.glassSurfaceScrim,
-                        ),
+                        ZStack {
+                            let shellShape = RoundedRectangle(
+                                cornerRadius: StudioTheme.Layout.shellCornerRadius,
+                                style: .continuous,
+                            )
+
+                            StudioLiquidGlassBackground(
+                                shape: shellShape,
+                                cornerRadius: StudioTheme.Layout.shellCornerRadius,
+                                material: .underWindowBackground,
+                                tintOpacity: StudioTheme.Opacity.glassSurfaceTint,
+                                scrimOpacity: StudioTheme.Opacity.glassSurfaceScrim,
+                            )
+
+                            shellShape
+                                .fill(StudioTheme.shellSurface)
+                        },
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: StudioTheme.Layout.shellCornerRadius, style: .continuous)
@@ -632,10 +643,18 @@ private struct StudioGlassBackground: View {
                 colors: [
                     StudioTheme.windowHighlight,
                     Color.clear,
-                    StudioTheme.accent.opacity(0.055),
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing,
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    StudioTheme.windowHighlight.opacity(0.24),
+                ],
+                startPoint: .leading,
+                endPoint: .trailing,
             )
         }
     }
@@ -896,10 +915,22 @@ struct StudioSectionTitle: View {
 
 struct StudioCard<Content: View>: View {
     var padding: CGFloat = StudioTheme.Insets.cardDefault
+    var showsShadow: Bool = false
+    var isHighlighted: Bool = false
+    var isDimmed: Bool = false
     let content: Content
 
-    init(padding: CGFloat = StudioTheme.Insets.cardDefault, @ViewBuilder content: () -> Content) {
+    init(
+        padding: CGFloat = StudioTheme.Insets.cardDefault,
+        showsShadow: Bool = false,
+        isHighlighted: Bool = false,
+        isDimmed: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
         self.padding = padding
+        self.showsShadow = showsShadow
+        self.isHighlighted = isHighlighted
+        self.isDimmed = isDimmed
         self.content = content()
     }
 
@@ -909,19 +940,42 @@ struct StudioCard<Content: View>: View {
         }
         .padding(padding)
         .background(
-            StudioLiquidGlassBackground(
-                shape: RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous),
-                cornerRadius: StudioTheme.CornerRadius.hero,
-                tintOpacity: StudioTheme.Opacity.glassCardTint,
-                scrimOpacity: StudioTheme.Opacity.glassCardScrim,
-            ),
+            ZStack {
+                StudioLiquidGlassBackground(
+                    shape: RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous),
+                    cornerRadius: StudioTheme.CornerRadius.hero,
+                    tintOpacity: StudioTheme.Opacity.glassCardTint,
+                    scrimOpacity: StudioTheme.Opacity.glassCardScrim,
+                )
+
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(selectionOverlay)
+            },
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                 .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin),
         )
         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
-        .shadow(color: StudioTheme.shadow.opacity(0.70), radius: StudioTheme.Shadow.cardRadius, x: 0, y: StudioTheme.Shadow.cardY)
+        .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
+        .shadow(
+            color: StudioTheme.shadow.opacity(showsShadow ? (isHighlighted ? 0.20 : 0.55) : 0),
+            radius: isHighlighted ? StudioTheme.Shadow.cardRadius + 2 : StudioTheme.Shadow.cardRadius,
+            x: 0,
+            y: isHighlighted ? StudioTheme.Shadow.cardY + 1 : StudioTheme.Shadow.cardY,
+        )
+    }
+
+    private var selectionOverlay: Color {
+        if isHighlighted {
+            return StudioTheme.selectionSurfaceRaised
+        }
+
+        if isDimmed {
+            return StudioTheme.selectionSurface
+        }
+
+        return Color.clear
     }
 }
 
@@ -1548,7 +1602,20 @@ struct StudioSegmentedPicker<T: Hashable>: View {
                         .padding(.vertical, StudioTheme.Insets.segmentedItemVertical)
                         .background(
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
-                                .fill(selection == option.value ? StudioTheme.rowSurface : Color.clear),
+                                .fill(selection == option.value ? StudioTheme.selectionSurfaceRaised : Color.clear),
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
+                                .stroke(
+                                    Color.clear,
+                                    lineWidth: StudioTheme.BorderWidth.thin,
+                                ),
+                        )
+                        .shadow(
+                            color: StudioTheme.shadow.opacity(selection == option.value ? 0.22 : 0),
+                            radius: 10,
+                            x: 0,
+                            y: 3,
                         )
                         .contentShape(
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous),
@@ -1561,8 +1628,13 @@ struct StudioSegmentedPicker<T: Hashable>: View {
         .padding(.vertical, StudioTheme.Insets.segmentedControlVertical)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous)
-                .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.segmentedControlFill)),
+                .fill(StudioTheme.segmentedTrack),
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous)
+                .stroke(StudioTheme.border.opacity(0.55), lineWidth: StudioTheme.BorderWidth.thin),
+        )
+        .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous))
         .frame(minHeight: StudioTheme.Layout.modelTabsMinHeight, alignment: .leading)
     }
 }
