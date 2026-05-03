@@ -20,6 +20,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
         let titles = controller.menu?.items.map(\.title) ?? []
 
+        XCTAssertEqual(controller.menu?.showsStateColumn, false)
         XCTAssertLessThan(
             try XCTUnwrap(titles.firstIndex(of: L("menu.appearance"))),
             try XCTUnwrap(titles.firstIndex(of: L("menu.settings"))),
