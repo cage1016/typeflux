@@ -750,7 +750,7 @@ struct StudioView: View {
                             RoundedRectangle(
                                 cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
                             )
-                            .fill(StudioTheme.surfaceMuted),
+                            .fill(StudioTheme.controlSurface),
                         )
                         .overlay(
                             RoundedRectangle(
@@ -935,7 +935,7 @@ struct StudioView: View {
                                         RoundedRectangle(
                                             cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
                                         )
-                                        .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
                                     )
                                     .overlay(
                                         RoundedRectangle(
@@ -1007,7 +1007,7 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.background)
+        .background(StudioTheme.windowBackground)
         .task {
             refreshPersonaAppRunningLookup()
             await preloadPersonaAppInstalledCandidatesIfNeeded()
@@ -1063,7 +1063,7 @@ struct StudioView: View {
                 .frame(width: 36, height: 36)
                 .background(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                        .fill(StudioTheme.surfaceMuted),
+                        .fill(StudioTheme.iconTileSurface),
                 )
 
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -1164,7 +1164,7 @@ struct StudioView: View {
                 .padding(.vertical, StudioTheme.Insets.textFieldVertical)
                 .background(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                        .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
@@ -1204,7 +1204,7 @@ struct StudioView: View {
             }
         }
         .frame(width: 760, height: 620)
-        .background(StudioTheme.background)
+        .background(StudioTheme.windowBackground)
         .onAppear {
             if personaAppCandidates.isEmpty {
                 loadPersonaAppCandidates(for: personaAppPickerScope)
@@ -1244,7 +1244,7 @@ struct StudioView: View {
             .frame(width: 40, height: 40)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted),
+                    .fill(StudioTheme.iconTileSurface),
             )
 
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -2573,7 +2573,7 @@ struct StudioView: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
@@ -2631,7 +2631,7 @@ struct StudioView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                            .fill(StudioTheme.surfaceMuted),
+                            .fill(StudioTheme.controlSurface),
                     )
                 }
             }
@@ -2672,7 +2672,7 @@ struct StudioView: View {
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [StudioTheme.accentSoft, StudioTheme.surfaceMuted],
+                        colors: [StudioTheme.accentSoft, StudioTheme.iconTileSurface],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing,
                     ),
@@ -2716,7 +2716,7 @@ struct StudioView: View {
         .padding(StudioTheme.Insets.cardDense)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .fill(StudioTheme.surfaceMuted.opacity(0.42)),
+                .fill(StudioTheme.controlSurface),
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
@@ -2767,7 +2767,7 @@ struct StudioView: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.surface),
+                    .fill(StudioTheme.rowSurface),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
@@ -3032,7 +3032,7 @@ struct StudioView: View {
         )
         .background(
             Capsule()
-                .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
         )
         .overlay(
             Capsule()
@@ -3167,7 +3167,7 @@ struct StudioView: View {
                     RoundedRectangle(
                         cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
                     )
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
                 )
                 .overlay(
                     RoundedRectangle(
@@ -3246,7 +3246,7 @@ struct StudioView: View {
             .padding(.vertical, StudioTheme.Insets.buttonVertical)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(0.92)),
+                    .fill(StudioTheme.controlSurface),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
@@ -3546,7 +3546,7 @@ struct StudioView: View {
                 .padding(.top, StudioTheme.Insets.historyHeaderTop)
                 .padding(.bottom, StudioTheme.Insets.historyHeaderBottom)
 
-                Divider().overlay(StudioTheme.border)
+                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                 if records.isEmpty {
                     Text(L("history.empty"))
@@ -3579,7 +3579,7 @@ struct StudioView: View {
                             },
                         )
                         if record.id != records.last?.id {
-                            Divider().overlay(StudioTheme.border)
+                            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
                         }
                     }
                 }
@@ -3597,7 +3597,7 @@ struct StudioView: View {
                                 RoundedRectangle(
                                     cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
                                 )
-                                .fill(StudioTheme.surfaceMuted)
+                                .fill(StudioTheme.iconTileSurface)
                                 .frame(
                                     width: StudioTheme.ControlSize.overviewBadge,
                                     height: StudioTheme.ControlSize.overviewBadge,
@@ -3634,7 +3634,7 @@ struct StudioView: View {
 
                         Circle()
                             .stroke(
-                                StudioTheme.surfaceMuted,
+                                StudioTheme.controlSurface,
                                 lineWidth: StudioTheme.BorderWidth.overviewDonut,
                             )
                             .frame(
@@ -3668,7 +3668,7 @@ struct StudioView: View {
                 }
             }
             .frame(maxWidth: .infinity, minHeight: StudioTheme.Layout.overviewPrimaryMinHeight)
-            .background(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.overviewActivityFill))
+            .background(Color.clear)
             .clipShape(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous),
             )
@@ -3729,7 +3729,7 @@ struct StudioView: View {
                 RoundedRectangle(
                     cornerRadius: StudioTheme.CornerRadius.miniMetricIcon, style: .continuous,
                 )
-                .fill(StudioTheme.surfaceMuted)
+                .fill(StudioTheme.iconTileSurface)
                 .frame(
                     width: StudioTheme.ControlSize.overviewMiniIcon,
                     height: StudioTheme.ControlSize.overviewMiniIcon,
@@ -4424,7 +4424,7 @@ struct StudioView: View {
                                                 cornerRadius: StudioTheme.CornerRadius.medium,
                                                 style: .continuous,
                                             )
-                                            .fill(StudioTheme.surfaceMuted),
+                                            .fill(StudioTheme.iconTileSurface),
                                         )
                                 }
                                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -4446,7 +4446,7 @@ struct StudioView: View {
                                                 cornerRadius: StudioTheme.CornerRadius.medium,
                                                 style: .continuous,
                                             )
-                                            .fill(StudioTheme.surfaceMuted),
+                                            .fill(StudioTheme.iconTileSurface),
                                         )
                                 }
                                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -4849,7 +4849,7 @@ struct StudioView: View {
                             RoundedRectangle(
                                 cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
                             )
-                            .fill(StudioTheme.surfaceMuted),
+                            .fill(StudioTheme.controlSurface),
                         )
                 }
             }
@@ -4994,14 +4994,14 @@ struct StudioView: View {
         -> Color
     {
         if provider.usesTypefluxBranding {
-            return isFocused ? Color.white.opacity(0.06) : Color.clear
+            return isFocused ? StudioTheme.controlSurface : Color.clear
         }
 
         if providerLogoResourceName(for: provider) != nil {
-            return isFocused ? Color.white.opacity(0.98) : Color.white.opacity(0.92)
+            return isFocused ? StudioTheme.rowSurface : StudioTheme.iconTileSurface
         }
 
-        return isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted
+        return isFocused ? StudioTheme.accentSoft : StudioTheme.iconTileSurface
     }
 
     @ViewBuilder
@@ -5742,7 +5742,7 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.background)
+        .background(StudioTheme.windowBackground)
         .confirmationDialog(
             L("agent.jobs.clearAllDialog.title"),
             isPresented: $showingClearAllJobsConfirmation,
@@ -6116,7 +6116,7 @@ struct StudioView: View {
                 .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .bold))
                 .foregroundStyle(StudioTheme.textSecondary)
                 .frame(width: 28, height: 28)
-                .background(Circle().fill(StudioTheme.surfaceMuted))
+                .background(Circle().fill(StudioTheme.controlSurface))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -6170,7 +6170,7 @@ private struct VocabularyTermCard: View {
                     .frame(width: 24, height: 24)
                     .background(
                         Circle()
-                            .fill(StudioTheme.surfaceMuted.opacity(0.8)),
+                            .fill(StudioTheme.controlSurface),
                     )
             }
             .buttonStyle(.plain)
