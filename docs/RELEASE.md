@@ -9,15 +9,18 @@ For a command-by-command overview, see [MAKE_COMMANDS.md](./MAKE_COMMANDS.md).
 For official GitHub releases, publish a GitHub Release. The `Release` workflow
 then builds two macOS installers, signs them with a Developer ID Application
 certificate, notarizes them with Apple, packages them into DMGs, and uploads
-both variants as release assets:
+installer variants as release assets:
 
-- `Typeflux-minimal.dmg` / `Typeflux-minimal.zip` (~15 MB, app only)
+- `Typeflux-minimal.dmg` / `Typeflux-minimal.zip` (includes Sherpa-ONNX runtime, downloads model on first use)
 - `Typeflux-full.dmg` / `Typeflux-full.zip` (~150 MB, includes SenseVoice model)
+- `Typeflux-app-only.dmg` / `Typeflux-app-only.zip` (app bundle without local runtime/model assets, intended for in-app auto-update payloads after assets have been persisted)
 
 The `full` variant embeds the SenseVoice STT model so users can use local
 speech recognition immediately without downloading additional model files.
 The `minimal` variant requires an internet connection to download the model
-on first use.
+on first use. The `app-only` variant is for update delivery: existing runtime
+and model assets remain in Application Support, and missing assets are restored
+by automatic download.
 
 For local release validation, use the one-step notarized release command:
 
@@ -165,7 +168,7 @@ export TYPEFLUX_CODESIGN_IDENTITY="$TYPEFLUX_APPLE_DISTRIBUTION"
 export TYPEFLUX_NOTARY_SUBMIT_RETRIES=3
 export TYPEFLUX_NOTARY_POLL_INTERVAL_SECONDS=15
 export TYPEFLUX_NOTARY_KEYCHAIN="/path/to/custom.keychain-db"
-export TYPEFLUX_RELEASE_VARIANT="minimal" # or "full"
+export TYPEFLUX_RELEASE_VARIANT="minimal" # or "full" / "app-only"
 ```
 
 Notes:
@@ -213,8 +216,8 @@ make full-release-continue
 Successful output artifacts:
 
 - `.build/release/Typeflux.app`
-- `.build/release/Typeflux.zip` or `.build/release/Typeflux-full.zip`
-- `.build/release/Typeflux.dmg` or `.build/release/Typeflux-full.dmg`
+- `.build/release/Typeflux.zip`, `.build/release/Typeflux-full.zip`, or `.build/release/Typeflux-app-only.zip`
+- `.build/release/Typeflux.dmg`, `.build/release/Typeflux-full.dmg`, or `.build/release/Typeflux-app-only.dmg`
 
 ## Manual Release Steps
 
@@ -231,6 +234,7 @@ Outputs:
 - `.build/release/Typeflux.app`
 - `.build/release/Typeflux.zip` for `TYPEFLUX_RELEASE_VARIANT=minimal`
 - `.build/release/Typeflux-full.zip` for `TYPEFLUX_RELEASE_VARIANT=full`
+- `.build/release/Typeflux-app-only.zip` for `TYPEFLUX_RELEASE_VARIANT=app-only`
 
 For the full production installer shortcut:
 
@@ -253,6 +257,7 @@ Output:
 
 - `.build/release/Typeflux.dmg` for `TYPEFLUX_RELEASE_VARIANT=minimal`
 - `.build/release/Typeflux-full.dmg` for `TYPEFLUX_RELEASE_VARIANT=full`
+- `.build/release/Typeflux-app-only.dmg` for `TYPEFLUX_RELEASE_VARIANT=app-only`
 
 ### Submit to notarization manually
 

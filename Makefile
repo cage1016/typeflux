@@ -1,5 +1,5 @@
 RELEASE_VARIANT := $(if $(TYPEFLUX_RELEASE_VARIANT),$(TYPEFLUX_RELEASE_VARIANT),minimal)
-PACKAGE_NAME = Typeflux$(if $(filter full,$(RELEASE_VARIANT)),-full,)
+PACKAGE_NAME = Typeflux$(if $(filter full,$(RELEASE_VARIANT)),-full,$(if $(filter app-only,$(RELEASE_VARIANT)),-app-only,))
 
 run:
 	./scripts/run_dev_app.sh
@@ -12,6 +12,9 @@ release-continue:
 
 full-release:
 	TYPEFLUX_RELEASE_VARIANT=full $(MAKE) release
+
+app-only-release:
+	TYPEFLUX_RELEASE_VARIANT=app-only $(MAKE) release
 
 full-release-continue:
 	TYPEFLUX_RELEASE_VARIANT=full $(MAKE) release-continue
@@ -43,4 +46,4 @@ release-notarize-continue:
 format:
 	./scripts/format.sh
 
-.PHONY: run release release-continue full-release full-release-continue dev full-dev build test coverage dmg release-notarize release-notarize-continue format
+.PHONY: run release release-continue full-release app-only-release full-release-continue dev full-dev build test coverage dmg release-notarize release-notarize-continue format
