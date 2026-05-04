@@ -315,6 +315,22 @@ Common causes:
 - the app or DMG was signed incorrectly
 - a nested binary or framework was left unsigned
 
+### Finder Automation permission blocks DMG styling
+
+DMG creation skips Finder AppleScript by default so local and CI releases do not need macOS Automation permission for Finder. To opt into the styled Finder window layout, run the release with:
+
+```bash
+TYPEFLUX_DMG_FINDER_LAYOUT=1 make release-notarize
+```
+
+### Moving artifacts to Downloads is blocked
+
+`make release` and `make release-continue` try to move finished artifacts to `~/Downloads`. If macOS blocks that protected folder, the release still completes and leaves the notarized artifacts in `.build/release`. You can also choose another export directory:
+
+```bash
+TYPEFLUX_RELEASE_DESTINATION="$PWD/release-artifacts" make release-continue
+```
+
 ### Notary submission times out
 
 The one-step release script already retries submission failures and keeps tracking a submission if Apple already issued an ID.

@@ -229,6 +229,7 @@ The release script passes `--keychain` automatically when this variable is set.
 | `TYPEFLUX_RELEASE_VARIANT` | Optional | `minimal` (default), `full`, or `app-only` | `scripts/build_release.sh` (controls whether local runtime/model assets are embedded into the app bundle) |
 | `TYPEFLUX_RELEASE_STATE_PATH` | Optional | Path to the resumable release state file; default `.build/release/.release-workflow.env` | `scripts/release_notarize.sh` |
 | `TYPEFLUX_RELEASE_DESTINATION` | Optional | Directory for `make release` / `make release-continue` exports; default `~/Downloads` | `scripts/release_notarize.sh` |
+| `TYPEFLUX_DMG_FINDER_LAYOUT` | Optional | Truthy value (`1`, `true`, `yes`) to opt into Finder-styled DMG windows; unset skips Finder AppleScript | `scripts/build_dmg.sh` |
 
 > Variables that are **not** prefixed are intentionally Apple-defined or third-party names: `NOTARYTOOL_APPLE_ID`, `NOTARYTOOL_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD` exist only inside the GitHub Actions workflow.
 

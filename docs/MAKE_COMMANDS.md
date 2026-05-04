@@ -269,6 +269,7 @@ Requirements:
 Environment:
 
 - optional: `TYPEFLUX_CODESIGN_IDENTITY`
+- optional: `TYPEFLUX_DMG_FINDER_LAYOUT=1` to opt into Finder-styled DMG window layout; this requires macOS Automation permission for Finder
 
 ### `make release-notarize`
 

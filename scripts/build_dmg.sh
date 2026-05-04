@@ -17,6 +17,13 @@ DMG_NAME="${PACKAGE_NAME}.dmg"
 DMG_PATH="${BUILD_DIR}/${DMG_NAME}"
 STAGING_DIR="${BUILD_DIR}/dmg-staging"
 
+is_truthy() {
+  case "${1:-}" in
+    1 | true | TRUE | yes | YES | y | Y) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 verify_bundle_signature() {
   local bundle_path="$1"
 
@@ -52,14 +59,22 @@ verify_bundle_signature "$STAGING_DIR/${APP_NAME}.app"
 
 rm -f "$DMG_PATH"
 
-create-dmg \
-  --volname "$PACKAGE_NAME" \
-  --window-size 800 400 \
-  --icon-size 100 \
-  --app-drop-link 600 185 \
-  --icon "${APP_NAME}.app" 200 185 \
-  "$DMG_PATH" \
-  "$STAGING_DIR"
+CREATE_DMG_ARGS=(
+  --volname "$PACKAGE_NAME"
+  --window-size 800 400
+  --icon-size 100
+  --app-drop-link 600 185
+  --icon "${APP_NAME}.app" 200 185
+)
+
+if is_truthy "${TYPEFLUX_DMG_FINDER_LAYOUT:-}"; then
+  echo "Finder DMG layout enabled; create-dmg may require Automation permission for Finder."
+else
+  echo "Skipping Finder DMG layout to avoid macOS Automation permission prompts."
+  CREATE_DMG_ARGS+=(--skip-jenkins)
+fi
+
+create-dmg "${CREATE_DMG_ARGS[@]}" "$DMG_PATH" "$STAGING_DIR"
 
 rm -rf "$STAGING_DIR"
 

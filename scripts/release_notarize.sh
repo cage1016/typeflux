@@ -319,8 +319,8 @@ move_artifact() {
   local destination_path="${DESTINATION_DIR}/$(basename "$source_path")"
 
   if [[ -f "$source_path" ]]; then
-    mkdir -p "$DESTINATION_DIR"
-    mv -f "$source_path" "$destination_path"
+    mkdir -p "$DESTINATION_DIR" || return 1
+    mv -f "$source_path" "$destination_path" || return 1
     log "Moved $(basename "$source_path") to ${DESTINATION_DIR}."
     return 0
   fi
@@ -334,9 +334,29 @@ move_artifact() {
 }
 
 export_artifacts() {
+  local export_failed=false
+
   log "Moving release artifacts to ${DESTINATION_DIR}..."
-  move_artifact "$DMG_PATH"
-  move_artifact "$ZIP_PATH"
+  move_artifact "$DMG_PATH" || export_failed=true
+  move_artifact "$ZIP_PATH" || export_failed=true
+
+  if [[ "$export_failed" == true ]]; then
+    log "Warning: could not move one or more release artifacts to ${DESTINATION_DIR}."
+    log "The notarized release artifacts remain in ${BUILD_DIR}."
+  fi
+}
+
+artifact_path_for_log() {
+  local source_path="$1"
+  local destination_path="${DESTINATION_DIR}/$(basename "$source_path")"
+
+  if [[ -f "$source_path" ]]; then
+    echo "$source_path"
+  elif [[ -f "$destination_path" ]]; then
+    echo "$destination_path"
+  else
+    echo "$source_path"
+  fi
 }
 
 main() {
@@ -413,8 +433,8 @@ main() {
 
   log "Release workflow completed successfully."
   log "App: ${APP_BUNDLE}"
-  log "ZIP: ${ZIP_PATH}"
-  log "DMG: ${DMG_PATH}"
+  log "ZIP: $(artifact_path_for_log "$ZIP_PATH")"
+  log "DMG: $(artifact_path_for_log "$DMG_PATH")"
   log "State: ${STATE_PATH}"
 }
 
