@@ -52,4 +52,21 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
         modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
     )
     static let defaultPersona = HotkeyBinding(keyCode: 35, modifierFlags: 1_572_864)
+
+    static let rightCommandActivation = HotkeyBinding(
+        keyCode: rightCommandKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+    )
+    static let rightCommandAsk = HotkeyBinding(
+        keyCode: 49,
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+    )
+    static let rightOptionActivation = HotkeyBinding(
+        keyCode: rightOptionKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+    )
+    static let rightOptionAsk = HotkeyBinding(
+        keyCode: 49,
+        modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+    )
 }

@@ -25,6 +25,14 @@ final class HotkeyFormatTests: XCTestCase {
         XCTAssertEqual(HotkeyFormat.display(binding), "Fn")
     }
 
+    func testDisplayRightCommandAskShortcutKeepsRightSideLabel() {
+        XCTAssertEqual(HotkeyFormat.components(.rightCommandAsk), ["⌘(R)", "Space"])
+    }
+
+    func testDisplayRightOptionAskShortcutKeepsRightSideLabel() {
+        XCTAssertEqual(HotkeyFormat.components(.rightOptionAsk), ["⌥(R)", "Space"])
+    }
+
     // MARK: - Modifier flags
 
     func testDisplayCommandModifier() {

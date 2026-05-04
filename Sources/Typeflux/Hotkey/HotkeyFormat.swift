@@ -16,6 +16,12 @@ enum HotkeyFormat {
         if binding.isFunctionTrigger {
             return ["Fn"]
         }
+        if binding.signature == HotkeyBinding.rightCommandAsk.signature {
+            return ["⌘(R)", "Space"]
+        }
+        if binding.signature == HotkeyBinding.rightOptionAsk.signature {
+            return ["⌥(R)", "Space"]
+        }
 
         let flags = NSEvent.ModifierFlags(rawValue: binding.modifierFlags)
         var parts = [
