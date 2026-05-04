@@ -18,6 +18,12 @@ final class StatusBarController: NSObject {
         static let recentHistoryLimit = 10
     }
 
+    enum IconLayout {
+        static let statusItemLength = NSStatusItem.squareLength
+        static let imageSize = NSSize(width: 20, height: 20)
+        static let pointSize: CGFloat = 15
+    }
+
     private let appState: AppStateStore
     private let settingsStore: SettingsStore
     private let historyStore: HistoryStore
@@ -68,7 +74,7 @@ final class StatusBarController: NSObject {
     }
 
     func start() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: IconLayout.statusItemLength)
         updateTitle()
         rebuildMenu()
         languageObserver = NotificationCenter.default.addObserver(
@@ -186,7 +192,7 @@ final class StatusBarController: NSObject {
 
     private func updateTitle() {
         guard let button = statusItem?.button else { return }
-        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 3, weight: .medium)
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: IconLayout.pointSize, weight: .medium)
         let accessibilityTitle: String = switch appState.status {
         case .idle:
             L("menu.status.ready")
@@ -203,9 +209,10 @@ final class StatusBarController: NSObject {
             systemSymbolName: StudioTheme.Symbol.brand,
             accessibilityDescription: accessibilityTitle,
         )?.withSymbolConfiguration(symbolConfig)
+        image?.size = IconLayout.imageSize
         image?.isTemplate = true
         button.image = image
-        button.imageScaling = .scaleProportionallyUpOrDown
+        button.imageScaling = .scaleProportionallyDown
         button.contentTintColor = nil
     }
 

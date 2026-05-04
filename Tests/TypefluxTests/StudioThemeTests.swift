@@ -13,11 +13,11 @@ final class StudioThemeTests: XCTestCase {
     }
 
     func testSidebarWidth() {
-        XCTAssertEqual(StudioTheme.Layout.sidebarWidth, 196)
+        XCTAssertEqual(StudioTheme.Layout.sidebarWidth, 210)
     }
 
     func testContentMaxWidth() {
-        XCTAssertEqual(StudioTheme.Layout.contentMaxWidth, 900)
+        XCTAssertEqual(StudioTheme.Layout.contentMaxWidth, 1160)
     }
 
     func testSettingsWindowWidth() {

@@ -1,7 +1,14 @@
 @testable import Typeflux
+import AppKit
 import XCTest
 
 final class StatusBarMenuSupportTests: XCTestCase {
+    func testStatusBarIconUsesBoundedMenuBarDimensions() {
+        XCTAssertEqual(StatusBarController.IconLayout.imageSize, NSSize(width: 20, height: 20))
+        XCTAssertEqual(StatusBarController.IconLayout.statusItemLength, NSStatusItem.squareLength)
+        XCTAssertLessThanOrEqual(StatusBarController.IconLayout.pointSize, 15)
+    }
+
     @MainActor
     func testStatusBarMenuIncludesSettingsItemNearAppearanceControls() throws {
         if ProcessInfo.processInfo.environment["CI"] == "true" {
