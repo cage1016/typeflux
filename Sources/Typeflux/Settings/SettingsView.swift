@@ -163,7 +163,7 @@ struct StudioView: View {
     private let personaAppPickerFieldWidth: CGFloat = 220
     private let personaAppBindingControlHeight: CGFloat = 44
     private let personaAppBindingFieldVerticalPadding: CGFloat = 8
-    private let vocabularySearchCollapsedSize: CGFloat = 36
+    private let vocabularySearchCollapsedSize: CGFloat = 44
     private let vocabularySearchExpandedWidth: CGFloat = 276
     private let vocabularySearchAnimation = Animation.interpolatingSpring(stiffness: 180, damping: 24)
 
@@ -1009,7 +1009,13 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.modalSurface)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
         .task {
             refreshPersonaAppRunningLookup()
             await preloadPersonaAppInstalledCandidatesIfNeeded()
@@ -1206,7 +1212,13 @@ struct StudioView: View {
             }
         }
         .frame(width: 760, height: 620)
-        .background(StudioTheme.modalSurface)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
         .onAppear {
             if personaAppCandidates.isEmpty {
                 loadPersonaAppCandidates(for: personaAppPickerScope)
@@ -1571,7 +1583,7 @@ struct StudioView: View {
         Button(action: action) {
             StudioCard(
                 padding: StudioTheme.Insets.cardCompact,
-                showsShadow: false,
+                showsShadow: true,
                 isHighlighted: isSelected,
                 isDimmed: !isSelected,
             ) {
@@ -1809,12 +1821,12 @@ struct StudioView: View {
                     } else {
                         LazyVGrid(
                             columns: [
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
                             ],
                             alignment: .leading,
-                            spacing: StudioTheme.Spacing.medium,
+                            spacing: StudioTheme.Spacing.mediumLarge,
                         ) {
                             ForEach(filteredVocabularyEntries) { entry in
                                 vocabularyTermCard(entry)
@@ -2547,7 +2559,13 @@ struct StudioView: View {
         }
         .padding(StudioTheme.Insets.cardDefault)
         .frame(width: 520)
-        .background(StudioTheme.modalSurface)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
     }
 
     private func mcpKeyValueEditor(label: String, hint: String, text: Binding<String>) -> some View {
@@ -3087,7 +3105,7 @@ struct StudioView: View {
             )
             .lineLimit(1)
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
-            .padding(.vertical, StudioTheme.Insets.pillVertical + 2)
+            .padding(.vertical, StudioTheme.Insets.pillVertical + 3)
             .background(
                 Capsule()
                     .fill(
@@ -3177,7 +3195,13 @@ struct StudioView: View {
         }
         .padding(32)
         .frame(width: 520)
-        .background(StudioTheme.modalSurface)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
     }
 
     private func submitVocabularyTerm() {
@@ -3567,10 +3591,10 @@ struct StudioView: View {
     }
 
     private var overviewPanel: some View {
-        HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
+        HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
             StudioCard(padding: StudioTheme.Insets.cardDense) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
+                    HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                             HStack(spacing: StudioTheme.Spacing.small) {
                                 RoundedRectangle(
@@ -3589,13 +3613,15 @@ struct StudioView: View {
                                                 weight: .semibold,
                                             ),
                                         )
-                                        .foregroundStyle(StudioTheme.textSecondary),
+                                        .foregroundStyle(StudioTheme.accent),
                                 )
                                 Text(L("home.activity.title"))
                                     .font(
                                         .studioBody(StudioTheme.Typography.bodySmall, weight: .semibold),
                                     )
                                     .foregroundStyle(StudioTheme.textSecondary)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
                             }
 
                             Text("\(viewModel.statsCompletionRate)%")
@@ -3624,8 +3650,13 @@ struct StudioView: View {
                                 Circle()
                                     .trim(from: 0, to: CGFloat(viewModel.statsCompletionRate) / 100)
                                     .stroke(
-                                        StudioTheme.accent.opacity(
-                                            StudioTheme.Opacity.overviewProgress,
+                                        LinearGradient(
+                                            colors: [
+                                                StudioTheme.accent.opacity(0.52),
+                                                StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress),
+                                            ],
+                                            startPoint: .bottomLeading,
+                                            endPoint: .topTrailing,
                                         ),
                                         style: StrokeStyle(
                                             lineWidth: StudioTheme.BorderWidth.overviewDonut,
@@ -3653,7 +3684,7 @@ struct StudioView: View {
             )
 
             GeometryReader { proxy in
-                let spacing = StudioTheme.Spacing.medium
+                let spacing = StudioTheme.Spacing.large
                 let cardWidth = max((proxy.size.width - spacing) / 2, 0)
                 let cardHeight = max((proxy.size.height - spacing) / 2, 0)
 
@@ -3716,7 +3747,7 @@ struct StudioView: View {
                 .overlay(
                     Image(systemName: icon)
                         .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
-                        .foregroundStyle(StudioTheme.textSecondary),
+                        .foregroundStyle(StudioTheme.accent),
                 )
 
                 Text(value)
@@ -4884,7 +4915,7 @@ struct StudioView: View {
         } label: {
             StudioCard(
                 padding: StudioTheme.Insets.cardCompact,
-                showsShadow: false,
+                showsShadow: true,
                 isHighlighted: isFocused,
                 isDimmed: !isFocused,
             ) {
@@ -5717,7 +5748,13 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.modalSurface)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
         .confirmationDialog(
             L("agent.jobs.clearAllDialog.title"),
             isPresented: $showingClearAllJobsConfirmation,
@@ -6154,7 +6191,8 @@ private struct VocabularyTermCard: View {
             .animation(.easeOut(duration: 0.12), value: isHovered)
         }
         .padding(.horizontal, StudioTheme.Insets.cardCompact)
-        .padding(.vertical, StudioTheme.Insets.buttonVertical)
+        .padding(.vertical, StudioTheme.Insets.buttonVertical + 2)
+        .frame(minHeight: 48)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                 .fill(StudioTheme.surface),
@@ -6184,9 +6222,9 @@ private struct VocabularyTermCard: View {
                 .scaledToFit()
                 .frame(width: 16, height: 16)
         } else {
-            Image(systemName: entry.source == .automatic ? "sparkles" : "plus.circle.fill")
-                .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
-                .foregroundStyle(entry.source == .automatic ? StudioTheme.warning : StudioTheme.accent)
+            Image(systemName: "asterisk")
+                .font(.system(size: StudioTheme.Typography.iconRegular, weight: .bold))
+                .foregroundStyle(StudioTheme.warning)
         }
     }
 }
