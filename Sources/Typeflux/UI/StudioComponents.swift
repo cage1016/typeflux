@@ -949,12 +949,18 @@ struct StudioSectionTitle: View {
 }
 
 struct StudioCard<Content: View>: View {
+    enum Texture {
+        case standard
+        case softWaves
+    }
+
     @Environment(\.colorScheme) private var colorScheme
 
     var padding: CGFloat = StudioTheme.Insets.cardDefault
     var showsShadow: Bool = false
     var isHighlighted: Bool = false
     var isDimmed: Bool = false
+    var texture: Texture = .standard
     let content: Content
 
     init(
@@ -962,12 +968,14 @@ struct StudioCard<Content: View>: View {
         showsShadow: Bool = false,
         isHighlighted: Bool = false,
         isDimmed: Bool = false,
+        texture: Texture = .standard,
         @ViewBuilder content: () -> Content
     ) {
         self.padding = padding
         self.showsShadow = showsShadow
         self.isHighlighted = isHighlighted
         self.isDimmed = isDimmed
+        self.texture = texture
         self.content = content()
     }
 
@@ -1023,7 +1031,9 @@ struct StudioCard<Content: View>: View {
 
     private var cardTextureOverlay: some View {
         Group {
-            if colorScheme == .dark {
+            if texture == .softWaves {
+                softWaveTexture
+            } else if colorScheme == .dark {
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .fill(Color.white.opacity(0.015))
             } else {
@@ -1054,6 +1064,80 @@ struct StudioCard<Content: View>: View {
                     )
             }
         }
+    }
+
+    private var softWaveTexture: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            let baseOpacity = colorScheme == .dark ? 0.035 : 0.18
+            let accentOpacity = colorScheme == .dark ? 0.035 : (isHighlighted ? 0.18 : 0.08)
+            let highlightOpacity = colorScheme == .dark ? 0.025 : 0.18
+
+            ZStack {
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(baseOpacity),
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                StudioTheme.accent.opacity(accentOpacity),
+                                Color.white.opacity(highlightOpacity),
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+                    .frame(width: width * 1.12, height: height * 0.56)
+                    .rotationEffect(.degrees(-17))
+                    .offset(x: width * 0.32, y: -height * 0.26)
+                    .blur(radius: 9)
+
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                Color.white.opacity(highlightOpacity * 0.72),
+                                StudioTheme.accentSoft.opacity(accentOpacity * 0.52),
+                                Color.clear,
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing,
+                        ),
+                    )
+                    .frame(width: width * 1.08, height: height * 0.42)
+                    .rotationEffect(.degrees(-17))
+                    .offset(x: width * 0.18, y: height * 0.02)
+                    .blur(radius: 12)
+
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                isHighlighted ? StudioTheme.accentSoft.opacity(accentOpacity * 0.58) : Color.clear,
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 

@@ -1586,6 +1586,7 @@ struct StudioView: View {
                 showsShadow: true,
                 isHighlighted: isSelected,
                 isDimmed: !isSelected,
+                texture: .softWaves,
             ) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
@@ -4918,6 +4919,7 @@ struct StudioView: View {
                 showsShadow: true,
                 isHighlighted: isFocused,
                 isDimmed: !isFocused,
+                texture: .softWaves,
             ) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {

@@ -44,6 +44,7 @@ private struct RoundedVisualEffectBlur: NSViewRepresentable {
         view.isEmphasized = true
         view.wantsLayer = true
         view.layer?.masksToBounds = true
+        view.layer?.cornerCurve = .continuous
         view.layer?.backgroundColor = NSColor.clear.cgColor
         view.preferredCornerRadius = cornerRadius
         return view
@@ -1479,7 +1480,9 @@ private struct OverlayView: View {
     }
 
     private var personaPickerCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+
+        return VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 12) {
                 HStack(alignment: .center, spacing: 14) {
                     personaPickerScopeIcon
@@ -1548,21 +1551,26 @@ private struct OverlayView: View {
         .padding(.bottom, 16)
         .frame(width: 458, alignment: .leading)
         .background(personaPickerGlassBackground)
-        .shadow(color: Color.black.opacity(0.30), radius: 24, x: 0, y: 16)
+        .clipShape(shape)
+        .contentShape(shape)
     }
 
     private var personaPickerGlassBackground: some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
-        return LiquidGlassShapeBackground(
-            shape: shape,
-            cornerRadius: 24,
-            tintOpacity: 0.08,
-            scrimOpacity: 0.28,
-            strokeOpacity: 0.18,
-            lineWidth: 1.0,
-            interactive: true,
-        )
+        return ZStack {
+            shape
+                .fill(Color.black.opacity(0.001))
+                .shadow(color: Color.black.opacity(0.30), radius: 24, x: 0, y: 16)
+
+            shape
+                .fill(.ultraThinMaterial)
+        }
+            .overlay(
+                shape
+                    .fill(Color.black.opacity(0.28))
+                    .allowsHitTesting(false),
+            )
         .overlay(
             shape
                 .fill(
@@ -1577,6 +1585,38 @@ private struct OverlayView: View {
                     ),
                 )
                 .allowsHitTesting(false),
+        )
+        .overlay(
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.26),
+                            Color.white.opacity(0.06),
+                            Color.white.opacity(0.18),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing,
+                    ),
+                    lineWidth: 1.0,
+                ),
+        )
+        .overlay(
+            shape
+                .inset(by: 1.6)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.20),
+                            Color.clear,
+                            Color.white.opacity(0.07),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom,
+                    ),
+                    lineWidth: 0.6,
+                )
+                .blendMode(.screen),
         )
     }
 
