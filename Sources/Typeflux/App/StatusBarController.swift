@@ -20,8 +20,8 @@ final class StatusBarController: NSObject {
 
     enum IconLayout {
         static let statusItemLength = NSStatusItem.squareLength
-        static let imageSize = NSSize(width: 20, height: 20)
-        static let pointSize: CGFloat = 15
+        static let imageSize = NSSize(width: 22, height: 22)
+        static let pointSize: CGFloat = 16
     }
 
     private let appState: AppStateStore

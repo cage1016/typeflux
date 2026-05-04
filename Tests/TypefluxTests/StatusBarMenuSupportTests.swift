@@ -4,9 +4,9 @@ import XCTest
 
 final class StatusBarMenuSupportTests: XCTestCase {
     func testStatusBarIconUsesBoundedMenuBarDimensions() {
-        XCTAssertEqual(StatusBarController.IconLayout.imageSize, NSSize(width: 20, height: 20))
+        XCTAssertEqual(StatusBarController.IconLayout.imageSize, NSSize(width: 22, height: 22))
         XCTAssertEqual(StatusBarController.IconLayout.statusItemLength, NSStatusItem.squareLength)
-        XCTAssertLessThanOrEqual(StatusBarController.IconLayout.pointSize, 15)
+        XCTAssertLessThanOrEqual(StatusBarController.IconLayout.pointSize, 16)
     }
 
     @MainActor
