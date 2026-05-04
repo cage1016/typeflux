@@ -305,7 +305,9 @@
 "workflow.transcription.noSpeech" = "No clear speech detected. Transcription cancelled.";
 "workflow.result.copyTitle" = "Copy Result";
 "workflow.ask.answerTitle" = "Ask Anything";
+"workflow.ask.questionSectionTitle" = "Your Question";
 "workflow.ask.answerSectionTitle" = "Answer";
+"workflow.ask.answerDisclaimer" = "AI-generated content. Please verify important details.";
 "workflow.ask.answerPresented" = "Answer shown";
 "workflow.result.copied" = "Copied to clipboard";
 "workflow.persona.finishRecordingFirst" = "Finish the current recording before switching persona.";

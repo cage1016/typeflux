@@ -3,6 +3,10 @@
 import Foundation
 
 extension WorkflowController {
+    private static func formatDurationSince(_ startDate: Date) -> String {
+        String(format: "%.1fms", Date().timeIntervalSince(startDate) * 1_000)
+    }
+
     enum AskWithoutSelectionAgentDisposition: Equatable {
         case answer(String)
         case insert(String)
@@ -257,6 +261,7 @@ extension WorkflowController {
                     askDecisionResult.decision.trimmedContent,
                     replace: replaceSelection,
                     fallbackTitle: L("workflow.result.copyTitle"),
+                    targetSnapshot: selectionSnapshot,
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -282,6 +287,7 @@ extension WorkflowController {
         _ text: String,
         replace: Bool,
         fallbackTitle: String = L("workflow.result.copyTitle"),
+        targetSnapshot: TextSelectionSnapshot? = nil,
     ) -> ApplyOutcome {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         NetworkDebugLogger.logMessage(
@@ -293,6 +299,19 @@ extension WorkflowController {
             normalizedPreview: \(String(normalizedText.prefix(120)))
             """,
         )
+        if let targetSnapshot, shouldBypassTextInjection(for: targetSnapshot) {
+            NetworkDebugLogger.logMessage(
+                """
+                [Apply Text] bypassing text injection for Typeflux-owned target
+                process: \(targetSnapshot.processName ?? "<unknown>")
+                bundleIdentifier: \(targetSnapshot.bundleIdentifier ?? "<unknown>")
+                source: \(targetSnapshot.source)
+                window: \(targetSnapshot.windowTitle ?? "<unknown>")
+                """,
+            )
+            presentResultDialog(title: fallbackTitle, text: text)
+            return .presentedInDialog
+        }
         do {
             if replace {
                 dismissOverlayForExternalReplacement()
@@ -327,12 +346,21 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
     ) -> ApplyOutcome {
         let optimizedText = DictationOutputOptimizer.optimize(text)
-        return applyText(optimizedText, replace: shouldReplaceActiveSelection(for: selectionSnapshot))
+        return applyText(
+            optimizedText,
+            replace: shouldReplaceActiveSelection(for: selectionSnapshot),
+            targetSnapshot: selectionSnapshot,
+        )
     }
 
     func finishRecordingAndProcess(recordingStoppedAt: Date) async {
         do {
+            let finishStartedAt = Date()
+            NetworkDebugLogger.logMessage("[Ask Timing] finishRecordingAndProcess entered intent=\(recordingIntent.traceName)")
             let audioFile = try audioRecorder.stop()
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] audioRecorder.stop completed in \(Self.formatDurationSince(finishStartedAt))",
+            )
             _ = await liveTranscriptionPreviewer?.finish()
             let realtimeTranscriptionSession = activeRealtimeTranscriptionSession
             let realtimeAudioBufferPump = activeRealtimeAudioBufferPump
@@ -342,12 +370,23 @@ extension WorkflowController {
             let audioFileReadyAt = Date()
             let recordingIntent = recordingIntent
             self.recordingIntent = .dictation
+            let selectionAwaitStartedAt = Date()
             let selectionSnapshot = await selectionTask?.value ?? TextSelectionSnapshot()
             selectionTask = nil
             let inputContext = await inputContextTask?.value
             inputContextTask = nil
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] context tasks completed in \(Self.formatDurationSince(selectionAwaitStartedAt))",
+            )
 
-            let audioAnalysis = try AudioContentAnalyzer.analyze(fileURL: audioFile.fileURL)
+            let audioAnalysisStartedAt = Date()
+            let audioFileURL = audioFile.fileURL
+            let audioAnalysis = try await Task.detached(priority: .userInitiated) {
+                try AudioContentAnalyzer.analyze(fileURL: audioFileURL)
+            }.value
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] audio analysis completed in \(Self.formatDurationSince(audioAnalysisStartedAt))",
+            )
             let validatedAudioFile = AudioFile(
                 fileURL: audioFile.fileURL,
                 duration: audioAnalysis.duration,
@@ -428,7 +467,12 @@ extension WorkflowController {
             startProcessingTimeout(sessionID: sessionID)
             processingTask = Task { [weak self] in
                 guard let self else { return }
+                let processingStartedAt = Date()
+                NetworkDebugLogger.logMessage("[Ask Timing] processing task entered intent=\(recordingIntent.traceName)")
                 await realtimeAudioBufferPump?.finishInput()
+                NetworkDebugLogger.logMessage(
+                    "[Ask Timing] realtime audio pump finished in \(Self.formatDurationSince(processingStartedAt))",
+                )
                 await process(
                     audioFile: validatedAudioFile,
                     realtimeTranscriptionSession: realtimeTranscriptionSession,
@@ -440,6 +484,9 @@ extension WorkflowController {
                     personaPrompt: personaPrompt,
                     recordingIntent: recordingIntent,
                     sessionID: sessionID,
+                )
+                NetworkDebugLogger.logMessage(
+                    "[Ask Timing] process completed in \(Self.formatDurationSince(processingStartedAt))",
                 )
                 cancelProcessingTimeout()
                 await MainActor.run {
@@ -594,6 +641,8 @@ extension WorkflowController {
             let transcribedText: String
             var mergedLLMResult: String?
 
+            let transcriptionStartedAt = Date()
+            NetworkDebugLogger.logMessage("[Ask Timing] transcription entered intent=\(recordingIntent.traceName)")
             if let realtimeTranscriptionSession {
                 do {
                     transcribedText = try await realtimeTranscriptionSession.finish()
@@ -623,6 +672,9 @@ extension WorkflowController {
                     scenario: cloudScenario,
                 ) { _ in }
             }
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] transcription completed in \(Self.formatDurationSince(transcriptionStartedAt))",
+            )
 
             try ensureProcessingIsActive(sessionID)
             pipelineTiming.transcriptionCompletedAt = Date()
@@ -935,6 +987,7 @@ extension WorkflowController {
         logPipelineEvent("llm-processing-started", for: record)
 
         if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
+            let agentLaunchStartedAt = Date()
             try await processAgentAskFlowWithoutSelection(
                 transcribedText: transcribedText,
                 askContextText: askContextText,
@@ -944,10 +997,14 @@ extension WorkflowController {
                 record: &record,
                 pipelineTiming: &pipelineTiming,
             )
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] detached agent ask launched in \(Self.formatDurationSince(agentLaunchStartedAt))",
+            )
             return true
         }
 
         let askDecisionResult: AskSelectionDecisionResult
+        let askDecisionStartedAt = Date()
         do {
             askDecisionResult = try await decideAskSelection(
                 selectedText: askContextText,
@@ -965,6 +1022,9 @@ extension WorkflowController {
             )
             return false
         }
+        NetworkDebugLogger.logMessage(
+            "[Ask Timing] ask decision completed in \(Self.formatDurationSince(askDecisionStartedAt))",
+        )
         try await applyLegacyAskDecision(
             askDecisionResult,
             question: transcribedText,
@@ -1673,6 +1733,18 @@ extension WorkflowController {
         snapshot.canReplaceSelection
     }
 
+    func shouldBypassTextInjection(for snapshot: TextSelectionSnapshot) -> Bool {
+        if snapshot.processID == getpid() {
+            return true
+        }
+
+        if snapshot.bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+
+        return false
+    }
+
     static func askWithoutSelectionAgentDisposition(for result: AskAgentResult) -> AskWithoutSelectionAgentDisposition {
         switch result {
         case let .answer(text):
@@ -1725,6 +1797,7 @@ extension WorkflowController {
             text,
             replace: replaceSelection,
             fallbackTitle: L("workflow.result.copyTitle"),
+            targetSnapshot: selectionSnapshot,
         )
     }
 

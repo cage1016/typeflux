@@ -212,7 +212,7 @@ struct MarkdownWebView: NSViewRepresentable {
     }
 
     private func colorHex(_ color: Color) -> String {
-        NSColor(color).resolvedHexString
+        NSColor(color).resolvedHexString(appearanceMode: appearanceMode)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
@@ -237,8 +237,12 @@ struct MarkdownWebView: NSViewRepresentable {
 }
 
 private extension NSColor {
-    var resolvedHexString: String {
-        let resolved = usingColorSpace(.deviceRGB) ?? self
+    func resolvedHexString(appearanceMode: AppearanceMode) -> String {
+        let appearance = AppAppearance.nsAppearance(for: appearanceMode) ?? NSApp.effectiveAppearance
+        var resolved = self
+        appearance.performAsCurrentDrawingAppearance {
+            resolved = usingColorSpace(.deviceRGB) ?? self
+        }
         let red = Int(round(resolved.redComponent * 255))
         let green = Int(round(resolved.greenComponent * 255))
         let blue = Int(round(resolved.blueComponent * 255))

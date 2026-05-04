@@ -303,7 +303,9 @@
 "workflow.transcription.noSpeech" = "明瞭な音声が検出されませんでした。転写はキャンセルされました。";
 "workflow.result.copyTitle" = "コピー結果";
 "workflow.ask.answerTitle" = "何でも聞いてください";
+"workflow.ask.questionSectionTitle" = "あなたの質問";
 "workflow.ask.answerSectionTitle" = "答え";
+"workflow.ask.answerDisclaimer" = "内容は AI によって生成されています。重要な情報は確認してください。";
 "workflow.ask.answerPresented" = "回答が表示されました";
 "workflow.result.copied" = "クリップボードにコピーされました";
 "workflow.persona.finishRecordingFirst" = "ペルソナを切り替える前に、現在の録音を終了してください。";

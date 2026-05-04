@@ -78,20 +78,11 @@ extension AXTextInjector {
 
     func logFocusResolution(context: String, rootElement: AXUIElement, resolvedElement: AXUIElement?) {
         let resolvedSummary = resolvedElement.map(elementSummary) ?? "<nil>"
-        let editableCandidate = findBestEditableDescendant(
-            in: rootElement,
-            depthRemaining: Self.focusedDescendantSearchDepth,
-        )
-        let editableCandidateSummary = editableCandidate.map(elementSummary) ?? "<nil>"
-        let tree = subtreeSummary(of: rootElement, depthRemaining: 2).joined(separator: "\n")
         NetworkDebugLogger.logMessage(
             """
             [Focus Resolution] \(context)
             root: \(elementSummary(rootElement))
             resolved: \(resolvedSummary)
-            bestEditableDescendant: \(editableCandidateSummary)
-            subtree:
-            \(tree)
             """,
         )
     }
