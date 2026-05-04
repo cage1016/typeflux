@@ -128,6 +128,47 @@ final class AXTextInjector: TextInjector {
 
     var latestSelectionContext: SelectionContext?
 
+    func isTypefluxOwnedTarget(processID: pid_t?, bundleIdentifier: String?) -> Bool {
+        if processID == getpid() {
+            return true
+        }
+
+        if let bundleIdentifier, bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+
+        return false
+    }
+
+    func typefluxOwnedSelectionSnapshot(source: String) -> TextSelectionSnapshot {
+        TextSelectionSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            selectedRange: nil,
+            selectedText: nil,
+            source: source,
+            isEditable: false,
+            role: nil,
+            windowTitle: nil,
+            isFocusedTarget: false,
+        )
+    }
+
+    func typefluxOwnedInputSnapshot(failureReason: String) -> CurrentInputTextSnapshot {
+        CurrentInputTextSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            role: nil,
+            text: nil,
+            selectedRange: nil,
+            isEditable: false,
+            isFocusedTarget: false,
+            failureReason: failureReason,
+        )
+    }
+
     enum PasteVerificationResult: Equatable {
         case success
         case failure(String)
@@ -337,6 +378,13 @@ final class AXTextInjector: TextInjector {
         let processName = frontmostApplicationName()
         let bundleIdentifier = frontmostApplicationBundleIdentifier()
         logger.debug("getSelectionSnapshot — app: \(processName ?? "?", privacy: .public) (pid: \(processID.map(String.init) ?? "?", privacy: .public))")
+        if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped selection snapshot for Typeflux-owned frontmost target",
+            )
+            latestSelectionContext = nil
+            return typefluxOwnedSelectionSnapshot(source: "typeflux-owned-target")
+        }
 
         if let result = readSelectedText() {
             // Compute editability from the SAME element that produced the text,
@@ -447,11 +495,21 @@ final class AXTextInjector: TextInjector {
             )
         }
 
+        let processID = frontmostProcessID()
+        let processName = frontmostApplicationName()
+        let bundleIdentifier = frontmostApplicationBundleIdentifier()
+        if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped input snapshot for Typeflux-owned frontmost target",
+            )
+            return typefluxOwnedInputSnapshot(failureReason: "typeflux-owned-target")
+        }
+
         guard let element = focusedElement() else {
             return CurrentInputTextSnapshot(
-                processID: frontmostProcessID(),
-                processName: frontmostApplicationName(),
-                bundleIdentifier: frontmostApplicationBundleIdentifier(),
+                processID: processID,
+                processName: processName,
+                bundleIdentifier: bundleIdentifier,
                 role: nil,
                 text: nil,
                 selectedRange: nil,
@@ -461,9 +519,6 @@ final class AXTextInjector: TextInjector {
             )
         }
 
-        let processID = frontmostProcessID()
-        let processName = frontmostApplicationName()
-        let bundleIdentifier = frontmostApplicationBundleIdentifier()
         let role = copyStringAttribute(kAXRoleAttribute as String, from: element)
         let isEditable = isLikelyEditable(element: element)
         let isFocusedTarget = copyBooleanAttribute(kAXFocusedAttribute as String, from: element) ?? false

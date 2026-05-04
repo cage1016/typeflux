@@ -22,6 +22,19 @@ extension AXTextInjector {
             )
         }
 
+        let processID = frontmostProcessID()
+        let bundleIdentifier = frontmostApplicationBundleIdentifier()
+        if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
+            NetworkDebugLogger.logMessage(
+                "[Text Injection] blocked Typeflux-owned frontmost target before AX write",
+            )
+            throw NSError(
+                domain: "AXTextInjector",
+                code: 10,
+                userInfo: [NSLocalizedDescriptionKey: "Refusing to inject text into Typeflux windows"],
+            )
+        }
+
         var contextRestored = false
         let beforeSnapshot = readCurrentInputTextSnapshot()
         NetworkDebugLogger.logMessage(

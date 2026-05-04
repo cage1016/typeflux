@@ -222,9 +222,11 @@ final class WorkflowController {
         NetworkDebugLogger.logMessage(
             """
             [Ask Answer] Sending content to window
-            Question: \(question)
-            Selected Text: \(selectedText ?? "<empty>")
-            Answer Markdown: \(answerMarkdown)
+            Question Length: \(question.count)
+            Question Preview: \(String(question.prefix(120)))
+            Selected Text Length: \(selectedText?.count ?? 0)
+            Answer Markdown Length: \(answerMarkdown.count)
+            Answer Markdown Preview: \(String(answerMarkdown.prefix(160)))
             """,
         )
         overlayController.dismissImmediately()
@@ -505,12 +507,11 @@ final class WorkflowController {
             return
         }
 
-        // If the agent is waiting for a clarification reply, intercept the hotkey press
-        // to start a clarification recording instead of cancelling the agent session.
+        // Clarification follow-up is intentionally disabled for now. A hotkey press
+        // should always start a fresh recording, independent of any existing Ask
+        // Anything or clarification window.
         if pendingClarificationContinuation != nil {
-            isClarificationRecording = true
-            Task { [weak self] in await self?.beginClarificationRecording() }
-            return
+            dismissClarification()
         }
 
         hotkeyPressedAt = startLocked ? nil : Date()
@@ -534,6 +535,28 @@ final class WorkflowController {
         recordingIntent = .askSelection
         recordingMode = .locked
         hotkeyPressedAt = nil
+        selectionTask?.cancel()
+        selectionTask = Task {
+            NetworkDebugLogger.logMessage(
+                "[Ask Flow] discarded pre-promotion selection capture for isolated Ask Anything recording",
+            )
+            return TextSelectionSnapshot(
+                processName: Self.isTypefluxFrontmostApplication() ? "Typeflux" : nil,
+                bundleIdentifier: Self.isTypefluxFrontmostApplication() ? Bundle.main.bundleIdentifier : nil,
+                source: "ask-promoted-isolated",
+                isEditable: false,
+                isFocusedTarget: false,
+            )
+        }
+        inputContextTask?.cancel()
+        inputContextTask = nil
+        activeRealtimeAudioBufferPump?.cancel()
+        activeRealtimeAudioBufferPump = nil
+        Task {
+            await self.liveTranscriptionPreviewer?.cancel()
+            await self.activeRealtimeTranscriptionSession?.cancel()
+            self.activeRealtimeTranscriptionSession = nil
+        }
         Task { @MainActor in
             guard self.isRecording else { return }
             self.overlayController.showLockedRecording(hintText: L("overlay.ask.guidance"))
@@ -663,6 +686,10 @@ final class WorkflowController {
         )
     }
 
+    private static func isTypefluxFrontmostApplication() -> Bool {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Bundle.main.bundleIdentifier
+    }
+
     private static func applicationIcon(
         appName: String?,
         bundleIdentifier: String?,
@@ -719,21 +746,29 @@ final class WorkflowController {
         do {
             RecordingStartupLatencyTrace.shared.mark("workflow.audio_start_enter")
             let livePreviewer = liveTranscriptionPreviewer
-            let usesLivePreview = shouldUseLiveTranscriptionPreview()
+            let canUseRealtimeTranscription = effectiveIntent != .askSelection
+            let usesLivePreview = canUseRealtimeTranscription && shouldUseLiveTranscriptionPreview()
             if usesLivePreview {
                 await livePreviewer?.prepareForStart()
             }
-            let realtimeSession = await sttRouter.makeRealtimeTranscriptionSession(
-                scenario: effectiveIntent == .askSelection ? .askAnything : .voiceInput,
-                onUpdate: { [weak self] snapshot in
-                    let trimmed = snapshot.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    Task { @MainActor [weak self] in
-                        guard let self, self.isRecording else { return }
-                        self.overlayController.updateRecordingPreviewText(trimmed)
-                    }
-                },
-            )
+            let realtimeSession: (any RealtimeTranscriptionSession)? = if canUseRealtimeTranscription {
+                await sttRouter.makeRealtimeTranscriptionSession(
+                    scenario: .voiceInput,
+                    onUpdate: { [weak self] snapshot in
+                        let trimmed = snapshot.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        Task { @MainActor [weak self] in
+                            guard let self, self.isRecording else { return }
+                            self.overlayController.updateRecordingPreviewText(trimmed)
+                        }
+                    },
+                )
+            } else {
+                nil
+            }
+            if effectiveIntent == .askSelection {
+                NetworkDebugLogger.logMessage("[Ask Flow] realtime transcription disabled for isolated Ask Anything recording")
+            }
             let realtimeAudioBufferPump = realtimeSession.map { RealtimeAudioBufferPump(session: $0) }
             activeRealtimeTranscriptionSession = realtimeSession
             activeRealtimeAudioBufferPump = realtimeAudioBufferPump
@@ -776,11 +811,26 @@ final class WorkflowController {
                 return
             }
 
-            selectionTask = Task { [weak self] in
+            let typefluxIsFrontmost = Self.isTypefluxFrontmostApplication()
+            let shouldSkipSelectionCapture = effectiveIntent == .askSelection || typefluxIsFrontmost
+            selectionTask = Task { [weak self, shouldSkipSelectionCapture, typefluxIsFrontmost, effectiveIntent] in
                 guard let self else { return TextSelectionSnapshot() }
+                if shouldSkipSelectionCapture {
+                    let source = effectiveIntent == .askSelection ? "ask-isolated" : "typeflux-frontmost-isolated"
+                    NetworkDebugLogger.logMessage(
+                        "[Ask Flow] skipped selection capture source=\(source)",
+                    )
+                    return TextSelectionSnapshot(
+                        processName: typefluxIsFrontmost ? "Typeflux" : nil,
+                        bundleIdentifier: typefluxIsFrontmost ? Bundle.main.bundleIdentifier : nil,
+                        source: source,
+                        isEditable: false,
+                        isFocusedTarget: false,
+                    )
+                }
                 return await textInjector.getSelectionSnapshot()
             }
-            if settingsStore.inputContextOptimizationEnabled {
+            if settingsStore.inputContextOptimizationEnabled && !shouldSkipSelectionCapture {
                 let selectionTask = selectionTask
                 inputContextTask = Task { [weak self] in
                     guard let self else { return nil }

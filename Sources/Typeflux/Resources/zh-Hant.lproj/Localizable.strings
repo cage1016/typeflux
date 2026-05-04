@@ -303,7 +303,9 @@
 "workflow.transcription.noSpeech" = "未偵測到清晰語音，本次轉寫已取消。";
 "workflow.result.copyTitle" = "複製結果";
 "workflow.ask.answerTitle" = "隨便問";
+"workflow.ask.questionSectionTitle" = "你的問題";
 "workflow.ask.answerSectionTitle" = "回答";
+"workflow.ask.answerDisclaimer" = "內容由 AI 生成，請注意甄別資訊準確性。";
 "workflow.ask.answerPresented" = "已顯示回答";
 "workflow.result.copied" = "已複製到剪貼簿";
 "workflow.persona.finishRecordingFirst" = "請先完成目前錄音，再切換人設。";

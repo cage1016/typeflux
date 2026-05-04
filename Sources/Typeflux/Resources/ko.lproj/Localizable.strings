@@ -303,7 +303,9 @@
 "workflow.transcription.noSpeech" = "명확한 음성이 감지되지 않았습니다. 스크립트 작성이 취소되었습니다.";
 "workflow.result.copyTitle" = "결과 복사";
 "workflow.ask.answerTitle" = "무엇이든 물어보세요";
+"workflow.ask.questionSectionTitle" = "질문";
 "workflow.ask.answerSectionTitle" = "답변";
+"workflow.ask.answerDisclaimer" = "AI가 생성한 내용입니다. 중요한 정보는 확인해 주세요.";
 "workflow.ask.answerPresented" = "답변 표시됨";
 "workflow.result.copied" = "클립보드에 복사됨";
 "workflow.persona.finishRecordingFirst" = "페르소나를 전환하기 전에 현재 녹음을 완료하세요.";
