@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  pull_request:
+    branches:
+      - main
   release:
     types:
       - published
@@ -16,9 +19,22 @@ permissions:
   contents: write
 
 jobs:
-  build-signed-macos-app:
+  x86_64-release-build-smoke:
+    if: github.event_name == 'pull_request'
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release target for Intel
+        run: swift build --arch x86_64 -c release
+
+  build-signed-macos-app:
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    timeout-minutes: 180
     env:
       APP_NAME: Typeflux
       BUILD_DIR: .build/release
@@ -118,39 +134,73 @@ jobs:
             APP_ONLY_PACKAGE_NAME="Typeflux-app-only"
           fi
 
+          TYPEFLUX_RELEASE_ARCH=arm64 \
           TYPEFLUX_RELEASE_VARIANT=minimal \
-          TYPEFLUX_PACKAGE_NAME="$MINIMAL_PACKAGE_NAME" \
+          TYPEFLUX_PACKAGE_NAME="$MINIMAL_PACKAGE_NAME-apple-silicon" \
           ./scripts/release_notarize.sh
 
+          TYPEFLUX_RELEASE_ARCH=x86_64 \
+          TYPEFLUX_RELEASE_VARIANT=minimal \
+          TYPEFLUX_PACKAGE_NAME="$MINIMAL_PACKAGE_NAME-intel" \
+          ./scripts/release_intel.sh
+
+          TYPEFLUX_RELEASE_ARCH=arm64 \
           TYPEFLUX_RELEASE_VARIANT=full \
-          TYPEFLUX_PACKAGE_NAME="$FULL_PACKAGE_NAME" \
+          TYPEFLUX_PACKAGE_NAME="$FULL_PACKAGE_NAME-apple-silicon" \
           ./scripts/release_notarize.sh
 
+          TYPEFLUX_RELEASE_ARCH=x86_64 \
+          TYPEFLUX_RELEASE_VARIANT=full \
+          TYPEFLUX_PACKAGE_NAME="$FULL_PACKAGE_NAME-intel" \
+          ./scripts/release_intel.sh
+
+          TYPEFLUX_RELEASE_ARCH=arm64 \
           TYPEFLUX_RELEASE_VARIANT=app-only \
-          TYPEFLUX_PACKAGE_NAME="$APP_ONLY_PACKAGE_NAME" \
+          TYPEFLUX_PACKAGE_NAME="$APP_ONLY_PACKAGE_NAME-apple-silicon" \
           ./scripts/release_notarize.sh
+
+          TYPEFLUX_RELEASE_ARCH=x86_64 \
+          TYPEFLUX_RELEASE_VARIANT=app-only \
+          TYPEFLUX_PACKAGE_NAME="$APP_ONLY_PACKAGE_NAME-intel" \
+          ./scripts/release_intel.sh
 
       - name: Verify release artifacts
         run: |
           set -euo pipefail
 
-          test -f "$BUILD_DIR/Typeflux-minimal.dmg" || test -f "$BUILD_DIR/Typeflux-pre-release-minimal.dmg"
-          test -f "$BUILD_DIR/Typeflux-minimal.zip" || test -f "$BUILD_DIR/Typeflux-pre-release-minimal.zip"
-          test -f "$BUILD_DIR/Typeflux-full.dmg" || test -f "$BUILD_DIR/Typeflux-pre-release-full.dmg"
-          test -f "$BUILD_DIR/Typeflux-full.zip" || test -f "$BUILD_DIR/Typeflux-pre-release-full.zip"
-          test -f "$BUILD_DIR/Typeflux-app-only.dmg" || test -f "$BUILD_DIR/Typeflux-pre-release-app-only.dmg"
-          test -f "$BUILD_DIR/Typeflux-app-only.zip" || test -f "$BUILD_DIR/Typeflux-pre-release-app-only.zip"
-          codesign --verify --deep --strict --verbose=2 "$BUILD_DIR/$APP_NAME.app"
-          spctl --assess --type execute --verbose=4 "$BUILD_DIR/$APP_NAME.app"
-          if [[ -f "$BUILD_DIR/Typeflux-full.dmg" ]]; then
-            xcrun stapler validate "$BUILD_DIR/Typeflux-full.dmg"
-            xcrun stapler validate "$BUILD_DIR/Typeflux-minimal.dmg"
-            xcrun stapler validate "$BUILD_DIR/Typeflux-app-only.dmg"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "pre-release" ]]; then
+            PACKAGE_PREFIX="Typeflux-pre-release"
           else
-            xcrun stapler validate "$BUILD_DIR/Typeflux-pre-release-full.dmg"
-            xcrun stapler validate "$BUILD_DIR/Typeflux-pre-release-minimal.dmg"
-            xcrun stapler validate "$BUILD_DIR/Typeflux-pre-release-app-only.dmg"
+            PACKAGE_PREFIX="Typeflux"
           fi
+
+          for variant in minimal full app-only; do
+            for arch in apple-silicon intel; do
+              test -f "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.dmg"
+              test -f "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.zip"
+            done
+          done
+
+          VERIFY_ROOT="$(mktemp -d)"
+          trap 'rm -rf "$VERIFY_ROOT"' EXIT
+
+          for variant in minimal full app-only; do
+            for arch in apple-silicon intel; do
+              if [[ "$arch" == "apple-silicon" ]]; then
+                expected_macho_arch="arm64"
+              else
+                expected_macho_arch="x86_64"
+              fi
+
+              app_verify_dir="$VERIFY_ROOT/${variant}-${arch}"
+              mkdir -p "$app_verify_dir"
+              ditto -x -k "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.zip" "$app_verify_dir"
+              codesign --verify --deep --strict --verbose=2 "$app_verify_dir/$APP_NAME.app"
+              spctl --assess --type execute --verbose=4 "$app_verify_dir/$APP_NAME.app"
+              ./scripts/audit_macho_minos.sh "$app_verify_dir/$APP_NAME.app" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}" "$expected_macho_arch"
+              xcrun stapler validate "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.dmg"
+            done
+          done
 
       - name: Upload pre-release build artifacts
         if: github.event_name == 'push' && github.ref_name == 'pre-release'
@@ -158,12 +208,18 @@ jobs:
         with:
           name: typeflux-pre-release-installers-${{ github.sha }}
           path: |
-            .build/release/Typeflux-pre-release-minimal.zip
-            .build/release/Typeflux-pre-release-minimal.dmg
-            .build/release/Typeflux-pre-release-full.zip
-            .build/release/Typeflux-pre-release-full.dmg
-            .build/release/Typeflux-pre-release-app-only.zip
-            .build/release/Typeflux-pre-release-app-only.dmg
+            .build/release/Typeflux-pre-release-minimal-apple-silicon.zip
+            .build/release/Typeflux-pre-release-minimal-apple-silicon.dmg
+            .build/release/Typeflux-pre-release-minimal-intel.zip
+            .build/release/Typeflux-pre-release-minimal-intel.dmg
+            .build/release/Typeflux-pre-release-full-apple-silicon.zip
+            .build/release/Typeflux-pre-release-full-apple-silicon.dmg
+            .build/release/Typeflux-pre-release-full-intel.zip
+            .build/release/Typeflux-pre-release-full-intel.dmg
+            .build/release/Typeflux-pre-release-app-only-apple-silicon.zip
+            .build/release/Typeflux-pre-release-app-only-apple-silicon.dmg
+            .build/release/Typeflux-pre-release-app-only-intel.zip
+            .build/release/Typeflux-pre-release-app-only-intel.dmg
           if-no-files-found: error
           retention-days: 14
 
@@ -192,12 +248,18 @@ jobs:
             Branch: pre-release
             Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           files: |
-            .build/release/Typeflux-pre-release-minimal.zip
-            .build/release/Typeflux-pre-release-minimal.dmg
-            .build/release/Typeflux-pre-release-full.zip
-            .build/release/Typeflux-pre-release-full.dmg
-            .build/release/Typeflux-pre-release-app-only.zip
-            .build/release/Typeflux-pre-release-app-only.dmg
+            .build/release/Typeflux-pre-release-minimal-apple-silicon.zip
+            .build/release/Typeflux-pre-release-minimal-apple-silicon.dmg
+            .build/release/Typeflux-pre-release-minimal-intel.zip
+            .build/release/Typeflux-pre-release-minimal-intel.dmg
+            .build/release/Typeflux-pre-release-full-apple-silicon.zip
+            .build/release/Typeflux-pre-release-full-apple-silicon.dmg
+            .build/release/Typeflux-pre-release-full-intel.zip
+            .build/release/Typeflux-pre-release-full-intel.dmg
+            .build/release/Typeflux-pre-release-app-only-apple-silicon.zip
+            .build/release/Typeflux-pre-release-app-only-apple-silicon.dmg
+            .build/release/Typeflux-pre-release-app-only-intel.zip
+            .build/release/Typeflux-pre-release-app-only-intel.dmg
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -208,12 +270,18 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
-            .build/release/Typeflux-minimal.zip
-            .build/release/Typeflux-minimal.dmg
-            .build/release/Typeflux-full.zip
-            .build/release/Typeflux-full.dmg
-            .build/release/Typeflux-app-only.zip
-            .build/release/Typeflux-app-only.dmg
+            .build/release/Typeflux-minimal-apple-silicon.zip
+            .build/release/Typeflux-minimal-apple-silicon.dmg
+            .build/release/Typeflux-minimal-intel.zip
+            .build/release/Typeflux-minimal-intel.dmg
+            .build/release/Typeflux-full-apple-silicon.zip
+            .build/release/Typeflux-full-apple-silicon.dmg
+            .build/release/Typeflux-full-intel.zip
+            .build/release/Typeflux-full-intel.dmg
+            .build/release/Typeflux-app-only-apple-silicon.zip
+            .build/release/Typeflux-app-only-apple-silicon.dmg
+            .build/release/Typeflux-app-only-intel.zip
+            .build/release/Typeflux-app-only-intel.dmg
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

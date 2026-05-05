@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "Usage: $0 <app-bundle-or-folder> [max-macos-minos]" >&2
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+  echo "Usage: $0 <app-bundle-or-folder> [max-macos-minos] [required-arch]" >&2
   exit 1
 fi
 
 SCAN_ROOT="$1"
 MAX_MACOS_MINOS="${2:-${TYPEFLUX_MAX_MACHO_MINOS:-13.4}}"
+REQUIRED_ARCH="${3:-${TYPEFLUX_REQUIRED_MACHO_ARCH:-}}"
 
 if [[ ! -d "$SCAN_ROOT" ]]; then
   echo "Error: scan root does not exist: $SCAN_ROOT" >&2
@@ -18,6 +19,20 @@ if ! command -v vtool >/dev/null 2>&1 && ! command -v otool >/dev/null 2>&1; the
   echo "Error: vtool or otool is required to audit Mach-O minimum OS versions" >&2
   exit 1
 fi
+
+if [[ -n "$REQUIRED_ARCH" ]] && ! command -v lipo >/dev/null 2>&1; then
+  echo "Error: lipo is required to audit Mach-O architecture slices" >&2
+  exit 1
+fi
+
+case "$REQUIRED_ARCH" in
+  ""|native|arm64|x86_64|universal)
+    ;;
+  *)
+    echo "Error: unsupported required Mach-O architecture: ${REQUIRED_ARCH}" >&2
+    exit 1
+    ;;
+esac
 
 version_gt() {
   local lhs="$1"
@@ -70,10 +85,31 @@ minos_versions_for_file() {
   printf '%s\n' "$versions" | sed '/^$/d'
 }
 
+file_has_required_architecture() {
+  local file_path="$1"
+  local archs
+
+  [[ -z "$REQUIRED_ARCH" || "$REQUIRED_ARCH" == "native" ]] && return 0
+
+  archs="$(lipo -archs "$file_path" 2>/dev/null || true)"
+  case "$REQUIRED_ARCH" in
+    arm64|x86_64)
+      [[ " ${archs} " == *" ${REQUIRED_ARCH} "* ]]
+      ;;
+    universal)
+      [[ " ${archs} " == *" arm64 "* && " ${archs} " == *" x86_64 "* ]]
+      ;;
+  esac
+}
+
 echo "Auditing Mach-O minos under ${SCAN_ROOT}"
 echo "Maximum allowed macOS minos: ${MAX_MACOS_MINOS}"
+if [[ -n "$REQUIRED_ARCH" && "$REQUIRED_ARCH" != "native" ]]; then
+  echo "Required Mach-O architecture: ${REQUIRED_ARCH}"
+fi
 
-offenders=()
+minos_offenders=()
+arch_offenders=()
 scanned_count=0
 
 while IFS= read -r -d '' candidate; do
@@ -85,14 +121,26 @@ while IFS= read -r -d '' candidate; do
   scanned_count=$((scanned_count + 1))
   while IFS= read -r minos; do
     if version_gt "$minos" "$MAX_MACOS_MINOS"; then
-      offenders+=("${candidate#$SCAN_ROOT/}: minos ${minos}")
+      minos_offenders+=("${candidate#$SCAN_ROOT/}: minos ${minos}")
     fi
   done < <(minos_versions_for_file "$candidate")
+
+  if ! file_has_required_architecture "$candidate"; then
+    arch_offenders+=("${candidate#$SCAN_ROOT/}: missing ${REQUIRED_ARCH}")
+  fi
 done < <(find "$SCAN_ROOT" -type f -print0)
 
-if (( ${#offenders[@]} > 0 )); then
+if (( ${#minos_offenders[@]} > 0 )); then
   echo "Error: Mach-O files exceed allowed macOS minos ${MAX_MACOS_MINOS}:" >&2
-  printf '  %s\n' "${offenders[@]}" >&2
+  printf '  %s\n' "${minos_offenders[@]}" >&2
+fi
+
+if (( ${#arch_offenders[@]} > 0 )); then
+  echo "Error: Mach-O files are missing required architecture ${REQUIRED_ARCH}:" >&2
+  printf '  %s\n' "${arch_offenders[@]}" >&2
+fi
+
+if (( ${#minos_offenders[@]} > 0 || ${#arch_offenders[@]} > 0 )); then
   exit 1
 fi
 

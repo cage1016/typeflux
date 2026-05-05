@@ -5,12 +5,30 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
 RELEASE_VARIANT="${TYPEFLUX_RELEASE_VARIANT:-minimal}"
+RELEASE_ARCH="${TYPEFLUX_RELEASE_ARCH:-native}"
 DEFAULT_PACKAGE_NAME="$APP_NAME"
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-full"
 elif [[ "$RELEASE_VARIANT" == "app-only" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-app-only"
 fi
+case "$RELEASE_ARCH" in
+  native)
+    ;;
+  arm64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-apple-silicon"
+    ;;
+  x86_64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-intel"
+    ;;
+  universal)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-universal"
+    ;;
+  *)
+    echo "Error: unsupported TYPEFLUX_RELEASE_ARCH: ${RELEASE_ARCH}" >&2
+    exit 1
+    ;;
+esac
 PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 DMG_NAME="${PACKAGE_NAME}.dmg"
