@@ -423,7 +423,7 @@ extension WorkflowController {
                 ? editingSelectedText(from: selectionSnapshot)
                 : nil
             let askContextText = recordingIntent == .askSelection
-                ? selectionSnapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
+                ? askContextText(from: selectionSnapshot, inputContext: inputContext)
                 : nil
             currentSelectedText = selectedText
             let personaPrompt = recordingIntent == .askSelection
@@ -1727,6 +1727,19 @@ extension WorkflowController {
     func editingSelectedText(from snapshot: TextSelectionSnapshot) -> String? {
         guard snapshot.canReplaceSelection else { return nil }
         return snapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func askContextText(
+        from snapshot: TextSelectionSnapshot,
+        inputContext: InputContextSnapshot?,
+    ) -> String? {
+        let snapshotText = snapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !snapshotText.isEmpty {
+            return snapshotText
+        }
+
+        let inputContextSelectedText = inputContext?.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return inputContextSelectedText.isEmpty ? nil : inputContextSelectedText
     }
 
     func shouldReplaceActiveSelection(for snapshot: TextSelectionSnapshot) -> Bool {

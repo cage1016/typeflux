@@ -535,11 +535,17 @@ final class WorkflowController {
         recordingIntent = .askSelection
         recordingMode = .locked
         hotkeyPressedAt = nil
-        selectionTask?.cancel()
+        let prePromotionSelectionTask = selectionTask
+        let prePromotionInputContextTask = inputContextTask
         selectionTask = Task {
-            NetworkDebugLogger.logMessage(
-                "[Ask Flow] discarded pre-promotion selection capture for isolated Ask Anything recording",
-            )
+            if let snapshot = await prePromotionSelectionTask?.value,
+               snapshot.hasAskSelectionContext
+            {
+                NetworkDebugLogger.logMessage(
+                    "[Ask Flow] preserved pre-promotion selection capture for Ask Anything recording",
+                )
+                return snapshot
+            }
             return TextSelectionSnapshot(
                 processName: Self.isTypefluxFrontmostApplication() ? "Typeflux" : nil,
                 bundleIdentifier: Self.isTypefluxFrontmostApplication() ? Bundle.main.bundleIdentifier : nil,
@@ -548,8 +554,7 @@ final class WorkflowController {
                 isFocusedTarget: false,
             )
         }
-        inputContextTask?.cancel()
-        inputContextTask = nil
+        inputContextTask = prePromotionInputContextTask
         activeRealtimeAudioBufferPump?.cancel()
         activeRealtimeAudioBufferPump = nil
         Task {

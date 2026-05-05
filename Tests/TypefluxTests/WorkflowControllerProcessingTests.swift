@@ -445,7 +445,34 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     func testAskPressDuringActiveDictationPromotesExistingRecording() async {
         let audioRecorder = MockProcessingAudioRecorder()
+        let selectionSnapshot = TextSelectionSnapshot(
+            processID: 1,
+            processName: "Arc",
+            bundleIdentifier: "company.thebrowser.Browser",
+            selectedRange: nil,
+            selectedText: "Selected browser text",
+            source: "clipboard-copy",
+            isEditable: true,
+            role: "AXGroup",
+            windowTitle: "Chat",
+            isFocusedTarget: true,
+        )
+        let inputSnapshot = CurrentInputTextSnapshot(
+            processID: 1,
+            processName: "Arc",
+            bundleIdentifier: "company.thebrowser.Browser",
+            role: "AXGroup",
+            text: "Before Selected browser text After",
+            selectedRange: CFRange(location: 7, length: 21),
+            isEditable: true,
+            isFocusedTarget: true,
+            textSource: "visible-text",
+        )
         let controller = makeWorkflowController(
+            textInjector: MockProcessingTextInjector(
+                selectionSnapshot: selectionSnapshot,
+                inputSnapshot: inputSnapshot,
+            ),
             audioRecorder: audioRecorder,
             sleep: { _ in },
         )
@@ -457,9 +484,35 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(controller.recordingIntent, .askSelection)
         XCTAssertEqual(controller.recordingMode, .locked)
         XCTAssertEqual(audioRecorder.startCallCount, 1)
+        let promotedSelectionSnapshot = await controller.selectionTask?.value
+        XCTAssertEqual(promotedSelectionSnapshot?.selectedText, "Selected browser text")
+        XCTAssertEqual(promotedSelectionSnapshot?.source, "clipboard-copy")
+        let promotedInputContext = await controller.inputContextTask?.value
+        XCTAssertEqual(promotedInputContext?.selectedText, "Selected browser text")
 
         controller.cancelRecording()
         await waitForMainActorWork()
+    }
+
+    func testAskContextTextFallsBackToInputContextSelection() {
+        let controller = makeWorkflowController()
+        let inputContext = InputContextSnapshot(
+            appName: "Arc",
+            bundleIdentifier: "company.thebrowser.Browser",
+            role: "AXGroup",
+            isEditable: true,
+            isFocusedTarget: true,
+            prefix: "Before",
+            suffix: "After",
+            selectedText: "Selected from input context",
+        )
+
+        let askContextText = controller.askContextText(
+            from: TextSelectionSnapshot(source: "ask-promoted-isolated"),
+            inputContext: inputContext,
+        )
+
+        XCTAssertEqual(askContextText, "Selected from input context")
     }
 
     func testActivationTapAfterEndingLockedAskRecordingIsSuppressed() async {
@@ -655,13 +708,23 @@ private func XCTAssertThrowsErrorAsync<T>(
 private final class MockProcessingTextInjector: TextInjector {
     private(set) var insertedTexts: [String] = []
     private(set) var replacedTexts: [String] = []
+    private let selectionSnapshot: TextSelectionSnapshot
+    private let inputSnapshot: CurrentInputTextSnapshot
+
+    init(
+        selectionSnapshot: TextSelectionSnapshot = TextSelectionSnapshot(),
+        inputSnapshot: CurrentInputTextSnapshot = CurrentInputTextSnapshot(),
+    ) {
+        self.selectionSnapshot = selectionSnapshot
+        self.inputSnapshot = inputSnapshot
+    }
 
     func getSelectionSnapshot() async -> TextSelectionSnapshot {
-        TextSelectionSnapshot()
+        selectionSnapshot
     }
 
     func currentInputTextSnapshot() async -> CurrentInputTextSnapshot {
-        CurrentInputTextSnapshot()
+        inputSnapshot
     }
 
     func currentInputText() async -> String? {
