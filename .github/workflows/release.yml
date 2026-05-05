@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  pull_request:
+    branches:
+      - main
   release:
     types:
       - published
@@ -16,9 +19,22 @@ permissions:
   contents: write
 
 jobs:
-  build-signed-macos-app:
+  x86_64-release-build-smoke:
+    if: github.event_name == 'pull_request'
     runs-on: macos-latest
-    timeout-minutes: 120
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release target for Intel
+        run: swift build --arch x86_64 -c release
+
+  build-signed-macos-app:
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    timeout-minutes: 180
     env:
       APP_NAME: Typeflux
       BUILD_DIR: .build/release
@@ -165,10 +181,23 @@ jobs:
             done
           done
 
-          codesign --verify --deep --strict --verbose=2 "$BUILD_DIR/$APP_NAME.app"
-          spctl --assess --type execute --verbose=4 "$BUILD_DIR/$APP_NAME.app"
+          VERIFY_ROOT="$(mktemp -d)"
+          trap 'rm -rf "$VERIFY_ROOT"' EXIT
+
           for variant in minimal full app-only; do
             for arch in apple-silicon intel; do
+              if [[ "$arch" == "apple-silicon" ]]; then
+                expected_macho_arch="arm64"
+              else
+                expected_macho_arch="x86_64"
+              fi
+
+              app_verify_dir="$VERIFY_ROOT/${variant}-${arch}"
+              mkdir -p "$app_verify_dir"
+              ditto -x -k "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.zip" "$app_verify_dir"
+              codesign --verify --deep --strict --verbose=2 "$app_verify_dir/$APP_NAME.app"
+              spctl --assess --type execute --verbose=4 "$app_verify_dir/$APP_NAME.app"
+              ./scripts/audit_macho_minos.sh "$app_verify_dir/$APP_NAME.app" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}" "$expected_macho_arch"
               xcrun stapler validate "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.dmg"
             done
           done

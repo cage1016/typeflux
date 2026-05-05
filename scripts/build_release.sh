@@ -258,7 +258,11 @@ else
   echo "Warning: To enable it, set TYPEFLUX_PROVISIONING_PROFILE to a macOS provisioning profile whose App ID matches ai.gulu.app.typeflux and includes the Sign In with Apple capability."
 fi
 
-"${ROOT_DIR}/scripts/audit_macho_minos.sh" "$APP_BUNDLE" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}"
+if [[ "$RELEASE_ARCH" == "arm64" || "$RELEASE_ARCH" == "x86_64" || "$RELEASE_ARCH" == "universal" ]]; then
+  "${ROOT_DIR}/scripts/audit_macho_minos.sh" "$APP_BUNDLE" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}" "$RELEASE_ARCH"
+else
+  "${ROOT_DIR}/scripts/audit_macho_minos.sh" "$APP_BUNDLE" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}"
+fi
 
 create_zip_archive
 

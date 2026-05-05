@@ -9,13 +9,13 @@ release:
 	./scripts/release_notarize.sh --move-to-downloads
 
 intel-release:
-	TYPEFLUX_RELEASE_ARCH=x86_64 ./scripts/release_intel.sh --move-to-downloads
+	./scripts/release_intel.sh --move-to-downloads
 
 release-continue:
 	./scripts/release_notarize.sh --continue --move-to-downloads
 
 intel-release-continue:
-	TYPEFLUX_RELEASE_ARCH=x86_64 ./scripts/release_intel.sh --continue --move-to-downloads
+	./scripts/release_intel.sh --continue --move-to-downloads
 
 full-release:
 	TYPEFLUX_RELEASE_VARIANT=full $(MAKE) release

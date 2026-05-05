@@ -33,7 +33,7 @@ PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 DMG_PATH="${BUILD_DIR}/${PACKAGE_NAME}.dmg"
 ZIP_PATH="${BUILD_DIR}/${PACKAGE_NAME}.zip"
-STATE_PATH="${TYPEFLUX_RELEASE_STATE_PATH:-${BUILD_DIR}/.release-workflow.env}"
+STATE_PATH="${TYPEFLUX_RELEASE_STATE_PATH:-${BUILD_DIR}/.release-workflow-${RELEASE_VARIANT}-${RELEASE_ARCH}.env}"
 DESTINATION_DIR="${TYPEFLUX_RELEASE_DESTINATION:-${HOME}/Downloads}"
 TYPEFLUX_NOTARY_POLL_INTERVAL_SECONDS="${TYPEFLUX_NOTARY_POLL_INTERVAL_SECONDS:-15}"
 TYPEFLUX_NOTARY_SUBMIT_RETRIES="${TYPEFLUX_NOTARY_SUBMIT_RETRIES:-3}"
@@ -72,7 +72,7 @@ usage() {
 Usage: scripts/release_notarize.sh [--continue] [--move-to-downloads]
 
 Options:
-  --continue           Resume the release recorded in .build/release/.release-workflow.env.
+  --continue           Resume the matching release recorded in .build/release/.release-workflow-<variant>-<arch>.env.
   --move-to-downloads Move finished ZIP and DMG artifacts to ~/Downloads as a resumable stage.
 EOF
 }
