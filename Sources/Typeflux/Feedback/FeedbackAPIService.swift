@@ -116,7 +116,7 @@ struct FeedbackAPIService {
         let data: Data
         let httpResponse: HTTPURLResponse
         do {
-            (data, httpResponse) = try await executor.execute { baseURL in
+            (data, httpResponse) = try await executor.execute(apiPath: "/api/v1/feedback") { baseURL in
                 let url = AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/feedback")
                 var urlRequest = URLRequest(url: url)
                 urlRequest.httpMethod = "POST"
@@ -189,7 +189,7 @@ struct FeedbackAPIService {
         let data: Data
         let httpResponse: HTTPURLResponse
         do {
-            (data, httpResponse) = try await executor.execute { baseURL in
+            (data, httpResponse) = try await executor.execute(apiPath: "/api/v1/feedback/uploads/presign") { baseURL in
                 let url = AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/feedback/uploads/presign")
                 var urlRequest = URLRequest(url: url)
                 urlRequest.httpMethod = "POST"
