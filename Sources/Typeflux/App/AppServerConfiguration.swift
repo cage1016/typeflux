@@ -27,15 +27,17 @@ enum AppServerConfiguration {
     /// 3. Built-in default
     /// The list always has at least one entry.
     static var apiBaseURLs: [String] {
-        if let multi = parseList(rawMultiEndpointValue()), !multi.isEmpty {
+        resolveAPIBaseURLs(rawMulti: rawMultiEndpointValue(), rawSingle: rawSingleEndpointValue())
+    }
+
+    static func resolveAPIBaseURLs(rawMulti: String?, rawSingle: String?) -> [String] {
+        if let multi = parseList(rawMulti), !multi.isEmpty {
             return multi
         }
-        let single = configuredValue(
-            environmentKey: "TYPEFLUX_API_URL",
-            infoPlistKey: "TYPEFLUX_API_URL",
-            default: defaultBaseURLs.first ?? ""
-        )
-        return [single]
+        if let rawSingle, !rawSingle.isEmpty {
+            return [rawSingle]
+        }
+        return defaultBaseURLs
     }
 
     /// Backwards-compatible single base URL accessor — returns the first
@@ -50,6 +52,16 @@ enum AppServerConfiguration {
             return value
         }
         if let value = Bundle.main.object(forInfoDictionaryKey: "TYPEFLUX_API_URLS") as? String, !value.isEmpty {
+            return value
+        }
+        return nil
+    }
+
+    private static func rawSingleEndpointValue() -> String? {
+        if let value = ProcessInfo.processInfo.environment["TYPEFLUX_API_URL"], !value.isEmpty {
+            return value
+        }
+        if let value = Bundle.main.object(forInfoDictionaryKey: "TYPEFLUX_API_URL") as? String, !value.isEmpty {
             return value
         }
         return nil
