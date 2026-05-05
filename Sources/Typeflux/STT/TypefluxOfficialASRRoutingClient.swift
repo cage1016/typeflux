@@ -44,8 +44,12 @@ enum TypefluxOfficialASRRoutingError: LocalizedError, Equatable {
             "Received an invalid Typeflux Cloud ASR routing response."
         case .unauthorized:
             "Please sign in to use Typeflux Cloud speech recognition."
-        case .serverError(_, let message):
-            message ?? "Typeflux Cloud ASR routing request failed."
+        case .serverError(let code, let message):
+            TypefluxCloudServerErrorMessage.userMessage(
+                code: code,
+                message: message,
+                fallback: "Typeflux Cloud ASR routing request failed."
+            )
         case .unknownRouteType(let type):
             "Unknown Typeflux Cloud ASR route type: \(type)"
         case .missingAliyunToken:

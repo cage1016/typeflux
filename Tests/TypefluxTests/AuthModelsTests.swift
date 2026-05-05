@@ -306,11 +306,15 @@ final class AuthModelsTests: XCTestCase {
     // MARK: - AuthError
 
     func testAuthErrorDescriptions() {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
         let networkError = AuthError.networkError(URLError(.notConnectedToInternet))
         XCTAssertNotNil(networkError.errorDescription)
 
         let serverError = AuthError.serverError(code: "AUTH_USER_EXISTS", message: "User exists")
-        XCTAssertEqual(serverError.errorDescription, "User exists")
+        XCTAssertEqual(serverError.errorDescription, "An account already exists for this email.")
         XCTAssertEqual(serverError.authErrorCode, "AUTH_USER_EXISTS")
 
         let invalidResponse = AuthError.invalidResponse
@@ -329,14 +333,22 @@ final class AuthModelsTests: XCTestCase {
     }
 
     func testAuthErrorRefreshTokenInvalidCode() {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
         let error = AuthError.serverError(code: "AUTH_REFRESH_TOKEN_INVALID", message: "invalid or expired refresh token")
         XCTAssertEqual(error.authErrorCode, "AUTH_REFRESH_TOKEN_INVALID")
-        XCTAssertEqual(error.errorDescription, "invalid or expired refresh token")
+        XCTAssertEqual(error.errorDescription, "Session expired. Please sign in again.")
     }
 
     func testAuthErrorRefreshTokenReusedCode() {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
         let error = AuthError.serverError(code: "AUTH_REFRESH_TOKEN_REUSED", message: "refresh token already used")
         XCTAssertEqual(error.authErrorCode, "AUTH_REFRESH_TOKEN_REUSED")
-        XCTAssertEqual(error.errorDescription, "refresh token already used")
+        XCTAssertEqual(error.errorDescription, "Session expired. Please sign in again.")
     }
 }

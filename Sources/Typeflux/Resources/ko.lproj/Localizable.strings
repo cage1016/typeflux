@@ -983,6 +983,16 @@
 "auth.error.unknown" = "알 수 없는 오류가 발생했습니다.";
 "auth.error.invalidResponse" = "서버 응답이 잘못되었습니다.";
 "auth.error.unauthorized" = "세션이 만료되었습니다. 다시 로그인해 주세요.";
+"cloud.error.authInvalidCredentials" = "이메일 또는 비밀번호가 올바르지 않습니다.";
+"cloud.error.authUserExists" = "이 이메일로 가입된 계정이 이미 있습니다.";
+"cloud.error.authUserNotActive" = "로그인하기 전에 계정을 활성화해 주세요.";
+"cloud.error.authCodeInvalid" = "인증 코드가 잘못되었거나 만료되었습니다.";
+"cloud.error.sessionExpired" = "세션이 만료되었습니다. 다시 로그인해 주세요.";
+"cloud.error.validation" = "요청이 올바르지 않습니다. 입력을 확인한 뒤 다시 시도해 주세요.";
+"cloud.error.rateLimited" = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+"cloud.error.quotaExceeded" = "Typeflux Cloud 사용 한도를 모두 사용했습니다.";
+"cloud.error.planRequired" = "현재 요금제에는 이 Typeflux Cloud 기능이 포함되어 있지 않습니다.";
+"cloud.error.server" = "Typeflux Cloud를 일시적으로 사용할 수 없습니다. 나중에 다시 시도해 주세요.";
 
 "auth.account.provider" = "로그인 방법";
 "auth.account.memberSince" = "가입일";

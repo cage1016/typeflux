@@ -68,6 +68,29 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
         )
     }
 
+    func testFetchRouteMapsKnownServerErrorCodeForUserDescription() async throws {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
+        let session = RoutingStubSession()
+        await session.setHandler { request in
+            (
+                Data(#"{"code":"ASR_QUOTA_EXCEEDED","message":"raw quota message","data":null}"#.utf8),
+                Self.httpResponse(url: request.url!, status: 429)
+            )
+        }
+        let client = makeClient(session: session)
+
+        do {
+            _ = try await client.fetchRoute(accessToken: "cloud-token", scenario: .voiceInput)
+            XCTFail("Expected server error")
+        } catch let error as TypefluxOfficialASRRoutingError {
+            XCTAssertEqual(error, .serverError(code: "ASR_QUOTA_EXCEEDED", message: "raw quota message"))
+            XCTAssertEqual(error.errorDescription, "Your Typeflux Cloud usage quota has been exhausted.")
+        }
+    }
+
     func testAudioDurationMeterUsesPCM16MonoAt16K() {
         XCTAssertEqual(TypefluxOfficialASRUsageMeter.audioDurationMilliseconds(pcm16ByteCount: 0), 0)
         XCTAssertEqual(TypefluxOfficialASRUsageMeter.audioDurationMilliseconds(pcm16ByteCount: 3_200), 100)

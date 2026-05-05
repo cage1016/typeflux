@@ -197,8 +197,12 @@ enum AuthError: LocalizedError {
         switch self {
         case .networkError(let error):
             error.localizedDescription
-        case .serverError(_, let message):
-            message ?? L("auth.error.unknown")
+        case .serverError(let code, let message):
+            TypefluxCloudServerErrorMessage.userMessage(
+                code: code,
+                message: message,
+                fallback: L("auth.error.unknown")
+            )
         case .invalidResponse:
             L("auth.error.invalidResponse")
         case .unauthorized:
