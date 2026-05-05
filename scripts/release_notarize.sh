@@ -5,12 +5,30 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
 RELEASE_VARIANT="${TYPEFLUX_RELEASE_VARIANT:-minimal}"
+RELEASE_ARCH="${TYPEFLUX_RELEASE_ARCH:-native}"
 DEFAULT_PACKAGE_NAME="$APP_NAME"
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-full"
 elif [[ "$RELEASE_VARIANT" == "app-only" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-app-only"
 fi
+case "$RELEASE_ARCH" in
+  native)
+    ;;
+  arm64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-apple-silicon"
+    ;;
+  x86_64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-intel"
+    ;;
+  universal)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-universal"
+    ;;
+  *)
+    echo "Error: unsupported TYPEFLUX_RELEASE_ARCH: ${RELEASE_ARCH}" >&2
+    exit 1
+    ;;
+esac
 PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 DMG_PATH="${BUILD_DIR}/${PACKAGE_NAME}.dmg"
@@ -114,6 +132,7 @@ write_state() {
   {
     printf 'RELEASE_STAGE=%q\n' "$RELEASE_STAGE"
     printf 'RELEASE_VARIANT=%q\n' "$RELEASE_VARIANT"
+    printf 'RELEASE_ARCH=%q\n' "$RELEASE_ARCH"
     printf 'PACKAGE_NAME=%q\n' "$PACKAGE_NAME"
     printf 'APP_BUNDLE=%q\n' "$APP_BUNDLE"
     printf 'DMG_PATH=%q\n' "$DMG_PATH"
@@ -131,6 +150,7 @@ set_stage() {
 
 load_state() {
   local expected_release_variant="$RELEASE_VARIANT"
+  local expected_release_arch="$RELEASE_ARCH"
   local expected_package_name="$PACKAGE_NAME"
   local expected_app_bundle="$APP_BUNDLE"
   local expected_dmg_path="$DMG_PATH"
@@ -148,6 +168,8 @@ load_state() {
 
   [[ "${RELEASE_VARIANT:-}" == "$expected_release_variant" ]] \
     || fail "Release state variant '${RELEASE_VARIANT:-}' does not match requested variant '${expected_release_variant}'."
+  [[ "${RELEASE_ARCH:-native}" == "$expected_release_arch" ]] \
+    || fail "Release state architecture '${RELEASE_ARCH:-native}' does not match requested architecture '${expected_release_arch}'."
   [[ "${PACKAGE_NAME:-}" == "$expected_package_name" ]] \
     || fail "Release state package '${PACKAGE_NAME:-}' does not match requested package '${expected_package_name}'."
   [[ "${APP_BUNDLE:-}" == "$expected_app_bundle" ]] \
@@ -371,6 +393,7 @@ main() {
   log "Using signing identity: ${TYPEFLUX_CODESIGN_IDENTITY}"
   log "Using notary profile: ${TYPEFLUX_NOTARY_PROFILE}"
   log "Using release variant: ${RELEASE_VARIANT}"
+  log "Using release architecture: ${RELEASE_ARCH}"
   log "Using package name: ${PACKAGE_NAME}"
   log "Using release state: ${STATE_PATH}"
 

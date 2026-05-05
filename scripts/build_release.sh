@@ -5,12 +5,30 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
 RELEASE_VARIANT="${TYPEFLUX_RELEASE_VARIANT:-minimal}"
+RELEASE_ARCH="${TYPEFLUX_RELEASE_ARCH:-native}"
 DEFAULT_PACKAGE_NAME="$APP_NAME"
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-full"
 elif [[ "$RELEASE_VARIANT" == "app-only" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-app-only"
 fi
+case "$RELEASE_ARCH" in
+  native)
+    ;;
+  arm64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-apple-silicon"
+    ;;
+  x86_64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-intel"
+    ;;
+  universal)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-universal"
+    ;;
+  *)
+    echo "Error: unsupported TYPEFLUX_RELEASE_ARCH: ${RELEASE_ARCH}" >&2
+    exit 1
+    ;;
+esac
 PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 APP_EXECUTABLE="${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
@@ -44,8 +62,44 @@ create_zip_archive() {
   )
 }
 
+verify_main_executable_architecture() {
+  if ! command -v lipo >/dev/null 2>&1; then
+    echo "Warning: lipo not available; skipping executable architecture audit."
+    return 0
+  fi
+
+  local archs
+  archs="$(lipo -archs "$APP_EXECUTABLE")"
+  echo "Main executable architectures: ${archs}"
+
+  case "$RELEASE_ARCH" in
+    native)
+      return 0
+      ;;
+    arm64)
+      [[ " ${archs} " == *" arm64 "* ]] || {
+        echo "Error: expected arm64 slice in ${APP_EXECUTABLE}" >&2
+        exit 1
+      }
+      ;;
+    x86_64)
+      [[ " ${archs} " == *" x86_64 "* ]] || {
+        echo "Error: expected x86_64 slice in ${APP_EXECUTABLE}" >&2
+        exit 1
+      }
+      ;;
+    universal)
+      [[ " ${archs} " == *" arm64 "* && " ${archs} " == *" x86_64 "* ]] || {
+        echo "Error: expected universal executable with arm64 and x86_64 slices in ${APP_EXECUTABLE}" >&2
+        exit 1
+      }
+      ;;
+  esac
+}
+
 echo "Building Typeflux release bundle..."
 echo "Release variant: ${RELEASE_VARIANT}"
+echo "Release architecture: ${RELEASE_ARCH}"
 
 case "$RELEASE_VARIANT" in
   minimal|full|app-only)
@@ -56,9 +110,21 @@ case "$RELEASE_VARIANT" in
     ;;
 esac
 
-swift build --package-path "$ROOT_DIR" -c release
+SWIFT_BUILD_ARGS=(--package-path "$ROOT_DIR" -c release)
+case "$RELEASE_ARCH" in
+  native)
+    ;;
+  arm64 | x86_64)
+    SWIFT_BUILD_ARGS+=(--arch "$RELEASE_ARCH")
+    ;;
+  universal)
+    SWIFT_BUILD_ARGS+=(--arch arm64 --arch x86_64)
+    ;;
+esac
 
-BIN_DIR="$(swift build --package-path "$ROOT_DIR" -c release --show-bin-path)"
+swift build "${SWIFT_BUILD_ARGS[@]}"
+
+BIN_DIR="$(swift build "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)"
 BIN="$BIN_DIR/Typeflux"
 RESOURCE_BUNDLE="$BIN_DIR/Typeflux_Typeflux.bundle"
 
@@ -70,6 +136,7 @@ cp "$ROOT_DIR/app/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 cp "$BIN" "$APP_BUNDLE/Contents/MacOS/Typeflux"
 cp "$ROOT_DIR/app/Typeflux.icns" "$APP_BUNDLE/Contents/Resources/Typeflux.icns"
 cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/Typeflux_Typeflux.bundle"
+verify_main_executable_architecture
 
 rm -rf "$APP_BUNDLE/Contents/Resources/BundledModels"
 rm -rf "$APP_BUNDLE/Contents/Resources/LocalRuntimes"
