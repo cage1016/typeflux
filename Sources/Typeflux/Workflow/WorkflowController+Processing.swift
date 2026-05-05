@@ -1734,12 +1734,23 @@ extension WorkflowController {
     }
 
     func shouldBypassTextInjection(for snapshot: TextSelectionSnapshot) -> Bool {
-        if snapshot.processID == getpid() {
+        if snapshot.source == "typeflux-native" {
+            return false
+        }
+
+        if snapshot.source == "typeflux-ask-answer-window"
+            || snapshot.source == "typeflux-non-text-window"
+            || snapshot.source == "typeflux-owned-target"
+        {
             return true
         }
 
+        if snapshot.processID == getpid() {
+            return !snapshot.isEditable
+        }
+
         if snapshot.bundleIdentifier == Bundle.main.bundleIdentifier {
-            return true
+            return !snapshot.isEditable
         }
 
         return false

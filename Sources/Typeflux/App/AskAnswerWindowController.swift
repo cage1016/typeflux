@@ -195,6 +195,7 @@ final class AskAnswerWindowController: NSObject {
         )
 
         window.title = L("workflow.ask.answerTitle")
+        window.identifier = TypefluxWindowIdentity.askAnswerWindowIdentifier
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none

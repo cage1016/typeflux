@@ -690,6 +690,11 @@ final class WorkflowController {
         NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Bundle.main.bundleIdentifier
     }
 
+    private static func isTypefluxAskAnswerWindowFrontmost() -> Bool {
+        guard isTypefluxFrontmostApplication() else { return false }
+        return TypefluxWindowIdentity.isAskAnswerWindow(NSApp.keyWindow ?? NSApp.mainWindow)
+    }
+
     private static func applicationIcon(
         appName: String?,
         bundleIdentifier: String?,
@@ -811,18 +816,18 @@ final class WorkflowController {
                 return
             }
 
-            let typefluxIsFrontmost = Self.isTypefluxFrontmostApplication()
-            let shouldSkipSelectionCapture = effectiveIntent == .askSelection || typefluxIsFrontmost
-            selectionTask = Task { [weak self, shouldSkipSelectionCapture, typefluxIsFrontmost, effectiveIntent] in
+            let askAnswerWindowIsFrontmost = Self.isTypefluxAskAnswerWindowFrontmost()
+            let shouldSkipSelectionCapture = effectiveIntent == .askSelection || askAnswerWindowIsFrontmost
+            selectionTask = Task { [weak self, shouldSkipSelectionCapture, askAnswerWindowIsFrontmost, effectiveIntent] in
                 guard let self else { return TextSelectionSnapshot() }
                 if shouldSkipSelectionCapture {
-                    let source = effectiveIntent == .askSelection ? "ask-isolated" : "typeflux-frontmost-isolated"
+                    let source = effectiveIntent == .askSelection ? "ask-isolated" : "typeflux-ask-answer-window"
                     NetworkDebugLogger.logMessage(
                         "[Ask Flow] skipped selection capture source=\(source)",
                     )
                     return TextSelectionSnapshot(
-                        processName: typefluxIsFrontmost ? "Typeflux" : nil,
-                        bundleIdentifier: typefluxIsFrontmost ? Bundle.main.bundleIdentifier : nil,
+                        processName: askAnswerWindowIsFrontmost ? "Typeflux" : nil,
+                        bundleIdentifier: askAnswerWindowIsFrontmost ? Bundle.main.bundleIdentifier : nil,
                         source: source,
                         isEditable: false,
                         isFocusedTarget: false,

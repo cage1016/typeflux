@@ -101,6 +101,11 @@ final class AXTextInjector: TextInjector {
         let selectedRange: CFRange?
     }
 
+    struct TypefluxNativeTextTarget {
+        let textView: NSTextView
+        let window: NSWindow?
+    }
+
     static var didRequestAccessibility = false
     static let legacyPasteRestoreDelayNanoseconds: UInt64 = 150_000_000
     static let verifiedPasteRestoreDelayNanoseconds: UInt64 = 150_000_000
@@ -138,6 +143,104 @@ final class AXTextInjector: TextInjector {
         }
 
         return false
+    }
+
+    func typefluxFrontmostWindow() -> NSWindow? {
+        guard isTypefluxOwnedTarget(
+            processID: frontmostProcessID(),
+            bundleIdentifier: frontmostApplicationBundleIdentifier(),
+        ) else {
+            return nil
+        }
+
+        return NSApp.keyWindow ?? NSApp.mainWindow
+    }
+
+    func typefluxNativeTextTarget() -> TypefluxNativeTextTarget? {
+        guard let window = typefluxFrontmostWindow() else { return nil }
+        guard !TypefluxWindowIdentity.isAskAnswerWindow(window) else { return nil }
+        guard let textView = window.firstResponder as? NSTextView else { return nil }
+        guard textView.isEditable || textView.isSelectable else { return nil }
+        return TypefluxNativeTextTarget(textView: textView, window: window)
+    }
+
+    func typefluxReadOnlyWindowSelectionSnapshot(source: String) -> TextSelectionSnapshot {
+        let window = typefluxFrontmostWindow()
+        return TextSelectionSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            selectedRange: nil,
+            selectedText: nil,
+            source: source,
+            isEditable: false,
+            role: nil,
+            windowTitle: window?.title,
+            isFocusedTarget: false,
+        )
+    }
+
+    func typefluxNativeSelectionSnapshot(target: TypefluxNativeTextTarget) -> TextSelectionSnapshot {
+        let selectedRange = target.textView.selectedRange()
+        let selectedText: String? = if selectedRange.length > 0,
+                                      selectedRange.location != NSNotFound,
+                                      NSMaxRange(selectedRange) <= target.textView.string.utf16.count
+        {
+            (target.textView.string as NSString).substring(with: selectedRange)
+        } else {
+            nil
+        }
+
+        return TextSelectionSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            selectedRange: CFRange(location: selectedRange.location, length: selectedRange.length),
+            selectedText: selectedText,
+            source: "typeflux-native",
+            isEditable: target.textView.isEditable,
+            role: "NSTextView",
+            windowTitle: target.window?.title,
+            isFocusedTarget: true,
+        )
+    }
+
+    func typefluxNativeInputSnapshot(target: TypefluxNativeTextTarget) -> CurrentInputTextSnapshot {
+        let selectedRange = target.textView.selectedRange()
+        return CurrentInputTextSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            role: "NSTextView",
+            text: target.textView.string,
+            selectedRange: CFRange(location: selectedRange.location, length: selectedRange.length),
+            isEditable: target.textView.isEditable,
+            isFocusedTarget: true,
+            failureReason: nil,
+            documentURL: nil,
+            textSource: "typeflux-native",
+        )
+    }
+
+    func insertIntoTypefluxNativeTextTarget(_ text: String, replaceSelection: Bool) throws -> Bool {
+        guard let target = typefluxNativeTextTarget() else { return false }
+        guard target.textView.isEditable else {
+            throw NSError(
+                domain: "AXTextInjector",
+                code: 11,
+                userInfo: [NSLocalizedDescriptionKey: "Focused Typeflux text target is not editable"],
+            )
+        }
+
+        let selectedRange = target.textView.selectedRange()
+        let replacementRange = replaceSelection
+            ? selectedRange
+            : NSRange(location: selectedRange.location, length: selectedRange.length)
+        target.textView.insertText(text, replacementRange: replacementRange)
+        NetworkDebugLogger.logMessage(
+            "[Text Injection] completed via Typeflux native text target",
+        )
+        return true
     }
 
     func typefluxOwnedSelectionSnapshot(source: String) -> TextSelectionSnapshot {
@@ -353,6 +456,22 @@ final class AXTextInjector: TextInjector {
     }
 
     func readSelectionSnapshot() -> TextSelectionSnapshot {
+        if let target = typefluxNativeTextTarget() {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] captured Typeflux native text selection",
+            )
+            latestSelectionContext = nil
+            return typefluxNativeSelectionSnapshot(target: target)
+        }
+
+        if TypefluxWindowIdentity.isAskAnswerWindow(typefluxFrontmostWindow()) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped selection snapshot for Typeflux Ask Answer window",
+            )
+            latestSelectionContext = nil
+            return typefluxReadOnlyWindowSelectionSnapshot(source: "typeflux-ask-answer-window")
+        }
+
         guard AXIsProcessTrusted() else {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
@@ -380,10 +499,10 @@ final class AXTextInjector: TextInjector {
         logger.debug("getSelectionSnapshot — app: \(processName ?? "?", privacy: .public) (pid: \(processID.map(String.init) ?? "?", privacy: .public))")
         if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
             NetworkDebugLogger.logMessage(
-                "[AXTextInjector] skipped selection snapshot for Typeflux-owned frontmost target",
+                "[AXTextInjector] skipped selection snapshot for Typeflux non-text frontmost target",
             )
             latestSelectionContext = nil
-            return typefluxOwnedSelectionSnapshot(source: "typeflux-owned-target")
+            return typefluxReadOnlyWindowSelectionSnapshot(source: "typeflux-non-text-window")
         }
 
         if let result = readSelectedText() {
@@ -481,6 +600,20 @@ final class AXTextInjector: TextInjector {
     }
 
     func readCurrentInputTextSnapshot() -> CurrentInputTextSnapshot {
+        if let target = typefluxNativeTextTarget() {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] captured Typeflux native input snapshot",
+            )
+            return typefluxNativeInputSnapshot(target: target)
+        }
+
+        if TypefluxWindowIdentity.isAskAnswerWindow(typefluxFrontmostWindow()) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped input snapshot for Typeflux Ask Answer window",
+            )
+            return typefluxOwnedInputSnapshot(failureReason: "typeflux-ask-answer-window")
+        }
+
         guard AXIsProcessTrusted() else {
             return CurrentInputTextSnapshot(
                 processID: frontmostProcessID(),
@@ -500,9 +633,9 @@ final class AXTextInjector: TextInjector {
         let bundleIdentifier = frontmostApplicationBundleIdentifier()
         if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
             NetworkDebugLogger.logMessage(
-                "[AXTextInjector] skipped input snapshot for Typeflux-owned frontmost target",
+                "[AXTextInjector] skipped input snapshot for Typeflux non-text frontmost target",
             )
-            return typefluxOwnedInputSnapshot(failureReason: "typeflux-owned-target")
+            return typefluxOwnedInputSnapshot(failureReason: "typeflux-non-text-window")
         }
 
         guard let element = focusedElement() else {
