@@ -138,16 +138,21 @@ struct FeedbackAPIService {
             throw FeedbackAPIError.networkError(error.localizedDescription)
         }
 
+        if httpResponse.statusCode == 401 {
+            throw FeedbackAPIError.unauthorized
+        }
+
         let envelope: APIResponse<FeedbackSubmissionResponse>
         do {
             envelope = try JSONDecoder().decode(APIResponse<FeedbackSubmissionResponse>.self, from: data)
         } catch {
-            logger.error("Feedback response decoding error: \(error.localizedDescription)")
+            logger.error(
+                "Feedback response decoding error for HTTP \(httpResponse.statusCode, privacy: .public): \(String(describing: error), privacy: .public)"
+            )
+            if !(200..<300).contains(httpResponse.statusCode) {
+                throw FeedbackAPIError.serverError(code: "HTTP_\(httpResponse.statusCode)", message: nil)
+            }
             throw FeedbackAPIError.invalidResponse
-        }
-
-        if httpResponse.statusCode == 401 {
-            throw FeedbackAPIError.unauthorized
         }
 
         guard httpResponse.statusCode >= 200, httpResponse.statusCode < 300,
@@ -206,16 +211,21 @@ struct FeedbackAPIService {
             throw FeedbackAPIError.networkError(error.localizedDescription)
         }
 
+        if httpResponse.statusCode == 401 {
+            throw FeedbackAPIError.unauthorized
+        }
+
         let envelope: APIResponse<FeedbackUploadTarget>
         do {
             envelope = try JSONDecoder().decode(APIResponse<FeedbackUploadTarget>.self, from: data)
         } catch {
-            logger.error("Feedback upload presign decoding error: \(error.localizedDescription)")
+            logger.error(
+                "Feedback upload presign decoding error for HTTP \(httpResponse.statusCode, privacy: .public): \(String(describing: error), privacy: .public)"
+            )
+            if !(200..<300).contains(httpResponse.statusCode) {
+                throw FeedbackAPIError.serverError(code: "HTTP_\(httpResponse.statusCode)", message: nil)
+            }
             throw FeedbackAPIError.invalidResponse
-        }
-
-        if httpResponse.statusCode == 401 {
-            throw FeedbackAPIError.unauthorized
         }
 
         guard httpResponse.statusCode >= 200, httpResponse.statusCode < 300,
@@ -247,24 +257,37 @@ struct FeedbackAPIService {
         for (name, value) in target.headers {
             request.setValue(value, forHTTPHeaderField: name)
         }
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        let fieldParts = target.fields
-            .sorted { $0.key < $1.key }
-            .map { MultipartPart.text(name: $0.key, value: $0.value) }
-        request.httpBody = try MultipartFormData.build(
-            boundary: boundary,
-            parts: fieldParts + [.fileData(name: "file", filename: filename, mimeType: contentType, data: data)]
-        )
+        if request.httpMethod?.uppercased() == "PUT" {
+            if request.value(forHTTPHeaderField: "Content-Type") == nil {
+                request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+            }
+            request.httpBody = data
+        } else {
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            let fieldParts = target.fields
+                .sorted { $0.key < $1.key }
+                .map { MultipartPart.text(name: $0.key, value: $0.value) }
+            request.httpBody = try MultipartFormData.build(
+                boundary: boundary,
+                parts: fieldParts + [.fileData(name: "file", filename: filename, mimeType: contentType, data: data)]
+            )
+        }
         try Task.checkCancellation()
 
         do {
-            let (_, response) = try await session.data(for: request)
+            let (responseData, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw FeedbackAPIError.invalidResponse
             }
             guard httpResponse.statusCode >= 200, httpResponse.statusCode < 300 else {
-                throw FeedbackAPIError.serverError(code: "UPLOAD_FAILED", message: "HTTP \(httpResponse.statusCode)")
+                let responseBody = uploadFailureResponseBody(responseData)
+                let message = responseBody.isEmpty
+                    ? "HTTP \(httpResponse.statusCode)"
+                    : "HTTP \(httpResponse.statusCode): \(responseBody)"
+                logger.error(
+                    "Feedback image upload failed with HTTP \(httpResponse.statusCode, privacy: .public): \(responseBody, privacy: .public)"
+                )
+                throw FeedbackAPIError.serverError(code: "UPLOAD_FAILED", message: message)
             }
         } catch is CancellationError {
             throw CancellationError()
@@ -276,5 +299,13 @@ struct FeedbackAPIService {
             logger.error("Feedback image upload failed: \(error.localizedDescription)")
             throw FeedbackAPIError.networkError(error.localizedDescription)
         }
+    }
+
+    private static func uploadFailureResponseBody(_ data: Data) -> String {
+        guard !data.isEmpty else { return "" }
+        if let body = String(data: data, encoding: .utf8) {
+            return body.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return "<\(data.count) bytes binary>"
     }
 }

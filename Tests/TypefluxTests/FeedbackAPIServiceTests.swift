@@ -111,6 +111,53 @@ final class FeedbackAPIServiceTests: XCTestCase {
         XCTAssertEqual(target.imageURL, "https://cdn.example/feedback/screen.jpg")
     }
 
+    func testCreateImageUploadTargetDecodesPresignedPutResponse() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            let payload = Data(
+                """
+                {"code":"OK","data":{"type":"s3_presigned_put","method":"PUT","url":"https://s3.example/upload?X-Amz-Signature=abc","bucket":"bucket","region":"apac","key":"feedback/screen.jpg","expires_at":1777960800,"max_size_bytes":5242880,"headers":{"Content-Type":"image/jpeg"},"fields":{},"image_url":"https://cdn.example/feedback/screen.jpg","upload_id":"upload-1"}}
+                """.utf8
+            )
+            return (payload, Self.httpResponse(url: request.url!, status: 200))
+        }
+        let executor = makeExecutor(session: session)
+
+        let target = try await FeedbackAPIService.createImageUploadTarget(
+            filename: "screen.jpg",
+            contentType: "image/jpeg",
+            sizeBytes: 123,
+            token: "token-1",
+            executor: executor
+        )
+
+        XCTAssertEqual(target.type, "s3_presigned_put")
+        XCTAssertEqual(target.method, "PUT")
+        XCTAssertEqual(target.headers["Content-Type"], "image/jpeg")
+        XCTAssertTrue(target.fields.isEmpty)
+    }
+
+    func testCreateImageUploadTargetMapsEmptyHTTPErrorBeforeDecoding() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            (Data(), Self.httpResponse(url: request.url!, status: 405))
+        }
+        let executor = makeExecutor(session: session)
+
+        do {
+            _ = try await FeedbackAPIService.createImageUploadTarget(
+                filename: "screen.jpg",
+                contentType: "image/jpeg",
+                sizeBytes: 123,
+                token: "token-1",
+                executor: executor
+            )
+            XCTFail("Expected server error")
+        } catch let error as FeedbackAPIError {
+            XCTAssertEqual(error, .serverError(code: "HTTP_405", message: nil))
+        }
+    }
+
     func testUploadImagePostsMultipartFieldsAndFileToPresignedTarget() async throws {
         let session = FeedbackStubSession()
         await session.setHandler { request in
@@ -149,6 +196,84 @@ final class FeedbackAPIServiceTests: XCTestCase {
             ),
             session: session
         )
+    }
+
+    func testUploadImagePutsRawDataToPresignedPutTarget() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://s3.example/upload?X-Amz-Signature=abc")
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "image/jpeg")
+            XCTAssertEqual(request.httpBody, Data("image-data".utf8))
+            XCTAssertFalse(String(data: try XCTUnwrap(request.httpBody), encoding: .utf8)?.contains("multipart/form-data") == true)
+
+            return (Data(), Self.httpResponse(url: request.url!, status: 200))
+        }
+
+        try await FeedbackAPIService.uploadImage(
+            data: Data("image-data".utf8),
+            filename: "screen.jpg",
+            contentType: "image/jpeg",
+            to: FeedbackUploadTarget(
+                type: "s3_presigned_put",
+                method: "PUT",
+                url: "https://s3.example/upload?X-Amz-Signature=abc",
+                bucket: "bucket",
+                region: "apac",
+                key: "feedback/screen.jpg",
+                expiresAt: 1_777_960_800,
+                maxSizeBytes: 5_242_880,
+                headers: ["Content-Type": "image/jpeg"],
+                fields: [:],
+                imageURL: "https://cdn.example/feedback/screen.jpg",
+                uploadID: "upload-1"
+            ),
+            session: session
+        )
+    }
+
+    func testUploadImageIncludesStorageErrorBodyInServerError() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            let body = Data(
+                """
+                <?xml version="1.0" encoding="UTF-8"?><Error><Code>NotImplemented</Code><Message>Presigned post requests are not yet implemented</Message></Error>
+                """.utf8
+            )
+            return (body, Self.httpResponse(url: request.url!, status: 501))
+        }
+
+        do {
+            try await FeedbackAPIService.uploadImage(
+                data: Data("image-data".utf8),
+                filename: "screen.jpg",
+                contentType: "image/jpeg",
+                to: FeedbackUploadTarget(
+                    type: "s3_presigned_post",
+                    method: "POST",
+                    url: "https://s3.example/upload",
+                    bucket: "bucket",
+                    region: "us-east-1",
+                    key: "feedback/screen.jpg",
+                    expiresAt: 1_777_960_800,
+                    maxSizeBytes: 5_242_880,
+                    headers: [:],
+                    fields: ["key": "feedback/screen.jpg", "policy": "abc"],
+                    imageURL: "https://cdn.example/feedback/screen.jpg",
+                    uploadID: "upload-1"
+                ),
+                session: session
+            )
+            XCTFail("Expected upload failure")
+        } catch let error as FeedbackAPIError {
+            XCTAssertEqual(
+                error,
+                .serverError(
+                    code: "UPLOAD_FAILED",
+                    message: #"HTTP 501: <?xml version="1.0" encoding="UTF-8"?><Error><Code>NotImplemented</Code><Message>Presigned post requests are not yet implemented</Message></Error>"#
+                )
+            )
+        }
     }
 
     func testUploadImagePropagatesTaskCancellation() async throws {
