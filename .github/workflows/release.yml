@@ -168,39 +168,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "pre-release" ]]; then
-            PACKAGE_PREFIX="Typeflux-pre-release"
-          else
-            PACKAGE_PREFIX="Typeflux"
-          fi
-
-          for variant in minimal full app-only; do
-            for arch in apple-silicon intel; do
-              test -f "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.dmg"
-              test -f "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.zip"
-            done
-          done
-
-          VERIFY_ROOT="$(mktemp -d)"
-          trap 'rm -rf "$VERIFY_ROOT"' EXIT
-
-          for variant in minimal full app-only; do
-            for arch in apple-silicon intel; do
-              if [[ "$arch" == "apple-silicon" ]]; then
-                expected_macho_arch="arm64"
-              else
-                expected_macho_arch="x86_64"
-              fi
-
-              app_verify_dir="$VERIFY_ROOT/${variant}-${arch}"
-              mkdir -p "$app_verify_dir"
-              ditto -x -k "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.zip" "$app_verify_dir"
-              codesign --verify --deep --strict --verbose=2 "$app_verify_dir/$APP_NAME.app"
-              spctl --assess --type execute --verbose=4 "$app_verify_dir/$APP_NAME.app"
-              ./scripts/audit_macho_minos.sh "$app_verify_dir/$APP_NAME.app" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}" "$expected_macho_arch"
-              xcrun stapler validate "$BUILD_DIR/${PACKAGE_PREFIX}-${variant}-${arch}.dmg"
-            done
-          done
+          ./scripts/verify_release_artifacts.sh
 
       - name: Upload pre-release build artifacts
         if: github.event_name == 'push' && github.ref_name == 'pre-release'
