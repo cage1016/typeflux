@@ -114,7 +114,7 @@ struct AuthAPIService {
         let data: Data
         let httpResponse: HTTPURLResponse
         do {
-            (data, httpResponse) = try await executor.execute { baseURL in
+            (data, httpResponse) = try await executor.execute(apiPath: path) { baseURL in
                 let url = AuthEndpointResolver.resolve(baseURL: baseURL, path: path)
                 var request = URLRequest(url: url)
                 request.httpMethod = method

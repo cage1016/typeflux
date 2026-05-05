@@ -258,7 +258,7 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
     static func runWithEndpointFailover<T>(
         operation: @Sendable (String) async throws -> T
     ) async throws -> T {
-        let urls = await CloudEndpointRegistry.shared.orderedEndpoints()
+        let urls = await CloudEndpointRegistry.shared.latencyOptimizedEndpoints()
         let baseURLs: [URL] = urls.isEmpty
             ? [URL(string: AppServerConfiguration.apiBaseURL)].compactMap { $0 }
             : urls
@@ -287,7 +287,7 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
     }
 
     private static func realtimeCandidateBaseURLs() async -> [URL] {
-        let urls = await CloudEndpointRegistry.shared.orderedEndpoints()
+        let urls = await CloudEndpointRegistry.shared.latencyOptimizedEndpoints()
         if !urls.isEmpty { return urls }
         return [URL(string: AppServerConfiguration.apiBaseURL)].compactMap { $0 }
     }

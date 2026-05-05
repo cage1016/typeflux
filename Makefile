@@ -56,7 +56,10 @@ release-notarize:
 release-notarize-continue:
 	./scripts/release_notarize.sh --continue
 
+verify-release-artifacts:
+	./scripts/verify_release_artifacts.sh
+
 format:
 	./scripts/format.sh
 
-.PHONY: run release intel-release release-continue intel-release-continue full-release full-intel-release app-only-release app-only-intel-release full-release-continue dev full-dev build test coverage dmg release-notarize release-notarize-continue format
+.PHONY: run release intel-release release-continue intel-release-continue full-release full-intel-release app-only-release app-only-intel-release full-release-continue dev full-dev build test coverage dmg release-notarize release-notarize-continue verify-release-artifacts format

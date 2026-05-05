@@ -76,7 +76,7 @@ final class AutoUpdater {
             guard let self else { return }
             let executor = CloudRequestExecutor()
             do {
-                let (data, _) = try await executor.execute { baseURL in
+                let (data, _) = try await executor.execute(apiPath: "/api/v1/app/update") { baseURL in
                     var components = URLComponents(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update"), resolvingAgainstBaseURL: false) ?? URLComponents()
                     components.queryItems = [URLQueryItem(name: "version", value: currentVersion)]
                     let url = components.url ?? AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update")

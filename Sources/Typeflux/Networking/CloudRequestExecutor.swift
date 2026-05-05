@@ -27,10 +27,22 @@ protocol CloudHTTPSession: Sendable {
 
 extension URLSession: CloudHTTPSession {}
 
+/// Routing policy for Typeflux Cloud requests.
+enum CloudEndpointRoutingStrategy: Sendable, Equatable {
+    /// Selects latency-optimized routing only for APIs that are explicitly
+    /// allowed to use the fastest endpoint; all other APIs use primary-first.
+    case automatic
+    /// Always try the first configured server before backups.
+    case primaryFirst
+    /// Try endpoints in measured latency order.
+    case latencyOptimized
+}
+
 /// Executes an HTTP request against the highest-priority Typeflux Cloud
 /// endpoint, falling back to additional endpoints when the active one returns
-/// a transport error or HTTP 5xx. Latency samples and failures are reported
-/// back into the selector so future calls converge on the lowest-latency host.
+/// a transport error or HTTP 5xx. When the caller provides an API path, only
+/// `/api/v1/chat/` and `/api/v1/asr/` use latency-optimized routing; all other
+/// APIs keep the first configured server as the primary endpoint.
 struct CloudRequestExecutor: Sendable {
     let selector: CloudEndpointSelector
     let session: CloudHTTPSession
@@ -45,20 +57,38 @@ struct CloudRequestExecutor: Sendable {
         self.session = session
     }
 
-    /// Returns the best base URL to use for a one-off request that the caller
-    /// will issue itself (for example, when the request lifecycle is owned by a
-    /// component that cannot easily route through `execute`).
-    func primaryEndpoint() async -> URL {
-        await selector.primaryEndpoint()
+    /// Returns the configured primary base URL to use for a one-off request
+    /// that the caller will issue itself.
+    func configuredPrimaryEndpoint() async -> URL {
+        await selector.configuredPrimaryEndpoint()
     }
 
-    /// Executes `build(baseURL)` against each healthy endpoint in priority
+    /// Returns the best base URL to use for a latency-sensitive one-off request
+    /// that the caller will issue itself (for example, when the request
+    /// lifecycle is owned by a component that cannot easily route through
+    /// `execute`).
+    func primaryEndpoint() async -> URL {
+        await selector.latencyOptimizedEndpoint()
+    }
+
+    /// Executes `build(baseURL)` against each eligible endpoint in priority
     /// order. Network errors and HTTP 5xx responses cause failover; other HTTP
     /// status codes are returned to the caller without rotating endpoints.
     func execute(
+        apiPath: String? = nil,
+        routingStrategy: CloudEndpointRoutingStrategy = .automatic,
         build: @Sendable (URL) -> URLRequest
     ) async throws -> (Data, HTTPURLResponse) {
-        let endpoints = await selector.orderedEndpoints()
+        let resolvedStrategy = resolveRoutingStrategy(routingStrategy, apiPath: apiPath)
+        let endpoints: [URL]
+        switch resolvedStrategy {
+        case .automatic:
+            endpoints = await selector.primaryFirstEndpoints()
+        case .primaryFirst:
+            endpoints = await selector.primaryFirstEndpoints()
+        case .latencyOptimized:
+            endpoints = await selector.latencyOptimizedEndpoints()
+        }
         guard !endpoints.isEmpty else {
             throw CloudRequestExecutorError.noEndpointsAvailable
         }
@@ -103,6 +133,25 @@ struct CloudRequestExecutor: Sendable {
         }
 
         throw CloudRequestExecutorError.allEndpointsFailed(lastError: lastError ?? CloudRequestExecutorError.noEndpointsAvailable)
+    }
+
+    private func resolveRoutingStrategy(
+        _ strategy: CloudEndpointRoutingStrategy,
+        apiPath: String?
+    ) -> CloudEndpointRoutingStrategy {
+        guard strategy == .automatic else { return strategy }
+        guard let path = apiPath else { return .primaryFirst }
+        return Self.isLatencyOptimizedAPIPath(path) ? .latencyOptimized : .primaryFirst
+    }
+
+    static func isLatencyOptimizedAPIPath(_ path: String) -> Bool {
+        let normalized = path.hasPrefix("/") ? path : "/" + path
+        return normalized == "/api/v1/chat"
+            || normalized.hasPrefix("/api/v1/chat/")
+            || normalized.contains("/api/v1/chat/")
+            || normalized == "/api/v1/asr"
+            || normalized.hasPrefix("/api/v1/asr/")
+            || normalized.contains("/api/v1/asr/")
     }
 
     private func durationToMilliseconds(_ duration: Duration) -> Double {
