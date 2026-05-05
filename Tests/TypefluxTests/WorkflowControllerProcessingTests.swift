@@ -416,6 +416,9 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(controller.recordingMode, .holdToTalk)
         XCTAssertEqual(audioRecorder.startCallCount, 1)
         XCTAssertEqual(audioRecorder.stopCallCount, 0)
+        await MainActor.run {
+            controller.overlayController.dismissImmediately()
+        }
     }
 
     func testReleasingAfterImmediateAudioStartStopsRecorder() async {

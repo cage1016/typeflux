@@ -995,6 +995,16 @@
 "auth.error.unknown" = "An unknown error occurred.";
 "auth.error.invalidResponse" = "Invalid server response.";
 "auth.error.unauthorized" = "Session expired. Please sign in again.";
+"cloud.error.authInvalidCredentials" = "The email or password is incorrect.";
+"cloud.error.authUserExists" = "An account already exists for this email.";
+"cloud.error.authUserNotActive" = "Please activate your account before signing in.";
+"cloud.error.authCodeInvalid" = "The verification code is invalid or has expired.";
+"cloud.error.sessionExpired" = "Session expired. Please sign in again.";
+"cloud.error.validation" = "The request was invalid. Please check the input and try again.";
+"cloud.error.rateLimited" = "Too many requests. Please wait a moment and try again.";
+"cloud.error.quotaExceeded" = "Your Typeflux Cloud usage quota has been exhausted.";
+"cloud.error.planRequired" = "Your current plan does not include this Typeflux Cloud feature.";
+"cloud.error.server" = "Typeflux Cloud is temporarily unavailable. Please try again later.";
 
 "auth.account.provider" = "Login Method";
 "auth.account.memberSince" = "Member Since";

@@ -991,6 +991,16 @@
 "auth.error.unknown" = "發生了未知錯誤。";
 "auth.error.invalidResponse" = "伺服器回應無效。";
 "auth.error.unauthorized" = "登入已過期，請重新登入。";
+"cloud.error.authInvalidCredentials" = "電子郵件或密碼不正確。";
+"cloud.error.authUserExists" = "此電子郵件已註冊帳號。";
+"cloud.error.authUserNotActive" = "請先啟用帳號後再登入。";
+"cloud.error.authCodeInvalid" = "驗證碼無效或已過期。";
+"cloud.error.sessionExpired" = "登入已過期，請重新登入。";
+"cloud.error.validation" = "請求無效，請檢查輸入後重試。";
+"cloud.error.rateLimited" = "請求過於頻繁，請稍後再試。";
+"cloud.error.quotaExceeded" = "Typeflux Cloud 使用額度已用完。";
+"cloud.error.planRequired" = "目前方案不包含此 Typeflux Cloud 功能。";
+"cloud.error.server" = "Typeflux Cloud 暫時無法使用，請稍後再試。";
 
 "auth.account.provider" = "登入方式";
 "auth.account.memberSince" = "註冊時間";
