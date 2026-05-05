@@ -31,7 +31,7 @@
 "feedback.direct.title" = "问题反馈";
 "feedback.direct.subtitle" = "描述你遇到的问题或建议。Typeflux 会提交到服务端并创建 Issue 便于跟进。";
 "feedback.direct.contentLabel" = "反馈内容";
-"feedback.direct.contentPlaceholder" = "发生了什么？请包含预期行为、实际行为和有用的上下文。";
+"feedback.direct.contentPlaceholder" = "请简单说说你遇到的问题或想法。\n例如：我按下快捷键后没有开始转写，重启应用后还是一样。\n也可以写：我希望转写完成后自动复制到剪贴板。";
 "feedback.direct.contactLabel" = "联系方式（可选）";
 "feedback.direct.contactPlaceholder" = "邮箱或其他联系方式";
 "feedback.direct.submit" = "提交";

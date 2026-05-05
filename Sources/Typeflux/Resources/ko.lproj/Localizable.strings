@@ -31,7 +31,7 @@
 "feedback.direct.title" = "문제 피드백";
 "feedback.direct.subtitle" = "문제나 제안을 입력하세요. Typeflux가 서버로 전송하고 후속 조치를 위한 Issue를 생성합니다.";
 "feedback.direct.contentLabel" = "피드백 내용";
-"feedback.direct.contentPlaceholder" = "무슨 일이 있었나요? 기대한 동작, 실제 동작, 도움이 되는 맥락을 입력하세요.";
+"feedback.direct.contentPlaceholder" = "겪은 문제나 개선되면 좋을 점을 간단히 적어 주세요.\n예: 단축키를 눌러도 받아쓰기가 시작되지 않고, 앱을 다시 열어도 그대로입니다.\n또는: 받아쓰기가 끝나면 텍스트가 자동으로 클립보드에 복사되면 좋겠습니다.";
 "feedback.direct.contactLabel" = "연락처(선택 사항)";
 "feedback.direct.contactPlaceholder" = "이메일 또는 기타 연락처";
 "feedback.direct.submit" = "제출";

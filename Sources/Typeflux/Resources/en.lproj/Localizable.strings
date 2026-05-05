@@ -31,7 +31,7 @@
 "feedback.direct.title" = "Send feedback";
 "feedback.direct.subtitle" = "Describe the problem or suggestion. Typeflux will send it to the service and create an issue for follow-up.";
 "feedback.direct.contentLabel" = "Feedback";
-"feedback.direct.contentPlaceholder" = "What happened? Include the expected behavior, actual behavior, and any useful context.";
+"feedback.direct.contentPlaceholder" = "Tell us what happened or what you would like to improve.\nExample: I pressed the shortcut, but dictation did not start, even after restarting the app.\nOr: I would like finished text to copy to the clipboard automatically.";
 "feedback.direct.contactLabel" = "Contact (optional)";
 "feedback.direct.contactPlaceholder" = "Email or other contact";
 "feedback.direct.submit" = "Submit";

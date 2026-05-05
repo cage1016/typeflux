@@ -10,22 +10,19 @@ struct DirectFeedbackSheet: View {
 
     @FocusState private var isContentFocused: Bool
 
+    private let contentEditorPadding: CGFloat = 10
+    private let contentPlaceholderHorizontalPadding: CGFloat = 13
+    private let contentPlaceholderVerticalPadding: CGFloat = 15
+
     private var trimmedContent: String {
         content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.mediumLarge) {
-            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
-                Text(L("feedback.direct.title"))
-                    .font(.studioDisplay(20, weight: .semibold))
-                    .foregroundStyle(StudioTheme.textPrimary)
-
-                Text(L("feedback.direct.subtitle"))
-                    .font(.studioBody(13))
-                    .foregroundStyle(StudioTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(L("feedback.direct.title"))
+                .font(.studioDisplay(20, weight: .semibold))
+                .foregroundStyle(StudioTheme.textPrimary)
 
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                 Text(L("feedback.direct.contentLabel"))
@@ -36,7 +33,7 @@ struct DirectFeedbackSheet: View {
                     TextEditor(text: $content)
                         .font(.studioBody(13))
                         .scrollContentBackground(.hidden)
-                        .padding(10)
+                        .padding(contentEditorPadding)
                         .frame(minHeight: 160)
                         .background(StudioTheme.controlSurface)
                         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous))
@@ -50,8 +47,9 @@ struct DirectFeedbackSheet: View {
                         Text(L("feedback.direct.contentPlaceholder"))
                             .font(.studioBody(13))
                             .foregroundStyle(StudioTheme.textTertiary)
-                            .padding(.horizontal, 15)
-                            .padding(.vertical, 18)
+                            .padding(.horizontal, contentPlaceholderHorizontalPadding)
+                            .padding(.vertical, contentPlaceholderVerticalPadding)
+                            .fixedSize(horizontal: false, vertical: true)
                             .allowsHitTesting(false)
                     }
                 }

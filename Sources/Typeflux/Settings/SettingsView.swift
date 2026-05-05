@@ -202,6 +202,7 @@ struct StudioView: View {
     @State private var feedbackContact = ""
     @State private var isSubmittingFeedback = false
     @State private var feedbackSubmissionError: String?
+    @State private var isFeedbackSubmittedAlertPresented = false
     @State private var agentConfigurationTab: AgentConfigurationTab = .general
     @State private var isAdvancedSettingsExpanded = false
     @ObservedObject private var localization = AppLocalization.shared
@@ -327,6 +328,13 @@ struct StudioView: View {
                 }
             },
         )
+        .alert(
+            L("feedback.toast.submitted"),
+            isPresented: $isFeedbackSubmittedAlertPresented,
+            actions: {
+                Button(L("common.ok"), role: .cancel) {}
+            },
+        )
         .sheet(isPresented: $isMCPServerDialogPresented) {
             mcpServerDialog
         }
@@ -429,6 +437,7 @@ struct StudioView: View {
                 isDirectFeedbackPresented = false
                 feedbackContent = ""
                 feedbackContact = ""
+                isFeedbackSubmittedAlertPresented = true
                 viewModel.showToast(L("feedback.toast.submitted"))
             } catch {
                 isSubmittingFeedback = false

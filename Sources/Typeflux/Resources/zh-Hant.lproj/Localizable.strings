@@ -31,7 +31,7 @@
 "feedback.direct.title" = "問題回饋";
 "feedback.direct.subtitle" = "描述你遇到的問題或建議。Typeflux 會提交到服務端並建立 Issue 方便後續追蹤。";
 "feedback.direct.contentLabel" = "回饋內容";
-"feedback.direct.contentPlaceholder" = "發生了什麼？請包含預期行為、實際行為和有用的上下文。";
+"feedback.direct.contentPlaceholder" = "請簡單說說你遇到的問題或想法。\n例如：我按下快捷鍵後沒有開始轉寫，重新啟動 App 後還是一樣。\n也可以寫：我希望轉寫完成後自動複製到剪貼簿。";
 "feedback.direct.contactLabel" = "聯絡方式（選填）";
 "feedback.direct.contactPlaceholder" = "電子郵件或其他聯絡方式";
 "feedback.direct.submit" = "提交";
