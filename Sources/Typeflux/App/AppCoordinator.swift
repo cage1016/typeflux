@@ -10,9 +10,11 @@ final class AppCoordinator {
     private let cloudEndpointProbeScheduler = CloudEndpointProbeScheduler()
 
     func start() {
+        let settingsStore = di.settingsStore
+        let localModelManager = di.localModelManager
         let workflowController = WorkflowController(
             appState: di.appState,
-            settingsStore: di.settingsStore,
+            settingsStore: settingsStore,
             hotkeyService: di.hotkeyService,
             audioRecorder: di.audioRecorder,
             sttRouter: di.sttRouter,
@@ -28,6 +30,25 @@ final class AppCoordinator {
             askAnswerWindowController: di.askAnswerWindowController,
             agentClarificationWindowController: di.agentClarificationWindowController,
             soundEffectPlayer: di.soundEffectPlayer,
+            liveTranscriptionPreviewer: LiveTranscriptionPreviewer(
+                settingsStore: settingsStore,
+                localBackendFactory: {
+                    LocalModelLivePreviewBackend(
+                        transcriberFactory: {
+                            if settingsStore.sttProvider == .typefluxOfficial {
+                                return self.di.autoModelDownloadService.makeTranscriberIfReady()
+                                    ?? UnavailableTranscriber(providerName: "Typeflux Cloud local optimization model")
+                            }
+                            return LocalModelTranscriber(
+                                settingsStore: settingsStore,
+                                modelManager: localModelManager,
+                            )
+                        },
+                    )
+                },
+                openAIBackendFactory: { OpenAIRealtimePreviewBackend(settingsStore: settingsStore) },
+                appleBackendFactory: { AppleSpeechPreviewBackend() },
+            ),
         )
         self.workflowController = workflowController
 

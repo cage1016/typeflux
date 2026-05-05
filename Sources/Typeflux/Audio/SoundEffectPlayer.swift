@@ -13,14 +13,14 @@ extension AVAudioPlayer: SoundEffectPlayback {}
 
 final class SoundEffectPlayer {
     enum Effect: String, CaseIterable {
-        case start
+        case tip
         case done
         case error
 
         var volume: Float {
             switch self {
-            case .start:
-                0.18
+            case .tip:
+                0.2
             case .done:
                 0.22
             case .error:
@@ -48,9 +48,13 @@ final class SoundEffectPlayer {
     @discardableResult
     @MainActor
     func play(_ effect: Effect) -> Bool {
-        guard settingsStore.soundEffectsEnabled else { return false }
+        guard settingsStore.soundEffectsEnabled else {
+            stopPlayers()
+            return false
+        }
         guard let player = player(for: effect) else { return false }
 
+        stopPlayers(except: effect)
         player.stop()
         player.currentTime = 0
         player.volume = effect.volume
@@ -62,6 +66,26 @@ final class SoundEffectPlayer {
         }
 
         return true
+    }
+
+    private func stopPlayers(except activeEffect: Effect) {
+        for (effect, player) in players where effect != activeEffect {
+            player.stop()
+            player.currentTime = 0
+        }
+    }
+
+    private func stopPlayers() {
+        for player in players.values {
+            player.stop()
+            player.currentTime = 0
+        }
+    }
+
+    func playAsync(_ effect: Effect) {
+        Task { @MainActor in
+            _ = self.play(effect)
+        }
     }
 
     private func preloadPlayers() {

@@ -10,10 +10,13 @@ enum HotkeyGestureEvent: Equatable {
     case activationTapped
     case begin(HotkeyAction)
     case end(HotkeyAction)
+    case cancel(HotkeyAction)
     case personaRequested
 }
 
 struct HotkeyGestureArbiter {
+    private static let doubleTapMaximumInterval: TimeInterval = 0.45
+
     enum Phase: Equatable {
         case idle
         case pendingModifierActivation
@@ -21,9 +24,16 @@ struct HotkeyGestureArbiter {
     }
 
     private(set) var phase: Phase = .idle
+    private var lastModifierTap: ModifierTap?
 
     var hasPendingModifierActivation: Bool {
         phase == .pendingModifierActivation
+    }
+
+    private struct ModifierTap: Equatable {
+        let keyCode: Int
+        let modifierFlags: UInt
+        let timestamp: TimeInterval
     }
 
     func shouldConsume(
@@ -36,8 +46,31 @@ struct HotkeyGestureArbiter {
     ) -> Bool {
         switch eventType {
         case .flagsChanged:
-            guard let activationHotkey else { return false }
-            return activationHotkey.isModifierOnlyTrigger && keyCode == activationHotkey.keyCode
+            if let activationHotkey,
+               activationHotkey.isModifierOnlyTrigger,
+               keyCode == activationHotkey.keyCode
+            {
+                return true
+            }
+            if let askHotkey,
+               askHotkey.isModifierOnlyTrigger,
+               keyCode == askHotkey.keyCode
+            {
+                return true
+            }
+            if let askHotkey,
+               askHotkey.isModifierDoubleTapTrigger,
+               keyCode == askHotkey.keyCode
+            {
+                return true
+            }
+            if let personaHotkey,
+               personaHotkey.isModifierOnlyTrigger,
+               keyCode == personaHotkey.keyCode
+            {
+                return true
+            }
+            return false
         case .keyDown:
             if let askHotkey, askHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
                 return true
@@ -103,7 +136,12 @@ struct HotkeyGestureArbiter {
         }
 
         if let personaHotkey, personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags) {
-            return [.personaRequested]
+            guard phase == .idle || phase == .pendingModifierActivation else { return [] }
+            let shouldCancelPendingActivation = phase == .pendingModifierActivation
+            phase = .idle
+            return shouldCancelPendingActivation
+                ? [.cancel(.activation), .personaRequested]
+                : [.personaRequested]
         }
 
         return []
@@ -135,30 +173,108 @@ struct HotkeyGestureArbiter {
         modifierFlags: UInt,
         activationHotkey: HotkeyBinding?,
         askHotkey: HotkeyBinding?,
+        personaHotkey: HotkeyBinding? = nil,
+        timestamp: TimeInterval = Date().timeIntervalSinceReferenceDate,
     ) -> [HotkeyGestureEvent] {
-        guard let activationHotkey else { return [] }
-        guard activationHotkey.isModifierOnlyTrigger else { return [] }
+        if isSecondTapForDoubleTapAsk(
+            keyCode: keyCode,
+            modifierFlags: modifierFlags,
+            askHotkey: askHotkey,
+            timestamp: timestamp,
+        ) {
+            lastModifierTap = nil
+            guard phase == .idle || phase == .pendingModifierActivation else { return [] }
+            let shouldCancelPendingActivation = phase == .pendingModifierActivation
+            phase = .active(.ask)
+            return shouldCancelPendingActivation
+                ? [.cancel(.activation), .begin(.ask)]
+                : [.begin(.ask)]
+        }
 
-        let isActivationModifierEvent = keyCode == activationHotkey.keyCode
-        let activationModifierDown = isActivationModifierEvent && modifierFlags == activationHotkey.modifierFlags
-
-        if activationModifierDown, phase == .idle {
-            if shouldDeferModifierActivation(activationHotkey: activationHotkey, askHotkey: askHotkey) {
+        if let activationHotkey,
+           activationHotkey.isModifierOnlyTrigger,
+           activationHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags),
+           phase == .idle
+        {
+            if shouldDeferModifierActivation(
+                activationHotkey: activationHotkey,
+                askHotkey: askHotkey,
+                personaHotkey: personaHotkey,
+            ) {
                 phase = .pendingModifierActivation
-                return []
+                return [.begin(.activation)]
             }
 
             phase = .active(.activation)
             return [.begin(.activation)]
         }
 
+        if let askHotkey,
+           askHotkey.isModifierOnlyTrigger,
+           askHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags)
+        {
+            guard phase == .idle || phase == .pendingModifierActivation else { return [] }
+            let shouldCancelPendingActivation = phase == .pendingModifierActivation
+            phase = .active(.ask)
+            return shouldCancelPendingActivation
+                ? [.cancel(.activation), .begin(.ask)]
+                : [.begin(.ask)]
+        }
+
+        if let personaHotkey,
+           personaHotkey.isModifierOnlyTrigger,
+           personaHotkey.matches(keyCode: keyCode, modifierFlags: modifierFlags)
+        {
+            guard phase == .idle || phase == .pendingModifierActivation else { return [] }
+            let shouldCancelPendingActivation = phase == .pendingModifierActivation
+            phase = .idle
+            return shouldCancelPendingActivation
+                ? [.cancel(.activation), .personaRequested]
+                : [.personaRequested]
+        }
+
+        if case .active(.ask) = phase,
+           let askHotkey,
+           askHotkey.isModifierOnlyTrigger,
+           keyCode == askHotkey.keyCode,
+           modifierFlags != askHotkey.modifierFlags
+        {
+            phase = .idle
+            return [.end(.ask)]
+        }
+        if case .active(.ask) = phase,
+           let askHotkey,
+           askHotkey.isModifierDoubleTapTrigger,
+           keyCode == askHotkey.keyCode,
+           modifierFlags != askHotkey.modifierFlags
+        {
+            phase = .idle
+            return [.end(.ask)]
+        }
+
+        guard let activationHotkey, activationHotkey.isModifierOnlyTrigger else { return [] }
+        let isActivationModifierEvent = keyCode == activationHotkey.keyCode
+        let activationModifierDown = isActivationModifierEvent && modifierFlags == activationHotkey.modifierFlags
+
         guard isActivationModifierEvent, !activationModifierDown else { return [] }
 
         switch phase {
         case .pendingModifierActivation:
+            rememberModifierTap(
+                keyCode: keyCode,
+                modifierFlags: activationHotkey.modifierFlags,
+                askHotkey: askHotkey,
+                timestamp: timestamp,
+            )
             phase = .idle
             return [.activationTapped]
         case .active(.activation):
+            rememberModifierTap(
+                keyCode: keyCode,
+                modifierFlags: activationHotkey.modifierFlags,
+                askHotkey: askHotkey,
+                timestamp: timestamp,
+            )
             phase = .idle
             return [.end(.activation)]
         default:
@@ -169,16 +285,49 @@ struct HotkeyGestureArbiter {
     mutating func handlePendingModifierActivationTimeout() -> [HotkeyGestureEvent] {
         guard phase == .pendingModifierActivation else { return [] }
         phase = .active(.activation)
-        return [.begin(.activation)]
+        return []
     }
 
     private func shouldDeferModifierActivation(
         activationHotkey: HotkeyBinding,
         askHotkey: HotkeyBinding?,
+        personaHotkey: HotkeyBinding?,
     ) -> Bool {
-        guard let askHotkey else { return false }
-        return activationHotkey.isModifierOnlyTrigger
-            && askHotkey.modifierFlags == activationHotkey.modifierFlags
-            && askHotkey.keyCode != activationHotkey.keyCode
+        guard activationHotkey.isModifierOnlyTrigger else { return false }
+        let competingHotkeys = [askHotkey, personaHotkey].compactMap { $0 }
+        return competingHotkeys.contains { hotkey in
+            hotkey.modifierFlags == activationHotkey.modifierFlags
+                && (hotkey.keyCode != activationHotkey.keyCode || hotkey.isModifierDoubleTapTrigger)
+        }
+    }
+
+    private func isSecondTapForDoubleTapAsk(
+        keyCode: Int,
+        modifierFlags: UInt,
+        askHotkey: HotkeyBinding?,
+        timestamp: TimeInterval,
+    ) -> Bool {
+        guard let askHotkey, askHotkey.isModifierDoubleTapTrigger else { return false }
+        guard askHotkey.keyCode == keyCode, askHotkey.modifierFlags == modifierFlags else { return false }
+        guard let lastModifierTap else { return false }
+        guard lastModifierTap.keyCode == keyCode, lastModifierTap.modifierFlags == modifierFlags else { return false }
+        return timestamp - lastModifierTap.timestamp <= Self.doubleTapMaximumInterval
+    }
+
+    private mutating func rememberModifierTap(
+        keyCode: Int,
+        modifierFlags: UInt,
+        askHotkey: HotkeyBinding?,
+        timestamp: TimeInterval,
+    ) {
+        guard let askHotkey, askHotkey.isModifierDoubleTapTrigger else {
+            lastModifierTap = nil
+            return
+        }
+        guard askHotkey.keyCode == keyCode, askHotkey.modifierFlags == modifierFlags else {
+            lastModifierTap = nil
+            return
+        }
+        lastModifierTap = ModifierTap(keyCode: keyCode, modifierFlags: modifierFlags, timestamp: timestamp)
     }
 }

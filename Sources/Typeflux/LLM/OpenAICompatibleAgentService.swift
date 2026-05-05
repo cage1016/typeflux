@@ -51,7 +51,9 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             )
             if let appContext = request.appSystemContext {
                 let extra = PromptCatalog.appSpecificSystemContext(appContext)
-                if !extra.isEmpty { prompt += "\n\n\(extra)" }
+                if !extra.isEmpty {
+                    prompt = PromptCatalog.appendAdditionalSystemContext(extra, to: prompt)
+                }
             }
             return prompt
         }()
@@ -98,7 +100,9 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             )
             if let appContext = request.appSystemContext {
                 let extra = PromptCatalog.appSpecificSystemContext(appContext)
-                if !extra.isEmpty { prompt += "\n\n\(extra)" }
+                if !extra.isEmpty {
+                    prompt = PromptCatalog.appendAdditionalSystemContext(extra, to: prompt)
+                }
             }
             return prompt
         }()
@@ -364,6 +368,7 @@ enum RemoteAgentClient {
             urlRequest.setValue(value, forHTTPHeaderField: field)
         }
         let body = LLMAgentResponseSupport.geminiToolBody(
+            model: model,
             systemPrompt: request.systemPrompt,
             userPrompt: request.userPrompt,
             tools: request.tools,

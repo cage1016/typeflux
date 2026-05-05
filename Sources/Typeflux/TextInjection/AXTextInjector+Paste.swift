@@ -6,6 +6,21 @@ import Foundation
 // swiftlint:disable identifier_name line_length opening_brace trailing_comma
 extension AXTextInjector {
     func setText(_ text: String, replaceSelection: Bool) throws {
+        if try insertIntoTypefluxNativeTextTarget(text, replaceSelection: replaceSelection) {
+            return
+        }
+
+        if TypefluxWindowIdentity.isAskAnswerWindow(typefluxFrontmostWindow()) {
+            NetworkDebugLogger.logMessage(
+                "[Text Injection] blocked Typeflux Ask Answer window before AX write",
+            )
+            throw NSError(
+                domain: "AXTextInjector",
+                code: 10,
+                userInfo: [NSLocalizedDescriptionKey: "Refusing to inject text into Typeflux result windows"],
+            )
+        }
+
         if !AXIsProcessTrusted() {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
@@ -19,6 +34,19 @@ extension AXTextInjector {
                 domain: "AXTextInjector",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "Accessibility permission required"],
+            )
+        }
+
+        let processID = frontmostProcessID()
+        let bundleIdentifier = frontmostApplicationBundleIdentifier()
+        if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
+            NetworkDebugLogger.logMessage(
+                "[Text Injection] blocked Typeflux non-text frontmost target before AX write",
+            )
+            throw NSError(
+                domain: "AXTextInjector",
+                code: 10,
+                userInfo: [NSLocalizedDescriptionKey: "No editable Typeflux text target is focused"],
             )
         }
 

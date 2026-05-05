@@ -346,6 +346,61 @@ final class OnboardingViewModelTests: XCTestCase {
 
         XCTAssertFalse(viewModel.isGlobeKeyReady)
     }
+
+    @MainActor
+    func testUseExternalKeyboardShortcutReplacementPersistsRightCommandShortcuts() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        viewModel.useExternalKeyboardShortcutReplacement(.rightCommand)
+
+        XCTAssertEqual(viewModel.externalKeyboardShortcutReplacement, .rightCommand)
+        XCTAssertEqual(viewModel.activationHotkey.signature, HotkeyBinding.rightCommandActivation.signature)
+        XCTAssertEqual(viewModel.askHotkey?.signature, HotkeyBinding.rightCommandAsk.signature)
+        XCTAssertEqual(store.activationHotkey?.signature, HotkeyBinding.rightCommandActivation.signature)
+        XCTAssertEqual(store.askHotkey?.signature, HotkeyBinding.rightCommandAsk.signature)
+        XCTAssertTrue(viewModel.showShortcutReplacementAppliedAlert)
+    }
+
+    @MainActor
+    func testUseExternalKeyboardShortcutReplacementPersistsRightOptionShortcuts() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        viewModel.useExternalKeyboardShortcutReplacement(.rightOption)
+
+        XCTAssertEqual(viewModel.externalKeyboardShortcutReplacement, .rightOption)
+        XCTAssertEqual(viewModel.activationHotkey.signature, HotkeyBinding.rightOptionActivation.signature)
+        XCTAssertEqual(viewModel.askHotkey?.signature, HotkeyBinding.rightOptionAsk.signature)
+        XCTAssertEqual(store.activationHotkey?.signature, HotkeyBinding.rightOptionActivation.signature)
+        XCTAssertEqual(store.askHotkey?.signature, HotkeyBinding.rightOptionAsk.signature)
+    }
+
+    @MainActor
+    func testRestoreDefaultFNShortcutsClearsExternalKeyboardReplacement() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.useExternalKeyboardShortcutReplacement(.rightCommand)
+        viewModel.showShortcutReplacementAppliedAlert = false
+
+        viewModel.restoreDefaultFNShortcuts()
+
+        XCTAssertNil(viewModel.externalKeyboardShortcutReplacement)
+        XCTAssertEqual(viewModel.activationHotkey.signature, HotkeyBinding.defaultActivation.signature)
+        XCTAssertEqual(viewModel.askHotkey?.signature, HotkeyBinding.defaultAsk.signature)
+        XCTAssertEqual(store.activationHotkey?.signature, HotkeyBinding.defaultActivation.signature)
+        XCTAssertEqual(store.askHotkey?.signature, HotkeyBinding.defaultAsk.signature)
+        XCTAssertTrue(viewModel.showShortcutReplacementAppliedAlert)
+    }
+
+    @MainActor
+    func testInitialExternalKeyboardShortcutReplacementReflectsStoredShortcuts() {
+        store.activationHotkey = .rightOptionActivation
+        store.askHotkey = .rightOptionAsk
+
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+
+        XCTAssertEqual(viewModel.externalKeyboardShortcutReplacement, .rightOption)
+        XCTAssertEqual(viewModel.activationHotkey.signature, HotkeyBinding.rightOptionActivation.signature)
+        XCTAssertEqual(viewModel.askHotkey?.signature, HotkeyBinding.rightOptionAsk.signature)
+    }
 }
 
 private final class StubGlobeKeyPreferenceReader: GlobeKeyPreferenceReading {

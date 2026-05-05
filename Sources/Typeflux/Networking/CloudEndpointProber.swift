@@ -64,6 +64,7 @@ struct HTTPCloudEndpointProber: CloudEndpointProbing {
         request.httpMethod = "GET"
         request.timeoutInterval = timeout
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        TypefluxCloudRequestHeaders.applyClientInfo(to: &request)
 
         let start = ContinuousClock.now
 

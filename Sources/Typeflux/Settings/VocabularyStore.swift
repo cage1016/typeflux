@@ -1,5 +1,7 @@
 import Foundation
 
+let vocabularyDecoratedCharacters = "._+-/"
+
 extension Notification.Name {
     static let vocabularyStoreDidChange = Notification.Name("VocabularyStore.didChange")
 }
@@ -7,6 +9,8 @@ extension Notification.Name {
 enum VocabularySource: String, Codable, CaseIterable {
     case manual
     case automatic
+    case claude
+    case codex
 
     var displayName: String {
         switch self {
@@ -14,7 +18,15 @@ enum VocabularySource: String, Codable, CaseIterable {
             L("vocabulary.source.manual")
         case .automatic:
             L("vocabulary.source.automatic")
+        case .claude:
+            L("vocabulary.source.claude")
+        case .codex:
+            L("vocabulary.source.codex")
         }
+    }
+
+    var isExternalAppSource: Bool {
+        self == .claude || self == .codex
     }
 }
 
@@ -59,6 +71,28 @@ struct VocabularyEntry: Codable, Identifiable, Equatable {
     }
 }
 
+struct VocabularyBatchImportResult {
+    let entries: [VocabularyEntry]
+    let addedCount: Int
+    let updatedCount: Int
+}
+
+struct VocabularyTransferItem: Codable, Equatable {
+    let term: String
+    let source: VocabularySource
+}
+
+enum VocabularyImportError: LocalizedError, Equatable {
+    case unsupportedFormat
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedFormat:
+            return "Unsupported vocabulary file format."
+        }
+    }
+}
+
 enum VocabularyStore {
     private static let key = "vocabulary.entries"
     /// Maximum number of terms returned to speech recognition as hints. Beyond this
@@ -94,6 +128,48 @@ enum VocabularyStore {
         } catch {
             ErrorLogStore.shared.log("Vocabulary save failed: \(error.localizedDescription)")
         }
+    }
+
+    static func exportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(
+            rankedEntries().map { VocabularyTransferItem(term: $0.term, source: $0.source) },
+        )
+    }
+
+    @discardableResult
+    static func importEntries(
+        from data: Data,
+        defaultSource: VocabularySource = .manual,
+    ) throws -> VocabularyBatchImportResult {
+        let items = try previewImportItems(from: data, defaultSource: defaultSource)
+        return try importItems(items)
+    }
+
+    static func previewImportItems(
+        from data: Data,
+        defaultSource: VocabularySource = .manual,
+    ) throws -> [VocabularyTransferItem] {
+        newImportItems(
+            deduplicatedImportItems(try decodeImportedItems(from: data, defaultSource: defaultSource)),
+        )
+    }
+
+    @discardableResult
+    static func importItems(_ items: [VocabularyTransferItem]) throws -> VocabularyBatchImportResult {
+        merge(newImportItems(deduplicatedImportItems(items)))
+    }
+
+    @discardableResult
+    static func importTerms(
+        _ terms: [String],
+        source: VocabularySource = .manual,
+    ) -> VocabularyBatchImportResult {
+        let importedItems = terms.map {
+            VocabularyTransferItem(term: $0, source: source)
+        }
+        return merge(newImportItems(deduplicatedImportItems(importedItems)))
     }
 
     /// Add a new term, or bump the occurrence count if the normalized term already exists.
@@ -231,7 +307,161 @@ enum VocabularyStore {
             }
     }
 
+    private static func merge(_ importedItems: [VocabularyTransferItem]) -> VocabularyBatchImportResult {
+        var entries = load()
+        var addedCount = 0
+
+        guard !importedItems.isEmpty else {
+            return VocabularyBatchImportResult(
+                entries: entries,
+                addedCount: addedCount,
+                updatedCount: 0,
+            )
+        }
+
+        for importedItem in importedItems {
+            let normalizedTerm = normalize(importedItem.term)
+            guard !normalizedTerm.isEmpty else { continue }
+            if entries.contains(where: {
+                normalize($0.term).caseInsensitiveCompare(normalizedTerm) == .orderedSame
+            }) {
+                continue
+            } else {
+                entries.insert(
+                    VocabularyEntry(
+                        term: normalizedTerm,
+                        source: importedItem.source,
+                    ),
+                    at: 0,
+                )
+                addedCount += 1
+            }
+        }
+
+        save(entries)
+        return VocabularyBatchImportResult(
+            entries: load(),
+            addedCount: addedCount,
+            updatedCount: 0,
+        )
+    }
+
+    private static func decodeImportedItems(
+        from data: Data,
+        defaultSource: VocabularySource,
+    ) throws -> [VocabularyTransferItem] {
+        let decoder = JSONDecoder()
+        if let entries = try? decoder.decode([VocabularyTransferItem].self, from: data) {
+            return entries
+        }
+
+        if let terms = try? decoder.decode([String].self, from: data) {
+            return terms.map { VocabularyTransferItem(term: $0, source: defaultSource) }
+        }
+
+        if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let terms = object["terms"] as? [String]
+        {
+            return terms.map { VocabularyTransferItem(term: $0, source: defaultSource) }
+        }
+
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw VocabularyImportError.unsupportedFormat
+        }
+
+        let separators = CharacterSet(charactersIn: ",;\n\r")
+        let terms = text
+            .components(separatedBy: separators)
+            .map { VocabularyTransferItem(term: $0, source: defaultSource) }
+            .filter { !normalize($0.term).isEmpty }
+
+        guard !terms.isEmpty else {
+            throw VocabularyImportError.unsupportedFormat
+        }
+
+        return terms
+    }
+
+    private static func deduplicatedImportItems(_ items: [VocabularyTransferItem]) -> [VocabularyTransferItem] {
+        var deduplicated: [VocabularyTransferItem] = []
+        var indexByNormalizedTerm: [String: Int] = [:]
+
+        for item in items {
+            let normalizedTerm = normalize(item.term)
+            guard !normalizedTerm.isEmpty else { continue }
+            let key = normalizedTerm.lowercased()
+
+            if let index = indexByNormalizedTerm[key] {
+                let existing = deduplicated[index]
+                deduplicated[index] = VocabularyTransferItem(
+                    term: preferredSurface(existing: existing.term, imported: normalizedTerm),
+                    source: mergedSource(existing: existing.source, imported: item.source),
+                )
+            } else {
+                deduplicated.append(
+                    VocabularyTransferItem(term: normalizedTerm, source: item.source),
+                )
+                indexByNormalizedTerm[key] = deduplicated.endIndex - 1
+            }
+        }
+
+        return deduplicated
+    }
+
+    private static func newImportItems(_ items: [VocabularyTransferItem]) -> [VocabularyTransferItem] {
+        let existingTerms = Set(load().map { normalize($0.term).lowercased() })
+        return items.filter { item in
+            let normalizedTerm = normalize(item.term)
+            guard !normalizedTerm.isEmpty else { return false }
+            return !existingTerms.contains(normalizedTerm.lowercased())
+        }
+    }
+
+    /// Within a single import payload, merge source precedence keeps the
+    /// highest-signal provenance available:
+    /// manual > same source > latest imported external app > existing external app >
+    /// automatic/other existing source.
+    private static func mergedSource(
+        existing: VocabularySource,
+        imported: VocabularySource,
+    ) -> VocabularySource {
+        if existing == .manual || imported == .manual {
+            return .manual
+        }
+        if existing == imported {
+            return existing
+        }
+        if imported.isExternalAppSource {
+            return imported
+        }
+        if existing.isExternalAppSource {
+            return existing
+        }
+        if existing == .automatic || imported == .automatic {
+            return .automatic
+        }
+        return existing
+    }
+
+    /// Preserve the user-visible spelling that carries more intent: decorated
+    /// terms (uppercase, separators, or punctuation commonly used in product and
+    /// model names) are preferred over plain lowercase imports.
+    private static func preferredSurface(existing: String, imported: String) -> String {
+        let existingHasDecoratedCharacters = existing.hasVocabularyDecoration
+        let importedHasDecoratedCharacters = imported.hasVocabularyDecoration
+        if importedHasDecoratedCharacters && !existingHasDecoratedCharacters {
+            return imported
+        }
+        return existing
+    }
+
     private static func normalize(_ term: String) -> String {
         term.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private extension String {
+    var hasVocabularyDecoration: Bool {
+        contains(where: { $0.isUppercase || vocabularyDecoratedCharacters.contains($0) })
     }
 }

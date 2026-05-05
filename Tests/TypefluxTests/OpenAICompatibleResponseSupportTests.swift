@@ -61,6 +61,105 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         XCTAssertEqual(thinking["type"], "disabled")
     }
 
+    func testProviderTuningDisablesQwenThinking() throws {
+        var body: [String: Any] = ["model": "qwen-plus"]
+        try OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &body,
+            baseURL: XCTUnwrap(URL(string: "https://dashscope.aliyuncs.com/compatible-mode/v1")),
+            model: "qwen-plus",
+        )
+
+        XCTAssertEqual(body["enable_thinking"] as? Bool, false)
+        XCTAssertNil(body["thinking"])
+    }
+
+    func testProviderTuningDisablesOpenRouterReasoning() throws {
+        var body: [String: Any] = ["model": "openai/gpt-5.4"]
+        try OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &body,
+            baseURL: XCTUnwrap(URL(string: "https://openrouter.ai/api/v1")),
+            model: "openai/gpt-5.4",
+        )
+
+        let reasoning = try XCTUnwrap(body["reasoning"] as? [String: Any])
+        XCTAssertEqual(reasoning["effort"] as? String, "none")
+        XCTAssertEqual(reasoning["exclude"] as? Bool, true)
+        XCTAssertEqual(body["include_reasoning"] as? Bool, false)
+    }
+
+    func testProviderTuningUsesLowestOpenAIReasoningEffort() throws {
+        var modernBody: [String: Any] = ["model": "gpt-5.4"]
+        try OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &modernBody,
+            baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
+            model: "gpt-5.4",
+        )
+        XCTAssertEqual(
+            (modernBody["reasoning"] as? [String: String])?["effort"],
+            "none",
+        )
+
+        var legacyBody: [String: Any] = ["model": "gpt-5"]
+        try OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &legacyBody,
+            baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
+            model: "gpt-5",
+        )
+        XCTAssertEqual(
+            (legacyBody["reasoning"] as? [String: String])?["effort"],
+            "minimal",
+        )
+    }
+
+    func testProviderTuningDisablesDeepSeekThinkingAndReasoning() throws {
+        var body: [String: Any] = ["model": "deepseek-reasoner"]
+        try OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &body,
+            baseURL: XCTUnwrap(URL(string: "https://api.deepseek.com")),
+            model: "deepseek-reasoner",
+        )
+
+        let thinking = try XCTUnwrap(body["thinking"] as? [String: String])
+        XCTAssertEqual(thinking["type"], "disabled")
+        XCTAssertEqual(
+            (body["reasoning"] as? [String: String])?["effort"],
+            "none",
+        )
+    }
+
+    func testGeminiTuningDisablesSupportedThinkingBudgets() {
+        var flashConfig: [String: Any] = ["candidateCount": 1]
+        OpenAICompatibleResponseSupport.applyGeminiTuning(
+            generationConfig: &flashConfig,
+            model: "gemini-2.5-flash",
+        )
+        XCTAssertEqual(
+            (flashConfig["thinkingConfig"] as? [String: Int])?["thinkingBudget"],
+            0,
+        )
+
+        var gemini3Config: [String: Any] = ["candidateCount": 1]
+        OpenAICompatibleResponseSupport.applyGeminiTuning(
+            generationConfig: &gemini3Config,
+            model: "gemini-3-flash-preview",
+        )
+        XCTAssertEqual(
+            (gemini3Config["thinkingConfig"] as? [String: String])?["thinkingLevel"],
+            "low",
+        )
+    }
+
+    func testAnthropicTuningDisablesThinking() {
+        var body: [String: Any] = ["model": "claude-sonnet-4"]
+        OpenAICompatibleResponseSupport.applyAnthropicTuning(body: &body)
+
+        XCTAssertEqual(
+            (body["thinking"] as? [String: String])?["type"],
+            "disabled",
+        )
+        XCTAssertNil(body["output_config"])
+    }
+
     private func jsonData(_ object: [String: Any]) throws -> Data {
         try JSONSerialization.data(withJSONObject: object)
     }
@@ -206,7 +305,7 @@ extension OpenAICompatibleResponseSupportTests {
             baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
             model: "gpt-4o",
         )
-        // For non-Doubao endpoint, "thinking" key should not be added
+        // For endpoints/models that don't match any tuning rules, body should not be modified
         XCTAssertNil(body["thinking"])
     }
 

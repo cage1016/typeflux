@@ -272,9 +272,18 @@ final class OpenAICompatibleLLMService: LLMService {
         if let appContext = rewriteRequest.appSystemContext {
             let extra = PromptCatalog.appSpecificSystemContext(appContext)
             if !extra.isEmpty {
-                effectiveSystemPrompt += "\n\n\(extra)"
+                effectiveSystemPrompt = PromptCatalog.appendAdditionalSystemContext(
+                    extra,
+                    to: effectiveSystemPrompt,
+                )
             }
         }
+        NetworkDebugLogger.logMessage(
+            PromptCatalog.rewritePromptDebugDescription(
+                system: effectiveSystemPrompt,
+                user: prompts.user,
+            ),
+        )
 
         let final = try await runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
             try await RemoteLLMClient.streamRewrite(
@@ -594,7 +603,7 @@ enum RemoteLLMClient {
         urlRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         applyAdditionalHeaders(additionalHeaders, to: &urlRequest)
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "max_tokens": 1024,
             "system": anthropicSystemPrompt(systemPrompt: systemPrompt, schema: schema),
@@ -607,6 +616,7 @@ enum RemoteLLMClient {
                 ],
             ],
         ]
+        OpenAICompatibleResponseSupport.applyAnthropicTuning(body: &body)
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let data = try await performJSONRequest(urlRequest)
@@ -658,13 +668,19 @@ enum RemoteLLMClient {
                 "maxOutputTokens": 1024,
             ],
         ]
+        if var generationConfig = body["generationConfig"] as? [String: Any] {
+            OpenAICompatibleResponseSupport.applyGeminiTuning(generationConfig: &generationConfig, model: model)
+            body["generationConfig"] = generationConfig
+        }
         if let schema {
-            body["generationConfig"] = [
+            var generationConfig: [String: Any] = [
                 "candidateCount": 1,
                 "maxOutputTokens": 1024,
                 "responseMimeType": "application/json",
                 "responseSchema": schema.jsonObject,
             ]
+            OpenAICompatibleResponseSupport.applyGeminiTuning(generationConfig: &generationConfig, model: model)
+            body["generationConfig"] = generationConfig
         }
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 

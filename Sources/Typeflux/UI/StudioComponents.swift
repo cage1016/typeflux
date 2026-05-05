@@ -272,6 +272,147 @@ extension View {
     }
 }
 
+private final class StudioRoundedVisualEffectView: NSVisualEffectView {
+    var preferredCornerRadius: CGFloat?
+
+    override func layout() {
+        super.layout()
+        layer?.cornerRadius = preferredCornerRadius ?? 0
+    }
+}
+
+private struct StudioVisualEffectBlur: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    let cornerRadius: CGFloat?
+
+    func makeNSView(context _: Context) -> StudioRoundedVisualEffectView {
+        let view = StudioRoundedVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        view.isEmphasized = true
+        view.wantsLayer = true
+        view.layer?.masksToBounds = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+        view.preferredCornerRadius = cornerRadius
+        return view
+    }
+
+    func updateNSView(_ nsView: StudioRoundedVisualEffectView, context _: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+        nsView.state = .active
+        nsView.isEmphasized = true
+        nsView.preferredCornerRadius = cornerRadius
+        nsView.needsLayout = true
+    }
+}
+
+private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
+    let shape: S
+    let cornerRadius: CGFloat?
+    let material: NSVisualEffectView.Material
+    let tintOpacity: Double
+    let scrimOpacity: Double
+    let strokeOpacity: Double
+    let interactive: Bool
+
+    init(
+        shape: S,
+        cornerRadius: CGFloat? = nil,
+        material: NSVisualEffectView.Material = .hudWindow,
+        tintOpacity: Double = StudioTheme.Opacity.glassSurfaceTint,
+        scrimOpacity: Double = StudioTheme.Opacity.glassSurfaceScrim,
+        strokeOpacity: Double = StudioTheme.Opacity.glassHighlight,
+        interactive: Bool = false,
+    ) {
+        self.shape = shape
+        self.cornerRadius = cornerRadius
+        self.material = material
+        self.tintOpacity = tintOpacity
+        self.scrimOpacity = scrimOpacity
+        self.strokeOpacity = strokeOpacity
+        self.interactive = interactive
+    }
+
+    var body: some View {
+        Group {
+            #if compiler(>=6.2)
+            if #available(macOS 26.0, *) {
+                ZStack {
+                    shape
+                        .fill(Color.clear)
+                        .glassEffect(
+                            Glass.clear
+                                .interactive(interactive)
+                                .tint(StudioTheme.glassTint.opacity(tintOpacity)),
+                            in: shape,
+                        )
+
+                    shape
+                        .fill(StudioTheme.glassScrim.opacity(scrimOpacity))
+                        .allowsHitTesting(false)
+                }
+            } else {
+                fallbackBackground
+            }
+            #else
+            fallbackBackground
+            #endif
+        }
+        .clipShape(shape)
+        .overlay(
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            StudioTheme.glassStrokeHighlight.opacity(strokeOpacity),
+                            StudioTheme.glassStrokeHighlight.opacity(strokeOpacity * 0.28),
+                            StudioTheme.glassStrokeShadow.opacity(0.50),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing,
+                    ),
+                    lineWidth: StudioTheme.BorderWidth.thin,
+                ),
+        )
+        .overlay(
+            shape
+                .inset(by: StudioTheme.BorderWidth.thin + 0.5)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            StudioTheme.glassInnerHighlight,
+                            Color.clear,
+                            StudioTheme.glassInnerHighlight.opacity(0.42),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom,
+                    ),
+                    lineWidth: 0.6,
+                )
+                .blendMode(.screen),
+        )
+    }
+
+    private var fallbackBackground: some View {
+        ZStack {
+            StudioVisualEffectBlur(
+                material: material,
+                blendingMode: .withinWindow,
+                cornerRadius: cornerRadius,
+            )
+            .allowsHitTesting(false)
+
+            shape
+                .fill(StudioTheme.glassScrim.opacity(scrimOpacity))
+            shape
+                .fill(StudioTheme.glassTint.opacity(tintOpacity))
+        }
+    }
+}
+
 private struct StudioButtonChromeModifier: ViewModifier {
     let variant: StudioButton.Variant
     let isDisabled: Bool
@@ -295,18 +436,40 @@ private struct StudioButtonChromeModifier: ViewModifier {
 
     @ViewBuilder
     private var background: some View {
+        let buttonShape = RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+
         switch variant {
         case .primary:
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(StudioTheme.accent)
+            buttonShape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            StudioTheme.accent.opacity(0.92),
+                            StudioTheme.accent,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing,
+                    ),
+                )
                 .brightness(isPressed ? -0.06 : (isLoading ? -0.03 : 0))
+                .shadow(color: StudioTheme.accent.opacity(0.18), radius: 8, x: 0, y: 5)
         case .secondary:
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(StudioTheme.surfaceMuted)
-                .brightness(isPressed ? -0.03 : (isLoading ? -0.015 : 0))
+            ZStack {
+                StudioLiquidGlassBackground(
+                    shape: buttonShape,
+                    cornerRadius: StudioTheme.CornerRadius.xLarge,
+                    tintOpacity: isPressed ? 0.72 : StudioTheme.Opacity.glassControlTint,
+                    scrimOpacity: isPressed ? 0.76 : StudioTheme.Opacity.glassControlScrim,
+                    interactive: true,
+                )
+
+                buttonShape
+                    .fill(isPressed ? StudioTheme.selectionSurface : StudioTheme.controlSurface)
+            }
+            .brightness(isPressed ? -0.03 : (isLoading ? -0.015 : 0))
         case .ghost:
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(isPressed ? StudioTheme.surfaceMuted.opacity(0.52) : (isLoading ? StudioTheme.surfaceMuted.opacity(0.28) : Color.clear))
+            buttonShape
+                .fill(isPressed ? StudioTheme.controlSurface : (isLoading ? StudioTheme.controlSurface.opacity(0.62) : Color.clear))
         }
     }
 
@@ -389,6 +552,7 @@ struct StudioShell<Content: View>: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
     let onOpenAbout: () -> Void
+    let onSendDirectFeedback: () -> Void
     let onSendFeedbackEmail: () -> Void
     let onOpenGitHubIssue: () -> Void
     let onAccountAction: () -> Void
@@ -402,6 +566,7 @@ struct StudioShell<Content: View>: View {
         currentSection: StudioSection,
         onSelect: @escaping (StudioSection) -> Void,
         onOpenAbout: @escaping () -> Void,
+        onSendDirectFeedback: @escaping () -> Void,
         onSendFeedbackEmail: @escaping () -> Void,
         onOpenGitHubIssue: @escaping () -> Void,
         onAccountAction: @escaping () -> Void,
@@ -414,6 +579,7 @@ struct StudioShell<Content: View>: View {
         self.currentSection = currentSection
         self.onSelect = onSelect
         self.onOpenAbout = onOpenAbout
+        self.onSendDirectFeedback = onSendDirectFeedback
         self.onSendFeedbackEmail = onSendFeedbackEmail
         self.onOpenGitHubIssue = onOpenGitHubIssue
         self.onAccountAction = onAccountAction
@@ -433,6 +599,7 @@ struct StudioShell<Content: View>: View {
                 StudioSidebar(
                     currentSection: currentSection,
                     onSelect: onSelect,
+                    onSendDirectFeedback: onSendDirectFeedback,
                     onSendFeedbackEmail: onSendFeedbackEmail,
                     onOpenGitHubIssue: onOpenGitHubIssue,
                     onOpenAbout: onOpenAbout,
@@ -441,6 +608,26 @@ struct StudioShell<Content: View>: View {
                     isLoggedIn: isLoggedIn,
                 )
                 .frame(width: StudioTheme.sidebarWidth)
+                .background(
+                    ZStack {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                        StudioTheme.sidebar
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.22),
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        )
+                    },
+                )
+                .overlay(alignment: .trailing) {
+                    Rectangle()
+                        .fill(StudioTheme.border.opacity(0.46))
+                        .frame(width: 1)
+                }
 
                 GeometryReader { proxy in
                     ScrollView {
@@ -454,12 +641,11 @@ struct StudioShell<Content: View>: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                     .background(
-                        RoundedRectangle(cornerRadius: StudioTheme.Layout.shellCornerRadius, style: .continuous)
-                            .fill(StudioTheme.surface),
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: StudioTheme.Layout.shellCornerRadius, style: .continuous)
-                            .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.shellBorder), lineWidth: StudioTheme.BorderWidth.thin),
+                        ZStack {
+                            Rectangle()
+                                .fill(.ultraThinMaterial)
+                            StudioTheme.shellSurface
+                        },
                     )
                 }
                 .padding(.vertical, StudioTheme.Layout.contentCardInset)
@@ -467,23 +653,47 @@ struct StudioShell<Content: View>: View {
                 .padding(.leading, StudioTheme.Layout.shellContentLeadingInset)
             }
             .padding(StudioTheme.Layout.shellInset)
+            .ignoresSafeArea(.container, edges: .top)
         }
     }
 }
 
-private struct StudioGlassBackground: View {
+struct StudioGlassBackground: View {
     let tintOpacity: Double
 
     var body: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(StudioTheme.windowBackground.opacity(tintOpacity))
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+
+            StudioTheme.windowBackground
+                .opacity(tintOpacity)
+
+            LinearGradient(
+                colors: [
+                    StudioTheme.windowHighlight.opacity(0.92),
+                    Color.clear,
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing,
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.08),
+                    Color.clear,
+                ],
+                startPoint: .bottomLeading,
+                endPoint: .topTrailing,
+            )
+        }
     }
 }
 
 struct StudioSidebar: View {
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
+    let onSendDirectFeedback: () -> Void
     let onSendFeedbackEmail: () -> Void
     let onOpenGitHubIssue: () -> Void
     let onOpenAbout: () -> Void
@@ -494,23 +704,24 @@ struct StudioSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
-            HStack(alignment: .top, spacing: StudioTheme.Spacing.smallMedium) {
-                Image(systemName: StudioTheme.Symbol.brand)
-                    .font(.system(size: StudioTheme.Typography.iconLarge, weight: .semibold))
-                    .foregroundStyle(StudioTheme.textPrimary)
+            HStack(alignment: .center, spacing: StudioTheme.Spacing.smallMedium) {
+                TypefluxLogoBadge(
+                    size: 28,
+                    symbolSize: 15,
+                    backgroundShape: .circle,
+                    showsBorder: false,
+                )
 
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
                     Text(L("sidebar.appName"))
                         .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
                         .foregroundStyle(StudioTheme.textPrimary)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
 
-                    Text("Beta")
-                        .font(.studioBody(7, weight: .semibold))
-                        .textCase(.uppercase)
+                    Text(appVersionBadge)
+                        .font(.studioBody(8, weight: .semibold))
                         .foregroundStyle(StudioTheme.textSecondary.opacity(0.55))
-                        .baselineOffset(6)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                 }
@@ -518,6 +729,7 @@ struct StudioSidebar: View {
                 Spacer()
             }
             .padding(.top, StudioTheme.Insets.sidebarHeaderTop)
+            .padding(.bottom, StudioTheme.Spacing.large)
 
             VStack(spacing: StudioTheme.Spacing.xxSmall) {
                 ForEach(StudioSection.sidebarUpperCases, id: \.self) { section in
@@ -527,53 +739,60 @@ struct StudioSidebar: View {
 
             Spacer()
 
-            VStack(spacing: StudioTheme.Spacing.xxSmall) {
-                ForEach(StudioSection.sidebarLowerCases, id: \.self) { section in
-                    sidebarNavigationButton(for: section)
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                VStack(spacing: StudioTheme.Spacing.xxSmall) {
+                    ForEach(StudioSection.sidebarLowerCases, id: \.self) { section in
+                        sidebarNavigationButton(for: section)
+                    }
+
+                    if agentEnabled {
+                        sidebarNavigationButton(for: .agent)
+                    }
                 }
 
-                if agentEnabled {
-                    sidebarNavigationButton(for: .agent)
-                }
-            }
+                Rectangle()
+                    .fill(StudioTheme.border.opacity(0.42))
+                    .frame(height: 1)
+                    .padding(.vertical, StudioTheme.Spacing.xxSmall)
 
-            Rectangle()
-                .fill(StudioTheme.border.opacity(0.5))
-                .frame(height: 1)
-
-            HStack(spacing: StudioTheme.Spacing.none) {
-                utilityButton(
-                    systemImage: isLoggedIn ? "person.circle.fill" : "person.circle",
-                    accessibilityLabel: L("sidebar.accountAccessibility"),
-                    isActive: currentSection == .account,
-                    action: onAccountAction,
-                )
-
-                Spacer()
-
-                HStack(spacing: StudioTheme.Spacing.smallMedium) {
-                    feedbackMenuButton
-
+                HStack(spacing: StudioTheme.Spacing.none) {
                     utilityButton(
-                        systemImage: "questionmark.circle",
-                        accessibilityLabel: L("sidebar.aboutAccessibility"),
-                        isActive: false,
-                        action: onOpenAbout,
+                        systemImage: isLoggedIn ? "person.circle.fill" : "person.circle",
+                        accessibilityLabel: L("sidebar.accountAccessibility"),
+                        isActive: currentSection == .account,
+                        action: onAccountAction,
                     )
 
-                    utilityButton(
-                        systemImage: "gearshape",
-                        accessibilityLabel: L("sidebar.settingsAccessibility"),
-                        isActive: currentSection == .settings,
-                        action: { onSelect(.settings) },
-                    )
+                    Spacer()
+
+                    HStack(spacing: StudioTheme.Spacing.smallMedium) {
+                        feedbackMenuButton
+
+                        utilityButton(
+                            systemImage: "questionmark.circle",
+                            accessibilityLabel: L("sidebar.aboutAccessibility"),
+                            isActive: false,
+                            action: onOpenAbout,
+                        )
+
+                        utilityButton(
+                            systemImage: "gearshape",
+                            accessibilityLabel: L("sidebar.settingsAccessibility"),
+                            isActive: currentSection == .settings,
+                            action: { onSelect(.settings) },
+                        )
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, StudioTheme.Insets.sidebarOuterHorizontal)
         .padding(.vertical, StudioTheme.Insets.sidebarOuterVertical)
         .environment(\.locale, localization.locale)
+    }
+
+    private var appVersionBadge: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
     }
 
     private func utilityButton(
@@ -595,6 +814,7 @@ struct StudioSidebar: View {
             systemImage: "envelope.stack",
             accessibilityLabel: L("sidebar.feedbackAccessibility"),
         ) {
+            Button(L("sidebar.feedback.directOption"), action: onSendDirectFeedback)
             Button(L("sidebar.feedback.emailOption"), action: onSendFeedbackEmail)
             Button(L("sidebar.feedback.githubOption"), action: onOpenGitHubIssue)
         }
@@ -664,7 +884,7 @@ private struct StudioSidebarIconLabel: View {
             .frame(width: StudioTheme.ControlSize.sidebarUtilityButton, height: StudioTheme.ControlSize.sidebarUtilityButton)
             .background(
                 Circle()
-                    .fill((isHovered || isActive) ? StudioTheme.sidebarSelection : Color.clear),
+                    .fill((isHovered || isActive) ? StudioTheme.sidebarSelection.opacity(0.86) : Color.clear),
             )
             .contentShape(Circle())
             .accessibilityLabel(accessibilityLabel)
@@ -735,11 +955,33 @@ struct StudioSectionTitle: View {
 }
 
 struct StudioCard<Content: View>: View {
+    enum Texture {
+        case standard
+        case softWaves
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
+
     var padding: CGFloat = StudioTheme.Insets.cardDefault
+    var showsShadow: Bool = false
+    var isHighlighted: Bool = false
+    var isDimmed: Bool = false
+    var texture: Texture = .standard
     let content: Content
 
-    init(padding: CGFloat = StudioTheme.Insets.cardDefault, @ViewBuilder content: () -> Content) {
+    init(
+        padding: CGFloat = StudioTheme.Insets.cardDefault,
+        showsShadow: Bool = false,
+        isHighlighted: Bool = false,
+        isDimmed: Bool = false,
+        texture: Texture = .standard,
+        @ViewBuilder content: () -> Content
+    ) {
         self.padding = padding
+        self.showsShadow = showsShadow
+        self.isHighlighted = isHighlighted
+        self.isDimmed = isDimmed
+        self.texture = texture
         self.content = content()
     }
 
@@ -749,13 +991,159 @@ struct StudioCard<Content: View>: View {
         }
         .padding(padding)
         .background(
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .fill(StudioTheme.surface),
+            ZStack {
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(StudioTheme.cardSurface)
+
+                cardTextureOverlay
+
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(selectionOverlay)
+            },
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin),
+                .stroke(cardBorderColor, lineWidth: isHighlighted ? StudioTheme.BorderWidth.emphasis : StudioTheme.BorderWidth.thin),
         )
+        .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
+        .shadow(
+            color: StudioTheme.shadow.opacity(showsShadow ? (isHighlighted ? 0.20 : 0.16) : 0.09),
+            radius: isHighlighted ? StudioTheme.Shadow.cardRadius + 2 : StudioTheme.Shadow.cardRadius,
+            x: 0,
+            y: isHighlighted ? StudioTheme.Shadow.cardY + 1 : StudioTheme.Shadow.cardY,
+        )
+    }
+
+    private var selectionOverlay: Color {
+        if isHighlighted {
+            return StudioTheme.accentSoft.opacity(0.36)
+        }
+
+        if isDimmed {
+            return StudioTheme.surfaceMuted.opacity(0.38)
+        }
+
+        return Color.clear
+    }
+
+    private var cardBorderColor: Color {
+        if isHighlighted {
+            return StudioTheme.accent.opacity(0.34)
+        }
+
+        return StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder)
+    }
+
+    private var cardTextureOverlay: some View {
+        Group {
+            if texture == .softWaves {
+                softWaveTexture
+            } else if colorScheme == .dark {
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(Color.white.opacity(0.015))
+            } else {
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.22),
+                                Color.clear,
+                                StudioTheme.accentSoft.opacity(0.08),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.clear,
+                                        StudioTheme.border.opacity(0.08),
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom,
+                                ),
+                            ),
+                    )
+            }
+        }
+    }
+
+    private var softWaveTexture: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            let baseOpacity = colorScheme == .dark ? 0.035 : 0.18
+            let accentOpacity = colorScheme == .dark ? 0.035 : (isHighlighted ? 0.18 : 0.08)
+            let highlightOpacity = colorScheme == .dark ? 0.025 : 0.18
+
+            ZStack {
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(baseOpacity),
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                StudioTheme.accent.opacity(accentOpacity),
+                                Color.white.opacity(highlightOpacity),
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+                    .frame(width: width * 1.12, height: height * 0.56)
+                    .rotationEffect(.degrees(-17))
+                    .offset(x: width * 0.32, y: -height * 0.26)
+                    .blur(radius: 9)
+
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                Color.white.opacity(highlightOpacity * 0.72),
+                                StudioTheme.accentSoft.opacity(accentOpacity * 0.52),
+                                Color.clear,
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing,
+                        ),
+                    )
+                    .frame(width: width * 1.08, height: height * 0.42)
+                    .rotationEffect(.degrees(-17))
+                    .offset(x: width * 0.18, y: height * 0.02)
+                    .blur(radius: 12)
+
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                isHighlighted ? StudioTheme.accentSoft.opacity(accentOpacity * 0.58) : Color.clear,
+                                Color.clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing,
+                        ),
+                    )
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -889,12 +1277,12 @@ struct StudioMetricCard: View {
         StudioCard {
             HStack(alignment: .center) {
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted)
+                    .fill(StudioTheme.iconTileSurface)
                     .frame(width: StudioTheme.ControlSize.overviewBadge, height: StudioTheme.ControlSize.overviewBadge)
                     .overlay(
                         Image(systemName: icon)
                             .font(.system(size: StudioTheme.Typography.iconRegular, weight: .semibold))
-                            .foregroundStyle(StudioTheme.textSecondary),
+                            .foregroundStyle(StudioTheme.accent),
                     )
 
                 Spacer()
@@ -992,7 +1380,7 @@ struct StudioTextInputCard<LabelTrailing: View>: View {
             .padding(.vertical, StudioTheme.Insets.textFieldVertical)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
@@ -1055,10 +1443,6 @@ struct StudioSuggestedTextInputCard<LabelTrailing: View>: View {
 
                 if !normalizedSuggestions.isEmpty {
                     HStack(spacing: StudioTheme.Spacing.xSmall) {
-                        Rectangle()
-                            .fill(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder))
-                            .frame(width: 1, height: 18)
-
                         ZStack {
                             Menu {
                                 ForEach(normalizedSuggestions, id: \.self) { suggestion in
@@ -1081,7 +1465,7 @@ struct StudioSuggestedTextInputCard<LabelTrailing: View>: View {
             .frame(minHeight: 46)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
@@ -1096,11 +1480,14 @@ struct StudioHistoryRow: View {
     let onCopyResult: (() -> Void)?
     let onCopyTranscript: (() -> Void)?
     let onDownloadAudio: (() -> Void)?
+    let onPlayAudio: (() -> Void)?
+    let isAudioPlaying: Bool
     let onDelete: (() -> Void)?
     let onRetry: (() -> Void)?
 
     @State private var isExpanded = false
     @State private var isHovered = false
+    @State private var isAudioPathHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
@@ -1147,7 +1534,13 @@ struct StudioHistoryRow: View {
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
-                    historyDetailSection(title: L("history.detail.audioPath"), content: record.audioFilePath ?? L("history.detail.noAudioFile"))
+                    historyAudioPathSection(
+                        title: L("history.detail.audioPath"),
+                        content: record.audioFilePath ?? L("history.detail.noAudioFile"),
+                        canPlay: record.audioFilePath != nil,
+                        isPlaying: isAudioPlaying,
+                        playAction: onPlayAudio,
+                    )
                     historyDetailSection(
                         title: L("history.detail.rawTranscript"),
                         content: record.transcriptText,
@@ -1164,7 +1557,7 @@ struct StudioHistoryRow: View {
         }
         .padding(.horizontal, StudioTheme.Insets.historyRowHorizontal)
         .padding(.vertical, StudioTheme.Insets.historyRowVertical)
-        .background(StudioTheme.surface)
+        .background(Color.clear)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
@@ -1198,6 +1591,55 @@ struct StudioHistoryRow: View {
     }
 
     @ViewBuilder
+    private func historyAudioPathSection(
+        title: String,
+        content: String?,
+        canPlay: Bool,
+        isPlaying: Bool,
+        playAction: (() -> Void)?,
+    ) -> some View {
+        if let content, !content.isEmpty {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                Text(title)
+                    .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                    .foregroundStyle(StudioTheme.textTertiary)
+
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
+                    Text(content)
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: StudioTheme.Spacing.small)
+
+                    if canPlay, let playAction {
+                        StudioIconButton(
+                            systemImage: isPlaying ? "stop.circle" : "play.circle",
+                            frame: 24,
+                            action: playAction,
+                        )
+                            .opacity(isAudioPathHovered ? 0.78 : 0)
+                            .allowsHitTesting(isAudioPathHovered)
+                            .animation(.easeOut(duration: 0.12), value: isAudioPathHovered)
+                            .studioTooltip(
+                                isPlaying ? L("history.action.stopAudio") : L("history.action.playAudio"),
+                                yOffset: 34,
+                            )
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(StudioTheme.Insets.cardDense)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                    .fill(StudioTheme.controlSurface),
+            )
+            .onHover { isAudioPathHovered = $0 }
+        }
+    }
+
+    @ViewBuilder
     private func historyPipelineStatsSection(
         title: String,
         items: [HistoryPipelineStatPresentationItem],
@@ -1224,7 +1666,7 @@ struct StudioHistoryRow: View {
             .padding(StudioTheme.Insets.cardDense)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(0.72)),
+                    .fill(StudioTheme.controlSurface),
             )
         }
     }
@@ -1254,7 +1696,7 @@ struct StudioHistoryRow: View {
         .padding(.vertical, StudioTheme.Spacing.small)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .fill(isDuration ? StudioTheme.surface : StudioTheme.surfaceMuted.opacity(0.88)),
+                .fill(isDuration ? StudioTheme.rowSurface : StudioTheme.controlSurface),
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
@@ -1297,7 +1739,7 @@ struct StudioHistoryRow: View {
             .padding(StudioTheme.Insets.cardDense)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(0.72)),
+                    .fill(StudioTheme.controlSurface),
             )
         }
     }
@@ -1324,7 +1766,20 @@ struct StudioSegmentedPicker<T: Hashable>: View {
                         .padding(.vertical, StudioTheme.Insets.segmentedItemVertical)
                         .background(
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
-                                .fill(selection == option.value ? StudioTheme.surface : Color.clear),
+                                .fill(selection == option.value ? StudioTheme.selectionSurfaceRaised : Color.clear),
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
+                                .stroke(
+                                    Color.clear,
+                                    lineWidth: StudioTheme.BorderWidth.thin,
+                                ),
+                        )
+                        .shadow(
+                            color: StudioTheme.shadow.opacity(selection == option.value ? 0.22 : 0),
+                            radius: 10,
+                            x: 0,
+                            y: 3,
                         )
                         .contentShape(
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous),
@@ -1337,8 +1792,13 @@ struct StudioSegmentedPicker<T: Hashable>: View {
         .padding(.vertical, StudioTheme.Insets.segmentedControlVertical)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous)
-                .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.segmentedControlFill)),
+                .fill(StudioTheme.segmentedTrack),
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous)
+                .stroke(StudioTheme.border.opacity(0.55), lineWidth: StudioTheme.BorderWidth.thin),
+        )
+        .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous))
         .frame(minHeight: StudioTheme.Layout.modelTabsMinHeight, alignment: .leading)
     }
 }
@@ -1347,6 +1807,7 @@ struct StudioMenuPicker<T: Hashable>: View {
     let options: [(label: String, value: T)]
     @Binding var selection: T
     var width: CGFloat?
+    var height: CGFloat?
 
     private var selectedLabel: String {
         options.first(where: { $0.value == selection })?.label ?? ""
@@ -1372,10 +1833,10 @@ struct StudioMenuPicker<T: Hashable>: View {
             }
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
             .padding(.vertical, StudioTheme.Insets.buttonVertical)
-            .frame(width: width)
+            .frame(width: width, height: height)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted),
+                    .fill(StudioTheme.controlSurface),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)

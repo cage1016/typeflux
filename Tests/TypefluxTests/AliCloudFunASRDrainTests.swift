@@ -57,17 +57,15 @@ final class AliCloudFunASRDrainTests: XCTestCase {
         XCTAssertLessThan(elapsed, .seconds(1), "drain must not overshoot the timeout by much")
     }
 
-    // MARK: - Signal sent before wait begins (race-free via guard)
+    // MARK: - Signal sent before wait begins
 
     func testDrainReturnsImmediatelyWhenSignalledBeforeWait() async {
         let drain = AliCloudFunASRDrainState()
 
-        // Signal arrives before the wait is even entered: hasPartial=false simulates
-        // the guard-check fast-path that fires when sentence_end=true already arrived.
         await drain.signal()
 
         let start = ContinuousClock.now
-        await drain.waitForSentenceEndOrTimeout(hasPartial: false, timeout: .seconds(5))
+        await drain.waitForSentenceEndOrTimeout(hasPartial: true, timeout: .seconds(5))
         let elapsed = ContinuousClock.now - start
 
         XCTAssertLessThan(elapsed, .milliseconds(100))

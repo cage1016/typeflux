@@ -23,9 +23,26 @@
 "sidebar.about" = "About";
 "sidebar.aboutAccessibility" = "About Typeflux";
 "sidebar.feedbackAccessibility" = "Send feedback";
+"sidebar.feedback.directOption" = "Direct feedback";
 "sidebar.feedback.emailOption" = "Send feedback email";
 "sidebar.feedback.githubOption" = "Open GitHub issue";
 "sidebar.settingsAccessibility" = "Open settings";
+
+"feedback.direct.title" = "Send feedback";
+"feedback.direct.subtitle" = "Describe the problem or suggestion. Typeflux will send it to the service and create an issue for follow-up.";
+"feedback.direct.contentLabel" = "Feedback";
+"feedback.direct.contentPlaceholder" = "Tell us what happened or what you would like to improve.\nExample: I pressed the shortcut, but dictation did not start, even after restarting the app.\nOr: I would like finished text to copy to the clipboard automatically.";
+"feedback.direct.contactLabel" = "Contact (optional)";
+"feedback.direct.contactPlaceholder" = "Email or other contact";
+"feedback.direct.imagesLabel" = "Images";
+"feedback.direct.addImage" = "Add image";
+"feedback.direct.removeImage" = "Remove image";
+"feedback.direct.submit" = "Submit";
+"feedback.toast.submitted" = "Feedback submitted. Thank you.";
+"feedback.error.emptyContent" = "Please enter feedback content.";
+"feedback.error.invalidImage" = "Unable to read this image.";
+"feedback.error.server" = "Failed to submit feedback.";
+"feedback.error.invalidResponse" = "Received an invalid feedback response.";
 
 "studio.section.home" = "Overview";
 "studio.section.models" = "Models";
@@ -101,7 +118,7 @@
 "menu.agentTasks.viewAll" = "View All Tasks";
 "menu.agentTasks.runningCount" = "%d running";
 "menu.appearance" = "Appearance";
-"menu.settings" = "Settings";
+"menu.settings" = "Typeflux Settings";
 "menu.setupGuide" = "Setup Guide";
 "menu.about" = "About Typeflux";
 "menu.checkForUpdates" = "Check for Updates";
@@ -111,7 +128,7 @@
 "menu.quit" = "Quit";
 "menu.status.ready" = "Ready";
 "menu.status.recording" = "Recording in progress…";
-"menu.status.processing" = "Processing latest capture…";
+"menu.status.processing" = "Thinking…";
 "menu.status.failed" = "Failed: %@";
 
 "appMenu.about" = "About %@";
@@ -210,6 +227,7 @@
 "updater.download.failed" = "Failed to download the update.";
 "updater.install.extractionFailed" = "Failed to extract the update archive.";
 "updater.install.appNotFound" = "Could not find the application bundle in the update archive.";
+"updater.install.signatureVerificationFailed" = "The update could not be verified.";
 
 "provider.stt.whisperAPI" = "OpenAI";
 "provider.stt.freeModel" = "Free Models";
@@ -247,6 +265,10 @@
 "localSTT.qwen3ASR.summary" = "Larger multilingual ASR model with stronger context understanding and better long-form recognition quality.";
 "localSTT.qwen3ASR.parameterValue" = "0.6B";
 "localSTT.qwen3ASR.sizeValue" = "1.3 GB";
+"localSTT.funASR.name" = "FunASR (Paraformer)";
+"localSTT.funASR.summary" = "Fast and accurate Chinese-focused ASR model by Alibaba DAMO Academy, based on the Paraformer architecture.";
+"localSTT.funASR.parameterValue" = "220M";
+"localSTT.funASR.sizeValue" = "~180 MB";
 "localSTT.prepare.runtimePreparing" = "Preparing native local speech runtime...";
 "localSTT.prepare.cleaningLegacyRuntime" = "Cleaning legacy Python runtime...";
 "localSTT.prepare.runtimeDownloading" = "Downloading Sherpa-ONNX native runtime...";
@@ -270,14 +292,16 @@
 
 "overlay.recording.listening" = "Listening";
 "overlay.ask.guidance" = "Ask anything about the selected text";
-"overlay.processing.transcribing" = "Processing";
+"overlay.processing.transcribing" = "Thinking";
 "overlay.processing.thinking" = "Thinking";
 "overlay.failure.title" = "Processing failed";
 "overlay.timeout.title" = "Processing timed out";
 "overlay.timeout.message" = "Processing took longer than 120 seconds. Please try again.";
 "overlay.notice.title" = "Notice";
-"overlay.personaPicker.switchTitle" = "Switch Persona";
-"overlay.personaPicker.switchInstructions" = "Use Up and Down to choose, Return to confirm, or Esc to close.";
+"overlay.personaPicker.switchTitle" = "Switch Global Persona";
+"overlay.personaPicker.switchInstructions" = "Choose the global persona used when the current application has no active app persona.";
+"overlay.personaPicker.switchApplicationTitle" = "Switch Application Persona";
+"overlay.personaPicker.switchApplicationInstructions" = "Choose the persona for the current application. Global persona settings will not change.";
 "overlay.personaPicker.applyTitle" = "Apply Persona";
 "overlay.personaPicker.applyInstructions" = "Choose a persona to rewrite the selected text. Press Return to apply or Esc to cancel.";
 
@@ -298,13 +322,18 @@
 "workflow.transcription.noSpeech" = "No clear speech detected. Transcription cancelled.";
 "workflow.result.copyTitle" = "Copy Result";
 "workflow.ask.answerTitle" = "Ask Anything";
+"workflow.ask.questionSectionTitle" = "Your Question";
 "workflow.ask.answerSectionTitle" = "Answer";
+"workflow.ask.answerDisclaimer" = "AI-generated content. Please verify important details.";
+"workflow.ask.followUpComingSoon" = "Follow-up chat is coming soon. Continuing here is not supported yet";
 "workflow.ask.answerPresented" = "Answer shown";
 "workflow.result.copied" = "Copied to clipboard";
 "workflow.persona.finishRecordingFirst" = "Finish the current recording before switching persona.";
 "workflow.persona.waitForProcessing" = "Please wait until processing finishes before switching persona.";
 "workflow.persona.switched" = "Persona switched to %@.";
 "workflow.persona.switchedOff" = "Persona switched off.";
+"workflow.persona.applicationSwitched" = "Application persona switched to %@.";
+"workflow.persona.applicationSwitchedOff" = "Application persona switched off.";
 "workflow.persona.disabled" = "Persona disabled.";
 "workflow.ask.selectionRequired" = "Ask Anything requires selected text first.";
 "workflow.retry.audioMissing" = "Retry failed: audio file is missing.";
@@ -324,6 +353,8 @@
 "history.action.copyResult" = "Copy result";
 "history.action.copyTranscript" = "Copy transcript";
 "history.action.downloadAudio" = "Download audio";
+"history.action.playAudio" = "Play audio";
+"history.action.stopAudio" = "Stop audio";
 "history.action.deleteTranscript" = "Delete transcript";
 "history.action.exportMarkdown" = "Export Markdown";
 "history.detail.audioPath" = "Audio Path";
@@ -358,6 +389,9 @@
 "history.privacy.subtitle" = "Voice dictation history is only stored on this Mac. Auto-cleanup removes expired local entries and linked audio files.";
 "history.export.title" = "Export archive";
 "history.export.subtitle" = "Download your history as markdown or clear the current timeline.";
+"history.export.chooseDirectory" = "Choose Export Folder";
+"history.export.chooseDirectoryMessage" = "Typeflux will save the Markdown history archive in this folder.";
+"history.export.chooseDirectoryPrompt" = "Export";
 "history.empty" = "No history entries yet.";
 "history.loadingMore" = "Loading more history...";
 "history.section.today" = "Today";
@@ -377,13 +411,17 @@
 "history.toast.audioUnavailable" = "Audio file is unavailable.";
 "history.toast.audioDownloaded" = "Audio downloaded.";
 "history.toast.audioDownloadFailed" = "Failed to download audio.";
+"history.toast.audioPlaybackFailed" = "Failed to play audio.";
 "history.toast.transcriptDeleted" = "Transcript deleted.";
 
 "vocabulary.source.manual" = "Manually added";
 "vocabulary.source.automatic" = "Auto-added";
+"vocabulary.source.claude" = "Claude";
+"vocabulary.source.codex" = "Codex";
 "vocabulary.filter.all" = "All";
 "vocabulary.filter.automatic" = "Auto-added";
 "vocabulary.filter.manual" = "Manually added";
+"vocabulary.filter.otherApps" = "Other Apps";
 "vocabulary.intro.title" = "Help Typeflux catch names, products, and domain terms more reliably.";
 "vocabulary.intro.subtitle" = "Manual entries are sent as recognition hints to Whisper-compatible transcription backends.";
 "vocabulary.search.placeholder" = "Search vocabulary...";
@@ -392,12 +430,32 @@
 "vocabulary.action.newWord" = "New word";
 "vocabulary.action.addFirst" = "Add your first word";
 "vocabulary.action.addWord" = "Add word";
+"vocabulary.action.more" = "More";
+"vocabulary.action.importFile" = "Import vocabulary";
+"vocabulary.action.import" = "Import";
+"vocabulary.action.export" = "Export vocabulary";
+"vocabulary.action.importClaude" = "Import Claude vocabulary";
+"vocabulary.action.importCodex" = "Import Codex vocabulary";
+"vocabulary.action.sync" = "Sync project terms";
 "vocabulary.sheet.title" = "Add to vocabulary";
 "vocabulary.sheet.subtitle" = "Use one term per entry. This works best for names, brands, product terms, and other frequently dictated jargon.";
 "vocabulary.sheet.editTitle" = "Edit vocabulary term";
 "vocabulary.sheet.editSubtitle" = "Update the term while keeping its source and existing usage history.";
 "vocabulary.sheet.placeholder" = "Add a new word";
+"vocabulary.sync.scanning" = "Scanning ~/.codex and ~/.claude...";
+"vocabulary.importDialog.title" = "Import vocabulary";
+"vocabulary.importDialog.message" = "Import %1$d vocabulary entries from %2$@?";
+"vocabulary.importDialog.confirm" = "Import";
 "vocabulary.toast.copied" = "Vocabulary term copied.";
+"vocabulary.toast.imported" = "Imported %d vocabulary terms.";
+"vocabulary.toast.importNoChanges" = "No vocabulary changes were imported.";
+"vocabulary.toast.exported" = "Vocabulary exported.";
+"vocabulary.toast.externalImported" = "Imported %1$d terms from %2$@.";
+"vocabulary.toast.externalNoSource" = "No %1$@ vocabulary directory was found.";
+"vocabulary.toast.externalNoTerms" = "No terms were imported from %1$@.";
+"vocabulary.toast.synced" = "Synced %d project terms into vocabulary.";
+"vocabulary.toast.syncNoSources" = "No ~/.codex or ~/.claude directories were found.";
+"vocabulary.toast.syncNoTerms" = "No project terms were discovered to sync.";
 
 "home.activity.title" = "Overall activity";
 "home.activity.completionRate" = "Completion rate";
@@ -426,12 +484,45 @@
 "settings.personaDefault.enabled" = "New dictation sessions will be rewritten with the selected persona.";
 "settings.personaDefault.disabled" = "Persona is currently off, so dictation will stay in its plain form.";
 "settings.personaDefault.openPersonas" = "Open Personas";
+"settings.personaAppBindings.title" = "App-Specific Personas";
+"settings.personaAppBindings.subtitle" = "Match the focused app and override the default persona automatically. Bundle identifiers are the most reliable, but app names also work.";
+"settings.personaAppBindings.empty" = "No app-specific personas yet.";
+"settings.personaAppBindings.openButton" = "App Personas";
+"settings.personas.newButton" = "New Persona";
+"settings.personaAppBindings.enabled.title" = "Enable feature";
+"settings.personaAppBindings.enabled.subtitle" = "When turned off, Typeflux ignores all app-specific persona rules and falls back to the default persona.";
+"settings.personaAppBindings.addTitle" = "Add app-specific persona";
+"settings.personaAppBindings.addSubtitle" = "Enter an app identifier and choose a persona, or use search to pick an app from the system.";
+"settings.personaAppBindings.listTitle" = "Configured apps";
+"settings.personaAppBindings.listSubtitle" = "Change the persona, pause the rule, or remove the rule for each app.";
+"settings.personaAppBindings.appIdentifier" = "App identifier";
+"settings.personaAppBindings.appIdentifierPlaceholder" = "com.tinyspeck.slackmacgap or Slack";
+"settings.personaAppBindings.searchApp" = "Search apps";
+"settings.personaAppBindings.persona" = "Persona";
+"settings.personaAppBindings.selectPersona" = "Select Persona";
+"settings.personaAppBindings.add" = "Add App";
+"settings.personaAppBindings.saved" = "%@ will now switch automatically for the matched app.";
+"settings.personaAppBindings.savedNoPersona" = "Persona styling is now off for the matched app.";
+"settings.personaAppBindings.savedGeneric" = "The app-specific persona binding has been saved.";
+"settings.personaAppBindings.missingPersona" = "Missing Persona";
+"settings.personaAppBindings.binding.enable" = "Enable";
+"settings.personaAppBindings.binding.pause" = "Pause";
+"settings.personaAppBindings.binding.paused" = "Paused";
+"settings.personaAppBindings.deleteDialog.title" = "Delete app-specific persona";
+"settings.personaAppBindings.deleteDialog.message" = "Remove the persona binding for %@?";
+"settings.personaAppBindings.picker.title" = "Choose an app";
+"settings.personaAppBindings.picker.subtitle" = "Pick from running apps or browse installed apps, then bind the selected app to a persona.";
+"settings.personaAppBindings.picker.scope.running" = "Running";
+"settings.personaAppBindings.picker.scope.all" = "All Apps";
+"settings.personaAppBindings.picker.searchPlaceholder" = "Search by app name or bundle identifier";
+"settings.personaAppBindings.picker.empty" = "No matching apps found.";
+"settings.personaAppBindings.picker.runningBadge" = "Running";
 
 "settings.shortcuts.activation.title" = "Voice Input";
 "settings.shortcuts.activation.subtitle" = "Use one shortcut to start voice input. Hold to talk, or tap quickly to lock the recording session. If text is selected, the transcript replaces that selection directly.";
 "settings.shortcuts.activation.footnote" = "";
 "settings.shortcuts.ask.title" = "Ask Anything";
-"settings.shortcuts.ask.subtitle" = "Press once to start recording and ask anything. Answers appear in a popup. If text is selected, explicit edit requests can also rewrite it directly.";
+"settings.shortcuts.ask.subtitle" = "Double-tap Fn to start recording and ask anything. Answers appear in a popup. If text is selected, explicit edit requests can also rewrite it directly.";
 "settings.shortcuts.ask.footnote" = "";
 "settings.shortcuts.persona.title" = "Persona switcher";
 "settings.shortcuts.persona.subtitle" = "Open a centered picker. With selected text, it can also apply a persona directly to that selection.";
@@ -440,9 +531,9 @@
 "settings.advanced.personaHotkeyApply.subtitle" = "When enabled, the persona shortcut checks for selected text first and uses the picker to rewrite that selection instead of only switching the default persona.";
 "settings.shortcuts.recording" = "Recording a new shortcut";
 "settings.shortcuts.recordingActivation" = "Press the new voice input key or key combination now.";
-"settings.shortcuts.recordingAsk" = "Press the new Ask Anything combination now. Include at least one modifier key.";
-"settings.shortcuts.recordingPersona" = "Press the shortcut that should open the persona picker. Include at least one modifier key.";
-"settings.shortcuts.recordingGeneric" = "Press the full key combination you want to use. Include at least one modifier key.";
+"settings.shortcuts.recordingAsk" = "Press the new Ask Anything shortcut now. You can quickly press the same modifier key twice.";
+"settings.shortcuts.recordingPersona" = "Press the shortcut that should open the persona picker.";
+"settings.shortcuts.recordingGeneric" = "Press the key or key combination you want to use.";
 "settings.shortcuts.record" = "Record";
 "settings.shortcuts.stopRecording" = "Stop Recording";
 "settings.shortcuts.activationConflict" = "Voice input shortcut cannot match the Ask Anything or persona shortcut.";
@@ -451,6 +542,7 @@
 "settings.shortcuts.askConflict" = "Ask Anything shortcut cannot match the voice input or persona shortcut.";
 "settings.shortcuts.askUpdated" = "Ask Anything shortcut updated.";
 "settings.shortcuts.askUnset" = "Ask Anything shortcut cleared.";
+"settings.shortcuts.doubleTapHelp" = "Quickly press this key twice.";
 "settings.shortcuts.personaConflict" = "Persona shortcut cannot match the voice input or Ask Anything shortcut.";
 "settings.shortcuts.personaUpdated" = "Persona shortcut updated.";
 "settings.shortcuts.personaUnset" = "Persona shortcut cleared.";
@@ -524,7 +616,7 @@
 "settings.models.builtInDefaultProfile" = "Built-in default profile";
 "settings.models.card.whisper.summary" = "OpenAI-hosted speech transcription with built-in model defaults.";
 "settings.models.card.freeSTT.summary" = "Choose from code-configured free speech-to-text models. No endpoint or API key is entered manually.";
-"settings.models.card.localSTT.summary" = "Run WhisperKit, SenseVoice, or Qwen3-ASR locally through the native Swift runtime.";
+"settings.models.card.localSTT.summary" = "Run WhisperKit, SenseVoice, FunASR, or Qwen3-ASR locally through the native Swift runtime.";
 "settings.models.card.multimodal.summary" = "Send audio directly to a multimodal model. Transcription and persona rewriting happen in a single API call for a faster end-to-end path.";
 "settings.models.card.aliCloud.summary" = "Real-time streaming recognition via DashScope with low-latency WebSocket streaming.";
 "settings.models.card.doubao.summary" = "Low-latency streaming recognition through Doubao Speech Recognition 2.0 with ByteDance's native binary WebSocket protocol.";
@@ -547,6 +639,8 @@
 "settings.models.card.minimax.summary" = "MiniMax models through its OpenAI-compatible endpoint, with separate international and China API URLs.";
 "settings.models.card.grok.summary" = "Grok models through xAI's OpenAI-compatible endpoint.";
 "settings.models.card.xiaomi.summary" = "Xiaomi MiMo mimo-v2 models through Xiaomi's OpenAI-compatible endpoint.";
+"settings.models.card.openCodeZen.summary" = "Curated premium models optimized for coding — GPT, Claude, Gemini, Qwen, GLM & more via the OpenCode Zen gateway.";
+"settings.models.card.openCodeGo.summary" = "Low-cost open-source coding models — DeepSeek, Qwen, GLM, Kimi, MiniMax & more. First month $5, then $10/mo.";
 "settings.models.badge.free" = "Free";
 "settings.models.freeSTT.hint" = "Free speech models are managed in code. Users can only pick from the configured model list.";
 "settings.models.freeSTT.noSources" = "No free speech model source is configured yet. Add an implementation under Sources/Typeflux/STT/FreeModels.";
@@ -735,8 +829,21 @@
 "onboarding.shortcuts.globeKeyNotice.button" = "Open Keyboard Settings";
 "onboarding.shortcuts.globeKeyNotice.ready.title" = "FN / 🌐 key is ready";
 "onboarding.shortcuts.globeKeyNotice.ready.message" = "Your keyboard setting looks good — Typeflux can use the FN / 🌐 key as a hotkey. If the hotkey still doesn't respond, try signing out and back in, or restart your Mac.";
+"onboarding.shortcuts.externalKeyboard.title" = "Using an external keyboard without a working FN key?";
+"onboarding.shortcuts.externalKeyboard.message" = "You can use Right Command or Right Option instead. Typeflux will change Voice Input to that key, and Ask Anything to a quick double-press of that key.";
+"onboarding.shortcuts.externalKeyboard.useRightCommand" = "Use Right Command";
+"onboarding.shortcuts.externalKeyboard.useRightOption" = "Use Right Option";
+"onboarding.shortcuts.replacement.rightCommand" = "Right Command";
+"onboarding.shortcuts.replacement.rightOption" = "Right Option";
+"onboarding.shortcuts.replacement.fn" = "FN / 🌐";
+"onboarding.shortcuts.replacement.active.title" = "%@ shortcuts are active";
+"onboarding.shortcuts.replacement.active.message" = "Your shortcuts have changed: Voice Input now uses %@, and Ask Anything uses %@×2.";
+"onboarding.shortcuts.replacement.restore" = "Restore FN shortcuts";
+"onboarding.shortcuts.replacement.appliedAlert.title" = "Shortcuts updated";
+"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux now uses %@ for Voice Input and %@×2 for Ask Anything.";
+"onboarding.shortcuts.replacement.restoredAlert.message" = "Typeflux has restored the default FN / 🌐 shortcuts.";
 "onboarding.shortcuts.activation.hint" = "Hold to talk, tap to lock recording";
-"onboarding.shortcuts.ask.hint" = "Ask anything, or rewrite selected text";
+"onboarding.shortcuts.ask.hint" = "Double-tap Fn to ask or rewrite selected text";
 "onboarding.shortcuts.persona.hint" = "Switch or apply a writing persona";
 "onboarding.shortcuts.changeInSettings" = "You can customize shortcuts anytime in Settings → Voice Shortcuts.";
 
@@ -759,6 +866,9 @@
 "settings.advanced.localOptimization.subtitle" = "Download a local speech recognition model in the background. When enabled, voice recognition starts faster and works even without internet.";
 "settings.advanced.localSTTMemoryOptimization.title" = "Memory Optimization";
 "settings.advanced.localSTTMemoryOptimization.subtitle" = "Unload inactive local speech models from memory to reduce resource usage. The next request may take 3 to 5 seconds while the model reloads.";
+
+"settings.advanced.inputContextOptimization.title" = "Use input context";
+"settings.advanced.inputContextOptimization.subtitle" = "Temporarily read a short snippet around the cursor to improve dictation continuity, proper nouns, and ambiguous words. The snippet is not saved to history.";
 
 "settings.advanced.agentFramework.title" = "Enable Agent framework";
 "settings.advanced.agentFramework.subtitle" = "Use the multi-turn Agent loop for Ask Anything. Supports tool calling and MCP server integration.";
@@ -890,6 +1000,16 @@
 "auth.error.unknown" = "An unknown error occurred.";
 "auth.error.invalidResponse" = "Invalid server response.";
 "auth.error.unauthorized" = "Session expired. Please sign in again.";
+"cloud.error.authInvalidCredentials" = "The email or password is incorrect.";
+"cloud.error.authUserExists" = "An account already exists for this email.";
+"cloud.error.authUserNotActive" = "Please activate your account before signing in.";
+"cloud.error.authCodeInvalid" = "The verification code is invalid or has expired.";
+"cloud.error.sessionExpired" = "Session expired. Please sign in again.";
+"cloud.error.validation" = "The request was invalid. Please check the input and try again.";
+"cloud.error.rateLimited" = "Too many requests. Please wait a moment and try again.";
+"cloud.error.quotaExceeded" = "Your Typeflux Cloud usage quota has been exhausted.";
+"cloud.error.planRequired" = "Your current plan does not include this Typeflux Cloud feature.";
+"cloud.error.server" = "Typeflux Cloud is temporarily unavailable. Please try again later.";
 
 "auth.account.provider" = "Login Method";
 "auth.account.memberSince" = "Member Since";
@@ -914,4 +1034,4 @@
 "agent.clarification.assistantSectionTitle" = "Assistant";
 "agent.clarification.hotkeyHint" = "Press and hold your hotkey to record a reply";
 "agent.clarification.recordingHint" = "Recording... release hotkey when done";
-"agent.clarification.transcribingHint" = "Processing your reply...";
+"agent.clarification.transcribingHint" = "Thinking...";

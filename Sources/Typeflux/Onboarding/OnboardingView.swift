@@ -58,6 +58,14 @@ struct OnboardingView: View {
         } message: {
             Text(L("onboarding.permissions.incompleteAlert.message"))
         }
+        .alert(
+            L("onboarding.shortcuts.replacement.appliedAlert.title"),
+            isPresented: $viewModel.showShortcutReplacementAppliedAlert,
+        ) {
+            Button(L("common.ok"), role: .cancel) {}
+        } message: {
+            Text(shortcutReplacementAppliedAlertMessage)
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             if viewModel.currentStep == .permissions {
                 viewModel.refreshPermissions()
@@ -327,7 +335,7 @@ struct OnboardingView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color(red: 0.66, green: 0.78, blue: 1.0), StudioTheme.accent],
+                            colors: [StudioTheme.accent.opacity(0.72), StudioTheme.accent],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing,
                         ),
@@ -434,59 +442,60 @@ struct OnboardingView: View {
 
             HStack(alignment: .top, spacing: 18) {
                 VStack(spacing: 10) {
-                    if !FreeLLMModelRegistry.suggestedModelNames.isEmpty {
-                        ForEach(
-                            LLMRemoteProvider.settingsDisplayOrder
-                                .filter { $0 == .freeModel }
-                                .prefix(1),
-                            id: \.self,
-                        ) { provider in
+                    let standardOptions = (
+                        LLMRemoteProvider.settingsDisplayOrder
+                            .filter { $0 != .typefluxCloud && $0 != .custom }
+                            .filter { $0 != .freeModel || !FreeLLMModelRegistry.suggestedModelNames.isEmpty }
+                            .map { provider in
+                                (
+                                    title: provider.displayName,
+                                    providerID: provider.studioProviderID,
+                                    remoteProvider: Optional(provider),
+                                )
+                            } + [
+                                (
+                                    title: LLMProvider.ollama.displayName,
+                                    providerID: StudioModelProviderID.ollama,
+                                    remoteProvider: nil,
+                                ),
+                            ]
+                    ).sorted { lhs, rhs in
+                        lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                    }
+
+                    ForEach(standardOptions, id: \.providerID) { option in
+                        if let provider = option.remoteProvider {
                             let isSelected = viewModel.llmProvider == .openAICompatible
                                 && viewModel.llmRemoteProvider == provider
                             modelProviderCard(
                                 providerID: provider.studioProviderID,
                                 title: provider.displayName,
                                 description: L("settings.models.card.\(provider.rawValue).summary"),
-                                badge: L("settings.models.badge.free"),
+                                badge: provider == .freeModel
+                                    ? L("settings.models.badge.free")
+                                    : (
+                                        provider.apiStyle == .openAICompatible
+                                            ? L("settings.models.badge.api")
+                                            : L("settings.models.badge.native")
+                                    ),
                                 isSelected: isSelected,
                             ) {
                                 withAnimation(.easeOut(duration: 0.18)) {
                                     viewModel.selectLLMRemoteProvider(provider)
                                 }
                             }
-                        }
-                    }
-
-                    ForEach(
-                        LLMRemoteProvider.onboardingDisplayOrder.filter { $0 != .custom },
-                        id: \.self
-                    ) { provider in
-                        let isSelected = viewModel.llmProvider == .openAICompatible
-                            && viewModel.llmRemoteProvider == provider
-                        modelProviderCard(
-                            providerID: provider.studioProviderID,
-                            title: provider.displayName,
-                            description: L("settings.models.card.\(provider.rawValue).summary"),
-                            badge: provider.apiStyle == .openAICompatible
-                                ? L("settings.models.badge.api")
-                                : L("settings.models.badge.native"),
-                            isSelected: isSelected,
-                        ) {
-                            withAnimation(.easeOut(duration: 0.18)) {
-                                viewModel.selectLLMRemoteProvider(provider)
+                        } else {
+                            modelProviderCard(
+                                providerID: .ollama,
+                                title: L("provider.llm.ollama"),
+                                description: L("settings.models.card.ollama.summary"),
+                                badge: L("settings.models.badge.local"),
+                                isSelected: viewModel.llmProvider == .ollama,
+                            ) {
+                                withAnimation(.easeOut(duration: 0.18)) {
+                                    viewModel.selectOllama()
+                                }
                             }
-                        }
-                    }
-
-                    modelProviderCard(
-                        providerID: .ollama,
-                        title: L("provider.llm.ollama"),
-                        description: L("settings.models.card.ollama.summary"),
-                        badge: L("settings.models.badge.local"),
-                        isSelected: viewModel.llmProvider == .ollama,
-                    ) {
-                        withAnimation(.easeOut(duration: 0.18)) {
-                            viewModel.selectOllama()
                         }
                     }
 
@@ -1073,6 +1082,10 @@ struct OnboardingView: View {
             URL(string: "https://console.x.ai/")
         case .xiaomi:
             URL(string: "https://ai.xiaomi.com/")
+        case .openCodeZen:
+            URL(string: "https://opencode.ai/auth")
+        case .openCodeGo:
+            URL(string: "https://opencode.ai/auth")
         case .freeModel, .custom:
             nil
         case .typefluxCloud:
@@ -1189,6 +1202,7 @@ struct OnboardingView: View {
         case .groqSTT: "groq"
         case .googleCloud: "google"
         case .xiaomi: "xiaomimimo"
+        case .openCodeZen, .openCodeGo: "opencode"
         case .aliCloud: "bailian-color"
         case .doubaoRealtime: "doubao-color"
         default: nil
@@ -1218,6 +1232,8 @@ struct OnboardingView: View {
         case .groqSTT: "bolt.fill"
         case .googleCloud: "cloud"
         case .xiaomi: "circle.grid.cross"
+        case .openCodeZen: "sparkle.magnifyingglass"
+        case .openCodeGo: "hare"
         case .multimodalLLM: "brain.filled.head.profile"
         case .aliCloud: "antenna.radiowaves.left.and.right"
         case .doubaoRealtime: "bolt.horizontal.circle"
@@ -1333,10 +1349,10 @@ struct OnboardingView: View {
         switch OnboardingProviderStyle.iconPlateStyle(for: providerID) {
         case .light:
             let top = isSelected
-                ? Color(red: 0.96, green: 0.98, blue: 1.0).opacity(0.96)
+                ? StudioTheme.accent.opacity(0.18)
                 : Color.white.opacity(0.92)
             let bottom = isSelected
-                ? Color(red: 0.82, green: 0.89, blue: 1.0).opacity(0.88)
+                ? StudioTheme.accent.opacity(0.34)
                 : Color(red: 0.84, green: 0.87, blue: 0.93).opacity(0.84)
             return LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .neutral:
@@ -1497,14 +1513,14 @@ struct OnboardingView: View {
                     shortcutCard(
                         title: L("settings.shortcuts.activation.title"),
                         subtitle: L("onboarding.shortcuts.activation.hint"),
-                        binding: HotkeyBinding.defaultActivation,
+                        binding: viewModel.activationHotkey,
                         expanded: true,
                     )
 
                     shortcutCard(
                         title: L("settings.shortcuts.ask.title"),
                         subtitle: L("onboarding.shortcuts.ask.hint"),
-                        binding: HotkeyBinding.defaultAsk,
+                        binding: viewModel.askHotkey ?? .defaultAsk,
                         expanded: true,
                     )
                 }
@@ -1516,7 +1532,12 @@ struct OnboardingView: View {
                 )
             }
 
-            globeKeyNotice
+            if viewModel.externalKeyboardShortcutReplacement == nil {
+                externalKeyboardShortcutNotice
+                globeKeyNotice
+            } else {
+                shortcutReplacementNotice
+            }
         }
         .frame(maxWidth: 920, alignment: .leading)
         .frame(maxWidth: .infinity)
@@ -1655,19 +1676,217 @@ struct OnboardingView: View {
         .animation(.easeInOut(duration: 0.25), value: isReady)
     }
 
+    private var externalKeyboardShortcutNotice: some View {
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(StudioTheme.accent.opacity(isDarkMode ? 0.22 : 0.12))
+                Image(systemName: "keyboard")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(StudioTheme.accent)
+            }
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L("onboarding.shortcuts.externalKeyboard.title"))
+                    .font(.studioDisplay(16, weight: .bold))
+                    .foregroundStyle(onboardingPrimaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(L("onboarding.shortcuts.externalKeyboard.message"))
+                    .font(.studioBody(13))
+                    .foregroundStyle(onboardingSecondaryText)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 10) {
+                    externalKeyboardReplacementButton(.rightCommand)
+                    externalKeyboardReplacementButton(.rightOption)
+                }
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(StudioTheme.accent.opacity(isDarkMode ? 0.09 : 0.05)),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(StudioTheme.accent.opacity(isDarkMode ? 0.28 : 0.18), lineWidth: 1),
+        )
+    }
+
+    private var shortcutReplacementNotice: some View {
+        let replacementName = shortcutReplacementName(viewModel.externalKeyboardShortcutReplacement)
+
+        return HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(StudioTheme.success.opacity(isDarkMode ? 0.22 : 0.14))
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(StudioTheme.success)
+            }
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 14) {
+                    Text(String(format: L("onboarding.shortcuts.replacement.active.title"), replacementName))
+                        .font(.studioDisplay(16, weight: .bold))
+                        .foregroundStyle(onboardingPrimaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 12)
+
+                    StudioButton(
+                        title: L("onboarding.shortcuts.replacement.restore"),
+                        systemImage: "arrow.uturn.backward",
+                        variant: .secondary,
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.restoreDefaultFNShortcuts()
+                        }
+                    }
+                    .fixedSize()
+                }
+
+                Text(
+                    String(
+                        format: L("onboarding.shortcuts.replacement.active.message"),
+                        replacementName,
+                        replacementName
+                    )
+                )
+                    .font(.studioBody(13))
+                    .foregroundStyle(onboardingSecondaryText)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(StudioTheme.success.opacity(isDarkMode ? 0.10 : 0.06)),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(StudioTheme.success.opacity(isDarkMode ? 0.32 : 0.20), lineWidth: 1),
+        )
+        .animation(.easeInOut(duration: 0.25), value: viewModel.externalKeyboardShortcutReplacement)
+    }
+
+    private func externalKeyboardReplacementButton(
+        _ replacement: OnboardingViewModel.ExternalKeyboardShortcutReplacement,
+    ) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.useExternalKeyboardShortcutReplacement(replacement)
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Text(shortcutReplacementKeycap(replacement))
+                    .font(.studioBody(13, weight: .bold))
+                    .foregroundStyle(StudioTheme.accent)
+                    .frame(width: 54, alignment: .center)
+
+                Rectangle()
+                    .fill(onboardingSubtleBorder)
+                    .frame(width: 1, height: 20)
+
+                Text(shortcutReplacementButtonTitle(replacement))
+                    .font(.studioBody(12, weight: .semibold))
+                    .foregroundStyle(onboardingPrimaryText)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(onboardingCardSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(StudioTheme.accent.opacity(isDarkMode ? 0.26 : 0.18), lineWidth: 1)
+                    ),
+            )
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+    }
+
+    private var shortcutReplacementAppliedAlertMessage: String {
+        if let replacement = viewModel.externalKeyboardShortcutReplacement {
+            return String(
+                format: L("onboarding.shortcuts.replacement.appliedAlert.message"),
+                shortcutReplacementName(replacement),
+                shortcutReplacementName(replacement),
+            )
+        }
+        return L("onboarding.shortcuts.replacement.restoredAlert.message")
+    }
+
+    private func shortcutReplacementName(
+        _ replacement: OnboardingViewModel.ExternalKeyboardShortcutReplacement?,
+    ) -> String {
+        switch replacement {
+        case .rightCommand:
+            L("onboarding.shortcuts.replacement.rightCommand")
+        case .rightOption:
+            L("onboarding.shortcuts.replacement.rightOption")
+        case nil:
+            L("onboarding.shortcuts.replacement.fn")
+        }
+    }
+
+    private func shortcutReplacementButtonTitle(
+        _ replacement: OnboardingViewModel.ExternalKeyboardShortcutReplacement,
+    ) -> String {
+        switch replacement {
+        case .rightCommand:
+            L("onboarding.shortcuts.externalKeyboard.useRightCommand")
+        case .rightOption:
+            L("onboarding.shortcuts.externalKeyboard.useRightOption")
+        }
+    }
+
+    private func shortcutReplacementKeycap(
+        _ replacement: OnboardingViewModel.ExternalKeyboardShortcutReplacement,
+    ) -> String {
+        switch replacement {
+        case .rightCommand:
+            "⌘(R)"
+        case .rightOption:
+            "⌥(R)"
+        }
+    }
+
     @ViewBuilder
     private func hotkeySequence(_ binding: HotkeyBinding) -> some View {
         let keys = HotkeyFormat.components(binding)
+        let pressCount = HotkeyFormat.pressCount(binding)
 
-        ForEach(Array(keys.enumerated()), id: \.offset) { index, key in
-            if index > 0 {
-                Text("+")
-                    .font(.studioBody(12, weight: .semibold))
-                    .foregroundStyle(onboardingTertiaryText)
+        HStack(spacing: 5) {
+            HStack(spacing: 6) {
+                ForEach(Array(keys.enumerated()), id: \.offset) { index, key in
+                    if index > 0 {
+                        Text("+")
+                            .font(.studioBody(12, weight: .semibold))
+                            .foregroundStyle(onboardingTertiaryText)
+                    }
+
+                    hotkeyKeycap(key)
+                }
             }
 
-            hotkeyKeycap(key)
+            if let pressCount {
+                Text("×\(pressCount)")
+                    .font(.studioBody(12, weight: .bold))
+                    .foregroundStyle(onboardingSecondaryText)
+                    .baselineOffset(1)
+            }
         }
+        .help(binding.isModifierDoubleTapTrigger ? L("settings.shortcuts.doubleTapHelp") : "")
     }
 
     private func hotkeyKeycap(_ key: String) -> some View {

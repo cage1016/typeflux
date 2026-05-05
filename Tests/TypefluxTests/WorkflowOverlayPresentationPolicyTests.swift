@@ -23,4 +23,12 @@ final class WorkflowOverlayPresentationPolicyTests: XCTestCase {
 
         XCTAssertFalse(WorkflowOverlayPresentationPolicy.shouldPresentResultDialog(for: snapshot))
     }
+
+    func testShouldNotShowLLMStreamingPreviewAfterTranscription() {
+        XCTAssertFalse(WorkflowOverlayPresentationPolicy.shouldShowLLMStreamingPreviewAfterTranscription())
+    }
+
+    func testShouldNotShowLLMStreamingPreviewForPersonaSelectionApplication() {
+        XCTAssertFalse(WorkflowOverlayPresentationPolicy.shouldShowLLMStreamingPreviewForPersonaSelectionApplication())
+    }
 }

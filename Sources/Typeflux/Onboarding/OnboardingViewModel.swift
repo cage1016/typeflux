@@ -21,6 +21,29 @@ final class OnboardingViewModel: ObservableObject {
         case failure(message: String)
     }
 
+    enum ExternalKeyboardShortcutReplacement: String, CaseIterable, Equatable {
+        case rightCommand
+        case rightOption
+
+        var activationHotkey: HotkeyBinding {
+            switch self {
+            case .rightCommand:
+                .rightCommandActivation
+            case .rightOption:
+                .rightOptionActivation
+            }
+        }
+
+        var askHotkey: HotkeyBinding {
+            switch self {
+            case .rightCommand:
+                .rightCommandAsk
+            case .rightOption:
+                .rightOptionAsk
+            }
+        }
+    }
+
     static let orderedSteps: [Step] = [.language, .account, .stt, .llm, .permissions, .shortcuts]
 
     @Published var currentStep: Step = .language
@@ -72,6 +95,10 @@ final class OnboardingViewModel: ObservableObject {
 
     // Globe key (🌐) macOS keyboard setting
     @Published var isGlobeKeyReady: Bool = true
+    @Published private(set) var activationHotkey: HotkeyBinding
+    @Published private(set) var askHotkey: HotkeyBinding?
+    @Published private(set) var externalKeyboardShortcutReplacement: ExternalKeyboardShortcutReplacement?
+    @Published var showShortcutReplacementAppliedAlert = false
 
     private let settingsStore: SettingsStore
     private let authState: AuthState
@@ -140,6 +167,14 @@ final class OnboardingViewModel: ObservableObject {
 
         permissions = PrivacyGuard.snapshots()
         isGlobeKeyReady = globeKeyReader.isReadyForHotkey
+        let storedActivationHotkey = settingsStore.activationHotkey ?? .defaultActivation
+        let storedAskHotkey = settingsStore.askHotkey
+        activationHotkey = storedActivationHotkey
+        askHotkey = storedAskHotkey
+        externalKeyboardShortcutReplacement = Self.detectExternalKeyboardShortcutReplacement(
+            activationHotkey: storedActivationHotkey,
+            askHotkey: storedAskHotkey,
+        )
     }
 
     var canGoBack: Bool {
@@ -422,6 +457,24 @@ final class OnboardingViewModel: ObservableObject {
         isGlobeKeyReady = globeKeyReader.isReadyForHotkey
     }
 
+    func useExternalKeyboardShortcutReplacement(_ replacement: ExternalKeyboardShortcutReplacement) {
+        activationHotkey = replacement.activationHotkey
+        askHotkey = replacement.askHotkey
+        externalKeyboardShortcutReplacement = replacement
+        settingsStore.activationHotkey = replacement.activationHotkey
+        settingsStore.askHotkey = replacement.askHotkey
+        showShortcutReplacementAppliedAlert = true
+    }
+
+    func restoreDefaultFNShortcuts() {
+        activationHotkey = .defaultActivation
+        askHotkey = .defaultAsk
+        externalKeyboardShortcutReplacement = nil
+        settingsStore.activationHotkey = .defaultActivation
+        settingsStore.askHotkey = .defaultAsk
+        showShortcutReplacementAppliedAlert = true
+    }
+
     static let keyboardSystemSettingsURL = URL(
         string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
     )!
@@ -527,5 +580,15 @@ final class OnboardingViewModel: ObservableObject {
         let nextIndex = index + offset
         guard steps.indices.contains(nextIndex) else { return nil }
         return steps[nextIndex]
+    }
+
+    private static func detectExternalKeyboardShortcutReplacement(
+        activationHotkey: HotkeyBinding,
+        askHotkey: HotkeyBinding?,
+    ) -> ExternalKeyboardShortcutReplacement? {
+        ExternalKeyboardShortcutReplacement.allCases.first { replacement in
+            activationHotkey.signature == replacement.activationHotkey.signature
+                && askHotkey?.signature == replacement.askHotkey.signature
+        }
     }
 }

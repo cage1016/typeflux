@@ -3,7 +3,7 @@ import GRPC
 import NIO
 import os
 
-final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber {
+final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber, RealtimeTranscriptionSessionFactory {
     private let settingsStore: SettingsStore
     private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "GoogleCloudSpeechTranscriber")
 
@@ -32,6 +32,29 @@ final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber 
             pcmData: pcmData,
             configuration: configuration,
             onUpdate: onUpdate,
+        )
+    }
+
+    func makeRealtimeTranscriptionSession(
+        scenario _: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> any RealtimeTranscriptionSession {
+        let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(
+            manualCredential: ""
+        )
+        let configuration = try await MainActor.run {
+            try GoogleCloudSpeechConfiguration(
+                projectID: settingsStore.googleCloudProjectID,
+                apiKey: effectiveCredential,
+                model: settingsStore.googleCloudModel,
+                appLanguage: settingsStore.appLanguage,
+            )
+        }
+        return BufferedRealtimeTranscriptionSession(
+            upstream: GoogleCloudSpeechRealtimePCMStream(
+                configuration: configuration,
+                onUpdate: onUpdate,
+            ),
         )
     }
 
@@ -204,7 +227,7 @@ enum GoogleCloudSpeechStreamingSession {
         return transcript
     }
 
-    private static func applyAuthorizationMetadata(
+    static func applyAuthorizationMetadata(
         to callOptions: inout CallOptions,
         configuration: GoogleCloudSpeechConfiguration,
     ) {
@@ -271,9 +294,13 @@ enum GoogleCloudSpeechStreamingSession {
         var requests = [makeConfigRequest(configuration: configuration)]
         requests.reserveCapacity(1 + Int(ceil(Double(pcmData.count) / Double(CloudASRAudioConverter.chunkSize))))
 
-        var offset = 0
-        while offset < pcmData.count {
-            let end = min(offset + CloudASRAudioConverter.chunkSize, pcmData.count)
+        var offset = pcmData.startIndex
+        while offset < pcmData.endIndex {
+            let end = pcmData.index(
+                offset,
+                offsetBy: CloudASRAudioConverter.chunkSize,
+                limitedBy: pcmData.endIndex,
+            ) ?? pcmData.endIndex
             var request = Google_Cloud_Speech_V2_StreamingRecognizeRequest()
             request.recognizer = configuration.recognizer
             request.audio = Data(pcmData[offset ..< end])
@@ -283,7 +310,7 @@ enum GoogleCloudSpeechStreamingSession {
         return requests
     }
 
-    private static func makeConfigRequest(
+    static func makeConfigRequest(
         configuration: GoogleCloudSpeechConfiguration,
     ) -> Google_Cloud_Speech_V2_StreamingRecognizeRequest {
         var decodingConfig = Google_Cloud_Speech_V2_ExplicitDecodingConfig()
@@ -309,7 +336,7 @@ enum GoogleCloudSpeechStreamingSession {
         return request
     }
 
-    private static func transcriptUpdate(
+    static func transcriptUpdate(
         from response: Google_Cloud_Speech_V2_StreamingRecognizeResponse,
         finalSegments: inout [String],
         currentPartial: inout String,
@@ -333,10 +360,131 @@ enum GoogleCloudSpeechStreamingSession {
         )
     }
 
-    private static func assembleTranscript(finalSegments: [String], currentPartial: String) -> String {
+    static func assembleTranscript(finalSegments: [String], currentPartial: String) -> String {
         (finalSegments + [currentPartial])
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+}
+
+private actor GoogleCloudSpeechRealtimePCMStream: PCM16RealtimeTranscriptionSession {
+    private typealias Request = Google_Cloud_Speech_V2_StreamingRecognizeRequest
+
+    private let configuration: GoogleCloudSpeechConfiguration
+    private let onUpdate: @Sendable (TranscriptionSnapshot) async -> Void
+    private var group: EventLoopGroup?
+    private var channel: ClientConnection?
+    private var continuation: AsyncThrowingStream<Request, Error>.Continuation?
+    private var responseTask: Task<Void, Never>?
+    private var finalSegments: [String] = []
+    private var currentPartial = ""
+    private var streamError: Error?
+    private var completed = false
+
+    init(
+        configuration: GoogleCloudSpeechConfiguration,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) {
+        self.configuration = configuration
+        self.onUpdate = onUpdate
+    }
+
+    func start() async throws {
+        let group = PlatformSupport.makeEventLoopGroup(loopCount: 1)
+        let channel = ClientConnection.usingTLSBackedByNIOSSL(on: group)
+            .connect(host: configuration.endpointHost, port: 443)
+        let client = Google_Cloud_Speech_V2_SpeechAsyncClient(channel: channel)
+        var callOptions = CallOptions(timeLimit: .timeout(.seconds(600)))
+        GoogleCloudSpeechStreamingSession.applyAuthorizationMetadata(to: &callOptions, configuration: configuration)
+        callOptions.customMetadata.add(
+            name: "x-goog-request-params",
+            value: configuration.routingMetadataValue,
+        )
+
+        var streamContinuation: AsyncThrowingStream<Request, Error>.Continuation?
+        let stream = AsyncThrowingStream<Request, Error> { continuation in
+            streamContinuation = continuation
+        }
+        let responses = client.streamingRecognize(stream, callOptions: callOptions)
+        self.group = group
+        self.channel = channel
+        continuation = streamContinuation
+
+        continuation?.yield(GoogleCloudSpeechStreamingSession.makeConfigRequest(configuration: configuration))
+
+        responseTask = Task { [weak self] in
+            await self?.readResponses(responses)
+        }
+    }
+
+    func appendPCM16(_ data: Data) async throws {
+        guard !data.isEmpty else { return }
+        if let streamError { throw streamError }
+        var request = Request()
+        request.recognizer = configuration.recognizer
+        request.audio = Data(data)
+        continuation?.yield(request)
+    }
+
+    func finish() async throws -> String {
+        continuation?.finish()
+        await responseTask?.value
+        if let streamError { throw streamError }
+        let transcript = GoogleCloudSpeechStreamingSession.assembleTranscript(
+            finalSegments: finalSegments,
+            currentPartial: currentPartial,
+        )
+        if !transcript.isEmpty {
+            await onUpdate(TranscriptionSnapshot(text: transcript, isFinal: true))
+        }
+        await close()
+        return transcript
+    }
+
+    func cancel() async {
+        continuation?.finish(throwing: CancellationError())
+        await close()
+    }
+
+    private func readResponses(_ responses: GRPCAsyncResponseStream<Google_Cloud_Speech_V2_StreamingRecognizeResponse>) async {
+        do {
+            for try await response in responses {
+                let update = GoogleCloudSpeechStreamingSession.transcriptUpdate(
+                    from: response,
+                    finalSegments: &finalSegments,
+                    currentPartial: &currentPartial,
+                )
+                if !update.text.isEmpty {
+                    await onUpdate(update)
+                }
+            }
+            completed = true
+        } catch {
+            if !Task.isCancelled {
+                streamError = GoogleCloudSpeechError.rpcFailed(
+                    GoogleCloudSpeechStreamingSession.rpcErrorMessage(error, configuration: configuration),
+                )
+            }
+            completed = true
+        }
+    }
+
+    private func close() async {
+        responseTask?.cancel()
+        responseTask = nil
+        continuation = nil
+        if let channel {
+            try? await channel.close().get()
+        }
+        if let group {
+            await withCheckedContinuation { continuation in
+                group.shutdownGracefully { _ in
+                    continuation.resume()
+                }
+            }
+        }
+        channel = nil
+        group = nil
     }
 }

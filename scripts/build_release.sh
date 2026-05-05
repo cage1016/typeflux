@@ -5,10 +5,30 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/.build/release"
 APP_NAME="Typeflux"
 RELEASE_VARIANT="${TYPEFLUX_RELEASE_VARIANT:-minimal}"
+RELEASE_ARCH="${TYPEFLUX_RELEASE_ARCH:-native}"
 DEFAULT_PACKAGE_NAME="$APP_NAME"
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
   DEFAULT_PACKAGE_NAME="${APP_NAME}-full"
+elif [[ "$RELEASE_VARIANT" == "app-only" ]]; then
+  DEFAULT_PACKAGE_NAME="${APP_NAME}-app-only"
 fi
+case "$RELEASE_ARCH" in
+  native)
+    ;;
+  arm64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-apple-silicon"
+    ;;
+  x86_64)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-intel"
+    ;;
+  universal)
+    DEFAULT_PACKAGE_NAME="${DEFAULT_PACKAGE_NAME}-universal"
+    ;;
+  *)
+    echo "Error: unsupported TYPEFLUX_RELEASE_ARCH: ${RELEASE_ARCH}" >&2
+    exit 1
+    ;;
+esac
 PACKAGE_NAME="${TYPEFLUX_PACKAGE_NAME:-$DEFAULT_PACKAGE_NAME}"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 APP_EXECUTABLE="${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
@@ -42,11 +62,47 @@ create_zip_archive() {
   )
 }
 
+verify_main_executable_architecture() {
+  if ! command -v lipo >/dev/null 2>&1; then
+    echo "Warning: lipo not available; skipping executable architecture audit."
+    return 0
+  fi
+
+  local archs
+  archs="$(lipo -archs "$APP_EXECUTABLE")"
+  echo "Main executable architectures: ${archs}"
+
+  case "$RELEASE_ARCH" in
+    native)
+      return 0
+      ;;
+    arm64)
+      [[ " ${archs} " == *" arm64 "* ]] || {
+        echo "Error: expected arm64 slice in ${APP_EXECUTABLE}" >&2
+        exit 1
+      }
+      ;;
+    x86_64)
+      [[ " ${archs} " == *" x86_64 "* ]] || {
+        echo "Error: expected x86_64 slice in ${APP_EXECUTABLE}" >&2
+        exit 1
+      }
+      ;;
+    universal)
+      [[ " ${archs} " == *" arm64 "* && " ${archs} " == *" x86_64 "* ]] || {
+        echo "Error: expected universal executable with arm64 and x86_64 slices in ${APP_EXECUTABLE}" >&2
+        exit 1
+      }
+      ;;
+  esac
+}
+
 echo "Building Typeflux release bundle..."
 echo "Release variant: ${RELEASE_VARIANT}"
+echo "Release architecture: ${RELEASE_ARCH}"
 
 case "$RELEASE_VARIANT" in
-  minimal|full)
+  minimal|full|app-only)
     ;;
   *)
     echo "Error: unsupported TYPEFLUX_RELEASE_VARIANT: ${RELEASE_VARIANT}" >&2
@@ -54,9 +110,21 @@ case "$RELEASE_VARIANT" in
     ;;
 esac
 
-swift build --package-path "$ROOT_DIR" -c release
+SWIFT_BUILD_ARGS=(--package-path "$ROOT_DIR" -c release)
+case "$RELEASE_ARCH" in
+  native)
+    ;;
+  arm64 | x86_64)
+    SWIFT_BUILD_ARGS+=(--arch "$RELEASE_ARCH")
+    ;;
+  universal)
+    SWIFT_BUILD_ARGS+=(--arch arm64 --arch x86_64)
+    ;;
+esac
 
-BIN_DIR="$(swift build --package-path "$ROOT_DIR" -c release --show-bin-path)"
+swift build "${SWIFT_BUILD_ARGS[@]}"
+
+BIN_DIR="$(swift build "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)"
 BIN="$BIN_DIR/Typeflux"
 RESOURCE_BUNDLE="$BIN_DIR/Typeflux_Typeflux.bundle"
 
@@ -68,13 +136,20 @@ cp "$ROOT_DIR/app/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 cp "$BIN" "$APP_BUNDLE/Contents/MacOS/Typeflux"
 cp "$ROOT_DIR/app/Typeflux.icns" "$APP_BUNDLE/Contents/Resources/Typeflux.icns"
 cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/Typeflux_Typeflux.bundle"
+verify_main_executable_architecture
 
 rm -rf "$APP_BUNDLE/Contents/Resources/BundledModels"
+rm -rf "$APP_BUNDLE/Contents/Resources/LocalRuntimes"
+SHERPA_RUNTIME_ROOT="$APP_BUNDLE/Contents/Resources/LocalRuntimes/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts"
+if [[ "$RELEASE_VARIANT" != "app-only" ]]; then
+  "${ROOT_DIR}/scripts/install_bundled_sherpa_runtime.sh" "$SHERPA_RUNTIME_ROOT"
+fi
+
 if [[ "$RELEASE_VARIANT" == "full" ]]; then
   # Directory name must match LocalSTTModel.senseVoiceSmall.defaultModelIdentifier
   # so that BundledLocalModelLocator resolves the bundled copy at runtime.
   BUNDLED_SENSEVOICE_DIR="$APP_BUNDLE/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small"
-  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$BUNDLED_SENSEVOICE_DIR"
+  "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$BUNDLED_SENSEVOICE_DIR" "$SHERPA_RUNTIME_ROOT"
 
   expected_model_file="$BUNDLED_SENSEVOICE_DIR/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"
   if [[ ! -f "$expected_model_file" ]]; then
@@ -118,16 +193,17 @@ fi
 
 # Notarization requires every Mach-O inside the bundle to carry a Developer ID
 # signature, a secure timestamp, and the hardened runtime. The `full` variant
-# bundles third-party sherpa-onnx binaries under Contents/Resources that ship
-# unsigned from upstream, so we must sign them individually before the outer
-# bundle is sealed. `codesign --deep` is deprecated for this and does not cover
-# arbitrary Mach-O files under Contents/Resources.
+# used to be the only variant with third-party sherpa-onnx binaries; now every
+# variant ships the shared local runtime under Contents/Resources/LocalRuntimes.
+# These upstream binaries must be signed individually before the outer bundle is
+# sealed. `codesign --deep` is deprecated for this and does not cover arbitrary
+# Mach-O files under Contents/Resources.
 sign_nested_binaries() {
   local identity="$1"
   local adhoc="$2"
-  local search_root="$APP_BUNDLE/Contents/Resources/BundledModels"
+  local resources_root="$APP_BUNDLE/Contents/Resources"
 
-  [[ -d "$search_root" ]] || return 0
+  [[ -d "$resources_root" ]] || return 0
 
   local -a nested_args
   if [[ "$adhoc" == true ]]; then
@@ -147,7 +223,7 @@ sign_nested_binaries() {
       echo "Signing nested binary: ${candidate#$APP_BUNDLE/}"
       codesign "${nested_args[@]}" "$candidate"
     fi
-  done < <(find "$search_root" -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' \) -print0)
+  done < <(find "$resources_root/LocalRuntimes" "$resources_root/BundledModels" -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' \) -print0 2>/dev/null)
 }
 
 # Sign the bundle if an identity is available.
@@ -180,6 +256,12 @@ if [[ "$use_apple_sign_in_entitlements" == true ]]; then
 else
   echo "Warning: Sign In with Apple is disabled for this release build."
   echo "Warning: To enable it, set TYPEFLUX_PROVISIONING_PROFILE to a macOS provisioning profile whose App ID matches ai.gulu.app.typeflux and includes the Sign In with Apple capability."
+fi
+
+if [[ "$RELEASE_ARCH" == "arm64" || "$RELEASE_ARCH" == "x86_64" || "$RELEASE_ARCH" == "universal" ]]; then
+  "${ROOT_DIR}/scripts/audit_macho_minos.sh" "$APP_BUNDLE" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}" "$RELEASE_ARCH"
+else
+  "${ROOT_DIR}/scripts/audit_macho_minos.sh" "$APP_BUNDLE" "${TYPEFLUX_MAX_MACHO_MINOS:-13.4}"
 fi
 
 create_zip_archive

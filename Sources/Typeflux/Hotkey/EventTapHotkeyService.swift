@@ -18,6 +18,7 @@ final class EventTapHotkeyService: HotkeyService {
     var onActivationTap: (() -> Void)?
     var onActivationPressBegan: (() -> Void)?
     var onActivationPressEnded: (() -> Void)?
+    var onActivationCancelled: (() -> Void)?
     var onAskPressBegan: (() -> Void)?
     var onAskPressEnded: (() -> Void)?
     var onPersonaPickerRequested: (() -> Void)?
@@ -31,6 +32,7 @@ final class EventTapHotkeyService: HotkeyService {
     private var localMonitor: Any?
     private var arbiter = HotkeyGestureArbiter()
     private var pendingModifierActivationWorkItem: DispatchWorkItem?
+    private var accessibilityRetryWorkItem: DispatchWorkItem?
 
     init(settingsStore: SettingsStore) {
         self.settingsStore = settingsStore
@@ -65,6 +67,8 @@ final class EventTapHotkeyService: HotkeyService {
         localMonitor = nil
         pendingModifierActivationWorkItem?.cancel()
         pendingModifierActivationWorkItem = nil
+        accessibilityRetryWorkItem?.cancel()
+        accessibilityRetryWorkItem = nil
         arbiter = HotkeyGestureArbiter()
     }
 
@@ -85,9 +89,12 @@ final class EventTapHotkeyService: HotkeyService {
         ) else {
             ErrorLogStore.shared.log("Hotkey: failed to create CGEventTap, using NSEvent fallback")
             installNSEventMonitorFallback()
+            scheduleEventTapRetryAfterAccessibilityGrant()
             return
         }
 
+        accessibilityRetryWorkItem?.cancel()
+        accessibilityRetryWorkItem = nil
         eventTap = tap
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         runLoopSource = source
@@ -104,6 +111,26 @@ final class EventTapHotkeyService: HotkeyService {
             let shouldConsume = processNSEvent(event, canConsume: true)
             return shouldConsume ? nil : event
         }
+    }
+
+    private func scheduleEventTapRetryAfterAccessibilityGrant() {
+        guard !PrivacyGuard.isAccessibilityGranted() else { return }
+        guard accessibilityRetryWorkItem == nil else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            accessibilityRetryWorkItem = nil
+
+            guard PrivacyGuard.isAccessibilityGranted() else {
+                scheduleEventTapRetryAfterAccessibilityGrant()
+                return
+            }
+
+            ErrorLogStore.shared.log("Hotkey: accessibility granted, restarting event tap service")
+            start()
+        }
+        accessibilityRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
 
     private func handleNSEvent(_ event: NSEvent) {
@@ -193,6 +220,7 @@ final class EventTapHotkeyService: HotkeyService {
                     modifierFlags: modifierFlags,
                     activationHotkey: activationHotkey,
                     askHotkey: askHotkey,
+                    personaHotkey: personaHotkey,
                 ),
             )
         }
@@ -237,26 +265,39 @@ final class EventTapHotkeyService: HotkeyService {
             switch event {
             case .activationTapped:
                 ErrorLogStore.shared.log("Hotkey(NSEvent): activation tap")
+                RecordingStartupLatencyTrace.shared.mark("hotkey.activation_tap")
                 DispatchQueue.main.async { [weak self] in
                     self?.onActivationTap?()
                 }
             case .begin(.activation):
                 ErrorLogStore.shared.log("Hotkey(NSEvent): activation down")
+                RecordingStartupLatencyTrace.shared.begin("hotkey.activation_begin")
                 DispatchQueue.main.async { [weak self] in
                     self?.onActivationPressBegan?()
                 }
             case .end(.activation):
                 ErrorLogStore.shared.log("Hotkey(NSEvent): activation up")
+                RecordingStartupLatencyTrace.shared.mark("hotkey.activation_end")
                 DispatchQueue.main.async { [weak self] in
                     self?.onActivationPressEnded?()
                 }
+            case .cancel(.activation):
+                ErrorLogStore.shared.log("Hotkey(NSEvent): activation cancel")
+                RecordingStartupLatencyTrace.shared.mark("hotkey.activation_cancel")
+                DispatchQueue.main.async { [weak self] in
+                    self?.onActivationCancelled?()
+                }
+            case .cancel(.ask), .cancel(.personaPicker):
+                break
             case .begin(.ask):
                 ErrorLogStore.shared.log("Hotkey(NSEvent): ask down")
+                RecordingStartupLatencyTrace.shared.mark("hotkey.ask_begin")
                 DispatchQueue.main.async { [weak self] in
                     self?.onAskPressBegan?()
                 }
             case .end(.ask):
                 ErrorLogStore.shared.log("Hotkey(NSEvent): ask up")
+                RecordingStartupLatencyTrace.shared.mark("hotkey.ask_end")
                 DispatchQueue.main.async { [weak self] in
                     self?.onAskPressEnded?()
                 }

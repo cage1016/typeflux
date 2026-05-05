@@ -66,7 +66,8 @@ struct CloudRequestExecutor: Sendable {
         var lastError: Error?
         for (index, endpoint) in endpoints.enumerated() {
             try Task.checkCancellation()
-            let request = build(endpoint)
+            var request = build(endpoint)
+            TypefluxCloudRequestHeaders.applyClientInfo(to: &request)
             let start = ContinuousClock.now
 
             do {
@@ -90,6 +91,8 @@ struct CloudRequestExecutor: Sendable {
                 await selector.reportSuccess(endpoint, latencyMs: latency)
                 return (data, http)
             } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as URLError where error.code == .cancelled {
                 throw CancellationError()
             } catch {
                 await selector.reportFailure(endpoint, error: error)

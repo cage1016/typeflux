@@ -26,29 +26,26 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
     case grok
     case groq
     case xiaomi
+    case openCodeZen
+    case openCodeGo
     case custom
 
     static let defaultProvider: LLMRemoteProvider = .openAI
 
-    static let settingsDisplayOrder: [LLMRemoteProvider] = [
-        .typefluxCloud,
-        .freeModel,
-        .openRouter,
-        .openAI,
-        .anthropic,
-        .gemini,
-        .grok,
-        .deepSeek,
-        .kimi,
-        .qwen,
-        .zhipu,
-        .minimax,
-        .xiaomi,
-        .custom,
-    ]
+    static var settingsDisplayOrder: [LLMRemoteProvider] {
+        let standardProviders = allCases
+            .filter { $0 != .typefluxCloud && $0 != .custom }
+            .sorted { lhs, rhs in
+                lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
 
-    static let onboardingDisplayOrder: [LLMRemoteProvider] = settingsDisplayOrder.filter {
-        $0 != .freeModel && $0 != .typefluxCloud
+        return [.typefluxCloud] + standardProviders + [.custom]
+    }
+
+    static var onboardingDisplayOrder: [LLMRemoteProvider] {
+        settingsDisplayOrder.filter {
+            $0 != .freeModel && $0 != .typefluxCloud
+        }
     }
 
     var displayName: String {
@@ -83,6 +80,10 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
             "Groq"
         case .xiaomi:
             "Xiaomi MiMo"
+        case .openCodeZen:
+            "OpenCode Zen"
+        case .openCodeGo:
+            "OpenCode Go"
         }
     }
 
@@ -93,7 +94,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         case .gemini:
             .gemini
         case .typefluxCloud, .freeModel, .custom, .openRouter, .openAI, .deepSeek, .kimi, .qwen, .zhipu, .minimax,
-             .grok, .groq, .xiaomi:
+             .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             .openAICompatible
         }
     }
@@ -105,7 +106,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         case .freeModel:
             ""
         case .custom:
-            "https://api.openai.com/v1"
+            ""
         case .openRouter:
             "https://openrouter.ai/api/v1"
         case .openAI:
@@ -130,6 +131,10 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
             "https://api.groq.com/openai/v1"
         case .xiaomi:
             "https://api.xiaomimimo.com/v1"
+        case .openCodeZen:
+            "https://opencode.ai/zen/v1"
+        case .openCodeGo:
+            "https://opencode.ai/zen/go/v1"
         }
     }
 
@@ -270,6 +275,39 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
                 "mimo-v2-flash",
                 "mimo-v2-omni",
             ]
+        case .openCodeZen:
+            return [
+                "big-pickle",
+                "minimax-m2.5-free",
+                "ling-2.6-flash-free",
+                "hy3-preview-free",
+                "nemotron-3-super-free",
+                "gpt-5-nano",
+                "gpt-5.5",
+                "claude-opus-4-7",
+                "gemini-3.1-pro-preview",
+                "qwen3.6-plus",
+                "minimax-m2.7",
+                "glm-5.1",
+                "kimi-k2.6",
+            ]
+        case .openCodeGo:
+            return [
+                "deepseek-v4-pro",
+                "deepseek-v4-flash",
+                "qwen3.6-plus",
+                "qwen3.5-plus",
+                "glm-5.1",
+                "glm-5",
+                "kimi-k2.6",
+                "kimi-k2.5",
+                "minimax-m2.7",
+                "minimax-m2.5",
+                "mimo-v2.5",
+                "mimo-v2.5-pro",
+                "mimo-v2-pro",
+                "mimo-v2-omni",
+            ]
         }
     }
 
@@ -282,7 +320,7 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
         case .openAI, .gemini:
             true
         case .typefluxCloud, .freeModel, .custom, .openRouter, .anthropic, .deepSeek, .kimi, .qwen, .zhipu, .minimax,
-             .grok, .groq, .xiaomi:
+             .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             false
         }
     }
@@ -319,6 +357,10 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
             .groq
         case .xiaomi:
             .xiaomi
+        case .openCodeZen:
+            .openCodeZen
+        case .openCodeGo:
+            .openCodeGo
         }
     }
 
@@ -354,6 +396,10 @@ enum LLMRemoteProvider: String, CaseIterable, Codable {
             .groq
         case .xiaomi:
             .xiaomi
+        case .openCodeZen:
+            .openCodeZen
+        case .openCodeGo:
+            .openCodeGo
         default:
             nil
         }

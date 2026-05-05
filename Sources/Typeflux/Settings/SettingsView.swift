@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // swiftlint:disable file_length
 private enum VocabularyFilter: String, CaseIterable, Identifiable {
     case all
     case automatic
     case manual
+    case otherApps
 
     var id: String {
         rawValue
@@ -19,17 +21,22 @@ private enum VocabularyFilter: String, CaseIterable, Identifiable {
             L("vocabulary.filter.automatic")
         case .manual:
             L("vocabulary.filter.manual")
+        case .otherApps:
+            L("vocabulary.filter.otherApps")
         }
     }
 
-    var source: VocabularySource? {
+    func matches(_ source: VocabularySource) -> Bool {
         switch self {
         case .all:
-            nil
+            // The "All" filter intentionally includes every vocabulary source.
+            true
         case .automatic:
-            .automatic
+            source == .automatic
         case .manual:
-            .manual
+            source == .manual
+        case .otherApps:
+            source.isExternalAppSource
         }
     }
 
@@ -41,8 +48,67 @@ private enum VocabularyFilter: String, CaseIterable, Identifiable {
             "sparkles"
         case .manual:
             "hand.draw"
+        case .otherApps:
+            "square.stack.3d.up"
         }
     }
+}
+
+private func logoResourceName(for source: VocabularySource) -> String? {
+    switch source {
+    case .claude:
+        "claude-color"
+    case .codex:
+        "openai"
+    case .manual, .automatic:
+        nil
+    }
+}
+
+private func vocabularySourceLogoImage(for source: VocabularySource) -> NSImage? {
+    guard let resourceName = logoResourceName(for: source) else { return nil }
+    guard let url = vocabularySourceLogoURL(for: resourceName) else {
+        ErrorLogStore.shared.log(
+            "Missing vocabulary source logo resource for \(source.rawValue): \(resourceName)",
+        )
+        return nil
+    }
+    return NSImage(contentsOf: url)
+}
+
+private func vocabularySourceMenuIconImage(for source: VocabularySource) -> NSImage? {
+    guard let image = vocabularySourceLogoImage(for: source) else { return nil }
+    let iconSize = NSSize(width: 16, height: 16)
+    return NSImage(size: iconSize, flipped: false) { destinationRect in
+        image.draw(
+            in: destinationRect,
+            from: NSRect(origin: .zero, size: image.size),
+            operation: .sourceOver,
+            fraction: 1,
+        )
+        return true
+    }
+}
+
+private func vocabularySourceLogoURL(for resourceName: String) -> URL? {
+    let imageExtension = "png"
+    let candidatePaths: [(String?, String)] = [
+        ("Resources/Providers", imageExtension),
+        ("Providers", imageExtension),
+        (nil, imageExtension),
+    ]
+
+    for (subdirectory, pathExtension) in candidatePaths {
+        if let url = Bundle.appResources.url(
+            forResource: resourceName,
+            withExtension: pathExtension,
+            subdirectory: subdirectory,
+        ) {
+            return url
+        }
+    }
+
+    return nil
 }
 
 // swiftlint:disable:next type_body_length
@@ -64,15 +130,67 @@ struct StudioView: View {
         case persona
     }
 
+    private enum PersonaAppPickerScope: String, CaseIterable, Sendable {
+        case running
+        case all
+
+        var title: String {
+            switch self {
+            case .running:
+                L("settings.personaAppBindings.picker.scope.running")
+            case .all:
+                L("settings.personaAppBindings.picker.scope.all")
+            }
+        }
+    }
+
+    private struct PersonaAppCandidate: Identifiable, Equatable, Sendable {
+        let id: String
+        let displayName: String
+        let bundleIdentifier: String?
+        let appURL: URL?
+        let isRunning: Bool
+
+        var preferredIdentifier: String {
+            if let bundleIdentifier, !bundleIdentifier.isEmpty {
+                return bundleIdentifier
+            }
+
+            return displayName
+        }
+    }
+
+    private let personaAppIdentifierFieldWidth: CGFloat = 360
+    private let personaAppPickerFieldWidth: CGFloat = 220
+    private let personaAppBindingControlHeight: CGFloat = 44
+    private let personaAppBindingFieldVerticalPadding: CGFloat = 8
+    private let vocabularySearchCollapsedSize: CGFloat = 44
+    private let vocabularySearchExpandedWidth: CGFloat = 276
+    private let vocabularySearchAnimation = Animation.interpolatingSpring(stiffness: 180, damping: 24)
+
     @ObservedObject var viewModel: StudioViewModel
     @StateObject private var recorder = HotkeyRecorder()
     @State private var recordingTarget: ShortcutRecordingTarget?
     @State private var vocabularyFilter: VocabularyFilter = .all
+    @State private var isVocabularySearchExpanded = false
     @State private var isAddingVocabulary = false
     @State private var editingVocabularyEntry: VocabularyEntry?
     @State private var newVocabularyTerm = ""
+    @FocusState private var isVocabularySearchFocused: Bool
     @State private var personaPendingDeletion: PersonaProfile?
+    @State private var personaAppBindingPendingDeletion: PersonaAppBinding?
+    @State private var isPersonaAppBindingsSheetPresented = false
+    @State private var isPersonaAppPickerPresented = false
+    @State private var personaAppPickerScope: PersonaAppPickerScope = .running
+    @State private var personaAppPickerSearchQuery = ""
+    @State private var personaAppCandidates: [PersonaAppCandidate] = []
+    @State private var personaAppRunningLookup: [String: URL] = [:]
+    @State private var personaAppInstalledLookup: [String: URL] = [:]
+    @State private var isLoadingPersonaAppCandidates = false
+    @State private var hasLoadedPersonaAppInstalledCandidates = false
+    @State private var personaAppCandidateLoadToken = UUID()
     @State private var localSTTPendingDelete: LocalSTTModel? = nil
+
     @State private var localSTTPendingRedownload: LocalSTTModel? = nil
     @State private var llmActivationMissingAPIKeyProviderName: String?
     @State private var isMCPServerDialogPresented = false
@@ -80,6 +198,13 @@ struct StudioView: View {
     @State private var agentJobPendingDeletion: AgentJob?
     @State private var showingClearAllJobsConfirmation = false
     @State private var showingClearHistoryConfirmation = false
+    @State private var isDirectFeedbackPresented = false
+    @State private var feedbackContent = ""
+    @State private var feedbackContact = ""
+    @State private var feedbackImages: [FeedbackImageAttachment] = []
+    @State private var feedbackImageUploadTasks: [FeedbackImageAttachment.ID: Task<Void, Never>] = [:]
+    @State private var isSubmittingFeedback = false
+    @State private var feedbackSubmissionError: String?
     @State private var agentConfigurationTab: AgentConfigurationTab = .general
     @State private var isAdvancedSettingsExpanded = false
     @ObservedObject private var localization = AppLocalization.shared
@@ -90,6 +215,7 @@ struct StudioView: View {
             currentSection: viewModel.currentSection,
             onSelect: viewModel.navigate,
             onOpenAbout: { AboutWindowController.shared.show() },
+            onSendDirectFeedback: openDirectFeedback,
             onSendFeedbackEmail: sendFeedbackEmail,
             onOpenGitHubIssue: openGitHubIssue,
             onAccountAction: handleAccountAction,
@@ -114,6 +240,11 @@ struct StudioView: View {
             .frame(
                 height: viewModel.currentSection == .models ? viewportHeight : nil, alignment: .top,
             )
+            .frame(
+                minHeight: viewModel.currentSection == .vocabulary ? viewportHeight : nil,
+                alignment: .topLeading,
+            )
+            .background(vocabularyOutsideTapTarget)
             .id(viewModel.currentSection)
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.15), value: viewModel.currentSection)
@@ -202,6 +333,9 @@ struct StudioView: View {
         .sheet(isPresented: $isMCPServerDialogPresented) {
             mcpServerDialog
         }
+        .sheet(isPresented: $isPersonaAppBindingsSheetPresented) {
+            personaAppBindingsSheet
+        }
         .confirmationDialog(
             L("agent.mcp.deleteDialog.title"),
             isPresented: Binding(
@@ -238,6 +372,40 @@ struct StudioView: View {
         .sheet(isPresented: $viewModel.showingJobsPage) {
             agentJobsSheet
         }
+        .sheet(
+            isPresented: $isDirectFeedbackPresented,
+            onDismiss: cancelAllFeedbackImageUploads
+        ) {
+            directFeedbackSheet
+        }
+    }
+
+    private var directFeedbackSheet: some View {
+        DirectFeedbackSheet(
+            content: $feedbackContent,
+            contact: $feedbackContact,
+            images: $feedbackImages,
+            isSubmitting: isSubmittingFeedback,
+            errorMessage: feedbackSubmissionError,
+            onAddImages: selectFeedbackImages,
+            onRemoveImage: removeFeedbackImage,
+            onCancel: {
+                cancelAllFeedbackImageUploads()
+                isDirectFeedbackPresented = false
+            },
+            onSubmit: submitDirectFeedback
+        )
+    }
+
+    private func openDirectFeedback() {
+        cancelAllFeedbackImageUploads()
+        feedbackContent = ""
+        feedbackContact = authState.userProfile?.email ?? ""
+        feedbackImages = []
+        feedbackImageUploadTasks = [:]
+        feedbackSubmissionError = nil
+        isSubmittingFeedback = false
+        isDirectFeedbackPresented = true
     }
 
     private func sendFeedbackEmail() {
@@ -258,6 +426,137 @@ struct StudioView: View {
     private func openGitHubIssue() {
         guard let url = URL(string: "https://github.com/mylxsw/typeflux/issues/new") else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    private func submitDirectFeedback() {
+        let content = feedbackContent
+        let contact = feedbackContact
+        let imageURLs = feedbackImages.compactMap(\.state.uploadedURL)
+        let token = authState.accessToken
+        isSubmittingFeedback = true
+        feedbackSubmissionError = nil
+
+        Task { @MainActor in
+            do {
+                _ = try await FeedbackAPIService.submit(
+                    content: content,
+                    contact: contact,
+                    imageURLs: imageURLs,
+                    token: token
+                )
+                isSubmittingFeedback = false
+                isDirectFeedbackPresented = false
+                feedbackContent = ""
+                feedbackContact = ""
+                feedbackImages = []
+                viewModel.showToast(L("feedback.toast.submitted"))
+            } catch {
+                isSubmittingFeedback = false
+                feedbackSubmissionError = error.localizedDescription
+            }
+        }
+    }
+
+    private func selectFeedbackImages() {
+        let remainingSlots = max(0, 4 - feedbackImages.count)
+        guard remainingSlots > 0 else { return }
+
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.jpeg, .png, .webP, .gif]
+
+        guard panel.runModal() == .OK else { return }
+        let selectedURLs = Array(panel.urls.prefix(remainingSlots))
+        for url in selectedURLs {
+            enqueueFeedbackImageUpload(from: url)
+        }
+    }
+
+    private func removeFeedbackImage(id: FeedbackImageAttachment.ID) {
+        feedbackImageUploadTasks.removeValue(forKey: id)?.cancel()
+        feedbackImages.removeAll { $0.id == id }
+    }
+
+    private func enqueueFeedbackImageUpload(from url: URL) {
+        let id = UUID()
+        feedbackImages.append(
+            FeedbackImageAttachment(
+                id: id,
+                filename: url.lastPathComponent,
+                state: .preparing
+            )
+        )
+
+        let token = authState.accessToken
+        let task = Task.detached(priority: .utility) {
+            do {
+                try Task.checkCancellation()
+                let prepared = try FeedbackImageProcessor.prepare(url: url)
+                try Task.checkCancellation()
+                await updateFeedbackImage(id: id) { image in
+                    image.filename = prepared.filename
+                    image.thumbnail = prepared.thumbnail
+                    image.state = .uploading
+                }
+                try Task.checkCancellation()
+
+                let target = try await FeedbackAPIService.createImageUploadTarget(
+                    filename: prepared.filename,
+                    contentType: prepared.contentType,
+                    sizeBytes: Int64(prepared.data.count),
+                    token: token
+                )
+                try Task.checkCancellation()
+                try await FeedbackAPIService.uploadImage(
+                    data: prepared.data,
+                    filename: prepared.filename,
+                    contentType: prepared.contentType,
+                    to: target
+                )
+                try Task.checkCancellation()
+
+                await updateFeedbackImage(id: id) { image in
+                    image.state = .uploaded(target.imageURL)
+                }
+            } catch is CancellationError {
+                await clearFeedbackImageUploadTask(id: id)
+                return
+            } catch {
+                guard !Task.isCancelled else {
+                    await clearFeedbackImageUploadTask(id: id)
+                    return
+                }
+                await updateFeedbackImage(id: id) { image in
+                    image.state = .failed(error.localizedDescription)
+                }
+            }
+            await clearFeedbackImageUploadTask(id: id)
+        }
+        feedbackImageUploadTasks[id] = task
+    }
+
+    @MainActor
+    private func updateFeedbackImage(
+        id: FeedbackImageAttachment.ID,
+        mutate: (inout FeedbackImageAttachment) -> Void
+    ) {
+        guard let index = feedbackImages.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        mutate(&feedbackImages[index])
+    }
+
+    @MainActor
+    private func clearFeedbackImageUploadTask(id: FeedbackImageAttachment.ID) {
+        feedbackImageUploadTasks.removeValue(forKey: id)
+    }
+
+    @MainActor
+    private func cancelAllFeedbackImageUploads() {
+        feedbackImageUploadTasks.values.forEach { $0.cancel() }
+        feedbackImageUploadTasks = [:]
     }
 
     private func handleAccountAction() {
@@ -288,12 +587,40 @@ struct StudioView: View {
             if viewModel.currentSection == .vocabulary {
                 Spacer()
 
-                StudioButton(
-                    title: L("vocabulary.action.newWord"), systemImage: "plus", variant: .primary,
-                ) {
-                    editingVocabularyEntry = nil
-                    newVocabularyTerm = ""
-                    isAddingVocabulary = true
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    StudioButton(
+                        title: L("vocabulary.action.newWord"), systemImage: "plus", variant: .primary,
+                    ) {
+                        editingVocabularyEntry = nil
+                        newVocabularyTerm = ""
+                        isAddingVocabulary = true
+                    }
+
+                    Menu {
+                        Button(action: viewModel.importVocabulary) {
+                            Label(L("vocabulary.action.importFile"), systemImage: "arrow.down.doc")
+                        }
+                        Button(action: viewModel.exportVocabulary) {
+                            Label(L("vocabulary.action.export"), systemImage: "arrow.up.doc")
+                        }
+                        Divider()
+                        Button(action: viewModel.importClaudeVocabulary) {
+                            vocabularyMenuItemLabel(
+                                title: L("vocabulary.action.importClaude"),
+                                source: .claude,
+                            )
+                        }
+                        Button(action: viewModel.importCodexVocabulary) {
+                            vocabularyMenuItemLabel(
+                                title: L("vocabulary.action.importCodex"),
+                                source: .codex,
+                            )
+                        }
+                    } label: {
+                        vocabularyMoreMenuLabel
+                    }
+                    .menuStyle(.borderlessButton)
+                    .disabled(viewModel.isSynchronizingVocabulary)
                 }
             } else if viewModel.currentSection == .agent {
                 Spacer()
@@ -326,17 +653,23 @@ struct StudioView: View {
             } else if viewModel.currentSection == .personas {
                 Spacer()
 
-                Button(action: viewModel.beginCreatingPersona) {
-                    Image(systemName: "plus")
-                        .foregroundStyle(.white)
-                        .frame(
-                            width: StudioTheme.ControlSize.personaAddButton,
-                            height: StudioTheme.ControlSize.personaAddButton,
-                        )
-                        .background(Circle().fill(StudioTheme.accent))
-                        .contentShape(Circle())
+                HStack(spacing: StudioTheme.Spacing.medium) {
+                    StudioButton(
+                        title: L("settings.personaAppBindings.openButton"),
+                        systemImage: "app.badge",
+                        variant: .secondary,
+                    ) {
+                        isPersonaAppBindingsSheetPresented = true
+                    }
+
+                    StudioButton(
+                        title: L("settings.personas.newButton"),
+                        systemImage: "plus",
+                        variant: .secondary,
+                    ) {
+                        viewModel.beginCreatingPersona()
+                    }
                 }
-                .buttonStyle(StudioInteractiveButtonStyle())
             }
         }
     }
@@ -413,6 +746,8 @@ struct StudioView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
                     .frame(
                         width: StudioTheme.Layout.modelProviderListWidth, height: proxy.size.height,
                         alignment: .leading,
@@ -422,6 +757,8 @@ struct StudioView: View {
                     ScrollView {
                         focusedProviderConfigurationPanel
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
@@ -466,7 +803,7 @@ struct StudioView: View {
                     ForEach(viewModel.filteredPersonas) { persona in
                         personaRosterCard(
                             title: persona.name,
-                            subtitle: persona.prompt,
+                            subtitle: viewModel.personaDisplayPrompt(for: persona),
                             initials: String(
                                 persona.name.prefix(StudioTheme.Count.personaInitials),
                             ).uppercased(),
@@ -490,6 +827,8 @@ struct StudioView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
             .frame(width: StudioTheme.Layout.modelProviderListWidth, alignment: .leading)
 
             StudioCard {
@@ -591,7 +930,7 @@ struct StudioView: View {
                             RoundedRectangle(
                                 cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
                             )
-                            .fill(StudioTheme.surfaceMuted),
+                            .fill(StudioTheme.controlSurface),
                         )
                         .overlay(
                             RoundedRectangle(
@@ -679,10 +1018,715 @@ struct StudioView: View {
         }
     }
 
+    private var personaAppBindingsSheet: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                Text(L("settings.personaAppBindings.title"))
+                    .font(.studioDisplay(StudioTheme.Typography.subsectionTitle, weight: .semibold))
+                    .foregroundStyle(StudioTheme.textPrimary)
+
+                Spacer()
+
+                jobsCloseButton {
+                    isPersonaAppBindingsSheetPresented = false
+                }
+            }
+            .padding(.horizontal, StudioTheme.Spacing.large)
+            .padding(.top, StudioTheme.Spacing.large)
+            .padding(.bottom, StudioTheme.Spacing.medium)
+
+            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
+                    StudioCard {
+                        StudioSettingRow(
+                            title: L("settings.personaAppBindings.enabled.title"),
+                            subtitle: L("settings.personaAppBindings.enabled.subtitle"),
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.personaAppBindingsEnabled },
+                                    set: { viewModel.setPersonaAppBindingsEnabled($0) },
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+                    }
+
+                    StudioCard {
+                        VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
+                            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                                HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+                                    Text(L("settings.personaAppBindings.appIdentifier"))
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                        .frame(width: personaAppIdentifierFieldWidth, alignment: .leading)
+
+                                    Text(L("settings.personaAppBindings.persona"))
+                                        .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                        .frame(width: personaAppPickerFieldWidth, alignment: .leading)
+
+                                    Spacer(minLength: 0)
+                                }
+
+                                HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+                                    HStack(spacing: StudioTheme.Spacing.xSmall) {
+                                        TextField(
+                                            L("settings.personaAppBindings.appIdentifierPlaceholder"),
+                                            text: Binding(
+                                                get: { viewModel.personaAppBindingDraftIdentifier },
+                                                set: {
+                                                    viewModel.personaAppBindingDraftIdentifier = $0
+                                                },
+                                            ),
+                                        )
+                                        .textFieldStyle(.plain)
+                                        .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                                        .foregroundStyle(StudioTheme.textPrimary)
+
+                                        StudioIconButton(
+                                            systemImage: "magnifyingglass",
+                                            variant: .ghost,
+                                            frame: 28,
+                                        ) {
+                                            personaAppPickerScope = .running
+                                            personaAppPickerSearchQuery = ""
+                                            isPersonaAppPickerPresented = true
+                                            loadPersonaAppCandidates(for: .running)
+                                        }
+                                        .studioTooltip(L("settings.personaAppBindings.searchApp"), yOffset: 34)
+                                    }
+                                    .padding(.leading, StudioTheme.Insets.textFieldHorizontal)
+                                    .padding(.trailing, 10)
+                                    .padding(.vertical, personaAppBindingFieldVerticalPadding)
+                                    .frame(
+                                        width: personaAppIdentifierFieldWidth,
+                                        height: personaAppBindingControlHeight,
+                                    )
+                                    .background(
+                                        RoundedRectangle(
+                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                                        )
+                                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(
+                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                                        )
+                                        .stroke(
+                                            StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                                            lineWidth: StudioTheme.BorderWidth.thin,
+                                        ),
+                                    )
+
+                                    StudioMenuPicker(
+                                        options: [(label: L("persona.none.title"), value: nil as UUID?)]
+                                            + viewModel.personas.map { persona in
+                                                (label: persona.name, value: Optional(persona.id))
+                                            },
+                                        selection: Binding(
+                                            get: { viewModel.personaAppBindingDraftPersonaID },
+                                            set: { viewModel.personaAppBindingDraftPersonaID = $0 },
+                                        ),
+                                        width: personaAppPickerFieldWidth,
+                                        height: personaAppBindingControlHeight,
+                                    )
+
+                                    Spacer(minLength: 0)
+
+                                    StudioButton(
+                                        title: L("settings.personaAppBindings.add"),
+                                        systemImage: "plus",
+                                        variant: .primary,
+                                        isDisabled: !viewModel.canSavePersonaAppBinding,
+                                    ) {
+                                        viewModel.savePersonaAppBinding()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if viewModel.personaAppBindings.isEmpty {
+                        StudioCard {
+                            Text(L("settings.personaAppBindings.empty"))
+                                .font(.studioBody(StudioTheme.Typography.body))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        StudioCard(padding: StudioTheme.Insets.none) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                personaAppBindingsCardHeader(
+                                    title: L("settings.personaAppBindings.listTitle"),
+                                    padding: StudioTheme.Insets.cardDefault,
+                                )
+
+                                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                                ForEach(viewModel.personaAppBindings) { binding in
+                                    personaAppBindingRow(binding)
+
+                                    if binding.id != viewModel.personaAppBindings.last?.id {
+                                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(StudioTheme.Spacing.large)
+            }
+        }
+        .frame(width: 820, height: 680)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
+        .task {
+            refreshPersonaAppRunningLookup()
+            await preloadPersonaAppInstalledCandidatesIfNeeded()
+        }
+        .sheet(isPresented: $isPersonaAppPickerPresented) {
+            personaAppPickerSheet
+        }
+        .confirmationDialog(
+            L("settings.personaAppBindings.deleteDialog.title"),
+            isPresented: Binding(
+                get: { personaAppBindingPendingDeletion != nil },
+                set: { if !$0 { personaAppBindingPendingDeletion = nil } },
+            ),
+            titleVisibility: .visible,
+        ) {
+            Button(L("common.delete"), role: .destructive) {
+                guard let binding = personaAppBindingPendingDeletion else { return }
+                viewModel.removePersonaAppBinding(id: binding.id)
+                personaAppBindingPendingDeletion = nil
+            }
+            Button(L("common.cancel"), role: .cancel) {
+                personaAppBindingPendingDeletion = nil
+            }
+        } message: {
+            if let binding = personaAppBindingPendingDeletion {
+                Text(L("settings.personaAppBindings.deleteDialog.message", binding.appIdentifier))
+            }
+        }
+    }
+
+    @MainActor
+    private func personaAppBindingRow(_ binding: PersonaAppBinding) -> some View {
+        let metadata = personaAppMetadata(for: binding.appIdentifier)
+        let hasMatchingPersona = binding.personaID.map { personaID in
+            viewModel.personas.contains(where: { $0.id == personaID })
+        } ?? true
+
+        return HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+            HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+                Group {
+                    if let image = metadata.icon {
+                        Image(nsImage: image)
+                            .resizable()
+                            .interpolation(.high)
+                    } else {
+                        Image(systemName: "app")
+                            .resizable()
+                            .scaledToFit()
+                            .padding(6)
+                            .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                        .fill(StudioTheme.iconTileSurface),
+                )
+
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                    Text(metadata.displayName)
+                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    Text(binding.appIdentifier)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            StudioMenuPicker(
+                options: [(label: L("persona.none.title"), value: nil as UUID?)]
+                    + viewModel.personas.map { persona in
+                        (label: persona.name, value: Optional(persona.id))
+                    },
+                selection: Binding(
+                    get: { hasMatchingPersona ? binding.personaID : nil },
+                    set: { newPersonaID in
+                        viewModel.updatePersonaAppBindingPersona(id: binding.id, personaID: newPersonaID)
+                    },
+                ),
+                width: 240,
+            )
+            .frame(width: 240, alignment: .center)
+
+            HStack(spacing: StudioTheme.Spacing.xSmall) {
+                StudioIconButton(
+                    systemImage: binding.isEnabled ? "pause.fill" : "play.fill",
+                    variant: .ghost,
+                ) {
+                    viewModel.setPersonaAppBindingEnabled(id: binding.id, isEnabled: !binding.isEnabled)
+                }
+                .studioTooltip(
+                    binding.isEnabled
+                        ? L("settings.personaAppBindings.binding.pause")
+                        : L("settings.personaAppBindings.binding.enable"),
+                    yOffset: 34,
+                )
+
+                StudioIconButton(
+                    systemImage: "trash",
+                    variant: .ghost,
+                ) {
+                    personaAppBindingPendingDeletion = binding
+                }
+                .studioTooltip(L("common.delete"), yOffset: 34)
+            }
+            .frame(width: 72, alignment: .trailing)
+        }
+        .padding(.horizontal, StudioTheme.Spacing.large)
+        .padding(.vertical, StudioTheme.Spacing.medium)
+        .opacity(binding.isEnabled ? 1 : 0.72)
+    }
+
+    private var personaAppPickerSheet: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                    Text(L("settings.personaAppBindings.picker.title"))
+                        .font(.studioDisplay(StudioTheme.Typography.subsectionTitle, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                    Text(L("settings.personaAppBindings.picker.subtitle"))
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+
+                Spacer()
+
+                jobsCloseButton {
+                    isPersonaAppPickerPresented = false
+                }
+            }
+            .padding(.horizontal, StudioTheme.Spacing.large)
+            .padding(.top, StudioTheme.Spacing.large)
+            .padding(.bottom, StudioTheme.Spacing.medium)
+
+            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
+                StudioSegmentedPicker(
+                    options: PersonaAppPickerScope.allCases.map { (label: $0.title, value: $0) },
+                    selection: $personaAppPickerScope,
+                )
+
+                TextField(
+                    L("settings.personaAppBindings.picker.searchPlaceholder"),
+                    text: $personaAppPickerSearchQuery,
+                )
+                .textFieldStyle(.plain)
+                .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                .foregroundStyle(StudioTheme.textPrimary)
+                .padding(.horizontal, StudioTheme.Insets.textFieldHorizontal)
+                .padding(.vertical, StudioTheme.Insets.textFieldVertical)
+                .background(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                        .stroke(
+                            StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                            lineWidth: StudioTheme.BorderWidth.thin,
+                        ),
+                )
+            }
+            .padding(StudioTheme.Spacing.large)
+
+            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+            if isLoadingPersonaAppCandidates {
+                Spacer()
+                ProgressView()
+                    .controlSize(.small)
+                Spacer()
+            } else if filteredPersonaAppCandidates.isEmpty {
+                Spacer()
+                Text(L("settings.personaAppBindings.picker.empty"))
+                    .font(.studioBody(StudioTheme.Typography.body))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                Spacer()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredPersonaAppCandidates) { candidate in
+                            personaAppCandidateRow(candidate)
+
+                            if candidate.id != filteredPersonaAppCandidates.last?.id {
+                                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(width: 760, height: 620)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
+        .onAppear {
+            if personaAppCandidates.isEmpty {
+                loadPersonaAppCandidates(for: personaAppPickerScope)
+            }
+        }
+        .onChange(of: personaAppPickerScope) { newValue in
+            loadPersonaAppCandidates(for: newValue)
+        }
+    }
+
+    private var filteredPersonaAppCandidates: [PersonaAppCandidate] {
+        let query = personaAppPickerSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return personaAppCandidates }
+
+        return personaAppCandidates.filter { candidate in
+            candidate.displayName.localizedCaseInsensitiveContains(query)
+                || candidate.preferredIdentifier.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    @MainActor
+    private func personaAppCandidateRow(_ candidate: PersonaAppCandidate) -> some View {
+        HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+            Group {
+                if let image = personaAppIcon(for: candidate) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.high)
+                } else {
+                    Image(systemName: "app")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(6)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+            }
+            .frame(width: 40, height: 40)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
+                    .fill(StudioTheme.iconTileSurface),
+            )
+
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    Text(candidate.displayName)
+                        .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+
+                    if candidate.isRunning {
+                        StudioPill(title: L("settings.personaAppBindings.picker.runningBadge"))
+                    }
+                }
+
+                Text(candidate.preferredIdentifier)
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .textSelection(.enabled)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, StudioTheme.Spacing.large)
+        .padding(.vertical, StudioTheme.Spacing.medium)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.personaAppBindingDraftIdentifier = candidate.preferredIdentifier
+            isPersonaAppPickerPresented = false
+        }
+    }
+
+    @MainActor
+    private func personaAppMetadata(for identifier: String) -> (displayName: String, icon: NSImage?) {
+        let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cacheKey = trimmedIdentifier.lowercased()
+
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmedIdentifier) {
+            return (
+                displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            )
+        }
+
+        if let url = personaAppRunningLookup[cacheKey] {
+            return (
+                displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            )
+        }
+
+        if let url = personaAppInstalledLookup[cacheKey] {
+            return (
+                displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
+                icon: NSWorkspace.shared.icon(forFile: url.path)
+            )
+        }
+
+        return (trimmedIdentifier, nil)
+    }
+
+    @MainActor
+    private func personaAppIcon(for candidate: PersonaAppCandidate) -> NSImage? {
+        if let appURL = candidate.appURL {
+            return NSWorkspace.shared.icon(forFile: appURL.path)
+        }
+
+        if let bundleIdentifier = candidate.bundleIdentifier,
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
+        {
+            return NSWorkspace.shared.icon(forFile: appURL.path)
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func loadPersonaAppCandidates(for scope: PersonaAppPickerScope) {
+        let loadToken = UUID()
+        personaAppCandidateLoadToken = loadToken
+        isLoadingPersonaAppCandidates = true
+
+        Task {
+            let candidates = await Self.discoverPersonaAppCandidates(scope: scope)
+            await MainActor.run {
+                guard personaAppCandidateLoadToken == loadToken else { return }
+                personaAppCandidates = candidates
+                isLoadingPersonaAppCandidates = false
+            }
+        }
+    }
+
+    @MainActor
+    private func preloadPersonaAppInstalledCandidatesIfNeeded() async {
+        guard !hasLoadedPersonaAppInstalledCandidates else { return }
+
+        let candidates = await Self.loadInstalledPersonaAppCandidates()
+        var installedLookup: [String: URL] = [:]
+        for candidate in candidates {
+            guard let url = candidate.appURL else { continue }
+            installedLookup[candidate.displayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()] = url
+            installedLookup[url.deletingPathExtension().lastPathComponent.lowercased()] = url
+        }
+
+        personaAppInstalledLookup = installedLookup
+        hasLoadedPersonaAppInstalledCandidates = true
+    }
+
+    @MainActor
+    private func refreshPersonaAppRunningLookup() {
+        var runningLookup: [String: URL] = [:]
+
+        for application in NSWorkspace.shared.runningApplications {
+            guard let url = application.bundleURL else { continue }
+
+            if let localizedName = application.localizedName?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !localizedName.isEmpty
+            {
+                runningLookup[localizedName.lowercased()] = url
+            }
+
+            if let bundleIdentifier = application.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !bundleIdentifier.isEmpty
+            {
+                runningLookup[bundleIdentifier.lowercased()] = url
+            }
+        }
+
+        personaAppRunningLookup = runningLookup
+    }
+
+    private static func discoverPersonaAppCandidates(scope: PersonaAppPickerScope) async -> [PersonaAppCandidate] {
+        switch scope {
+        case .running:
+            return await MainActor.run {
+                runningPersonaAppCandidates()
+            }
+        case .all:
+            async let installed = loadInstalledPersonaAppCandidates()
+            let running = await MainActor.run {
+                runningPersonaAppCandidates()
+            }
+            return mergePersonaAppCandidates(await installed, running)
+        }
+    }
+
+    private nonisolated static func loadInstalledPersonaAppCandidates() async -> [PersonaAppCandidate] {
+        await Task.detached(priority: .userInitiated) {
+            Self.installedPersonaAppCandidates()
+        }.value
+    }
+
+    private func personaAppBindingsCardHeader(
+        title: String,
+        subtitle: String? = nil,
+        padding: CGFloat = 0,
+    ) -> some View {
+        VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+            Text(title)
+                .font(.studioBody(StudioTheme.Typography.settingTitle, weight: .semibold))
+                .foregroundStyle(StudioTheme.textPrimary)
+
+            if let subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.studioBody(StudioTheme.Typography.bodyLarge))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(padding)
+    }
+
+    @MainActor
+    private static func runningPersonaAppCandidates() -> [PersonaAppCandidate] {
+        var seen = Set<String>()
+
+        return NSWorkspace.shared.runningApplications.compactMap { application in
+            guard application.activationPolicy != .prohibited else { return nil }
+
+            let displayName = application.localizedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let bundleIdentifier = application.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let appURL = application.bundleURL
+            let preferredIdentifier = bundleIdentifier?.isEmpty == false ? bundleIdentifier! : (displayName ?? "")
+            guard !preferredIdentifier.isEmpty else { return nil }
+
+            let candidateID = (bundleIdentifier?.isEmpty == false ? bundleIdentifier : appURL?.path) ?? preferredIdentifier
+            guard seen.insert(candidateID.lowercased()).inserted else { return nil }
+
+            return PersonaAppCandidate(
+                id: candidateID,
+                displayName: (displayName?.isEmpty == false ? displayName : appDisplayName(for: appURL)) ?? preferredIdentifier,
+                bundleIdentifier: bundleIdentifier,
+                appURL: appURL,
+                isRunning: true,
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func installedPersonaAppCandidates() -> [PersonaAppCandidate] {
+        let fileManager = FileManager.default
+        let searchRoots = Array(
+            Set(
+                fileManager.urls(for: .applicationDirectory, in: .localDomainMask)
+                    + fileManager.urls(for: .applicationDirectory, in: .systemDomainMask)
+                    + fileManager.urls(for: .applicationDirectory, in: .userDomainMask)
+                    + [
+                        URL(fileURLWithPath: "/Applications"),
+                        URL(fileURLWithPath: "/System/Applications"),
+                        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Applications"),
+                    ],
+            ),
+        )
+
+        var candidates: [PersonaAppCandidate] = []
+        var seen = Set<String>()
+
+        for root in searchRoots where fileManager.fileExists(atPath: root.path) {
+            guard let enumerator = fileManager.enumerator(
+                at: root,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles],
+            ) else {
+                continue
+            }
+
+            while let url = enumerator.nextObject() as? URL {
+                guard url.pathExtension.caseInsensitiveCompare("app") == .orderedSame else { continue }
+                enumerator.skipDescendants()
+
+                let bundleIdentifier = Bundle(url: url)?.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let displayName = appDisplayName(for: url) ?? url.deletingPathExtension().lastPathComponent
+                let candidateID = bundleIdentifier ?? url.path
+                guard seen.insert(candidateID.lowercased()).inserted else { continue }
+
+                candidates.append(
+                    PersonaAppCandidate(
+                        id: candidateID,
+                        displayName: displayName,
+                        bundleIdentifier: bundleIdentifier,
+                        appURL: url,
+                        isRunning: false,
+                    ),
+                )
+            }
+        }
+
+        return candidates.sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func mergePersonaAppCandidates(
+        _ first: [PersonaAppCandidate],
+        _ second: [PersonaAppCandidate],
+    ) -> [PersonaAppCandidate] {
+        var merged: [PersonaAppCandidate] = []
+        var seen = Set<String>()
+
+        for candidate in first + second {
+            guard seen.insert(candidate.id.lowercased()).inserted else { continue }
+            merged.append(candidate)
+        }
+
+        return merged.sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func appDisplayName(for url: URL?) -> String? {
+        guard let url else { return nil }
+
+        if let bundle = Bundle(url: url) {
+            if let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
+               !name.isEmpty
+            {
+                return name
+            }
+
+            if let name = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String,
+               !name.isEmpty
+            {
+                return name
+            }
+        }
+
+        return url.deletingPathExtension().lastPathComponent
+    }
+
     private var personaLLMProviderOptions: [(label: String, value: StudioModelProviderID)] {
-        let remoteOptions = LLMRemoteProvider.settingsDisplayOrder
+        var remoteOptions = LLMRemoteProvider.settingsDisplayOrder
             .filter { $0 != .freeModel || !FreeLLMModelRegistry.suggestedModelNames.isEmpty }
             .filter { $0 != .custom }
+            .filter { $0 != .typefluxCloud }
             .map { provider in
                 (label: provider.displayName, value: provider.studioProviderID)
             }
@@ -692,7 +1736,12 @@ struct StudioView: View {
                 (label: provider.displayName, value: provider.studioProviderID)
             }
 
-        return remoteOptions + [(label: LLMProvider.ollama.displayName, value: .ollama)] + customOptions
+        remoteOptions.append((label: LLMProvider.ollama.displayName, value: .ollama))
+        remoteOptions.sort { lhs, rhs in
+            lhs.label.localizedCaseInsensitiveCompare(rhs.label) == .orderedAscending
+        }
+
+        return [(label: LLMRemoteProvider.typefluxCloud.displayName, value: .typefluxCloud)] + remoteOptions + customOptions
     }
 
     private func personaRosterCard(
@@ -706,14 +1755,20 @@ struct StudioView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            StudioCard(padding: StudioTheme.Insets.cardCompact) {
+            StudioCard(
+                padding: StudioTheme.Insets.cardCompact,
+                showsShadow: true,
+                isHighlighted: isSelected,
+                isDimmed: !isSelected,
+                texture: .softWaves,
+            ) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
                         RoundedRectangle(
                             cornerRadius: StudioTheme.CornerRadius.large,
                             style: .continuous,
                         )
-                        .fill(isSelected ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
+                        .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted)
                         .frame(
                             width: StudioTheme.ControlSize.modelProviderBadge,
                             height: StudioTheme.ControlSize.modelProviderBadge,
@@ -785,13 +1840,7 @@ struct StudioView: View {
                     }
                 }
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .stroke(
-                        isSelected ? StudioTheme.accent.opacity(0.62) : Color.clear,
-                        lineWidth: StudioTheme.BorderWidth.emphasis,
-                    ),
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(
                 RoundedRectangle(
                     cornerRadius: StudioTheme.CornerRadius.hero,
@@ -870,6 +1919,10 @@ struct StudioView: View {
                                         onDownloadAudio: {
                                             viewModel.downloadAudio(id: record.id)
                                         },
+                                        onPlayAudio: {
+                                            viewModel.playAudio(id: record.id)
+                                        },
+                                        isAudioPlaying: viewModel.playingAudioRecordID == record.id,
                                         onDelete: {
                                             viewModel.deleteHistoryRecord(id: record.id)
                                         },
@@ -922,33 +1975,7 @@ struct StudioView: View {
 
                 Spacer()
 
-                HStack(spacing: StudioTheme.Spacing.small) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(StudioTheme.textTertiary)
-
-                    TextField(L("vocabulary.search.placeholder"), text: $viewModel.searchQuery)
-                        .textFieldStyle(.plain)
-                        .font(.studioBody(StudioTheme.Typography.body))
-                        .foregroundStyle(StudioTheme.textPrimary)
-                        .frame(width: 220)
-                }
-                .padding(.horizontal, StudioTheme.Insets.textFieldHorizontal)
-                .padding(.vertical, StudioTheme.Insets.textFieldVertical)
-                .background(
-                    RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
-                    )
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
-                )
-                .overlay(
-                    RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
-                    )
-                    .stroke(
-                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                        lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
-                )
+                vocabularySearchControl
             }
 
             StudioCard {
@@ -963,25 +1990,18 @@ struct StudioView: View {
                             Text(L("vocabulary.empty.subtitle"))
                                 .font(.studioBody(StudioTheme.Typography.body))
                                 .foregroundStyle(StudioTheme.textSecondary)
-                            StudioButton(
-                                title: L("vocabulary.action.addFirst"), systemImage: "plus",
-                                variant: .secondary,
-                            ) {
-                                editingVocabularyEntry = nil
-                                newVocabularyTerm = ""
-                                isAddingVocabulary = true
-                            }
+                            vocabularyEmptyActions
                         }
                         .padding(.vertical, StudioTheme.Insets.historyEmptyVertical)
                     } else {
                         LazyVGrid(
                             columns: [
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.medium),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
                             ],
                             alignment: .leading,
-                            spacing: StudioTheme.Spacing.medium,
+                            spacing: StudioTheme.Spacing.mediumLarge,
                         ) {
                             ForEach(filteredVocabularyEntries) { entry in
                                 vocabularyTermCard(entry)
@@ -1389,6 +2409,24 @@ struct StudioView: View {
                         Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                         StudioSettingRow(
+                            title: L("settings.advanced.inputContextOptimization.title"),
+                            subtitle: L("settings.advanced.inputContextOptimization.subtitle"),
+                            badge: "Beta",
+                        ) {
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { viewModel.inputContextOptimizationEnabled },
+                                    set: viewModel.setInputContextOptimizationEnabled,
+                                ),
+                            )
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        }
+
+                        Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
+
+                        StudioSettingRow(
                             title: L("settings.advanced.agentFramework.title"),
                             subtitle: L("settings.advanced.agentFramework.subtitle"),
                             badge: "Beta",
@@ -1696,6 +2734,13 @@ struct StudioView: View {
         }
         .padding(StudioTheme.Insets.cardDefault)
         .frame(width: 520)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
     }
 
     private func mcpKeyValueEditor(label: String, hint: String, text: Binding<String>) -> some View {
@@ -1723,7 +2768,7 @@ struct StudioView: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
@@ -1781,7 +2826,7 @@ struct StudioView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                            .fill(StudioTheme.surfaceMuted),
+                            .fill(StudioTheme.controlSurface),
                     )
                 }
             }
@@ -1818,63 +2863,47 @@ struct StudioView: View {
         onReset: @escaping () -> Void,
         onUnset: @escaping () -> Void,
     ) -> some View {
-        HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [StudioTheme.accentSoft, StudioTheme.surfaceMuted],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
-                )
-                .frame(width: 54, height: 54)
-                .overlay(
-                    Image(systemName: configuration.icon)
-                        .font(.system(size: 21, weight: .semibold))
-                        .foregroundStyle(StudioTheme.accent),
-                )
+        StudioCard(padding: StudioTheme.Insets.cardDense) {
+            HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
+                    .fill(StudioTheme.iconTileSurface)
+                    .frame(width: 54, height: 54)
+                    .overlay(
+                        Image(systemName: configuration.icon)
+                            .font(.system(size: 21, weight: .semibold))
+                            .foregroundStyle(StudioTheme.accent),
+                    )
 
-            VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
-                Text(configuration.title)
-                    .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
-                    .foregroundStyle(StudioTheme.textPrimary)
-                Text(configuration.subtitle)
-                    .font(.studioBody(StudioTheme.Typography.bodySmall))
-                    .foregroundStyle(StudioTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(configuration.footnote)
-                    .font(.studioBody(StudioTheme.Typography.caption))
-                    .foregroundStyle(StudioTheme.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
+                    Text(configuration.title)
+                        .font(.studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                    Text(configuration.subtitle)
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(configuration.footnote)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: 340, alignment: .leading)
+
+                Spacer(minLength: StudioTheme.Spacing.large)
+
+                shortcutPill(configuration.binding, accentSymbol: configuration.badgeSymbol)
+                    .frame(minWidth: 170, alignment: .leading)
+
+                shortcutActionButtons(
+                    isDefault: configuration.isDefault,
+                    isUnset: configuration.binding == nil,
+                    isThisRecording: configuration.isThisRecording,
+                    onStart: onStartRecording,
+                    onReset: onReset,
+                    onUnset: onUnset,
+                )
             }
-            .frame(maxWidth: 340, alignment: .leading)
-
-            Spacer(minLength: StudioTheme.Spacing.large)
-
-            shortcutPill(configuration.binding, accentSymbol: configuration.badgeSymbol)
-                .frame(minWidth: 170, alignment: .leading)
-
-            shortcutActionButtons(
-                isDefault: configuration.isDefault,
-                isUnset: configuration.binding == nil,
-                isThisRecording: configuration.isThisRecording,
-                onStart: onStartRecording,
-                onReset: onReset,
-                onUnset: onUnset,
-            )
         }
-        .padding(StudioTheme.Insets.cardDense)
-        .background(
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .fill(StudioTheme.surfaceMuted.opacity(0.42)),
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .stroke(
-                    StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
-        )
     }
 
     private var recordingShortcutBanner: some View {
@@ -1917,7 +2946,7 @@ struct StudioView: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.surface),
+                    .fill(StudioTheme.rowSurface),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
@@ -1988,11 +3017,21 @@ struct StudioView: View {
     @ViewBuilder
     private func shortcutPill(_ binding: HotkeyBinding?, accentSymbol _: String) -> some View {
         if let binding {
-            HStack(spacing: StudioTheme.Spacing.xxxSmall) {
-                ForEach(HotkeyFormat.components(binding), id: \.self) { key in
-                    shortcutKeycap(key)
+            HStack(spacing: 5) {
+                HStack(spacing: StudioTheme.Spacing.xxxSmall) {
+                    ForEach(HotkeyFormat.components(binding), id: \.self) { key in
+                        shortcutKeycap(key)
+                    }
+                }
+
+                if let pressCount = HotkeyFormat.pressCount(binding) {
+                    Text("×\(pressCount)")
+                        .font(.studioBody(StudioTheme.Typography.bodySmall, weight: .bold))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .baselineOffset(1)
                 }
             }
+            .help(binding.isModifierDoubleTapTrigger ? L("settings.shortcuts.doubleTapHelp") : "")
         } else {
             shortcutKeycap(L("settings.shortcuts.none"))
                 .opacity(0.5)
@@ -2013,7 +3052,7 @@ struct StudioView: View {
                     RoundedRectangle(
                         cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
                     )
-                    .fill(isSelected ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
+                    .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted)
                     .frame(width: 32, height: 32)
                     .overlay(
                         Group {
@@ -2038,10 +3077,7 @@ struct StudioView: View {
                     Spacer()
 
                     Circle()
-                        .stroke(
-                            isSelected ? StudioTheme.accent : StudioTheme.border,
-                            lineWidth: StudioTheme.BorderWidth.emphasis,
-                        )
+                        .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.emphasis)
                         .frame(width: 18, height: 18)
                         .overlay(
                             Circle()
@@ -2065,22 +3101,17 @@ struct StudioView: View {
             .padding(StudioTheme.Insets.cardCompact)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(
-                        isSelected
-                            ? StudioTheme.accentSoft.opacity(0.75)
-                            : StudioTheme.surfaceMuted.opacity(0.42),
-                    ),
+                    .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .stroke(
-                        isSelected
-                            ? StudioTheme.accent.opacity(0.45)
-                            : StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                        lineWidth: isSelected
-                            ? StudioTheme.BorderWidth.emphasis : StudioTheme.BorderWidth.thin,
+                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                        lineWidth: StudioTheme.BorderWidth.thin,
                     ),
             )
+            .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
         }
         .buttonStyle(StudioInteractiveButtonStyle())
     }
@@ -2132,9 +3163,106 @@ struct StudioView: View {
     }
 
     private var filteredVocabularyEntries: [VocabularyEntry] {
-        let entries = viewModel.filteredVocabularyEntries
-        guard let source = vocabularyFilter.source else { return entries }
-        return entries.filter { $0.source == source }
+        viewModel.filteredVocabularyEntries.filter { vocabularyFilter.matches($0.source) }
+    }
+
+    @ViewBuilder
+    private var vocabularyOutsideTapTarget: some View {
+        if viewModel.currentSection == .vocabulary, isVocabularySearchExpanded {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    collapseVocabularySearch()
+                }
+        }
+    }
+
+    private var vocabularySearchControl: some View {
+        HStack(spacing: isVocabularySearchExpanded ? StudioTheme.Spacing.small : StudioTheme.Spacing.none) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+                .foregroundStyle(
+                    isVocabularySearchExpanded ? StudioTheme.textTertiary : StudioTheme.textSecondary,
+                )
+                .frame(width: vocabularySearchCollapsedSize, height: vocabularySearchCollapsedSize)
+
+            if isVocabularySearchExpanded {
+                TextField(L("vocabulary.search.placeholder"), text: $viewModel.searchQuery)
+                    .textFieldStyle(.plain)
+                    .font(.studioBody(StudioTheme.Typography.body))
+                    .foregroundStyle(StudioTheme.textPrimary)
+                    .lineLimit(1)
+                    .focused($isVocabularySearchFocused)
+                    .onSubmit {
+                        collapseVocabularySearch()
+                    }
+                    .onChange(of: isVocabularySearchFocused) { isFocused in
+                        if !isFocused {
+                            collapseVocabularySearch()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+        }
+        .padding(.trailing, isVocabularySearchExpanded ? StudioTheme.Insets.textFieldHorizontal : 0)
+        .frame(
+            width: isVocabularySearchExpanded ? vocabularySearchExpandedWidth : vocabularySearchCollapsedSize,
+            height: vocabularySearchCollapsedSize,
+            alignment: .leading,
+        )
+        .background(
+            Capsule()
+                .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+        )
+        .overlay(
+            Capsule()
+                .stroke(
+                    StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                    lineWidth: StudioTheme.BorderWidth.thin,
+                ),
+        )
+        .contentShape(Capsule())
+        .clipped()
+        .onTapGesture {
+            if !isVocabularySearchExpanded {
+                expandVocabularySearch()
+            }
+        }
+        .animation(vocabularySearchAnimation, value: isVocabularySearchExpanded)
+    }
+
+    @ViewBuilder
+    private var vocabularyEmptyActions: some View {
+        if vocabularyFilter == .otherApps, vocabularyCount(for: .otherApps) == 0 {
+            HStack(spacing: StudioTheme.Spacing.small) {
+                StudioButton(
+                    title: L("vocabulary.action.importClaude"),
+                    systemImage: "arrow.down.doc",
+                    variant: .secondary,
+                    isDisabled: viewModel.isSynchronizingVocabulary,
+                ) {
+                    viewModel.importClaudeVocabulary()
+                }
+                StudioButton(
+                    title: L("vocabulary.action.importCodex"),
+                    systemImage: "arrow.down.doc",
+                    variant: .secondary,
+                    isDisabled: viewModel.isSynchronizingVocabulary,
+                ) {
+                    viewModel.importCodexVocabulary()
+                }
+            }
+        } else {
+            StudioButton(
+                title: L("vocabulary.action.addFirst"), systemImage: "plus",
+                variant: .secondary,
+            ) {
+                editingVocabularyEntry = nil
+                newVocabularyTerm = ""
+                isAddingVocabulary = true
+            }
+        }
     }
 
     private func vocabularyFilterChip(_ filter: VocabularyFilter) -> some View {
@@ -2144,20 +3272,25 @@ struct StudioView: View {
             HStack(spacing: StudioTheme.Spacing.xSmall) {
                 Image(systemName: filter.iconName)
                     .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
+                    .fixedSize()
                 Text(filter.title)
                     .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text("\(vocabularyCount(for: filter))")
                     .font(.studioBody(StudioTheme.Typography.caption, weight: .bold))
                     .foregroundStyle(
                         vocabularyFilter == filter
                             ? StudioTheme.textPrimary : StudioTheme.textTertiary,
                     )
+                    .fixedSize()
             }
             .foregroundStyle(
                 vocabularyFilter == filter ? StudioTheme.textPrimary : StudioTheme.textSecondary,
             )
+            .lineLimit(1)
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
-            .padding(.vertical, StudioTheme.Insets.pillVertical + 2)
+            .padding(.vertical, StudioTheme.Insets.pillVertical + 3)
             .background(
                 Capsule()
                     .fill(
@@ -2215,7 +3348,7 @@ struct StudioView: View {
                     RoundedRectangle(
                         cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
                     )
-                    .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
                 )
                 .overlay(
                     RoundedRectangle(
@@ -2247,6 +3380,13 @@ struct StudioView: View {
         }
         .padding(32)
         .frame(width: 520)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
     }
 
     private func submitVocabularyTerm() {
@@ -2265,8 +3405,64 @@ struct StudioView: View {
     }
 
     private func vocabularyCount(for filter: VocabularyFilter) -> Int {
-        guard let source = filter.source else { return viewModel.vocabularyEntries.count }
-        return viewModel.vocabularyEntries.count(where: { $0.source == source })
+        viewModel.vocabularyEntries.count(where: { filter.matches($0.source) })
+    }
+
+    private func expandVocabularySearch() {
+        withAnimation(vocabularySearchAnimation) {
+            isVocabularySearchExpanded = true
+        }
+
+        DispatchQueue.main.async {
+            isVocabularySearchFocused = true
+        }
+    }
+
+    private func collapseVocabularySearch() {
+        isVocabularySearchFocused = false
+
+        withAnimation(vocabularySearchAnimation) {
+            isVocabularySearchExpanded = false
+        }
+    }
+
+    private var vocabularyMoreMenuLabel: some View {
+        Text(L("vocabulary.action.more"))
+            .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+            .foregroundStyle(StudioTheme.textSecondary)
+            .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
+            .padding(.vertical, StudioTheme.Insets.buttonVertical)
+            .background(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                    .fill(StudioTheme.controlSurface),
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                    .stroke(
+                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                        lineWidth: StudioTheme.BorderWidth.thin,
+                    ),
+            )
+    }
+
+    private func vocabularyMenuItemIcon(for source: VocabularySource) -> some View {
+        Group {
+            if let image = vocabularySourceMenuIconImage(for: source) {
+                Image(nsImage: image)
+                    .interpolation(.high)
+            } else {
+                Image(systemName: "square.stack.3d.up")
+                    .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+            }
+        }
+        .frame(width: 16, height: 16)
+    }
+
+    private func vocabularyMenuItemLabel(title: String, source: VocabularySource) -> some View {
+        HStack(spacing: StudioTheme.Spacing.small) {
+            vocabularyMenuItemIcon(for: source)
+            Text(title)
+        }
     }
 
     private func uniqueSuggestions(_ values: [String]) -> [String] {
@@ -2538,7 +3734,7 @@ struct StudioView: View {
                 .padding(.top, StudioTheme.Insets.historyHeaderTop)
                 .padding(.bottom, StudioTheme.Insets.historyHeaderBottom)
 
-                Divider().overlay(StudioTheme.border)
+                Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
 
                 if records.isEmpty {
                     Text(L("history.empty"))
@@ -2559,6 +3755,10 @@ struct StudioView: View {
                             onDownloadAudio: {
                                 viewModel.downloadAudio(id: record.id)
                             },
+                            onPlayAudio: {
+                                viewModel.playAudio(id: record.id)
+                            },
+                            isAudioPlaying: viewModel.playingAudioRecordID == record.id,
                             onDelete: {
                                 viewModel.deleteHistoryRecord(id: record.id)
                             },
@@ -2567,7 +3767,7 @@ struct StudioView: View {
                             },
                         )
                         if record.id != records.last?.id {
-                            Divider().overlay(StudioTheme.border)
+                            Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
                         }
                     }
                 }
@@ -2576,16 +3776,16 @@ struct StudioView: View {
     }
 
     private var overviewPanel: some View {
-        HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
+        HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
             StudioCard(padding: StudioTheme.Insets.cardDense) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
+                    HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                             HStack(spacing: StudioTheme.Spacing.small) {
                                 RoundedRectangle(
                                     cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
                                 )
-                                .fill(StudioTheme.surfaceMuted)
+                                .fill(StudioTheme.iconTileSurface)
                                 .frame(
                                     width: StudioTheme.ControlSize.overviewBadge,
                                     height: StudioTheme.ControlSize.overviewBadge,
@@ -2598,13 +3798,15 @@ struct StudioView: View {
                                                 weight: .semibold,
                                             ),
                                         )
-                                        .foregroundStyle(StudioTheme.textSecondary),
+                                        .foregroundStyle(StudioTheme.accent),
                                 )
                                 Text(L("home.activity.title"))
                                     .font(
                                         .studioBody(StudioTheme.Typography.bodySmall, weight: .semibold),
                                     )
                                     .foregroundStyle(StudioTheme.textSecondary)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
                             }
 
                             Text("\(viewModel.statsCompletionRate)%")
@@ -2622,7 +3824,7 @@ struct StudioView: View {
 
                         Circle()
                             .stroke(
-                                StudioTheme.surfaceMuted,
+                                StudioTheme.controlSurface,
                                 lineWidth: StudioTheme.BorderWidth.overviewDonut,
                             )
                             .frame(
@@ -2633,8 +3835,13 @@ struct StudioView: View {
                                 Circle()
                                     .trim(from: 0, to: CGFloat(viewModel.statsCompletionRate) / 100)
                                     .stroke(
-                                        StudioTheme.accent.opacity(
-                                            StudioTheme.Opacity.overviewProgress,
+                                        LinearGradient(
+                                            colors: [
+                                                StudioTheme.accent.opacity(0.52),
+                                                StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress),
+                                            ],
+                                            startPoint: .bottomLeading,
+                                            endPoint: .topTrailing,
                                         ),
                                         style: StrokeStyle(
                                             lineWidth: StudioTheme.BorderWidth.overviewDonut,
@@ -2656,13 +3863,13 @@ struct StudioView: View {
                 }
             }
             .frame(maxWidth: .infinity, minHeight: StudioTheme.Layout.overviewPrimaryMinHeight)
-            .background(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.overviewActivityFill))
+            .background(Color.clear)
             .clipShape(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous),
             )
 
             GeometryReader { proxy in
-                let spacing = StudioTheme.Spacing.medium
+                let spacing = StudioTheme.Spacing.large
                 let cardWidth = max((proxy.size.width - spacing) / 2, 0)
                 let cardHeight = max((proxy.size.height - spacing) / 2, 0)
 
@@ -2717,7 +3924,7 @@ struct StudioView: View {
                 RoundedRectangle(
                     cornerRadius: StudioTheme.CornerRadius.miniMetricIcon, style: .continuous,
                 )
-                .fill(StudioTheme.surfaceMuted)
+                .fill(StudioTheme.iconTileSurface)
                 .frame(
                     width: StudioTheme.ControlSize.overviewMiniIcon,
                     height: StudioTheme.ControlSize.overviewMiniIcon,
@@ -2725,7 +3932,7 @@ struct StudioView: View {
                 .overlay(
                     Image(systemName: icon)
                         .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
-                        .foregroundStyle(StudioTheme.textSecondary),
+                        .foregroundStyle(StudioTheme.accent),
                 )
 
                 Text(value)
@@ -2788,6 +3995,10 @@ struct StudioView: View {
                             onDownloadAudio: {
                                 viewModel.downloadAudio(id: record.id)
                             },
+                            onPlayAudio: {
+                                viewModel.playAudio(id: record.id)
+                            },
+                            isAudioPlaying: viewModel.playingAudioRecordID == record.id,
                             onDelete: {
                                 viewModel.deleteHistoryRecord(id: record.id)
                             },
@@ -3104,17 +4315,22 @@ struct StudioView: View {
             ),
         ]
 
-        if !FreeLLMModelRegistry.suggestedModelNames.isEmpty {
-            cards.append(makeLLMRemoteProviderCard(.freeModel, badge: L("settings.models.badge.free")))
-        }
+        var standardCards = LLMRemoteProvider.settingsDisplayOrder
+            .filter { $0 != .typefluxCloud && $0 != .custom }
+            .filter { $0 != .freeModel || !FreeLLMModelRegistry.suggestedModelNames.isEmpty }
+            .map { provider in
+                (
+                    name: provider.displayName,
+                    card: makeLLMRemoteProviderCard(
+                        provider,
+                        badge: provider == .freeModel ? L("settings.models.badge.free") : nil,
+                    ),
+                )
+            }
 
-        let primaryRemoteProviders = LLMRemoteProvider.settingsDisplayOrder.filter {
-            $0 != .freeModel && $0 != .typefluxCloud && $0 != .custom
-        }
-        cards.append(contentsOf: primaryRemoteProviders.map { makeLLMRemoteProviderCard($0) })
-
-        cards.append(
-            StudioModelCard(
+        standardCards.append((
+            name: LLMProvider.ollama.displayName,
+            card: StudioModelCard(
                 id: StudioModelProviderID.ollama.rawValue,
                 name: LLMProvider.ollama.displayName,
                 summary: L("settings.models.card.ollama.summary"),
@@ -3124,8 +4340,12 @@ struct StudioView: View {
                 isSelected: viewModel.llmProvider == .ollama,
                 isMuted: false,
                 actionTitle: L("settings.models.useLocal"),
-            ),
-        )
+            )
+        ))
+        standardCards.sort { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+        cards.append(contentsOf: standardCards.map(\.card))
 
         let customRemoteProviders = LLMRemoteProvider.settingsDisplayOrder.filter { $0 == .custom }
         cards.append(contentsOf: customRemoteProviders.map { makeLLMRemoteProviderCard($0) })
@@ -3399,7 +4619,7 @@ struct StudioView: View {
                                                 cornerRadius: StudioTheme.CornerRadius.medium,
                                                 style: .continuous,
                                             )
-                                            .fill(StudioTheme.surfaceMuted),
+                                            .fill(StudioTheme.iconTileSurface),
                                         )
                                 }
                                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -3421,7 +4641,7 @@ struct StudioView: View {
                                                 cornerRadius: StudioTheme.CornerRadius.medium,
                                                 style: .continuous,
                                             )
-                                            .fill(StudioTheme.surfaceMuted),
+                                            .fill(StudioTheme.iconTileSurface),
                                         )
                                 }
                                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -3595,7 +4815,7 @@ struct StudioView: View {
                 .toggleStyle(.switch)
 
             case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek,
-                 .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+                 .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
                 llmRemoteProviderForm
 
             case .typefluxCloud:
@@ -3824,7 +5044,7 @@ struct StudioView: View {
                             RoundedRectangle(
                                 cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
                             )
-                            .fill(StudioTheme.surfaceMuted),
+                            .fill(StudioTheme.controlSurface),
                         )
                 }
             }
@@ -3878,7 +5098,13 @@ struct StudioView: View {
         return Button {
             viewModel.focusModelProvider(providerID)
         } label: {
-            StudioCard(padding: StudioTheme.Insets.cardCompact) {
+            StudioCard(
+                padding: StudioTheme.Insets.cardCompact,
+                showsShadow: true,
+                isHighlighted: isFocused,
+                isDimmed: !isFocused,
+                texture: .softWaves,
+            ) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
                         RoundedRectangle(
@@ -3932,13 +5158,8 @@ struct StudioView: View {
                     }
                 }
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .stroke(
-                        isFocused ? StudioTheme.accent.opacity(0.62) : Color.clear,
-                        lineWidth: StudioTheme.BorderWidth.emphasis,
-                    ),
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
         }
         .buttonStyle(StudioInteractiveButtonStyle())
     }
@@ -3969,14 +5190,14 @@ struct StudioView: View {
         -> Color
     {
         if provider.usesTypefluxBranding {
-            return isFocused ? Color.white.opacity(0.06) : Color.clear
+            return isFocused ? StudioTheme.controlSurface : Color.clear
         }
 
         if providerLogoResourceName(for: provider) != nil {
-            return isFocused ? Color.white.opacity(0.98) : Color.white.opacity(0.92)
+            return isFocused ? StudioTheme.selectionSurfaceRaised : StudioTheme.iconTileSurface
         }
 
-        return isFocused ? StudioTheme.accentSoft : StudioTheme.surfaceMuted
+        return isFocused ? StudioTheme.selectionSurfaceRaised : StudioTheme.iconTileSurface
     }
 
     @ViewBuilder
@@ -4061,6 +5282,8 @@ struct StudioView: View {
             "google"
         case .xiaomi:
             "xiaomimimo"
+        case .openCodeZen, .openCodeGo:
+            "opencode"
         case .aliCloud:
             "bailian-color"
         case .doubaoRealtime:
@@ -4116,17 +5339,13 @@ struct StudioView: View {
             .padding(StudioTheme.Insets.cardCompact)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(
-                        isSelected ? StudioTheme.accentSoft : StudioTheme.surfaceMuted.opacity(0.45),
-                    ),
+                    .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.localModelOptionSurface),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .stroke(
-                        isSelected
-                            ? StudioTheme.accent.opacity(0.65) : StudioTheme.border.opacity(0.75),
-                        lineWidth: isSelected
-                            ? StudioTheme.BorderWidth.emphasis : StudioTheme.BorderWidth.thin,
+                        StudioTheme.border.opacity(0.75),
+                        lineWidth: StudioTheme.BorderWidth.thin,
                     ),
             )
         }
@@ -4195,7 +5414,7 @@ struct StudioView: View {
             !viewModel.llmModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 && FreeLLMModelRegistry.resolve(modelName: viewModel.llmModel) != nil
         case .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi, .qwen, .zhipu,
-             .minimax, .grok, .groq, .xiaomi:
+             .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             !viewModel.llmAPIKey.isEmpty && !viewModel.llmBaseURL.isEmpty
                 && !viewModel.llmModel.isEmpty
         case .multimodalLLM:
@@ -4245,7 +5464,7 @@ struct StudioView: View {
             )
             viewModel.prepareOllamaModel()
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             if let provider = focusedLLMRemoteProvider {
                 viewModel.applyModelConfiguration(shouldShowToast: false)
                 viewModel.setLLMRemoteProvider(provider)
@@ -4316,6 +5535,10 @@ struct StudioView: View {
             "bolt.fill"
         case .xiaomi:
             "circle.grid.cross"
+        case .openCodeZen:
+            "sparkle.magnifyingglass"
+        case .openCodeGo:
+            "hare"
         case .multimodalLLM:
             "brain.filled.head.profile"
         case .aliCloud:
@@ -4360,7 +5583,7 @@ struct StudioView: View {
         case .ollama:
             L("settings.models.overview.ollama")
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             L("settings.models.overview.remoteProvider", activeLLMRemoteProvider.displayName)
         case .typefluxCloud:
             L("settings.models.overview.typefluxCloud")
@@ -4392,7 +5615,7 @@ struct StudioView: View {
         case .ollama:
             LLMProvider.ollama.displayName
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             activeLLMRemoteProvider.displayName
         case .typefluxCloud:
             LLMRemoteProvider.typefluxCloud.displayName
@@ -4416,7 +5639,7 @@ struct StudioView: View {
         case .appleSpeech, .localSTT, .ollama:
             L("settings.models.mode.local")
         case .freeSTT, .whisperAPI, .freeModel, .customLLM, .openRouter, .openAI, .anthropic,
-             .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi,
+             .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo,
              .multimodalLLM, .aliCloud, .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial, .typefluxCloud:
             L("settings.models.mode.remote")
         }
@@ -4427,7 +5650,7 @@ struct StudioView: View {
         case .appleSpeech, .localSTT, .ollama:
             StudioTheme.success
         case .freeSTT, .whisperAPI, .freeModel, .customLLM, .openRouter, .openAI, .anthropic,
-             .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi,
+             .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo,
              .multimodalLLM, .aliCloud, .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial, .typefluxCloud:
             StudioTheme.accent
         }
@@ -4438,7 +5661,7 @@ struct StudioView: View {
         case .appleSpeech, .localSTT, .ollama:
             StudioTheme.success.opacity(0.12)
         case .freeSTT, .whisperAPI, .freeModel, .customLLM, .openRouter, .openAI, .anthropic,
-             .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi,
+             .gemini, .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo,
              .multimodalLLM, .aliCloud, .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial, .typefluxCloud:
             StudioTheme.accentSoft
         }
@@ -4503,6 +5726,10 @@ struct StudioView: View {
             URL(string: "https://console.x.ai/")
         case .xiaomi:
             URL(string: "https://ai.xiaomi.com/")
+        case .openCodeZen:
+            URL(string: "https://opencode.ai/auth")
+        case .openCodeGo:
+            URL(string: "https://opencode.ai/auth")
         case .freeModel, .custom:
             nil
         case .typefluxCloud:
@@ -4537,7 +5764,7 @@ struct StudioView: View {
         case .ollama:
             viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             viewModel.llmModel.isEmpty
                 ? activeLLMRemoteProvider.defaultModel : viewModel.llmModel
         case .multimodalLLM:
@@ -4577,7 +5804,7 @@ struct StudioView: View {
         case .ollama:
             LLMProvider.ollama.displayName
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName
         case .multimodalLLM:
             STTProvider.multimodalLLM.displayName
@@ -4609,7 +5836,7 @@ struct StudioView: View {
         case .ollama:
             L("settings.models.focused.ollama")
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             L(
                 "settings.models.focused.remoteProvider",
                 focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName,
@@ -4650,7 +5877,7 @@ struct StudioView: View {
         case .ollama:
             L("settings.models.routing.ollama")
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             L("settings.models.routing.remoteProvider", activeLLMRemoteProvider.displayName)
         case .multimodalLLM:
             L("settings.models.routing.multimodal")
@@ -4707,7 +5934,13 @@ struct StudioView: View {
             }
         }
         .frame(width: 820, height: 680)
-        .background(StudioTheme.background)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.modalSurface
+            },
+        )
         .confirmationDialog(
             L("agent.jobs.clearAllDialog.title"),
             isPresented: $showingClearAllJobsConfirmation,
@@ -5081,7 +6314,7 @@ struct StudioView: View {
                 .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .bold))
                 .foregroundStyle(StudioTheme.textSecondary)
                 .frame(width: 28, height: 28)
-                .background(Circle().fill(StudioTheme.surfaceMuted))
+                .background(Circle().fill(StudioTheme.controlSurface))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -5119,9 +6352,7 @@ private struct VocabularyTermCard: View {
 
     var body: some View {
         HStack(spacing: StudioTheme.Spacing.small) {
-            Image(systemName: entry.source == .automatic ? "sparkles" : "plus.circle.fill")
-                .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
-                .foregroundStyle(entry.source == .automatic ? StudioTheme.warning : StudioTheme.accent)
+            vocabularySourceBadge
 
             Text(entry.term)
                 .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
@@ -5137,7 +6368,7 @@ private struct VocabularyTermCard: View {
                     .frame(width: 24, height: 24)
                     .background(
                         Circle()
-                            .fill(StudioTheme.surfaceMuted.opacity(0.8)),
+                            .fill(StudioTheme.controlSurface),
                     )
             }
             .buttonStyle(.plain)
@@ -5146,7 +6377,8 @@ private struct VocabularyTermCard: View {
             .animation(.easeOut(duration: 0.12), value: isHovered)
         }
         .padding(.horizontal, StudioTheme.Insets.cardCompact)
-        .padding(.vertical, StudioTheme.Insets.buttonVertical)
+        .padding(.vertical, StudioTheme.Insets.buttonVertical + 2)
+        .frame(minHeight: 48)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                 .fill(StudioTheme.surface),
@@ -5164,6 +6396,21 @@ private struct VocabularyTermCard: View {
             Button(L("common.copy"), systemImage: "doc.on.doc", action: onCopy)
             Button(L("common.edit"), systemImage: "pencil", action: onEdit)
             Button(L("common.delete"), systemImage: "trash", role: .destructive, action: onDelete)
+        }
+    }
+
+    @ViewBuilder
+    private var vocabularySourceBadge: some View {
+        if let image = vocabularySourceLogoImage(for: entry.source) {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+        } else {
+            Image(systemName: "asterisk")
+                .font(.system(size: StudioTheme.Typography.iconRegular, weight: .bold))
+                .foregroundStyle(StudioTheme.warning)
         }
     }
 }

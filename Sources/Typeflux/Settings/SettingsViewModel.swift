@@ -1,8 +1,51 @@
+import AVFoundation
 import AppKit
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 // swiftlint:disable file_length
+protocol HistoryAudioPreviewPlaying: AnyObject {
+    var onPlaybackFinished: (() -> Void)? { get set }
+
+    func play(fileURL: URL) throws -> Bool
+    func stop()
+}
+
+final class AVFoundationHistoryAudioPreviewPlayer: NSObject, HistoryAudioPreviewPlaying, AVAudioPlayerDelegate {
+    var onPlaybackFinished: (() -> Void)?
+
+    private var player: AVAudioPlayer?
+
+    func play(fileURL: URL) throws -> Bool {
+        stop()
+
+        let nextPlayer = try AVAudioPlayer(contentsOf: fileURL)
+        nextPlayer.delegate = self
+        nextPlayer.currentTime = 0
+        _ = nextPlayer.prepareToPlay()
+
+        guard nextPlayer.play() else {
+            player = nil
+            return false
+        }
+
+        player = nextPlayer
+        return true
+    }
+
+    func stop() {
+        player?.stop()
+        player = nil
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully _: Bool) {
+        guard self.player === player else { return }
+        self.player = nil
+        onPlaybackFinished?()
+    }
+}
+
 private final class HistoryStoreSendableBox: @unchecked Sendable {
     let base: any HistoryStore
 
@@ -112,6 +155,7 @@ final class StudioViewModel: ObservableObject {
     @Published var localOptimizationEnabled: Bool
     @Published var appleSpeechFallback: Bool
     @Published var automaticVocabularyCollectionEnabled: Bool
+    @Published var inputContextOptimizationEnabled: Bool
     @Published var autoUpdateEnabled: Bool
 
     @Published var stubbornPasteFallbackEnabled: Bool
@@ -143,12 +187,17 @@ final class StudioViewModel: ObservableObject {
     @Published var personaRewriteEnabled: Bool
     @Published var personaHotkeyAppliesToSelection: Bool
     @Published var personas: [PersonaProfile]
+    @Published var personaAppBindings: [PersonaAppBinding]
+    @Published var personaAppBindingsEnabled: Bool
     @Published var selectedPersonaID: UUID?
     @Published private(set) var activePersonaID: String
     @Published var personaDraftName: String
     @Published var personaDraftPrompt: String
+    @Published var personaAppBindingDraftIdentifier: String
+    @Published var personaAppBindingDraftPersonaID: UUID?
     @Published private(set) var isCreatingPersonaDraft: Bool
     @Published var vocabularyEntries: [VocabularyEntry]
+    @Published private(set) var isSynchronizingVocabulary = false
 
     @Published var launchAtLogin: Bool
     @Published var activationHotkey: HotkeyBinding?
@@ -156,6 +205,7 @@ final class StudioViewModel: ObservableObject {
     @Published var personaHotkey: HotkeyBinding?
     @Published var historyRetentionPolicy: HistoryRetentionPolicy
     @Published private(set) var historyRecords: [HistoryRecord]
+    @Published private(set) var playingAudioRecordID: UUID?
     @Published var toastMessage: String?
     @Published var llmConnectionTestState: ConnectionTestState = .idle
     @Published var sttConnectionTestState: ConnectionTestState = .idle
@@ -187,6 +237,7 @@ final class StudioViewModel: ObservableObject {
     private var mcpTestTask: Task<Void, Never>?
     private var historyRefreshTask: Task<Void, Never>?
     private var historyRefreshGeneration = 0
+    private let audioPreviewPlayer: HistoryAudioPreviewPlaying
 
     // swiftlint:disable:next function_body_length
     init(
@@ -199,6 +250,7 @@ final class StudioViewModel: ObservableObject {
         localModelManager: LocalSTTModelManaging = LocalModelManager(),
         audioDeviceManager: AudioDeviceManager = AudioDeviceManager(),
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
+        audioPreviewPlayer: HistoryAudioPreviewPlaying = AVFoundationHistoryAudioPreviewPlayer(),
     ) {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
@@ -209,6 +261,7 @@ final class StudioViewModel: ObservableObject {
         self.notificationService = notificationService
         self.audioDeviceManager = audioDeviceManager
         self.onRetryHistory = onRetryHistory
+        self.audioPreviewPlayer = audioPreviewPlayer
 
         let currentPersonas = settingsStore.personas
 
@@ -280,6 +333,7 @@ final class StudioViewModel: ObservableObject {
         localOptimizationEnabled = settingsStore.localOptimizationEnabled
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         automaticVocabularyCollectionEnabled = settingsStore.automaticVocabularyCollectionEnabled
+        inputContextOptimizationEnabled = settingsStore.inputContextOptimizationEnabled
         autoUpdateEnabled = settingsStore.autoUpdateEnabled
         stubbornPasteFallbackEnabled = settingsStore.stubbornPasteFallbackEnabled
         agentFrameworkEnabled = settingsStore.agentFrameworkEnabled
@@ -289,6 +343,8 @@ final class StudioViewModel: ObservableObject {
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
         personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         personas = currentPersonas
+        personaAppBindings = settingsStore.personaAppBindings
+        personaAppBindingsEnabled = settingsStore.personaAppBindingsEnabled
         let initialSelectedPersonaID = settingsStore.personaRewriteEnabled
             ? settingsStore.activePersona.map(\.id)
             : nil
@@ -296,7 +352,9 @@ final class StudioViewModel: ObservableObject {
         activePersonaID = settingsStore.activePersonaID
         let initialPersona = currentPersonas.first(where: { $0.id == initialSelectedPersonaID })
         personaDraftName = initialPersona?.name ?? ""
-        personaDraftPrompt = initialPersona?.prompt ?? ""
+        personaDraftPrompt = initialPersona.map { settingsStore.resolvedPersonaPrompt(for: $0) } ?? ""
+        personaAppBindingDraftIdentifier = ""
+        personaAppBindingDraftPersonaID = currentPersonas.first?.id
         isCreatingPersonaDraft = false
         vocabularyEntries = VocabularyStore.load()
         launchAtLogin = LaunchAtLoginManager.isEnabled
@@ -365,6 +423,11 @@ final class StudioViewModel: ObservableObject {
                 self?.refreshAgentJobs()
             }
         }
+        audioPreviewPlayer.onPlaybackFinished = { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.playingAudioRecordID = nil
+            }
+        }
     }
 
     deinit {
@@ -384,6 +447,7 @@ final class StudioViewModel: ObservableObject {
             NotificationCenter.default.removeObserver(agentJobObserver)
         }
         historyRefreshTask?.cancel()
+        audioPreviewPlayer.stop()
     }
 
     var preferredColorScheme: ColorScheme? {
@@ -476,13 +540,33 @@ final class StudioViewModel: ObservableObject {
         guard !searchQuery.isEmpty else { return personas }
         return personas.filter {
             $0.name.localizedCaseInsensitiveContains(searchQuery) ||
-                $0.prompt.localizedCaseInsensitiveContains(searchQuery)
+                personaDisplayPrompt(for: $0).localizedCaseInsensitiveContains(searchQuery)
         }
     }
 
+    func personaDisplayPrompt(for persona: PersonaProfile) -> String {
+        settingsStore.resolvedPersonaPrompt(for: persona)
+    }
+
     var filteredVocabularyEntries: [VocabularyEntry] {
-        guard !searchQuery.isEmpty else { return vocabularyEntries }
-        return vocabularyEntries.filter { $0.term.localizedCaseInsensitiveContains(searchQuery) }
+        let entries = searchQuery.isEmpty
+            ? vocabularyEntries
+            : vocabularyEntries.filter { $0.term.localizedCaseInsensitiveContains(searchQuery) }
+        return Self.alphabeticallySortedVocabularyEntries(entries)
+    }
+
+    private static func alphabeticallySortedVocabularyEntries(_ entries: [VocabularyEntry]) -> [VocabularyEntry] {
+        entries.sorted { lhs, rhs in
+            let termOrder = lhs.term.compare(
+                rhs.term,
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: Locale(identifier: "en_US_POSIX"),
+            )
+            if termOrder != .orderedSame {
+                return termOrder == .orderedAscending
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
     }
 
     private let statsStore = UsageStatsStore.shared
@@ -772,6 +856,9 @@ final class StudioViewModel: ObservableObject {
         appLanguage = language
         settingsStore.appLanguage = language
         AppLocalization.shared.setLanguage(language)
+        if selectedPersonaIsSystem {
+            loadPersonaDraft()
+        }
         refreshPermissionRows()
     }
 
@@ -1094,6 +1181,11 @@ final class StudioViewModel: ObservableObject {
     func setAutomaticVocabularyCollectionEnabled(_ value: Bool) {
         automaticVocabularyCollectionEnabled = value
         settingsStore.automaticVocabularyCollectionEnabled = value
+    }
+
+    func setInputContextOptimizationEnabled(_ value: Bool) {
+        inputContextOptimizationEnabled = value
+        settingsStore.inputContextOptimizationEnabled = value
     }
 
     func setAutoUpdateEnabled(_ value: Bool) {
@@ -1506,8 +1598,118 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    var canSavePersonaAppBinding: Bool {
+        !personaAppBindingDraftIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func savePersonaAppBinding() {
+        let identifier = personaAppBindingDraftIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !identifier.isEmpty else { return }
+
+        let personaID = personaAppBindingDraftPersonaID
+        settingsStore.savePersonaAppBinding(appIdentifier: identifier, personaID: personaID)
+        personaAppBindings = settingsStore.personaAppBindings
+        personaAppBindingDraftIdentifier = ""
+        if personaID == nil {
+            showToast(L("settings.personaAppBindings.savedNoPersona"))
+        } else if let persona = personas.first(where: { $0.id == personaID }) {
+            showToast(L("settings.personaAppBindings.saved", persona.name))
+        } else {
+            showToast(L("settings.personaAppBindings.savedGeneric"))
+        }
+    }
+
+    func setPersonaAppBindingsEnabled(_ value: Bool) {
+        personaAppBindingsEnabled = value
+        settingsStore.personaAppBindingsEnabled = value
+    }
+
+    func updatePersonaAppBindingPersona(id: UUID, personaID: UUID?) {
+        settingsStore.updatePersonaAppBindingPersona(id: id, personaID: personaID)
+        personaAppBindings = settingsStore.personaAppBindings
+    }
+
+    func setPersonaAppBindingEnabled(id: UUID, isEnabled: Bool) {
+        settingsStore.setPersonaAppBindingEnabled(id: id, isEnabled: isEnabled)
+        personaAppBindings = settingsStore.personaAppBindings
+    }
+
+    func removePersonaAppBinding(id: UUID) {
+        settingsStore.removePersonaAppBinding(id: id)
+        personaAppBindings = settingsStore.personaAppBindings
+    }
+
+    func personaName(for binding: PersonaAppBinding) -> String {
+        guard let personaID = binding.personaID else {
+            return L("persona.none.title")
+        }
+
+        return personas.first(where: { $0.id == personaID })?.name
+            ?? L("settings.personaAppBindings.missingPersona")
+    }
+
     func addVocabularyTerm(_ term: String, source: VocabularySource = .manual) {
         vocabularyEntries = VocabularyStore.add(term: term, source: source)
+    }
+
+    func importVocabulary() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.json, .plainText]
+
+        guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
+
+        do {
+            let data = try Data(contentsOf: sourceURL)
+            let previewItems = try VocabularyStore.previewImportItems(from: data)
+            guard !previewItems.isEmpty else {
+                showToast(L("vocabulary.toast.importNoChanges"))
+                return
+            }
+
+            guard showImportConfirmationAlert(
+                subject: sourceURL.lastPathComponent,
+                itemCount: previewItems.count,
+            ) else { return }
+
+            let result = try VocabularyStore.importItems(previewItems)
+            vocabularyEntries = result.entries
+            let changedCount = result.addedCount + result.updatedCount
+            if changedCount > 0 {
+                showToast(L("vocabulary.toast.imported", changedCount))
+            } else {
+                showToast(L("vocabulary.toast.importNoChanges"))
+            }
+        } catch {
+            showToast(L("common.failedWithReason", error.localizedDescription))
+        }
+    }
+
+    func exportVocabulary() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "typeflux-vocabulary.json"
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [.json]
+
+        guard panel.runModal() == .OK, let destinationURL = panel.url else { return }
+
+        do {
+            let data = try VocabularyStore.exportData()
+            try data.write(to: destinationURL, options: .atomic)
+            showToast(L("vocabulary.toast.exported"))
+        } catch {
+            showToast(L("common.failedWithReason", error.localizedDescription))
+        }
+    }
+
+    func importClaudeVocabulary() {
+        importVocabularyFromExternalApp(source: .claude, directoryName: ".claude")
+    }
+
+    func importCodexVocabulary() {
+        importVocabularyFromExternalApp(source: .codex, directoryName: ".codex")
     }
 
     func removeVocabularyEntry(id: UUID) {
@@ -1538,6 +1740,11 @@ final class StudioViewModel: ObservableObject {
         guard let persona = personas.first(where: { $0.id == id }), !persona.isSystem else { return }
         personas.removeAll { $0.id == id }
         persistPersonas()
+        settingsStore.personaAppBindings = settingsStore.personaAppBindings.filter { $0.personaID != id }
+        personaAppBindings = settingsStore.personaAppBindings
+        if personaAppBindingDraftPersonaID == id {
+            personaAppBindingDraftPersonaID = personas.first?.id
+        }
         if settingsStore.activePersonaID == id.uuidString {
             settingsStore.activePersonaID = personas.first?.id.uuidString ?? ""
             activePersonaID = settingsStore.activePersonaID
@@ -1593,6 +1800,8 @@ final class StudioViewModel: ObservableObject {
         personaRewriteEnabled = settingsStore.personaRewriteEnabled
         personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         activePersonaID = settingsStore.activePersonaID
+        personaAppBindings = settingsStore.personaAppBindings
+        personaAppBindingsEnabled = settingsStore.personaAppBindingsEnabled
         selectedPersonaID = settingsStore.personaRewriteEnabled
             ? settingsStore.activePersona.map(\.id)
             : nil
@@ -1722,13 +1931,34 @@ final class StudioViewModel: ObservableObject {
     }
 
     func exportHistory() {
+        guard let destinationDirectoryURL = chooseHistoryExportDirectory() else { return }
+
         do {
-            let url = try historyStore.exportMarkdown()
+            let exportedURL = try historyStore.exportMarkdown()
+            let url = try HistoryExportDestination.moveExport(
+                at: exportedURL,
+                to: destinationDirectoryURL,
+            )
             NSWorkspace.shared.activateFileViewerSelecting([url])
             showToast(L("history.toast.exported"))
         } catch {
             showToast(L("history.toast.exportFailed"))
         }
+    }
+
+    private func chooseHistoryExportDirectory() -> URL? {
+        let panel = NSOpenPanel()
+        panel.title = L("history.export.chooseDirectory")
+        panel.message = L("history.export.chooseDirectoryMessage")
+        panel.prompt = L("history.export.chooseDirectoryPrompt")
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = HistoryExportDestination.downloadsDirectory()
+
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
     }
 
     func clearHistory() {
@@ -1799,7 +2029,45 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    func playAudio(id: UUID) {
+        if playingAudioRecordID == id {
+            audioPreviewPlayer.stop()
+            playingAudioRecordID = nil
+            return
+        }
+
+        guard
+            let record = historyRecords.first(where: { $0.id == id }),
+            let audioFilePath = record.audioFilePath,
+            !audioFilePath.isEmpty
+        else { return }
+
+        let sourceURL = URL(fileURLWithPath: audioFilePath)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            showToast(L("history.toast.audioUnavailable"))
+            return
+        }
+
+        do {
+            let didStartPlayback = try audioPreviewPlayer.play(fileURL: sourceURL)
+            if !didStartPlayback {
+                playingAudioRecordID = nil
+                showToast(L("history.toast.audioPlaybackFailed"))
+            } else {
+                playingAudioRecordID = id
+            }
+        } catch {
+            playingAudioRecordID = nil
+            showToast(L("history.toast.audioPlaybackFailed"))
+        }
+    }
+
     func deleteHistoryRecord(id: UUID) {
+        if playingAudioRecordID == id {
+            audioPreviewPlayer.stop()
+            playingAudioRecordID = nil
+        }
+
         historyStore.delete(id: id)
         historyRecords.removeAll { $0.id == id }
         displayedHistory.removeAll { $0.id == id }
@@ -1809,7 +2077,7 @@ final class StudioViewModel: ObservableObject {
     func applyModelConfiguration(shouldShowToast: Bool = true) {
         switch focusedModelProvider {
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
-             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+             .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             let remoteProvider = LLMRemoteProvider.from(providerID: focusedModelProvider) ?? llmRemoteProvider
             settingsStore.setLLMBaseURL(llmBaseURL, for: remoteProvider)
             settingsStore.setLLMModel(llmModel, for: remoteProvider)
@@ -1884,7 +2152,7 @@ final class StudioViewModel: ObservableObject {
                     case .freeSTT:
                         return (firstTokenDate, collected)
                     case .typefluxCloud, .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini,
-                         .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi:
+                         .deepSeek, .kimi, .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
                         let connection = try await LLMConnectionTestResolver.resolve(
                             provider: capturedRemoteProvider,
                             baseURL: capturedBaseURL,
@@ -2155,7 +2423,7 @@ final class StudioViewModel: ObservableObject {
     private func loadPersonaDraft() {
         if let selectedPersona {
             personaDraftName = selectedPersona.name
-            personaDraftPrompt = selectedPersona.prompt
+            personaDraftPrompt = settingsStore.resolvedPersonaPrompt(for: selectedPersona)
         } else {
             personaDraftName = ""
             personaDraftPrompt = ""
@@ -2200,7 +2468,65 @@ final class StudioViewModel: ObservableObject {
         googleCloudOAuthAuthorized = GoogleCloudSpeechCredentialResolver.isStoredAuthorizationAvailable()
     }
 
-    private func showToast(_ text: String) {
+    static func makeVocabularyImportConfirmationAlert(subject: String, itemCount: Int) -> NSAlert {
+        let alert = NSAlert()
+        alert.messageText = L("vocabulary.importDialog.title")
+        alert.informativeText = L("vocabulary.importDialog.message", itemCount, subject)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: L("vocabulary.importDialog.confirm"))
+        alert.addButton(withTitle: L("common.cancel"))
+        return alert
+    }
+
+    private func showImportConfirmationAlert(subject: String, itemCount: Int) -> Bool {
+        Self.makeVocabularyImportConfirmationAlert(subject: subject, itemCount: itemCount)
+            .runModal() == .alertFirstButtonReturn
+    }
+
+    private func importVocabularyFromExternalApp(source: VocabularySource, directoryName: String) {
+        guard !isSynchronizingVocabulary else { return }
+        isSynchronizingVocabulary = true
+
+        Task { [weak self] in
+            guard let self else { return }
+            let discovery = await Task.detached(priority: .utility) {
+                let directory = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(directoryName, isDirectory: true)
+                return ProjectVocabularyScanner.scanContextDirectories([directory])
+            }.value
+
+            await MainActor.run {
+                self.isSynchronizingVocabulary = false
+
+                guard !discovery.roots.isEmpty else {
+                    self.showToast(L("vocabulary.toast.externalNoSource", source.displayName))
+                    return
+                }
+
+                guard !discovery.terms.isEmpty else {
+                    self.showToast(L("vocabulary.toast.externalNoTerms", source.displayName))
+                    return
+                }
+
+                guard self.showImportConfirmationAlert(
+                    subject: source.displayName,
+                    itemCount: discovery.terms.count,
+                ) else { return }
+
+                let result = VocabularyStore.importTerms(discovery.terms, source: source)
+                self.vocabularyEntries = result.entries
+                let changedCount = result.addedCount + result.updatedCount
+
+                if changedCount > 0 {
+                    self.showToast(L("vocabulary.toast.externalImported", changedCount, source.displayName))
+                } else {
+                    self.showToast(L("vocabulary.toast.externalNoTerms", source.displayName))
+                }
+            }
+        }
+    }
+
+    func showToast(_ text: String) {
         toastMessage = text
         Task {
             try? await Task.sleep(nanoseconds: 2_200_000_000)

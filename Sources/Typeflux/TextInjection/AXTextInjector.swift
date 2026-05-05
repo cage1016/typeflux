@@ -74,6 +74,7 @@ final class AXTextInjector: TextInjector {
 
     let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "AXTextInjector")
     let settingsStore: SettingsStore?
+    var lastApplicationStateFailureReason: String?
     struct PasteboardItemSnapshot {
         let representations: [(type: NSPasteboard.PasteboardType, data: Data)]
     }
@@ -87,11 +88,22 @@ final class AXTextInjector: TextInjector {
         let range: CFRange?
         let processID: pid_t?
         let processName: String?
+        let selectedText: String?
         let role: String?
         let windowTitle: String?
         let isFocusedTarget: Bool
         let source: String
         let capturedAt: Date
+    }
+
+    struct ApplicationStateContext {
+        let text: String
+        let selectedRange: CFRange?
+    }
+
+    struct TypefluxNativeTextTarget {
+        let textView: NSTextView
+        let window: NSWindow?
     }
 
     static var didRequestAccessibility = false
@@ -110,11 +122,155 @@ final class AXTextInjector: TextInjector {
     static let axWriteVerificationAttempts = 4
     static let focusRestoreDelayMicroseconds: useconds_t = 250_000
     static let copySelectionTimeoutMilliseconds = 180
+    static let documentContextMaxBytes = 2_000_000
+    static let applicationStateContextMaxBytes = 2_000_000
+    static let visibleTextContextMaxNodes = 4_000
+    static let visibleTextContextSearchDepth = 16
+    static let visibleTextContextMaxCharacters = 60_000
     static let copyShortcutKeyCode: CGKeyCode = 8
     static let selectionContextLifetime: TimeInterval = 180
-    static let focusedDescendantSearchDepth = 6
+    static let focusedDescendantSearchDepth = 10
 
     var latestSelectionContext: SelectionContext?
+
+    func isTypefluxOwnedTarget(processID: pid_t?, bundleIdentifier: String?) -> Bool {
+        if processID == getpid() {
+            return true
+        }
+
+        if let bundleIdentifier, bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+
+        return false
+    }
+
+    func typefluxFrontmostWindow() -> NSWindow? {
+        guard isTypefluxOwnedTarget(
+            processID: frontmostProcessID(),
+            bundleIdentifier: frontmostApplicationBundleIdentifier(),
+        ) else {
+            return nil
+        }
+
+        return NSApp.keyWindow ?? NSApp.mainWindow
+    }
+
+    func typefluxNativeTextTarget() -> TypefluxNativeTextTarget? {
+        guard let window = typefluxFrontmostWindow() else { return nil }
+        guard !TypefluxWindowIdentity.isAskAnswerWindow(window) else { return nil }
+        guard let textView = window.firstResponder as? NSTextView else { return nil }
+        guard textView.isEditable || textView.isSelectable else { return nil }
+        return TypefluxNativeTextTarget(textView: textView, window: window)
+    }
+
+    func typefluxReadOnlyWindowSelectionSnapshot(source: String) -> TextSelectionSnapshot {
+        let window = typefluxFrontmostWindow()
+        return TextSelectionSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            selectedRange: nil,
+            selectedText: nil,
+            source: source,
+            isEditable: false,
+            role: nil,
+            windowTitle: window?.title,
+            isFocusedTarget: false,
+        )
+    }
+
+    func typefluxNativeSelectionSnapshot(target: TypefluxNativeTextTarget) -> TextSelectionSnapshot {
+        let selectedRange = target.textView.selectedRange()
+        let selectedText: String? = if selectedRange.length > 0,
+                                      selectedRange.location != NSNotFound,
+                                      NSMaxRange(selectedRange) <= target.textView.string.utf16.count
+        {
+            (target.textView.string as NSString).substring(with: selectedRange)
+        } else {
+            nil
+        }
+
+        return TextSelectionSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            selectedRange: CFRange(location: selectedRange.location, length: selectedRange.length),
+            selectedText: selectedText,
+            source: "typeflux-native",
+            isEditable: target.textView.isEditable,
+            role: "NSTextView",
+            windowTitle: target.window?.title,
+            isFocusedTarget: true,
+        )
+    }
+
+    func typefluxNativeInputSnapshot(target: TypefluxNativeTextTarget) -> CurrentInputTextSnapshot {
+        let selectedRange = target.textView.selectedRange()
+        return CurrentInputTextSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            role: "NSTextView",
+            text: target.textView.string,
+            selectedRange: CFRange(location: selectedRange.location, length: selectedRange.length),
+            isEditable: target.textView.isEditable,
+            isFocusedTarget: true,
+            failureReason: nil,
+            documentURL: nil,
+            textSource: "typeflux-native",
+        )
+    }
+
+    func insertIntoTypefluxNativeTextTarget(_ text: String, replaceSelection: Bool) throws -> Bool {
+        guard let target = typefluxNativeTextTarget() else { return false }
+        guard target.textView.isEditable else {
+            throw NSError(
+                domain: "AXTextInjector",
+                code: 11,
+                userInfo: [NSLocalizedDescriptionKey: "Focused Typeflux text target is not editable"],
+            )
+        }
+
+        let selectedRange = target.textView.selectedRange()
+        let replacementRange = replaceSelection
+            ? selectedRange
+            : NSRange(location: selectedRange.location, length: selectedRange.length)
+        target.textView.insertText(text, replacementRange: replacementRange)
+        NetworkDebugLogger.logMessage(
+            "[Text Injection] completed via Typeflux native text target",
+        )
+        return true
+    }
+
+    func typefluxOwnedSelectionSnapshot(source: String) -> TextSelectionSnapshot {
+        TextSelectionSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            selectedRange: nil,
+            selectedText: nil,
+            source: source,
+            isEditable: false,
+            role: nil,
+            windowTitle: nil,
+            isFocusedTarget: false,
+        )
+    }
+
+    func typefluxOwnedInputSnapshot(failureReason: String) -> CurrentInputTextSnapshot {
+        CurrentInputTextSnapshot(
+            processID: frontmostProcessID(),
+            processName: frontmostApplicationName() ?? "Typeflux",
+            bundleIdentifier: frontmostApplicationBundleIdentifier() ?? Bundle.main.bundleIdentifier,
+            role: nil,
+            text: nil,
+            selectedRange: nil,
+            isEditable: false,
+            isFocusedTarget: false,
+            failureReason: failureReason,
+        )
+    }
 
     enum PasteVerificationResult: Equatable {
         case success
@@ -300,6 +456,22 @@ final class AXTextInjector: TextInjector {
     }
 
     func readSelectionSnapshot() -> TextSelectionSnapshot {
+        if let target = typefluxNativeTextTarget() {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] captured Typeflux native text selection",
+            )
+            latestSelectionContext = nil
+            return typefluxNativeSelectionSnapshot(target: target)
+        }
+
+        if TypefluxWindowIdentity.isAskAnswerWindow(typefluxFrontmostWindow()) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped selection snapshot for Typeflux Ask Answer window",
+            )
+            latestSelectionContext = nil
+            return typefluxReadOnlyWindowSelectionSnapshot(source: "typeflux-ask-answer-window")
+        }
+
         guard AXIsProcessTrusted() else {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
@@ -325,6 +497,13 @@ final class AXTextInjector: TextInjector {
         let processName = frontmostApplicationName()
         let bundleIdentifier = frontmostApplicationBundleIdentifier()
         logger.debug("getSelectionSnapshot — app: \(processName ?? "?", privacy: .public) (pid: \(processID.map(String.init) ?? "?", privacy: .public))")
+        if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped selection snapshot for Typeflux non-text frontmost target",
+            )
+            latestSelectionContext = nil
+            return typefluxReadOnlyWindowSelectionSnapshot(source: "typeflux-non-text-window")
+        }
 
         if let result = readSelectedText() {
             // Compute editability from the SAME element that produced the text,
@@ -364,6 +543,7 @@ final class AXTextInjector: TextInjector {
                 range: nil,
                 processID: processID,
                 processName: processName,
+                selectedText: copiedText,
                 role: nil,
                 windowTitle: selectionWindow.flatMap(windowTitle(of:)) ?? focusedWindowTitle(for: processID),
                 isFocusedTarget: isFocusedTarget,
@@ -420,6 +600,20 @@ final class AXTextInjector: TextInjector {
     }
 
     func readCurrentInputTextSnapshot() -> CurrentInputTextSnapshot {
+        if let target = typefluxNativeTextTarget() {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] captured Typeflux native input snapshot",
+            )
+            return typefluxNativeInputSnapshot(target: target)
+        }
+
+        if TypefluxWindowIdentity.isAskAnswerWindow(typefluxFrontmostWindow()) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped input snapshot for Typeflux Ask Answer window",
+            )
+            return typefluxOwnedInputSnapshot(failureReason: "typeflux-ask-answer-window")
+        }
+
         guard AXIsProcessTrusted() else {
             return CurrentInputTextSnapshot(
                 processID: frontmostProcessID(),
@@ -427,57 +621,138 @@ final class AXTextInjector: TextInjector {
                 bundleIdentifier: frontmostApplicationBundleIdentifier(),
                 role: nil,
                 text: nil,
+                selectedRange: nil,
                 isEditable: false,
                 isFocusedTarget: false,
                 failureReason: "accessibility-not-trusted",
             )
         }
 
+        let processID = frontmostProcessID()
+        let processName = frontmostApplicationName()
+        let bundleIdentifier = frontmostApplicationBundleIdentifier()
+        if isTypefluxOwnedTarget(processID: processID, bundleIdentifier: bundleIdentifier) {
+            NetworkDebugLogger.logMessage(
+                "[AXTextInjector] skipped input snapshot for Typeflux non-text frontmost target",
+            )
+            return typefluxOwnedInputSnapshot(failureReason: "typeflux-non-text-window")
+        }
+
         guard let element = focusedElement() else {
             return CurrentInputTextSnapshot(
-                processID: frontmostProcessID(),
-                processName: frontmostApplicationName(),
-                bundleIdentifier: frontmostApplicationBundleIdentifier(),
+                processID: processID,
+                processName: processName,
+                bundleIdentifier: bundleIdentifier,
                 role: nil,
                 text: nil,
+                selectedRange: nil,
                 isEditable: false,
                 isFocusedTarget: false,
                 failureReason: "no-focused-element",
             )
         }
 
-        let processID = frontmostProcessID()
-        let processName = frontmostApplicationName()
-        let bundleIdentifier = frontmostApplicationBundleIdentifier()
         let role = copyStringAttribute(kAXRoleAttribute as String, from: element)
         let isEditable = isLikelyEditable(element: element)
         let isFocusedTarget = copyBooleanAttribute(kAXFocusedAttribute as String, from: element) ?? false
         let selectedRange = copySelectedTextRange(from: element)
+        let documentURL = documentURL(for: element, processID: processID)
+        let shouldPreferApplicationState = Self.shouldPreferApplicationStateContextBeforeAXValue(
+            bundleIdentifier: bundleIdentifier,
+            role: role,
+            isFocusedTarget: isFocusedTarget,
+        )
+        let shouldSuppressAXValue = Self.shouldSuppressAXValueContext(
+            bundleIdentifier: bundleIdentifier,
+            role: role,
+            isFocusedTarget: isFocusedTarget,
+        )
 
         guard isEditable else {
+            let documentText = documentURL.flatMap(readDocumentContextText(from:))
+            let applicationStateContext = documentText == nil ? applicationStateContext(
+                bundleIdentifier: bundleIdentifier,
+                selectedText: latestSelectionContext?.selectedText,
+                windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+            ) : nil
+            let visibleText = documentText == nil && applicationStateContext == nil ? visibleTextContext(for: element, processID: processID) : nil
+            let contextText = documentText ?? applicationStateContext?.text ?? visibleText
             return CurrentInputTextSnapshot(
                 processID: processID,
                 processName: processName,
                 bundleIdentifier: bundleIdentifier,
                 role: role,
-                text: nil,
+                text: contextText,
+                selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
                 isEditable: false,
                 isFocusedTarget: isFocusedTarget,
-                failureReason: "focused-element-not-editable",
+                failureReason: inputContextFailureReason(
+                    defaultReason: "focused-element-not-editable",
+                    contextReason: "focused-element-not-editable-context",
+                    contextText: contextText,
+                ),
+                documentURL: documentURL,
+                textSource: Self.contextTextSource(
+                    documentText: documentText,
+                    applicationStateText: applicationStateContext?.text,
+                    visibleText: visibleText,
+                ),
             )
         }
 
-        if let value = copyTextAttribute(kAXValueAttribute as String, from: element) {
-            if Self.shouldTreatAXValueAsUnreadable(role: role, value: value, selectedRange: selectedRange) {
+        if shouldPreferApplicationState {
+            let applicationStateContext = applicationStateContext(
+                bundleIdentifier: bundleIdentifier,
+                selectedText: latestSelectionContext?.selectedText,
+                windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+            )
+            if let applicationStateContext {
                 return CurrentInputTextSnapshot(
                     processID: processID,
                     processName: processName,
                     bundleIdentifier: bundleIdentifier,
                     role: role,
-                    text: nil,
+                    text: applicationStateContext.text,
+                    selectedRange: applicationStateContext.selectedRange,
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
-                    failureReason: "missing-ax-value",
+                    failureReason: "ax-value-bypassed-application-state-context",
+                    documentURL: documentURL,
+                    textSource: "application-state",
+                )
+            }
+        }
+
+        if let value = copyTextAttribute(kAXValueAttribute as String, from: element) {
+            if Self.shouldTreatAXValueAsUnreadable(role: role, value: value, selectedRange: selectedRange) {
+                let documentText = documentURL.flatMap(readDocumentContextText(from:))
+                let applicationStateContext = documentText == nil ? applicationStateContext(
+                    bundleIdentifier: bundleIdentifier,
+                    selectedText: latestSelectionContext?.selectedText,
+                    windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+                ) : nil
+                let visibleText = documentText == nil && applicationStateContext == nil ? visibleTextContext(for: element, processID: processID) : nil
+                let contextText = documentText ?? applicationStateContext?.text ?? visibleText
+                return CurrentInputTextSnapshot(
+                    processID: processID,
+                    processName: processName,
+                    bundleIdentifier: bundleIdentifier,
+                    role: role,
+                    text: contextText,
+                    selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
+                    isEditable: true,
+                    isFocusedTarget: isFocusedTarget,
+                    failureReason: inputContextFailureReason(
+                        defaultReason: "missing-ax-value",
+                        contextReason: "missing-ax-value-context",
+                        contextText: contextText,
+                    ),
+                    documentURL: documentURL,
+                    textSource: Self.contextTextSource(
+                        documentText: documentText,
+                        applicationStateText: applicationStateContext?.text,
+                        visibleText: visibleText,
+                    ),
                 )
             }
             if let placeholder = copyTextAttribute(kAXPlaceholderValueAttribute as String, from: element), placeholder == value {
@@ -487,9 +762,11 @@ final class AXTextInjector: TextInjector {
                     bundleIdentifier: bundleIdentifier,
                     role: role,
                     text: nil,
+                    selectedRange: selectedRange,
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
                     failureReason: "value-matched-placeholder",
+                    documentURL: documentURL,
                 )
             }
             if let title = copyTextAttribute(kAXTitleAttribute as String, from: element), title == value {
@@ -499,9 +776,30 @@ final class AXTextInjector: TextInjector {
                     bundleIdentifier: bundleIdentifier,
                     role: role,
                     text: nil,
+                    selectedRange: selectedRange,
                     isEditable: true,
                     isFocusedTarget: isFocusedTarget,
                     failureReason: "value-matched-title",
+                    documentURL: documentURL,
+                )
+            }
+
+            if shouldSuppressAXValue {
+                return CurrentInputTextSnapshot(
+                    processID: processID,
+                    processName: processName,
+                    bundleIdentifier: bundleIdentifier,
+                    role: role,
+                    text: nil,
+                    selectedRange: nil,
+                    isEditable: false,
+                    isFocusedTarget: isFocusedTarget,
+                    failureReason: inputContextFailureReason(
+                        defaultReason: "browser-chrome-ui-ax-value-ignored",
+                        contextReason: "browser-chrome-ui-ax-value-ignored-context",
+                        contextText: nil,
+                    ),
+                    documentURL: documentURL,
                 )
             }
 
@@ -511,26 +809,59 @@ final class AXTextInjector: TextInjector {
                 bundleIdentifier: bundleIdentifier,
                 role: role,
                 text: value,
+                selectedRange: selectedRange,
                 isEditable: true,
                 isFocusedTarget: isFocusedTarget,
                 failureReason: nil,
+                documentURL: documentURL,
+                textSource: "ax-value",
             )
         }
 
+        let documentText = documentURL.flatMap(readDocumentContextText(from:))
+        let applicationStateContext = documentText == nil ? applicationStateContext(
+            bundleIdentifier: bundleIdentifier,
+            selectedText: latestSelectionContext?.selectedText,
+            windowTitle: latestSelectionContext?.windowTitle ?? processID.flatMap(focusedWindowTitle(for:)),
+        ) : nil
+        let visibleText = documentText == nil && applicationStateContext == nil ? visibleTextContext(for: element, processID: processID) : nil
+        let contextText = documentText ?? applicationStateContext?.text ?? visibleText
         return CurrentInputTextSnapshot(
             processID: processID,
             processName: processName,
             bundleIdentifier: bundleIdentifier,
             role: role,
-            text: nil,
+            text: contextText,
+            selectedRange: applicationStateContext?.selectedRange ?? selectedRange,
             isEditable: true,
             isFocusedTarget: isFocusedTarget,
-            failureReason: "missing-ax-value",
+            failureReason: inputContextFailureReason(
+                defaultReason: "missing-ax-value",
+                contextReason: "missing-ax-value-context",
+                contextText: contextText,
+            ),
+            documentURL: documentURL,
+            textSource: Self.contextTextSource(
+                documentText: documentText,
+                applicationStateText: applicationStateContext?.text,
+                visibleText: visibleText,
+            ),
         )
     }
 
     func currentInputText() async -> String? {
         await currentInputTextSnapshot().text
+    }
+
+    func inputContextFailureReason(defaultReason: String, contextReason: String, contextText: String?) -> String {
+        if contextText != nil {
+            return contextReason
+        }
+
+        guard let stateFailure = lastApplicationStateFailureReason else {
+            return defaultReason
+        }
+        return "\(defaultReason)-\(stateFailure)"
     }
 
     func replaceSelection(text: String) throws {
@@ -545,7 +876,8 @@ final class AXTextInjector: TextInjector {
         return
             "pid=\(context.processID.map(String.init) ?? "nil") process=\(context.processName ?? "nil") "
                 + "role=\(context.role ?? "nil") window=\(context.windowTitle ?? "nil") "
-                + "source=\(context.source) focused=\(context.isFocusedTarget) range=\(range)"
+                + "source=\(context.source) focused=\(context.isFocusedTarget) range=\(range) "
+                + "selectedTextLength=\(context.selectedText?.count ?? 0)"
     }
 
     func snapshotSummary(_ snapshot: CurrentInputTextSnapshot) -> String {
@@ -557,6 +889,8 @@ final class AXTextInjector: TextInjector {
                 + "role=\(snapshot.role ?? "nil") editable=\(snapshot.isEditable) "
                 + "focused=\(snapshot.isFocusedTarget) "
                 + "failure=\(snapshot.failureReason ?? "nil") textLength=\(snapshot.text?.count ?? 0) "
+                + "document=\(snapshot.documentURL?.path ?? "nil") "
+                + "textSource=\(snapshot.textSource ?? "nil") "
                 + "preview=\(preview)"
     }
 

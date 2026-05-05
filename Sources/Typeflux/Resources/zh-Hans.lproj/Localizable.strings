@@ -23,9 +23,26 @@
 "sidebar.about" = "关于";
 "sidebar.aboutAccessibility" = "关于 Typeflux";
 "sidebar.feedbackAccessibility" = "问题反馈";
+"sidebar.feedback.directOption" = "直接反馈";
 "sidebar.feedback.emailOption" = "发邮件反馈问题";
 "sidebar.feedback.githubOption" = "GitHub 提 Issue";
 "sidebar.settingsAccessibility" = "打开设置";
+
+"feedback.direct.title" = "问题反馈";
+"feedback.direct.subtitle" = "描述你遇到的问题或建议。Typeflux 会提交到服务端并创建 Issue 便于跟进。";
+"feedback.direct.contentLabel" = "反馈内容";
+"feedback.direct.contentPlaceholder" = "请简单说说你遇到的问题或想法。\n例如：我按下快捷键后没有开始转写，重启应用后还是一样。\n也可以写：我希望转写完成后自动复制到剪贴板。";
+"feedback.direct.contactLabel" = "联系方式（可选）";
+"feedback.direct.contactPlaceholder" = "邮箱或其他联系方式";
+"feedback.direct.imagesLabel" = "图片";
+"feedback.direct.addImage" = "添加图片";
+"feedback.direct.removeImage" = "移除图片";
+"feedback.direct.submit" = "提交";
+"feedback.toast.submitted" = "反馈已提交，谢谢。";
+"feedback.error.emptyContent" = "请输入反馈内容。";
+"feedback.error.invalidImage" = "无法读取这张图片。";
+"feedback.error.server" = "提交反馈失败。";
+"feedback.error.invalidResponse" = "收到的反馈响应无效。";
 
 "studio.section.home" = "概览";
 "studio.section.models" = "模型";
@@ -101,7 +118,7 @@
 "menu.agentTasks.viewAll" = "查看所有任务";
 "menu.agentTasks.runningCount" = "%d 个运行中";
 "menu.appearance" = "外观";
-"menu.settings" = "设置";
+"menu.settings" = "系统设置";
 "menu.setupGuide" = "新手引导";
 "menu.about" = "关于 Typeflux";
 "menu.checkForUpdates" = "检查更新";
@@ -111,7 +128,7 @@
 "menu.quit" = "退出";
 "menu.status.ready" = "已就绪";
 "menu.status.recording" = "录音中…";
-"menu.status.processing" = "处理中…";
+"menu.status.processing" = "思考中…";
 "menu.status.failed" = "失败：%@";
 
 "appMenu.about" = "关于 %@";
@@ -210,6 +227,7 @@
 "updater.download.failed" = "下载更新失败。";
 "updater.install.extractionFailed" = "解压更新包失败。";
 "updater.install.appNotFound" = "在更新包中找不到应用程序。";
+"updater.install.signatureVerificationFailed" = "无法验证更新包签名。";
 
 "provider.stt.whisperAPI" = "OpenAI";
 "provider.stt.freeModel" = "免费模型";
@@ -225,7 +243,7 @@
 "provider.llm.custom" = "自定义";
 "provider.llm.freeModel" = "免费模型";
 "provider.llm.openRouter" = "OpenRouter";
-"provider.llm.ollama" = "本地 Ollama";
+"provider.llm.ollama" = "Ollama 本地";
 "provider.llm.typefluxCloud" = "Typeflux Cloud";
 
 "downloadSource.modelScope" = "ModelScope";
@@ -247,6 +265,10 @@
 "localSTT.qwen3ASR.summary" = "更大的多语言 ASR 模型，语境理解更强，长语音识别质量更好。";
 "localSTT.qwen3ASR.parameterValue" = "0.6B";
 "localSTT.qwen3ASR.sizeValue" = "1.3 GB";
+"localSTT.funASR.name" = "FunASR（Paraformer）";
+"localSTT.funASR.summary" = "阿里巴巴达摩院开发的 Paraformer 架构中文 ASR 模型，速度快，准确率高。";
+"localSTT.funASR.parameterValue" = "220M";
+"localSTT.funASR.sizeValue" = "~180 MB";
 "localSTT.prepare.runtimePreparing" = "正在准备原生本地语音运行时...";
 "localSTT.prepare.cleaningLegacyRuntime" = "正在清理旧版 Python 运行时...";
 "localSTT.prepare.runtimeDownloading" = "正在下载 Sherpa-ONNX 原生运行时...";
@@ -270,14 +292,16 @@
 
 "overlay.recording.listening" = "正在聆听";
 "overlay.ask.guidance" = "你可以询问任何问题";
-"overlay.processing.transcribing" = "处理中";
+"overlay.processing.transcribing" = "思考中";
 "overlay.processing.thinking" = "思考中";
 "overlay.failure.title" = "处理失败";
 "overlay.timeout.title" = "处理超时";
 "overlay.timeout.message" = "处理时间超过 120 秒，请重试。";
 "overlay.notice.title" = "提示";
-"overlay.personaPicker.switchTitle" = "切换人设";
-"overlay.personaPicker.switchInstructions" = "使用上下方向键选择，按回车确认，按 Esc 关闭。";
+"overlay.personaPicker.switchTitle" = "切换全局人设";
+"overlay.personaPicker.switchInstructions" = "选择当前应用没有启用应用人设时使用的全局人设。";
+"overlay.personaPicker.switchApplicationTitle" = "切换应用人设";
+"overlay.personaPicker.switchApplicationInstructions" = "为当前应用选择人设。全局人设设置不会改变。";
 "overlay.personaPicker.applyTitle" = "应用人设";
 "overlay.personaPicker.applyInstructions" = "选择一个人设来改写当前选中文本。按回车应用，按 Esc 取消。";
 
@@ -298,13 +322,18 @@
 "workflow.transcription.noSpeech" = "未检测到清晰语音，本次转写已取消。";
 "workflow.result.copyTitle" = "复制结果";
 "workflow.ask.answerTitle" = "随便问";
+"workflow.ask.questionSectionTitle" = "你的问题";
 "workflow.ask.answerSectionTitle" = "回答";
+"workflow.ask.answerDisclaimer" = "内容由 AI 生成，请注意甄别信息准确性。";
+"workflow.ask.followUpComingSoon" = "连续追问即将上线，目前暂不支持继续输入";
 "workflow.ask.answerPresented" = "已展示回答";
 "workflow.result.copied" = "已复制到剪贴板";
 "workflow.persona.finishRecordingFirst" = "请先完成当前录音，再切换人设。";
 "workflow.persona.waitForProcessing" = "请等待当前处理完成后再切换人设。";
 "workflow.persona.switched" = "已切换到人设 %@。";
 "workflow.persona.switchedOff" = "已关闭人设。";
+"workflow.persona.applicationSwitched" = "已将当前应用人设切换到 %@。";
+"workflow.persona.applicationSwitchedOff" = "已关闭当前应用人设。";
 "workflow.persona.disabled" = "人设已关闭。";
 "workflow.ask.selectionRequired" = "“随便问”需要先选中文本。";
 "workflow.retry.audioMissing" = "重试失败：缺少音频文件。";
@@ -324,6 +353,8 @@
 "history.action.copyResult" = "复制结果";
 "history.action.copyTranscript" = "复制转写";
 "history.action.downloadAudio" = "下载音频";
+"history.action.playAudio" = "播放音频";
+"history.action.stopAudio" = "停止音频";
 "history.action.deleteTranscript" = "删除转写";
 "history.action.exportMarkdown" = "导出 Markdown";
 "history.detail.audioPath" = "音频路径";
@@ -358,6 +389,9 @@
 "history.privacy.subtitle" = "语音听写历史只保存在这台 Mac 上。自动清理会移除过期本地记录和关联音频文件。";
 "history.export.title" = "导出归档";
 "history.export.subtitle" = "将历史导出为 Markdown，或清空当前时间线。";
+"history.export.chooseDirectory" = "选择导出文件夹";
+"history.export.chooseDirectoryMessage" = "Typeflux 会将 Markdown 历史归档保存到这个文件夹。";
+"history.export.chooseDirectoryPrompt" = "导出";
 "history.empty" = "还没有历史记录。";
 "history.loadingMore" = "正在加载更多历史...";
 "history.section.today" = "今天";
@@ -377,13 +411,17 @@
 "history.toast.audioUnavailable" = "音频文件不可用。";
 "history.toast.audioDownloaded" = "音频已下载。";
 "history.toast.audioDownloadFailed" = "下载音频失败。";
+"history.toast.audioPlaybackFailed" = "播放音频失败。";
 "history.toast.transcriptDeleted" = "转写已删除。";
 
 "vocabulary.source.manual" = "手动添加";
 "vocabulary.source.automatic" = "自动添加";
+"vocabulary.source.claude" = "Claude";
+"vocabulary.source.codex" = "Codex";
 "vocabulary.filter.all" = "全部";
 "vocabulary.filter.automatic" = "自动添加";
 "vocabulary.filter.manual" = "手动添加";
+"vocabulary.filter.otherApps" = "其它应用";
 "vocabulary.intro.title" = "帮助 Typeflux 更稳定地识别人名、产品名和领域词汇。";
 "vocabulary.intro.subtitle" = "手动添加的词条会作为识别提示发送给兼容 Whisper 的转写后端。";
 "vocabulary.search.placeholder" = "搜索词库...";
@@ -392,12 +430,32 @@
 "vocabulary.action.newWord" = "新建词条";
 "vocabulary.action.addFirst" = "添加第一个词条";
 "vocabulary.action.addWord" = "添加词条";
+"vocabulary.action.more" = "更多";
+"vocabulary.action.importFile" = "导入词库";
+"vocabulary.action.import" = "导入";
+"vocabulary.action.export" = "导出词库";
+"vocabulary.action.importClaude" = "导入 Claude 词库";
+"vocabulary.action.importCodex" = "导入 Codex 词库";
+"vocabulary.action.sync" = "同步项目词汇";
 "vocabulary.sheet.title" = "添加到词库";
 "vocabulary.sheet.subtitle" = "每行添加一个词条。该功能特别适合名字、品牌、产品术语和常说的专业词。";
 "vocabulary.sheet.editTitle" = "编辑词条";
 "vocabulary.sheet.editSubtitle" = "更新该词条内容，同时保留它的来源和现有使用记录。";
 "vocabulary.sheet.placeholder" = "添加新词";
+"vocabulary.sync.scanning" = "正在扫描 ~/.codex 和 ~/.claude ...";
+"vocabulary.importDialog.title" = "导入词库";
+"vocabulary.importDialog.message" = "即将从 %2$@ 导入 %1$d 条词汇，是否继续？";
+"vocabulary.importDialog.confirm" = "确认导入";
 "vocabulary.toast.copied" = "词条已复制。";
+"vocabulary.toast.imported" = "已导入 %d 个词条。";
+"vocabulary.toast.importNoChanges" = "导入后词库没有变化。";
+"vocabulary.toast.exported" = "词库已导出。";
+"vocabulary.toast.externalImported" = "已从 %2$@ 导入 %1$d 个词汇。";
+"vocabulary.toast.externalNoSource" = "未找到 %1$@ 词库目录。";
+"vocabulary.toast.externalNoTerms" = "未从 %1$@ 导入任何词汇。";
+"vocabulary.toast.synced" = "已同步 %d 个项目词汇到词库。";
+"vocabulary.toast.syncNoSources" = "未找到 ~/.codex 或 ~/.claude 目录。";
+"vocabulary.toast.syncNoTerms" = "没有发现可同步的项目词汇。";
 
 "home.activity.title" = "整体活跃度";
 "home.activity.completionRate" = "完成率";
@@ -426,12 +484,45 @@
 "settings.personaDefault.enabled" = "新的听写会话会使用所选人设进行改写。";
 "settings.personaDefault.disabled" = "当前未启用人设，听写内容将保持原始形式。";
 "settings.personaDefault.openPersonas" = "打开人设";
+"settings.personaAppBindings.title" = "应用专属人设";
+"settings.personaAppBindings.subtitle" = "根据当前聚焦输入框所在的应用自动覆盖默认人设。优先推荐填写 Bundle Identifier，也支持直接填写应用名称。";
+"settings.personaAppBindings.empty" = "还没有配置应用专属人设。";
+"settings.personaAppBindings.openButton" = "应用专属人设";
+"settings.personas.newButton" = "新增人设";
+"settings.personaAppBindings.enabled.title" = "启用功能";
+"settings.personaAppBindings.enabled.subtitle" = "关闭后，Typeflux 会忽略所有应用专属人设规则，回退到默认人设。";
+"settings.personaAppBindings.addTitle" = "新增应用专属人设";
+"settings.personaAppBindings.addSubtitle" = "输入应用标识并选择人设，或使用搜索按钮从系统应用列表中选择。";
+"settings.personaAppBindings.listTitle" = "已配置应用";
+"settings.personaAppBindings.listSubtitle" = "可以为每个应用修改人设、暂停规则，或删除规则。";
+"settings.personaAppBindings.appIdentifier" = "应用标识";
+"settings.personaAppBindings.appIdentifierPlaceholder" = "例如 com.tinyspeck.slackmacgap 或 Slack";
+"settings.personaAppBindings.searchApp" = "搜索应用";
+"settings.personaAppBindings.persona" = "人设";
+"settings.personaAppBindings.selectPersona" = "选择人设";
+"settings.personaAppBindings.add" = "添加应用";
+"settings.personaAppBindings.saved" = "已为匹配应用自动切换到 %@。";
+"settings.personaAppBindings.savedNoPersona" = "已为匹配应用关闭人设。";
+"settings.personaAppBindings.savedGeneric" = "已保存应用专属人设绑定。";
+"settings.personaAppBindings.missingPersona" = "人设已不存在";
+"settings.personaAppBindings.binding.enable" = "启用";
+"settings.personaAppBindings.binding.pause" = "暂停";
+"settings.personaAppBindings.binding.paused" = "已暂停";
+"settings.personaAppBindings.deleteDialog.title" = "删除应用专属人设";
+"settings.personaAppBindings.deleteDialog.message" = "要删除 %@ 对应的人设绑定吗？";
+"settings.personaAppBindings.picker.title" = "选择应用";
+"settings.personaAppBindings.picker.subtitle" = "可以从当前已启动的应用中选择，也可以浏览系统中的全部应用，然后将所选应用绑定到人设。";
+"settings.personaAppBindings.picker.scope.running" = "已启动";
+"settings.personaAppBindings.picker.scope.all" = "全部应用";
+"settings.personaAppBindings.picker.searchPlaceholder" = "按应用名称或 Bundle Identifier 搜索";
+"settings.personaAppBindings.picker.empty" = "没有找到匹配的应用。";
+"settings.personaAppBindings.picker.runningBadge" = "运行中";
 
 "settings.shortcuts.activation.title" = "语音输入";
 "settings.shortcuts.activation.subtitle" = "使用一个快捷键开始语音输入。可按住说话，也可快速轻触后锁定录音。若当前已有选区，识别结果会直接覆盖该选区。";
 "settings.shortcuts.activation.footnote" = "";
 "settings.shortcuts.ask.title" = "随便问";
-"settings.shortcuts.ask.subtitle" = "按一次即可开始录音提问，回答会在弹窗中展示。若有选中文字，明确的编辑请求也可以直接改写选区。";
+"settings.shortcuts.ask.subtitle" = "连按两次 Fn 即可开始录音提问，回答会在弹窗中展示。若有选中文字，明确的编辑请求也可以直接改写选区。";
 "settings.shortcuts.ask.footnote" = "";
 "settings.shortcuts.persona.title" = "人设切换器";
 "settings.shortcuts.persona.subtitle" = "打开居中选择器；如果当前存在选中文本，也可以直接将所选人设应用到这段文本。";
@@ -440,9 +531,9 @@
 "settings.advanced.personaHotkeyApply.subtitle" = "开启后，人设快捷键会先检查是否有选中文本；如果有，就用所选人设直接改写该文本，而不只是切换默认人设。";
 "settings.shortcuts.recording" = "正在录制新的快捷键";
 "settings.shortcuts.recordingActivation" = "现在按下新的语音输入按键或组合键。";
-"settings.shortcuts.recordingAsk" = "现在按下新的“随便问”组合键，至少包含一个修饰键。";
-"settings.shortcuts.recordingPersona" = "现在按下用于打开人设选择器的快捷键，至少包含一个修饰键。";
-"settings.shortcuts.recordingGeneric" = "按下你想使用的完整组合键，至少包含一个修饰键。";
+"settings.shortcuts.recordingAsk" = "现在按下新的“随便问”快捷键。也可以快速连按两次同一个修饰键。";
+"settings.shortcuts.recordingPersona" = "现在按下用于打开人设选择器的快捷键。";
+"settings.shortcuts.recordingGeneric" = "按下你想使用的按键或组合键。";
 "settings.shortcuts.record" = "录制";
 "settings.shortcuts.stopRecording" = "停止录制";
 "settings.shortcuts.activationConflict" = "语音输入快捷键不能与“随便问”或人设快捷键相同。";
@@ -451,6 +542,7 @@
 "settings.shortcuts.askConflict" = "“随便问”快捷键不能与语音输入或人设快捷键相同。";
 "settings.shortcuts.askUpdated" = "“随便问”快捷键已更新。";
 "settings.shortcuts.askUnset" = "“随便问”快捷键已清除。";
+"settings.shortcuts.doubleTapHelp" = "快速连按两次这个按键。";
 "settings.shortcuts.personaConflict" = "人设快捷键不能与语音输入或“随便问”快捷键相同。";
 "settings.shortcuts.personaUpdated" = "人设快捷键已更新。";
 "settings.shortcuts.personaUnset" = "人设快捷键已清除。";
@@ -524,7 +616,7 @@
 "settings.models.builtInDefaultProfile" = "内置默认配置";
 "settings.models.card.whisper.summary" = "使用 OpenAI 官方语音转写服务，并内置默认模型。";
 "settings.models.card.freeSTT.summary" = "从代码中配置好的免费语音转写模型里选择，用户不需要手动填写接口或密钥。";
-"settings.models.card.localSTT.summary" = "通过原生 Swift 运行时在本地运行 WhisperKit、SenseVoice 或 Qwen3-ASR。";
+"settings.models.card.localSTT.summary" = "通过原生 Swift 运行时在本地运行 WhisperKit、SenseVoice、FunASR 或 Qwen3-ASR。";
 "settings.models.card.multimodal.summary" = "音频直接发送给多模态模型，在一次 API 调用内完成转写和人设改写。";
 "settings.models.card.aliCloud.summary" = "通过 DashScope 执行实时流式识别，低延迟 WebSocket 传输。";
 "settings.models.card.doubao.summary" = "通过豆包语音识别 2.0 和字节原生二进制 WebSocket 协议进行低延迟流式识别。";
@@ -547,6 +639,8 @@
 "settings.models.card.minimax.summary" = "通过 MiniMax 的 OpenAI 兼容端点使用其模型，并提供国际版与中国版 URL 选择。";
 "settings.models.card.grok.summary" = "通过 xAI 的 OpenAI 兼容端点使用 Grok 模型。";
 "settings.models.card.xiaomi.summary" = "通过小米 MiMo 的 OpenAI 兼容端点使用 mimo-v2 系列模型。";
+"settings.models.card.openCodeZen.summary" = "精选优质模型，专为编程优化——通过 OpenCode Zen 网关使用 GPT、Claude、Gemini、Qwen、GLM 等模型。";
+"settings.models.card.openCodeGo.summary" = "低成本开源编程模型——DeepSeek、Qwen、GLM、Kimi、MiniMax 等。首月 $5，之后 $10/月。";
 "settings.models.badge.free" = "免费";
 "settings.models.freeSTT.hint" = "免费语音模型由代码配置管理，用户只能从已配置的模型列表中选择。";
 "settings.models.freeSTT.noSources" = "当前还没有配置任何免费语音模型源。请在 Sources/Typeflux/STT/FreeModels 下添加实现。";
@@ -706,7 +800,7 @@
 "onboarding.models.stt.local.hint" = "所选模型将在首次使用时自动下载。";
 "onboarding.models.llm.openai.title" = "OpenAI 兼容接口";
 "onboarding.models.llm.openai.description" = "任意远程聊天 API — OpenAI、Claude、DeepSeek…";
-"onboarding.models.llm.ollama.title" = "本地 Ollama";
+"onboarding.models.llm.ollama.title" = "Ollama 本地";
 "onboarding.models.llm.ollama.description" = "完全在你的 Mac 上本地运行，保护隐私";
 "onboarding.models.badge.noSetup" = "免配置";
 "onboarding.models.badge.apiKey" = "需要密钥";
@@ -735,8 +829,21 @@
 "onboarding.shortcuts.globeKeyNotice.button" = "打开键盘设置";
 "onboarding.shortcuts.globeKeyNotice.ready.title" = "FN / 🌐 键已就绪";
 "onboarding.shortcuts.globeKeyNotice.ready.message" = "键盘设置已经到位，Typeflux 可以使用 FN / 🌐 键作为快捷键了。若按键仍无响应，请尝试注销后重新登录，或重启 Mac。";
+"onboarding.shortcuts.externalKeyboard.title" = "使用外置键盘，且没有可用的 FN 键？";
+"onboarding.shortcuts.externalKeyboard.message" = "你可以改用右侧 Command 或右侧 Option。Typeflux 会将语音输入改为这个按键，将“随便问”改为快速连按两次这个按键。";
+"onboarding.shortcuts.externalKeyboard.useRightCommand" = "使用右侧 Command";
+"onboarding.shortcuts.externalKeyboard.useRightOption" = "使用右侧 Option";
+"onboarding.shortcuts.replacement.rightCommand" = "右侧 Command";
+"onboarding.shortcuts.replacement.rightOption" = "右侧 Option";
+"onboarding.shortcuts.replacement.fn" = "FN / 🌐";
+"onboarding.shortcuts.replacement.active.title" = "%@ 快捷键已启用";
+"onboarding.shortcuts.replacement.active.message" = "你的快捷键已经发生变化：语音输入现在使用 %@，“随便问”使用 %@×2。";
+"onboarding.shortcuts.replacement.restore" = "恢复 FN 快捷键";
+"onboarding.shortcuts.replacement.appliedAlert.title" = "快捷键已更新";
+"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux 现在使用 %@ 作为语音输入快捷键，使用 %@×2 打开“随便问”。";
+"onboarding.shortcuts.replacement.restoredAlert.message" = "Typeflux 已恢复默认的 FN / 🌐 快捷键。";
 "onboarding.shortcuts.activation.hint" = "按住录音，轻点锁定录制";
-"onboarding.shortcuts.ask.hint" = "随时提问，可选中文字改写";
+"onboarding.shortcuts.ask.hint" = "连按两次 Fn 提问，可选中文字改写";
 "onboarding.shortcuts.persona.hint" = "切换或应用写作人设";
 "onboarding.shortcuts.changeInSettings" = "随时可以在 设置 → 语音快捷键 中自定义快捷键。";
 
@@ -759,6 +866,9 @@
 "settings.advanced.localOptimization.subtitle" = "在后台下载本地语音识别模型，启用后可加速语音识别速度，并支持离线使用。";
 "settings.advanced.localSTTMemoryOptimization.title" = "内存优化";
 "settings.advanced.localSTTMemoryOptimization.subtitle" = "启用后，长时间未使用的本地语音模型会自动从内存中卸载，以减少资源占用。再次使用时会重新加载，首次响应可能会增加 3 到 5 秒。";
+
+"settings.advanced.inputContextOptimization.title" = "使用输入框上下文";
+"settings.advanced.inputContextOptimization.subtitle" = "临时读取光标附近的一小段文字，帮助优化连续输入、专有名词和模糊词。不会保存到历史记录。";
 
 "settings.advanced.agentFramework.title" = "启用 Agent 框架";
 "settings.advanced.agentFramework.subtitle" = "为「随便问」功能启用多轮 Agent 循环，支持工具调用和 MCP 服务器集成。";
@@ -890,6 +1000,16 @@
 "auth.error.unknown" = "发生了未知错误。";
 "auth.error.invalidResponse" = "服务器响应无效。";
 "auth.error.unauthorized" = "登录已过期，请重新登录。";
+"cloud.error.authInvalidCredentials" = "邮箱或密码不正确。";
+"cloud.error.authUserExists" = "该邮箱已注册账号。";
+"cloud.error.authUserNotActive" = "请先激活账号后再登录。";
+"cloud.error.authCodeInvalid" = "验证码无效或已过期。";
+"cloud.error.sessionExpired" = "登录已过期，请重新登录。";
+"cloud.error.validation" = "请求无效，请检查输入后重试。";
+"cloud.error.rateLimited" = "请求过于频繁，请稍后再试。";
+"cloud.error.quotaExceeded" = "Typeflux Cloud 使用额度已用完。";
+"cloud.error.planRequired" = "当前套餐不包含此 Typeflux Cloud 功能。";
+"cloud.error.server" = "Typeflux Cloud 暂时不可用，请稍后再试。";
 
 "auth.account.provider" = "登录方式";
 "auth.account.memberSince" = "注册时间";
@@ -914,4 +1034,4 @@
 "agent.clarification.assistantSectionTitle" = "助手";
 "agent.clarification.hotkeyHint" = "按住快捷键录制回复";
 "agent.clarification.recordingHint" = "录音中... 说完后松开快捷键";
-"agent.clarification.transcribingHint" = "正在处理您的回复...";
+"agent.clarification.transcribingHint" = "思考中...";

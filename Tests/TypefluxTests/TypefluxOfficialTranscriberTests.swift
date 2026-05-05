@@ -15,6 +15,8 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
             request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.scenarioField),
             TypefluxCloudScenario.voiceInput.rawValue,
         )
+        XCTAssertNotNil(request.value(forHTTPHeaderField: "User-Agent"))
+        XCTAssertNotNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientIDField))
     }
 
     func testReceiveFailureIsUnexpectedBeforeCompletionWithoutFinalSegments() {

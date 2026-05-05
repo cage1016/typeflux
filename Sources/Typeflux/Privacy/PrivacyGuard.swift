@@ -206,7 +206,7 @@ enum PrivacyGuard {
         }
     }
 
-    private static func isAccessibilityGranted() -> Bool {
+    static func isAccessibilityGranted() -> Bool {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
     }

@@ -80,11 +80,12 @@ enum LocalSTTModel: String, CaseIterable, Codable {
     case whisperLocalLarge
     case senseVoiceSmall
     case qwen3ASR
+    case funASR
 
     static let defaultModel: LocalSTTModel = .senseVoiceSmall
 
     static var displayOrder: [LocalSTTModel] {
-        [.senseVoiceSmall, .whisperLocal, .whisperLocalLarge, .qwen3ASR]
+        [.senseVoiceSmall, .funASR, .whisperLocal, .whisperLocalLarge, .qwen3ASR]
     }
 
     struct Specs {
@@ -103,6 +104,8 @@ enum LocalSTTModel: String, CaseIterable, Codable {
             L("localSTT.senseVoiceSmall.name")
         case .qwen3ASR:
             L("localSTT.qwen3ASR.name")
+        case .funASR:
+            L("localSTT.funASR.name")
         }
     }
 
@@ -119,6 +122,8 @@ enum LocalSTTModel: String, CaseIterable, Codable {
             "sensevoice-small"
         case .qwen3ASR:
             "mlx-community/Qwen3-ASR-0.6B-bf16"
+        case .funASR:
+            "paraformer-zh-small"
         }
     }
 
@@ -130,6 +135,8 @@ enum LocalSTTModel: String, CaseIterable, Codable {
             .huggingFace
         case .qwen3ASR:
             .huggingFace
+        case .funASR:
+            .huggingFace
         }
     }
 
@@ -137,7 +144,7 @@ enum LocalSTTModel: String, CaseIterable, Codable {
         switch self {
         case .senseVoiceSmall:
             L("settings.models.recommended")
-        case .whisperLocal, .whisperLocalLarge, .qwen3ASR:
+        case .whisperLocal, .whisperLocalLarge, .qwen3ASR, .funASR:
             nil
         }
     }
@@ -167,6 +174,12 @@ enum LocalSTTModel: String, CaseIterable, Codable {
                 summary: L("localSTT.qwen3ASR.summary"),
                 parameterValue: L("localSTT.qwen3ASR.parameterValue"),
                 sizeValue: L("localSTT.qwen3ASR.sizeValue"),
+            )
+        case .funASR:
+            Specs(
+                summary: L("localSTT.funASR.summary"),
+                parameterValue: L("localSTT.funASR.parameterValue"),
+                sizeValue: L("localSTT.funASR.sizeValue"),
             )
         }
     }
@@ -260,5 +273,67 @@ struct PersonaProfile: Codable, Identifiable, Equatable {
         try container.encode(name, forKey: .name)
         try container.encode(prompt, forKey: .prompt)
         try container.encode(kind, forKey: .kind)
+    }
+}
+
+struct PersonaAppBinding: Codable, Identifiable, Equatable {
+    let id: UUID
+    var appIdentifier: String
+    var personaID: UUID?
+    var isEnabled: Bool
+
+    init(id: UUID = UUID(), appIdentifier: String, personaID: UUID?, isEnabled: Bool = true) {
+        self.id = id
+        self.appIdentifier = appIdentifier
+        self.personaID = personaID
+        self.isEnabled = isEnabled
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case appIdentifier
+        case personaID
+        case isEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        appIdentifier = try container.decode(String.self, forKey: .appIdentifier)
+        personaID = try container.decodeIfPresent(UUID.self, forKey: .personaID)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(appIdentifier, forKey: .appIdentifier)
+        try container.encodeIfPresent(personaID, forKey: .personaID)
+        try container.encode(isEnabled, forKey: .isEnabled)
+    }
+
+    var normalizedAppIdentifier: String {
+        Self.normalize(appIdentifier)
+    }
+
+    func matches(bundleIdentifier: String?, appName: String?) -> Bool {
+        let target = normalizedAppIdentifier
+        guard !target.isEmpty else { return false }
+
+        if Self.normalize(bundleIdentifier) == target {
+            return true
+        }
+
+        if Self.normalize(appName) == target {
+            return true
+        }
+
+        return false
+    }
+
+    static func normalize(_ value: String?) -> String {
+        value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
     }
 }

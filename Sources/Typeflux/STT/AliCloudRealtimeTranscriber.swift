@@ -3,7 +3,7 @@ import Foundation
 
 // MARK: - Main Transcriber
 
-final class AliCloudRealtimeTranscriber: Transcriber {
+final class AliCloudRealtimeTranscriber: Transcriber, RealtimeTranscriptionSessionFactory {
     private let settingsStore: SettingsStore
 
     init(settingsStore: SettingsStore) {
@@ -62,6 +62,29 @@ final class AliCloudRealtimeTranscriber: Transcriber {
                 pcmData: pcmData, model: model, apiKey: apiKey, onUpdate: onUpdate,
             )
         }
+    }
+
+    func makeRealtimeTranscriptionSession(
+        scenario _: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> any RealtimeTranscriptionSession {
+        let model = settingsStore.aliCloudModel
+        let apiKey = settingsStore.aliCloudAPIKey
+
+        guard !apiKey.isEmpty else {
+            throw NSError(
+                domain: "AliCloudRealtimeTranscriber",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Alibaba Cloud API key is not configured."],
+            )
+        }
+
+        let upstream: any PCM16RealtimeTranscriptionSession = if model.lowercased().hasPrefix("qwen") {
+            AliCloudQwenASRSession(model: model, apiKey: apiKey, onUpdate: onUpdate)
+        } else {
+            AliCloudFunASRSession(model: model, apiKey: apiKey, onUpdate: onUpdate)
+        }
+        return BufferedRealtimeTranscriptionSession(upstream: upstream)
     }
 }
 
@@ -159,18 +182,19 @@ private enum AliCloudAudioConverter {
 
 // MARK: - FunASR Session (DashScope WebSocket protocol)
 
-private actor AliCloudFunASRSession {
+actor AliCloudFunASRSession: PCM16RealtimeTranscriptionSession {
     static func run(
         pcmData: Data,
         model: String,
         apiKey: String,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
-        let session = AliCloudFunASRSession(pcmData: pcmData, model: model, apiKey: apiKey, onUpdate: onUpdate)
-        return try await session.execute()
+        let session = AliCloudFunASRSession(model: model, apiKey: apiKey, onUpdate: onUpdate)
+        try await session.start()
+        try await session.appendPCM16(pcmData)
+        return try await session.finish()
     }
 
-    private let pcmData: Data
     private let model: String
     private let apiKey: String
     private let onUpdate: @Sendable (TranscriptionSnapshot) async -> Void
@@ -190,21 +214,23 @@ private actor AliCloudFunASRSession {
     private var taskStartedCont: CheckedContinuation<Void, Error>?
     private var taskFinishedCont: CheckedContinuation<Void, Error>?
     private let drainState = AliCloudFunASRDrainState()
+    private var urlSession: URLSession?
+    private var socketTask: URLSessionWebSocketTask?
+    private var receiveTask: Task<Void, Never>?
+    private var taskID = ""
 
-    private init(
-        pcmData: Data,
+    init(
         model: String,
         apiKey: String,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) {
-        self.pcmData = pcmData
         self.model = model
         self.apiKey = apiKey
         self.onUpdate = onUpdate
         snapshotDispatcher = AliCloudSnapshotDispatcher(onUpdate: onUpdate)
     }
 
-    private func execute() async throws -> String {
+    func start() async throws {
         let url = URL(string: "wss://dashscope.aliyuncs.com/api-ws/v1/inference/")!
         var request = URLRequest(url: url)
         request.setValue("bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -214,17 +240,14 @@ private actor AliCloudFunASRSession {
         let socketDelegate = AliCloudWSDelegate()
         let urlSession = URLSession(configuration: .default, delegate: socketDelegate, delegateQueue: nil)
         let socketTask = urlSession.webSocketTask(with: request)
+        self.urlSession = urlSession
+        self.socketTask = socketTask
         socketTask.resume()
-
-        defer {
-            socketTask.cancel(with: .normalClosure, reason: nil)
-            urlSession.invalidateAndCancel()
-        }
 
         try await socketDelegate.waitUntilOpen(timeout: .seconds(10))
         NetworkDebugLogger.logWebSocketEvent(provider: "AliCloud FunASR", phase: "open")
 
-        let taskID = UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        taskID = UUID().uuidString.replacingOccurrences(of: "-", with: "")
 
         let runTask: [String: Any] = [
             "header": [
@@ -249,31 +272,57 @@ private actor AliCloudFunASRSession {
         ]
         try await sendJSON(runTask, to: socketTask)
 
-        let receiveTask = Task { [weak self] in
+        receiveTask = Task { [weak self] in
             await self?.receiveLoop(socketTask: socketTask)
         }
-        defer { receiveTask.cancel() }
 
         try await waitForTaskStarted()
+    }
 
-        // Stream audio in chunks
-        var offset = 0
+    func appendPCM16(_ data: Data) async throws {
+        guard let socketTask else {
+            throw NSError(
+                domain: "AliCloudFunASR",
+                code: 6,
+                userInfo: [NSLocalizedDescriptionKey: "AliCloud realtime WebSocket is not connected."],
+            )
+        }
+        var offset = data.startIndex
         let chunkSize = AliCloudAudioConverter.chunkSize
-        while offset < pcmData.count {
-            let end = min(offset + chunkSize, pcmData.count)
-            let chunk = pcmData[offset ..< end]
+        while offset < data.endIndex {
+            let end = data.index(offset, offsetBy: chunkSize, limitedBy: data.endIndex) ?? data.endIndex
+            let chunk = Data(data[offset ..< end])
             try await socketTask.send(.data(chunk))
             offset = end
         }
+    }
 
-        // Append trailing silence so the server has enough pause to finalize the last
-        // sentence (max_sentence_silence = 800 ms). Without this, the final spoken
-        // phrase may not receive a sentence_end=true event before task-finished arrives.
+    func finish() async throws -> String {
+        defer {
+            receiveTask?.cancel()
+            receiveTask = nil
+            socketTask?.cancel(with: .normalClosure, reason: nil)
+            socketTask = nil
+            urlSession?.invalidateAndCancel()
+            urlSession = nil
+        }
+        guard let socketTask else {
+            throw NSError(
+                domain: "AliCloudFunASR",
+                code: 7,
+                userInfo: [NSLocalizedDescriptionKey: "AliCloud realtime WebSocket is not connected."],
+            )
+        }
         let silencePadding = Data(count: AliCloudAudioConverter.trailingSilenceBytes)
-        var silenceOffset = 0
-        while silenceOffset < silencePadding.count {
-            let end = min(silenceOffset + chunkSize, silencePadding.count)
-            try await socketTask.send(.data(silencePadding[silenceOffset ..< end]))
+        var silenceOffset = silencePadding.startIndex
+        let chunkSize = AliCloudAudioConverter.chunkSize
+        while silenceOffset < silencePadding.endIndex {
+            let end = silencePadding.index(
+                silenceOffset,
+                offsetBy: chunkSize,
+                limitedBy: silencePadding.endIndex,
+            ) ?? silencePadding.endIndex
+            try await socketTask.send(.data(Data(silencePadding[silenceOffset ..< end])))
             silenceOffset = end
         }
 
@@ -301,6 +350,16 @@ private actor AliCloudFunASRSession {
         await snapshotDispatcher.flush()
 
         return composedText()
+    }
+
+    func cancel() async {
+        receiveTask?.cancel()
+        receiveTask = nil
+        socketTask?.cancel(with: .normalClosure, reason: nil)
+        socketTask = nil
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+        resumeLastSentenceCont()
     }
 
     private func receiveLoop(socketTask: URLSessionWebSocketTask) async {
@@ -471,11 +530,17 @@ private actor AliCloudFunASRSession {
 /// without a real WebSocket connection.
 actor AliCloudFunASRDrainState {
     private var continuation: CheckedContinuation<Void, Never>?
+    private var pendingSignal = false
 
     /// Resumes any waiting drain immediately (idempotent — safe to call multiple times).
     func signal() {
-        continuation?.resume()
+        guard let existingContinuation = continuation else {
+            pendingSignal = true
+            return
+        }
         continuation = nil
+        pendingSignal = false
+        existingContinuation.resume()
     }
 
     /// Parks the caller until `signal()` is called or `timeout` elapses.
@@ -486,6 +551,10 @@ actor AliCloudFunASRDrainState {
     ///   partial text is currently available.
     func waitForSentenceEndOrTimeout(hasPartial: Bool, timeout: Duration) async {
         guard hasPartial else { return }
+        if pendingSignal {
+            pendingSignal = false
+            return
+        }
 
         let timeoutTask = Task { [weak self] in
             try? await Task.sleep(for: timeout)
@@ -493,6 +562,9 @@ actor AliCloudFunASRDrainState {
         }
 
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            if let existingContinuation = continuation {
+                existingContinuation.resume()
+            }
             continuation = cont
         }
 
@@ -543,18 +615,19 @@ extension Character {
 
 // MARK: - Qwen ASR Session (OpenAI Realtime-compatible protocol)
 
-private actor AliCloudQwenASRSession {
+private actor AliCloudQwenASRSession: PCM16RealtimeTranscriptionSession {
     static func run(
         pcmData: Data,
         model: String,
         apiKey: String,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
-        let session = AliCloudQwenASRSession(pcmData: pcmData, model: model, apiKey: apiKey, onUpdate: onUpdate)
-        return try await session.execute()
+        let session = AliCloudQwenASRSession(model: model, apiKey: apiKey, onUpdate: onUpdate)
+        try await session.start()
+        try await session.appendPCM16(pcmData)
+        return try await session.finish()
     }
 
-    private let pcmData: Data
     private let model: String
     private let apiKey: String
     private let onUpdate: @Sendable (TranscriptionSnapshot) async -> Void
@@ -567,21 +640,22 @@ private actor AliCloudQwenASRSession {
     private var sessionReadyCont: CheckedContinuation<Void, Error>?
     private var sessionFinishedCont: CheckedContinuation<Void, Error>?
     private let drainState = AliCloudFunASRDrainState()
+    private var urlSession: URLSession?
+    private var socketTask: URLSessionWebSocketTask?
+    private var receiveTask: Task<Void, Never>?
 
-    private init(
-        pcmData: Data,
+    init(
         model: String,
         apiKey: String,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) {
-        self.pcmData = pcmData
         self.model = model
         self.apiKey = apiKey
         self.onUpdate = onUpdate
         snapshotDispatcher = AliCloudSnapshotDispatcher(onUpdate: onUpdate)
     }
 
-    private func execute() async throws -> String {
+    func start() async throws {
         let url = URL(string: "wss://dashscope.aliyuncs.com/api-ws/v1/realtime")!
         var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -591,12 +665,9 @@ private actor AliCloudQwenASRSession {
         let socketDelegate = AliCloudWSDelegate()
         let urlSession = URLSession(configuration: .default, delegate: socketDelegate, delegateQueue: nil)
         let socketTask = urlSession.webSocketTask(with: request)
+        self.urlSession = urlSession
+        self.socketTask = socketTask
         socketTask.resume()
-
-        defer {
-            socketTask.cancel(with: .normalClosure, reason: nil)
-            urlSession.invalidateAndCancel()
-        }
 
         try await socketDelegate.waitUntilOpen(timeout: .seconds(10))
         NetworkDebugLogger.logWebSocketEvent(provider: "AliCloud Qwen ASR", phase: "open")
@@ -612,19 +683,26 @@ private actor AliCloudQwenASRSession {
         ]
         try await sendJSON(sessionUpdate, to: socketTask)
 
-        let receiveTask = Task { [weak self] in
+        receiveTask = Task { [weak self] in
             await self?.receiveLoop(socketTask: socketTask)
         }
-        defer { receiveTask.cancel() }
 
         try await waitForSessionReady()
+    }
 
-        // Stream audio in base64-encoded chunks
-        var offset = 0
+    func appendPCM16(_ data: Data) async throws {
+        guard let socketTask else {
+            throw NSError(
+                domain: "AliCloudQwenASR",
+                code: 6,
+                userInfo: [NSLocalizedDescriptionKey: "AliCloud Qwen realtime WebSocket is not connected."],
+            )
+        }
+        var offset = data.startIndex
         let chunkSize = AliCloudAudioConverter.chunkSize
-        while offset < pcmData.count {
-            let end = min(offset + chunkSize, pcmData.count)
-            let chunk = pcmData[offset ..< end]
+        while offset < data.endIndex {
+            let end = data.index(offset, offsetBy: chunkSize, limitedBy: data.endIndex) ?? data.endIndex
+            let chunk = Data(data[offset ..< end])
             let audioAppend: [String: Any] = [
                 "type": "input_audio_buffer.append",
                 "audio": chunk.base64EncodedString(),
@@ -632,16 +710,37 @@ private actor AliCloudQwenASRSession {
             try await sendJSON(audioAppend, to: socketTask)
             offset = end
         }
+    }
 
-        // Append trailing silence so the server can finalize the last sentence before
-        // the session ends (mirrors the same fix in AliCloudFunASRSession).
+    func finish() async throws -> String {
+        defer {
+            receiveTask?.cancel()
+            receiveTask = nil
+            socketTask?.cancel(with: .normalClosure, reason: nil)
+            socketTask = nil
+            urlSession?.invalidateAndCancel()
+            urlSession = nil
+        }
+        guard let socketTask else {
+            throw NSError(
+                domain: "AliCloudQwenASR",
+                code: 7,
+                userInfo: [NSLocalizedDescriptionKey: "AliCloud Qwen realtime WebSocket is not connected."],
+            )
+        }
         let silencePadding = Data(count: AliCloudAudioConverter.trailingSilenceBytes)
-        var silenceOffset = 0
-        while silenceOffset < silencePadding.count {
-            let end = min(silenceOffset + chunkSize, silencePadding.count)
+        var silenceOffset = silencePadding.startIndex
+        let chunkSize = AliCloudAudioConverter.chunkSize
+        while silenceOffset < silencePadding.endIndex {
+            let end = silencePadding.index(
+                silenceOffset,
+                offsetBy: chunkSize,
+                limitedBy: silencePadding.endIndex,
+            ) ?? silencePadding.endIndex
+            let chunk = Data(silencePadding[silenceOffset ..< end])
             let silenceAppend: [String: Any] = [
                 "type": "input_audio_buffer.append",
-                "audio": silencePadding[silenceOffset ..< end].base64EncodedString(),
+                "audio": chunk.base64EncodedString(),
             ]
             try await sendJSON(silenceAppend, to: socketTask)
             silenceOffset = end
@@ -665,6 +764,16 @@ private actor AliCloudQwenASRSession {
         await snapshotDispatcher.flush()
 
         return accumulator.finalText()
+    }
+
+    func cancel() async {
+        receiveTask?.cancel()
+        receiveTask = nil
+        socketTask?.cancel(with: .normalClosure, reason: nil)
+        socketTask = nil
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+        Task { await drainState.signal() }
     }
 
     private func receiveLoop(socketTask: URLSessionWebSocketTask) async {

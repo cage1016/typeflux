@@ -19,15 +19,17 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
 
     <key>LSUIElement</key>
     <true/>
 
     <key>NSMicrophoneUsageDescription</key>
     <string>Typeflux needs microphone access to record your speech.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Typeflux uses browser automation to read the active web editor context for better text insertion.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Typeflux uses speech recognition to transcribe audio when Apple Speech fallback is enabled.</string>
 

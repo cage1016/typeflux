@@ -23,9 +23,26 @@
 "sidebar.about" = "について";
 "sidebar.aboutAccessibility" = "Typeflux について";
 "sidebar.feedbackAccessibility" = "フィードバック";
+"sidebar.feedback.directOption" = "直接フィードバック";
 "sidebar.feedback.emailOption" = "メールでフィードバックを送る";
 "sidebar.feedback.githubOption" = "GitHub Issue を作成する";
 "sidebar.settingsAccessibility" = "設定を開く";
+
+"feedback.direct.title" = "フィードバック";
+"feedback.direct.subtitle" = "問題や提案を入力してください。Typeflux がサーバーへ送信し、フォローアップ用の Issue を作成します。";
+"feedback.direct.contentLabel" = "フィードバック内容";
+"feedback.direct.contentPlaceholder" = "困っていることや改善してほしいことを簡単に書いてください。\n例：ショートカットを押しても文字起こしが始まらず、アプリを再起動しても同じです。\nまたは：文字起こし後のテキストを自動でクリップボードにコピーしてほしいです。";
+"feedback.direct.contactLabel" = "連絡先（任意）";
+"feedback.direct.contactPlaceholder" = "メールアドレスまたは連絡先";
+"feedback.direct.imagesLabel" = "画像";
+"feedback.direct.addImage" = "画像を追加";
+"feedback.direct.removeImage" = "画像を削除";
+"feedback.direct.submit" = "送信";
+"feedback.toast.submitted" = "フィードバックを送信しました。ありがとうございます。";
+"feedback.error.emptyContent" = "フィードバック内容を入力してください。";
+"feedback.error.invalidImage" = "この画像を読み込めません。";
+"feedback.error.server" = "フィードバックの送信に失敗しました。";
+"feedback.error.invalidResponse" = "フィードバックの応答が無効です。";
 
 "studio.section.home" = "概要";
 "studio.section.models" = "モデル";
@@ -101,7 +118,7 @@
 "menu.agentTasks.viewAll" = "すべてのタスクを表示";
 "menu.agentTasks.runningCount" = "%d個実行中";
 "menu.appearance" = "外観";
-"menu.settings" = "設定";
+"menu.settings" = "Typeflux 設定";
 "menu.setupGuide" = "セットアップガイド";
 "menu.about" = "Typeflux について";
 "menu.checkForUpdates" = "アップデートを確認";
@@ -111,7 +128,7 @@
 "menu.quit" = "やめる";
 "menu.status.ready" = "準備完了";
 "menu.status.recording" = "録音中です…";
-"menu.status.processing" = "最新のキャプチャを処理しています…";
+"menu.status.processing" = "思考中…";
 "menu.status.failed" = "失敗: %@";
 
 "appMenu.about" = "%@ について";
@@ -208,6 +225,7 @@
 "updater.download.failed" = "アップデートのダウンロードに失敗しました。";
 "updater.install.extractionFailed" = "アップデートアーカイブの展開に失敗しました。";
 "updater.install.appNotFound" = "アップデートアーカイブ内にアプリケーションが見つかりませんでした。";
+"updater.install.signatureVerificationFailed" = "アップデートを検証できませんでした。";
 
 "provider.stt.whisperAPI" = "OpenAI";
 "provider.stt.freeModel" = "無料モデル";
@@ -245,6 +263,10 @@
 "localSTT.qwen3ASR.summary" = "より強力なコンテキスト理解とより優れた長文認識品質を備えた、より大規模な多言語 ASR モデル。";
 "localSTT.qwen3ASR.parameterValue" = "0.6B";
 "localSTT.qwen3ASR.sizeValue" = "1.3 GB";
+"localSTT.funASR.name" = "FunASR（Paraformer）";
+"localSTT.funASR.summary" = "Alibaba DAMO Academyが開発したParaformerアーキテクチャの中国語特化ASRモデル。高速かつ高精度。";
+"localSTT.funASR.parameterValue" = "220M";
+"localSTT.funASR.sizeValue" = "~180 MB";
 "localSTT.prepare.runtimePreparing" = "ネイティブローカル音声ランタイムを準備しています...";
 "localSTT.prepare.cleaningLegacyRuntime" = "旧 Python ランタイムをクリーンアップしています...";
 "localSTT.prepare.runtimeDownloading" = "Sherpa-ONNX ネイティブランタイムをダウンロードしています...";
@@ -268,14 +290,16 @@
 
 "overlay.recording.listening" = "リスニング";
 "overlay.ask.guidance" = "選択したテキストについて何でも質問してください";
-"overlay.processing.transcribing" = "処理中";
+"overlay.processing.transcribing" = "思考中";
 "overlay.processing.thinking" = "思考中";
 "overlay.failure.title" = "処理に失敗しました";
 "overlay.timeout.title" = "処理がタイムアウトしました";
 "overlay.timeout.message" = "処理に 120 秒以上かかりました。もう一度試してください。";
 "overlay.notice.title" = "お知らせ";
-"overlay.personaPicker.switchTitle" = "ペルソナの切り替え";
-"overlay.personaPicker.switchInstructions" = "上下を使用して選択し、Return を使用して確認するか、Esc を使用して閉じます。";
+"overlay.personaPicker.switchTitle" = "グローバル ペルソナを切り替え";
+"overlay.personaPicker.switchInstructions" = "現在のアプリに有効なアプリ ペルソナがない場合に使うグローバル ペルソナを選択します。";
+"overlay.personaPicker.switchApplicationTitle" = "アプリのペルソナを切り替え";
+"overlay.personaPicker.switchApplicationInstructions" = "現在のアプリのペルソナを選択します。グローバル ペルソナ設定は変更されません。";
 "overlay.personaPicker.applyTitle" = "ペルソナの適用";
 "overlay.personaPicker.applyInstructions" = "選択したテキストを書き換えるペルソナを選択します。 Return を押して適用するか、Esc を押してキャンセルします。";
 
@@ -296,13 +320,18 @@
 "workflow.transcription.noSpeech" = "明瞭な音声が検出されませんでした。転写はキャンセルされました。";
 "workflow.result.copyTitle" = "コピー結果";
 "workflow.ask.answerTitle" = "何でも聞いてください";
+"workflow.ask.questionSectionTitle" = "あなたの質問";
 "workflow.ask.answerSectionTitle" = "答え";
+"workflow.ask.answerDisclaimer" = "内容は AI によって生成されています。重要な情報は確認してください。";
+"workflow.ask.followUpComingSoon" = "続けて質問する機能は近日公開予定です。現在ここからの入力には対応していません";
 "workflow.ask.answerPresented" = "回答が表示されました";
 "workflow.result.copied" = "クリップボードにコピーされました";
 "workflow.persona.finishRecordingFirst" = "ペルソナを切り替える前に、現在の録音を終了してください。";
 "workflow.persona.waitForProcessing" = "処理が完了するまで待ってからペルソナを切り替えてください。";
 "workflow.persona.switched" = "ペルソナが %@ に切り替わりました。";
 "workflow.persona.switchedOff" = "ペルソナをオフにしました。";
+"workflow.persona.applicationSwitched" = "アプリのペルソナが %@ に切り替わりました。";
+"workflow.persona.applicationSwitchedOff" = "アプリのペルソナをオフにしました。";
 "workflow.persona.disabled" = "ペルソナ無効化。";
 "workflow.ask.selectionRequired" = "「何でも質問」では、最初にテキストを選択する必要があります。";
 "workflow.retry.audioMissing" = "再試行に失敗しました: 音声ファイルがありません。";
@@ -322,6 +351,8 @@
 "history.action.copyResult" = "結果をコピー";
 "history.action.copyTranscript" = "トランスクリプトをコピーする";
 "history.action.downloadAudio" = "音声をダウンロードする";
+"history.action.playAudio" = "音声を再生";
+"history.action.stopAudio" = "音声を停止";
 "history.action.deleteTranscript" = "トランスクリプトの削除";
 "history.action.exportMarkdown" = "Markdown をエクスポート";
 "history.detail.audioPath" = "オーディオパス";
@@ -375,13 +406,17 @@
 "history.toast.audioUnavailable" = "音声ファイルが利用できません。";
 "history.toast.audioDownloaded" = "音声がダウンロードされました。";
 "history.toast.audioDownloadFailed" = "音声のダウンロードに失敗しました。";
+"history.toast.audioPlaybackFailed" = "音声の再生に失敗しました。";
 "history.toast.transcriptDeleted" = "トランスクリプトは削除されました。";
 
 "vocabulary.source.manual" = "手動で追加";
 "vocabulary.source.automatic" = "自動追加";
+"vocabulary.source.claude" = "Claude";
+"vocabulary.source.codex" = "Codex";
 "vocabulary.filter.all" = "すべて";
 "vocabulary.filter.automatic" = "自動追加";
 "vocabulary.filter.manual" = "手動で追加";
+"vocabulary.filter.otherApps" = "他のアプリ";
 "vocabulary.intro.title" = "Typeflux が名前、製品、ドメイン用語をより確実にキャッチできるように支援します。";
 "vocabulary.intro.subtitle" = "手動入力は、認識ヒントとして Whisper 互換の文字起こしバックエンドに送信されます。";
 "vocabulary.search.placeholder" = "語彙を検索...";
@@ -390,12 +425,32 @@
 "vocabulary.action.newWord" = "新しい言葉";
 "vocabulary.action.addFirst" = "最初の単語を追加";
 "vocabulary.action.addWord" = "単語を追加";
+"vocabulary.action.more" = "その他";
+"vocabulary.action.importFile" = "語彙をインポート";
+"vocabulary.action.import" = "インポート";
+"vocabulary.action.export" = "語彙をエクスポート";
+"vocabulary.action.importClaude" = "Claude の語彙をインポート";
+"vocabulary.action.importCodex" = "Codex の語彙をインポート";
+"vocabulary.action.sync" = "プロジェクト用語を同期";
 "vocabulary.sheet.title" = "語彙に追加";
 "vocabulary.sheet.subtitle" = "エントリごとに 1 つの用語を使用します。これは、名前、ブランド、製品用語、その他の頻繁に使用される専門用語に最適です。";
 "vocabulary.sheet.editTitle" = "語彙項目を編集";
 "vocabulary.sheet.editSubtitle" = "ソースと既存の利用履歴を維持したまま、この用語を更新します。";
 "vocabulary.sheet.placeholder" = "新しい単語を追加する";
+"vocabulary.sync.scanning" = "~/.codex と ~/.claude をスキャンしています...";
+"vocabulary.importDialog.title" = "語彙をインポート";
+"vocabulary.importDialog.message" = "%2$@ から %1$d 件の語彙をインポートしますか？";
+"vocabulary.importDialog.confirm" = "インポート";
 "vocabulary.toast.copied" = "語彙項目をコピーしました。";
+"vocabulary.toast.imported" = "%d 件の語彙用語をインポートしました。";
+"vocabulary.toast.importNoChanges" = "インポートしても語彙は変更されませんでした。";
+"vocabulary.toast.exported" = "語彙をエクスポートしました。";
+"vocabulary.toast.externalImported" = "%2$@ から %1$d 件の用語をインポートしました。";
+"vocabulary.toast.externalNoSource" = "%1$@ の語彙ディレクトリが見つかりません。";
+"vocabulary.toast.externalNoTerms" = "%1$@ からインポートできる用語が見つかりませんでした。";
+"vocabulary.toast.synced" = "%d 件のプロジェクト用語を語彙に同期しました。";
+"vocabulary.toast.syncNoSources" = "~/.codex または ~/.claude ディレクトリが見つかりません。";
+"vocabulary.toast.syncNoTerms" = "同期するプロジェクト用語が見つかりませんでした。";
 
 "home.activity.title" = "全体的な活動";
 "home.activity.completionRate" = "完了率";
@@ -424,12 +479,45 @@
 "settings.personaDefault.enabled" = "新しいディクテーション セッションは、選択したペルソナで書き換えられます。";
 "settings.personaDefault.disabled" = "ペルソナは現在オフになっているため、ディクテーションはそのままの形式のままになります。";
 "settings.personaDefault.openPersonas" = "オープンペルソナ";
+"settings.personaAppBindings.title" = "アプリ別ペルソナ";
+"settings.personaAppBindings.subtitle" = "フォーカス中の入力欄が属するアプリに合わせて、デフォルトのペルソナを自動で上書きします。Bundle Identifier の指定が最も確実ですが、アプリ名でも一致できます。";
+"settings.personaAppBindings.empty" = "アプリ別ペルソナはまだありません。";
+"settings.personaAppBindings.openButton" = "アプリ別ペルソナ";
+"settings.personas.newButton" = "ペルソナを追加";
+"settings.personaAppBindings.enabled.title" = "機能を有効にする";
+"settings.personaAppBindings.enabled.subtitle" = "オフにすると、Typeflux はすべてのアプリ別ペルソナルールを無視し、デフォルトのペルソナに戻ります。";
+"settings.personaAppBindings.addTitle" = "アプリ別ペルソナを追加";
+"settings.personaAppBindings.addSubtitle" = "アプリ識別子を入力してペルソナを選択するか、検索ボタンでシステム上のアプリから選択します。";
+"settings.personaAppBindings.listTitle" = "設定済みアプリ";
+"settings.personaAppBindings.listSubtitle" = "各アプリのペルソナ変更、ルールの一時停止、削除ができます。";
+"settings.personaAppBindings.appIdentifier" = "アプリ識別子";
+"settings.personaAppBindings.appIdentifierPlaceholder" = "例: com.tinyspeck.slackmacgap または Slack";
+"settings.personaAppBindings.searchApp" = "アプリを検索";
+"settings.personaAppBindings.persona" = "ペルソナ";
+"settings.personaAppBindings.selectPersona" = "ペルソナを選択";
+"settings.personaAppBindings.add" = "アプリを追加";
+"settings.personaAppBindings.saved" = "一致したアプリでは %@ に自動で切り替わります。";
+"settings.personaAppBindings.savedNoPersona" = "一致したアプリではペルソナを使用しません。";
+"settings.personaAppBindings.savedGeneric" = "アプリ別ペルソナのバインドを保存しました。";
+"settings.personaAppBindings.missingPersona" = "ペルソナが見つかりません";
+"settings.personaAppBindings.binding.enable" = "有効にする";
+"settings.personaAppBindings.binding.pause" = "一時停止";
+"settings.personaAppBindings.binding.paused" = "一時停止中";
+"settings.personaAppBindings.deleteDialog.title" = "アプリ別ペルソナを削除";
+"settings.personaAppBindings.deleteDialog.message" = "%@ のペルソナ バインドを削除しますか？";
+"settings.personaAppBindings.picker.title" = "アプリを選択";
+"settings.personaAppBindings.picker.subtitle" = "実行中のアプリから選ぶことも、インストール済みのすべてのアプリを参照することもできます。選択したアプリをペルソナに紐づけます。";
+"settings.personaAppBindings.picker.scope.running" = "実行中";
+"settings.personaAppBindings.picker.scope.all" = "すべてのアプリ";
+"settings.personaAppBindings.picker.searchPlaceholder" = "アプリ名または Bundle Identifier で検索";
+"settings.personaAppBindings.picker.empty" = "一致するアプリが見つかりません。";
+"settings.personaAppBindings.picker.runningBadge" = "実行中";
 
 "settings.shortcuts.activation.title" = "音声入力";
 "settings.shortcuts.activation.subtitle" = "1 つのショートカットを使用して音声入力を開始します。押し続けて話すか、すばやくタップして録音セッションをロックします。テキストが選択されている場合、トランスクリプトはその選択を直接置き換えます。";
 "settings.shortcuts.activation.footnote" = "";
 "settings.shortcuts.ask.title" = "何でも聞いてください";
-"settings.shortcuts.ask.subtitle" = "1 回押すと録音が開始され、何でも質問できます。回答はポップアップに表示されます。テキストが選択されている場合、明示的な編集リクエストによってテキストを直接書き換えることもできます。";
+"settings.shortcuts.ask.subtitle" = "Fn を 2 回押すと録音が開始され、何でも質問できます。回答はポップアップに表示されます。テキストが選択されている場合、明示的な編集リクエストによってテキストを直接書き換えることもできます。";
 "settings.shortcuts.ask.footnote" = "";
 "settings.shortcuts.persona.title" = "ペルソナスイッチャー";
 "settings.shortcuts.persona.subtitle" = "中央揃えピッカーを開きます。テキストを選択すると、その選択範囲にペルソナを直接適用することもできます。";
@@ -438,9 +526,9 @@
 "settings.advanced.personaHotkeyApply.subtitle" = "有効にすると、ペルソナ ショートカットは最初に選択されたテキストを確認し、デフォルトのペルソナを切り替えるだけでなく、ピッカーを使用してその選択を書き換えます。";
 "settings.shortcuts.recording" = "新しいショートカットを記録する";
 "settings.shortcuts.recordingActivation" = "新しい音声入力キーまたはキーの組み合わせを今すぐ押してください。";
-"settings.shortcuts.recordingAsk" = "新しい「何でも質問」の組み合わせを今すぐ押してください。少なくとも 1 つの修飾キーを含めます。";
-"settings.shortcuts.recordingPersona" = "ペルソナピッカーを開くショートカットを押します。少なくとも 1 つの修飾キーを含めます。";
-"settings.shortcuts.recordingGeneric" = "使用するキーの組み合わせをすべて押します。少なくとも 1 つの修飾キーを含めます。";
+"settings.shortcuts.recordingAsk" = "新しい「何でも質問」のショートカットを今すぐ押してください。同じ修飾キーを素早く 2 回押すこともできます。";
+"settings.shortcuts.recordingPersona" = "ペルソナピッカーを開くショートカットを押してください。";
+"settings.shortcuts.recordingGeneric" = "使用するキーまたはキーの組み合わせを押してください。";
 "settings.shortcuts.record" = "記録";
 "settings.shortcuts.stopRecording" = "録音を停止する";
 "settings.shortcuts.activationConflict" = "音声入力ショートカットは、「何でも質問」またはペルソナのショートカットと一致することはできません。";
@@ -449,6 +537,7 @@
 "settings.shortcuts.askConflict" = "「何でも聞く」ショートカットは、音声入力またはペルソナのショートカットと一致しません。";
 "settings.shortcuts.askUpdated" = "「何でも質問」ショートカットが更新されました。";
 "settings.shortcuts.askUnset" = "「何でも質問」ショートカットを削除しました。";
+"settings.shortcuts.doubleTapHelp" = "このキーを素早く 2 回押します。";
 "settings.shortcuts.personaConflict" = "ペルソナのショートカットは、音声入力または「何でも聞く」ショートカットと一致できません。";
 "settings.shortcuts.personaUpdated" = "ペルソナのショートカットが更新されました。";
 "settings.shortcuts.personaUnset" = "ペルソナのショートカットを削除しました。";
@@ -522,7 +611,7 @@
 "settings.models.builtInDefaultProfile" = "組み込みのデフォルトプロファイル";
 "settings.models.card.whisper.summary" = "OpenAI の公式音声文字起こしサービス。既定モデルを内蔵。";
 "settings.models.card.freeSTT.summary" = "コードで構成された自由な音声テキスト変換モデルから選択します。エンドポイントまたは API キーは手動で入力されません。";
-"settings.models.card.localSTT.summary" = "Whisper、SenseVoice Small、または Qwen3-ASR を、組み込みサービス ランタイムを通じてローカルで実行します。";
+"settings.models.card.localSTT.summary" = "Whisper、SenseVoice Small、FunASR、または Qwen3-ASR を、組み込みサービス ランタイムを通じてローカルで実行します。";
 "settings.models.card.multimodal.summary" = "オーディオをマルチモーダル モデルに直接送信します。トランスクリプションとペルソナの書き換えは単一の API 呼び出しで行われ、エンドツーエンドのパスが高速化されます。";
 "settings.models.card.aliCloud.summary" = "低遅延の WebSocket ストリーミングによる DashScope によるリアルタイムのストリーミング認識。";
 "settings.models.card.doubao.summary" = "ByteDance のネイティブ バイナリ WebSocket プロトコルを使用した Doubao Speech Recognition 2.0 による低遅延ストリーミング認識。";
@@ -733,8 +822,21 @@
 "onboarding.shortcuts.globeKeyNotice.button" = "キーボード設定を開く";
 "onboarding.shortcuts.globeKeyNotice.ready.title" = "FN / 🌐 キーの準備ができました";
 "onboarding.shortcuts.globeKeyNotice.ready.message" = "キーボード設定は整っており、Typeflux が FN / 🌐 キーをホットキーとして使用できます。それでも反応しない場合は、一度サインアウトして再ログインするか、Mac を再起動してみてください。";
+"onboarding.shortcuts.externalKeyboard.title" = "外付けキーボードで FN キーが使えませんか？";
+"onboarding.shortcuts.externalKeyboard.message" = "右 Command または右 Option を代わりに使えます。Typeflux は音声入力をそのキーに、「何でも聞く」をそのキーの素早い 2 回押しに変更します。";
+"onboarding.shortcuts.externalKeyboard.useRightCommand" = "右 Command を使う";
+"onboarding.shortcuts.externalKeyboard.useRightOption" = "右 Option を使う";
+"onboarding.shortcuts.replacement.rightCommand" = "右 Command";
+"onboarding.shortcuts.replacement.rightOption" = "右 Option";
+"onboarding.shortcuts.replacement.fn" = "FN / 🌐";
+"onboarding.shortcuts.replacement.active.title" = "%@ ショートカットが有効です";
+"onboarding.shortcuts.replacement.active.message" = "ショートカットが変更されました。音声入力は %@、「何でも聞く」は %@×2 を使います。";
+"onboarding.shortcuts.replacement.restore" = "FN ショートカットに戻す";
+"onboarding.shortcuts.replacement.appliedAlert.title" = "ショートカットを更新しました";
+"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux は音声入力に %@、「何でも聞く」に %@×2 を使うようになりました。";
+"onboarding.shortcuts.replacement.restoredAlert.message" = "Typeflux はデフォルトの FN / 🌐 ショートカットに戻りました。";
 "onboarding.shortcuts.activation.hint" = "押し続けて話す、タップして録音をロックする";
-"onboarding.shortcuts.ask.hint" = "何か質問するか、選択したテキストを書き換えます";
+"onboarding.shortcuts.ask.hint" = "Fn を 2 回押して質問、または選択したテキストを書き換え";
 "onboarding.shortcuts.persona.hint" = "書き込みペルソナを切り替えるか適用する";
 "onboarding.shortcuts.changeInSettings" = "「設定」→「音声ショートカット」でいつでもショートカットをカスタマイズできます。";
 
@@ -757,6 +859,9 @@
 "settings.advanced.localOptimization.subtitle" = "バックグラウンドでローカル音声認識モデルをダウンロードします。有効にすると音声認識が速くなり、オフラインでも使用できます。";
 "settings.advanced.localSTTMemoryOptimization.title" = "メモリ最適化";
 "settings.advanced.localSTTMemoryOptimization.subtitle" = "有効にすると、しばらく使用していないローカル音声モデルをメモリから自動的に解放し、リソース使用量を抑えます。再度使うときは再読み込みされるため、最初の応答が 3 〜 5 秒ほど遅くなる場合があります。";
+
+"settings.advanced.inputContextOptimization.title" = "入力コンテキストを使用";
+"settings.advanced.inputContextOptimization.subtitle" = "カーソル周辺の短いテキストを一時的に読み取り、連続入力、固有名詞、曖昧な語句の最適化に役立てます。履歴には保存されません。";
 
 "settings.advanced.agentFramework.title" = "エージェントフレームワークを有効にする";
 "settings.advanced.agentFramework.subtitle" = "「何でも質問」にはマルチターンのエージェント ループを使用します。ツールの呼び出しと MCP サーバーの統合をサポートします。";
@@ -884,6 +989,16 @@
 "auth.error.unknown" = "不明なエラーが発生しました。";
 "auth.error.invalidResponse" = "サーバーの応答が無効です。";
 "auth.error.unauthorized" = "セッションが期限切れです。再度サインインしてください。";
+"cloud.error.authInvalidCredentials" = "メールアドレスまたはパスワードが正しくありません。";
+"cloud.error.authUserExists" = "このメールアドレスのアカウントはすでに存在します。";
+"cloud.error.authUserNotActive" = "サインインする前にアカウントを有効化してください。";
+"cloud.error.authCodeInvalid" = "確認コードが無効または期限切れです。";
+"cloud.error.sessionExpired" = "セッションが期限切れです。再度サインインしてください。";
+"cloud.error.validation" = "リクエストが無効です。入力内容を確認してもう一度お試しください。";
+"cloud.error.rateLimited" = "リクエストが多すぎます。しばらく待ってからもう一度お試しください。";
+"cloud.error.quotaExceeded" = "Typeflux Cloud の利用枠を使い切りました。";
+"cloud.error.planRequired" = "現在のプランではこの Typeflux Cloud 機能を利用できません。";
+"cloud.error.server" = "Typeflux Cloud は一時的に利用できません。後でもう一度お試しください。";
 
 "auth.account.provider" = "ログイン方法";
 "auth.account.memberSince" = "登録日";
@@ -908,4 +1023,4 @@
 "agent.clarification.assistantSectionTitle" = "アシスタント";
 "agent.clarification.hotkeyHint" = "ホットキーを押し続けて返答を録音";
 "agent.clarification.recordingHint" = "録音中... 完了したらホットキーを離してください";
-"agent.clarification.transcribingHint" = "返答を処理中...";
+"agent.clarification.transcribingHint" = "思考中...";

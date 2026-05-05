@@ -2,37 +2,64 @@ import AppKit
 import Foundation
 
 struct HotkeyBinding: Codable, Equatable, Identifiable {
+    static let rightCommandKeyCode = 54
+    static let rightOptionKeyCode = 61
     static let functionKeyCode = 63
 
     var id: UUID
     var keyCode: Int
     var modifierFlags: UInt
+    var pressCount: Int?
 
-    init(id: UUID = UUID(), keyCode: Int, modifierFlags: UInt) {
+    init(id: UUID = UUID(), keyCode: Int, modifierFlags: UInt, pressCount: Int? = nil) {
         self.id = id
         self.keyCode = keyCode
         self.modifierFlags = modifierFlags
+        self.pressCount = pressCount
     }
 
     var signature: String {
-        "\(keyCode):\(modifierFlags)"
+        "\(keyCode):\(modifierFlags):\(pressCount ?? 1)"
     }
 
     var isRightCommandTrigger: Bool {
-        keyCode == 54 && modifierFlags == 1_048_576
+        keyCode == Self.rightCommandKeyCode
+            && modifierFlags == UInt(NSEvent.ModifierFlags.command.rawValue)
+            && (pressCount ?? 1) == 1
+    }
+
+    var isRightOptionTrigger: Bool {
+        keyCode == Self.rightOptionKeyCode
+            && modifierFlags == UInt(NSEvent.ModifierFlags.option.rawValue)
+            && (pressCount ?? 1) == 1
     }
 
     var isFunctionTrigger: Bool {
         keyCode == Self.functionKeyCode
             && modifierFlags == UInt(NSEvent.ModifierFlags.function.rawValue)
+            && (pressCount ?? 1) == 1
     }
 
     var isModifierOnlyTrigger: Bool {
-        isRightCommandTrigger || isFunctionTrigger
+        isRightCommandTrigger || isRightOptionTrigger || isFunctionTrigger
+    }
+
+    var isModifierDoubleTapTrigger: Bool {
+        guard pressCount == 2 else { return false }
+        return (
+            keyCode == Self.rightCommandKeyCode
+                && modifierFlags == UInt(NSEvent.ModifierFlags.command.rawValue)
+        ) || (
+            keyCode == Self.rightOptionKeyCode
+                && modifierFlags == UInt(NSEvent.ModifierFlags.option.rawValue)
+        ) || (
+            keyCode == Self.functionKeyCode
+                && modifierFlags == UInt(NSEvent.ModifierFlags.function.rawValue)
+        )
     }
 
     func matches(keyCode: Int, modifierFlags: UInt) -> Bool {
-        self.keyCode == keyCode && self.modifierFlags == modifierFlags
+        (pressCount ?? 1) == 1 && self.keyCode == keyCode && self.modifierFlags == modifierFlags
     }
 
     static let defaultActivation = HotkeyBinding(
@@ -40,8 +67,28 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
         modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
     )
     static let defaultAsk = HotkeyBinding(
-        keyCode: 49,
+        keyCode: functionKeyCode,
         modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
+        pressCount: 2,
     )
     static let defaultPersona = HotkeyBinding(keyCode: 35, modifierFlags: 1_572_864)
+
+    static let rightCommandActivation = HotkeyBinding(
+        keyCode: rightCommandKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+    )
+    static let rightCommandAsk = HotkeyBinding(
+        keyCode: rightCommandKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+        pressCount: 2,
+    )
+    static let rightOptionActivation = HotkeyBinding(
+        keyCode: rightOptionKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+    )
+    static let rightOptionAsk = HotkeyBinding(
+        keyCode: rightOptionKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+        pressCount: 2,
+    )
 }

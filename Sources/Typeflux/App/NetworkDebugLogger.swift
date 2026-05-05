@@ -64,7 +64,8 @@ enum NetworkDebugLogger {
     private static func redact(headers: [String: String]) -> [String: String] {
         var redacted = headers
         for key in headers.keys {
-            if key.caseInsensitiveCompare("Authorization") == .orderedSame {
+            if key.caseInsensitiveCompare("Authorization") == .orderedSame
+                || key.caseInsensitiveCompare(TypefluxCloudRequestHeaders.clientIDField) == .orderedSame {
                 redacted[key] = "<redacted>"
             }
         }

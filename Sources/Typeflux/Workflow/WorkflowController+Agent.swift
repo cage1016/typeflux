@@ -145,11 +145,15 @@ extension WorkflowController {
     ) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             pendingClarificationContinuation = continuation
-            agentClarificationWindowController.show(
-                question: question,
-                selectedText: selectedText,
-                modelResponse: modelResponse,
-            )
+            Task { @MainActor in
+                self.overlayController.dismissProcessingImmediatelyIfVisible()
+                self.appState.setStatus(.idle)
+                self.agentClarificationWindowController.show(
+                    question: question,
+                    selectedText: selectedText,
+                    modelResponse: modelResponse,
+                )
+            }
         }
     }
 
@@ -265,7 +269,10 @@ extension WorkflowController {
         if let appContext = appSystemContext {
             let extra = PromptCatalog.appSpecificSystemContext(appContext)
             if !extra.isEmpty {
-                systemPrompt += "\n\n\(extra)"
+                systemPrompt = PromptCatalog.appendAdditionalSystemContext(
+                    extra,
+                    to: systemPrompt,
+                )
             }
         }
         let userPrompt = AgentPromptCatalog.agentUserPrompt(

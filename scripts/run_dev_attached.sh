@@ -29,14 +29,21 @@ profile_supports_apple_sign_in() {
 
 install_bundled_models() {
   local bundled_models_dir="$APP_DIR/Contents/Resources/BundledModels"
+  local bundled_runtimes_dir="$APP_DIR/Contents/Resources/LocalRuntimes"
+  local sherpa_runtime_root="$bundled_runtimes_dir/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts"
   rm -rf "$bundled_models_dir"
+  rm -rf "$bundled_runtimes_dir"
 
   case "$DEV_VARIANT" in
+    app-only)
+      ;;
     minimal)
+      "${ROOT_DIR}/scripts/install_bundled_sherpa_runtime.sh" "$sherpa_runtime_root"
       ;;
     full)
+      "${ROOT_DIR}/scripts/install_bundled_sherpa_runtime.sh" "$sherpa_runtime_root"
       local target_model_folder="$bundled_models_dir/senseVoiceSmall/sensevoice-small"
-      "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$target_model_folder"
+      "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$target_model_folder" "$sherpa_runtime_root"
 
       local expected_model_file="$target_model_folder/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"
       if [[ ! -f "$expected_model_file" ]]; then

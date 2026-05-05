@@ -9,20 +9,29 @@ For a command-by-command overview, see [MAKE_COMMANDS.md](./MAKE_COMMANDS.md).
 For official GitHub releases, publish a GitHub Release. The `Release` workflow
 then builds two macOS installers, signs them with a Developer ID Application
 certificate, notarizes them with Apple, packages them into DMGs, and uploads
-both variants as release assets:
+installer variants as release assets:
 
-- `Typeflux-minimal.dmg` / `Typeflux-minimal.zip` (~15 MB, app only)
+- `Typeflux-minimal.dmg` / `Typeflux-minimal.zip` (includes Sherpa-ONNX runtime, downloads model on first use)
 - `Typeflux-full.dmg` / `Typeflux-full.zip` (~150 MB, includes SenseVoice model)
+- `Typeflux-app-only.dmg` / `Typeflux-app-only.zip` (app bundle without local runtime/model assets, intended for in-app auto-update payloads after assets have been persisted)
 
 The `full` variant embeds the SenseVoice STT model so users can use local
 speech recognition immediately without downloading additional model files.
 The `minimal` variant requires an internet connection to download the model
-on first use.
+on first use. The `app-only` variant is for update delivery: existing runtime
+and model assets remain in Application Support, and missing assets are restored
+by automatic download.
 
 For local release validation, use the one-step notarized release command:
 
 ```bash
 make release-notarize
+```
+
+If local release validation fails after making progress, resume it with:
+
+```bash
+make release-notarize-continue
 ```
 
 For a local full-model production installer, use:
@@ -122,6 +131,13 @@ This command automatically:
 7. staples the notarization ticket to both the app and the DMG
 8. validates the stapled artifacts
 
+The release script writes resumable state to
+`.build/release/.release-workflow.env` after each completed stage. A fresh
+`make release` or `make release-notarize` starts over and replaces that state.
+`make release-continue` and `make release-notarize-continue` use the saved
+stage and notarization submission ID to resume the previous release, including
+continuing the Apple notarization wait after a timeout or manual stop.
+
 ## Prerequisites
 
 - macOS 13 or later
@@ -152,7 +168,7 @@ export TYPEFLUX_CODESIGN_IDENTITY="$TYPEFLUX_APPLE_DISTRIBUTION"
 export TYPEFLUX_NOTARY_SUBMIT_RETRIES=3
 export TYPEFLUX_NOTARY_POLL_INTERVAL_SECONDS=15
 export TYPEFLUX_NOTARY_KEYCHAIN="/path/to/custom.keychain-db"
-export TYPEFLUX_RELEASE_VARIANT="minimal" # or "full"
+export TYPEFLUX_RELEASE_VARIANT="minimal" # or "full" / "app-only"
 ```
 
 Notes:
@@ -162,6 +178,7 @@ Notes:
   a non-default keychain
 - the release script retries transient notarization submission failures
 - if Apple returns a submission ID and the local client times out afterward, the script continues tracking that submission instead of restarting blindly
+- after an interrupted local release, use `make release-continue` or `make release-notarize-continue` to resume from the saved state instead of rebuilding from the beginning
 - see [BUILD_CONFIGURATION.md](./BUILD_CONFIGURATION.md) for the full step-by-step setup of certificates, Developer IDs, provisioning profiles, and notarization credentials
 
 ## One-Step Notarized Release
@@ -178,11 +195,29 @@ For the bundled-model installer:
 make full-release
 ```
 
+Resume an interrupted default release validation:
+
+```bash
+make release-notarize-continue
+```
+
+Resume an interrupted default release that exports artifacts to `~/Downloads`:
+
+```bash
+make release-continue
+```
+
+Resume an interrupted full release:
+
+```bash
+make full-release-continue
+```
+
 Successful output artifacts:
 
 - `.build/release/Typeflux.app`
-- `.build/release/Typeflux.zip` or `.build/release/Typeflux-full.zip`
-- `.build/release/Typeflux.dmg` or `.build/release/Typeflux-full.dmg`
+- `.build/release/Typeflux.zip`, `.build/release/Typeflux-full.zip`, or `.build/release/Typeflux-app-only.zip`
+- `.build/release/Typeflux.dmg`, `.build/release/Typeflux-full.dmg`, or `.build/release/Typeflux-app-only.dmg`
 
 ## Manual Release Steps
 
@@ -199,6 +234,7 @@ Outputs:
 - `.build/release/Typeflux.app`
 - `.build/release/Typeflux.zip` for `TYPEFLUX_RELEASE_VARIANT=minimal`
 - `.build/release/Typeflux-full.zip` for `TYPEFLUX_RELEASE_VARIANT=full`
+- `.build/release/Typeflux-app-only.zip` for `TYPEFLUX_RELEASE_VARIANT=app-only`
 
 For the full production installer shortcut:
 
@@ -221,6 +257,7 @@ Output:
 
 - `.build/release/Typeflux.dmg` for `TYPEFLUX_RELEASE_VARIANT=minimal`
 - `.build/release/Typeflux-full.dmg` for `TYPEFLUX_RELEASE_VARIANT=full`
+- `.build/release/Typeflux-app-only.dmg` for `TYPEFLUX_RELEASE_VARIANT=app-only`
 
 ### Submit to notarization manually
 
@@ -277,6 +314,22 @@ Common causes:
 - hardened runtime was not enabled on the app executable
 - the app or DMG was signed incorrectly
 - a nested binary or framework was left unsigned
+
+### Finder Automation permission blocks DMG styling
+
+DMG creation skips Finder AppleScript by default so local and CI releases do not need macOS Automation permission for Finder. To opt into the styled Finder window layout, run the release with:
+
+```bash
+TYPEFLUX_DMG_FINDER_LAYOUT=1 make release-notarize
+```
+
+### Moving artifacts to Downloads is blocked
+
+`make release` and `make release-continue` try to move finished artifacts to `~/Downloads`. If macOS blocks that protected folder, the release still completes and leaves the notarized artifacts in `.build/release`. You can also choose another export directory:
+
+```bash
+TYPEFLUX_RELEASE_DESTINATION="$PWD/release-artifacts" make release-continue
+```
 
 ### Notary submission times out
 

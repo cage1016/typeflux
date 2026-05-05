@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 extension WorkflowController {
@@ -5,6 +6,8 @@ extension WorkflowController {
         switch mode {
         case .switchDefault:
             L("overlay.personaPicker.switchTitle")
+        case .switchApplication:
+            L("overlay.personaPicker.switchApplicationTitle")
         case .applySelection:
             L("overlay.personaPicker.applyTitle")
         }
@@ -14,8 +17,24 @@ extension WorkflowController {
         switch mode {
         case .switchDefault:
             L("overlay.personaPicker.switchInstructions")
+        case .switchApplication:
+            L("overlay.personaPicker.switchApplicationInstructions")
         case .applySelection:
             L("overlay.personaPicker.applyInstructions")
+        }
+    }
+
+    func personaPickerIcon(
+        for mode: PersonaPickerMode,
+        applicationIcon: NSImage? = nil,
+    ) -> OverlayController.PersonaPickerIcon {
+        switch mode {
+        case .switchDefault:
+            .global
+        case .switchApplication:
+            .application(applicationIcon)
+        case .applySelection:
+            .none
         }
     }
 
@@ -32,7 +51,11 @@ extension WorkflowController {
         }
         items.append(
             contentsOf: settingsStore.personas.map {
-                PersonaPickerEntry(id: $0.id, title: $0.name, subtitle: $0.prompt)
+                PersonaPickerEntry(
+                    id: $0.id,
+                    title: $0.name,
+                    subtitle: settingsStore.resolvedPersonaPrompt(for: $0),
+                )
             },
         )
         return items
@@ -54,7 +77,8 @@ extension WorkflowController {
 
         let selected = personaPickerItems[personaPickerSelectedIndex]
         let mode = personaPickerMode
-        dismissPersonaPicker(closeOverlay: false)
+        soundEffectPlayer.playAsync(.tip)
+        dismissPersonaPicker(immediate: true)
 
         switch mode {
         case .switchDefault:
@@ -66,6 +90,17 @@ extension WorkflowController {
             } else {
                 Task { @MainActor in
                     self.overlayController.showNotice(message: L("workflow.persona.switchedOff"))
+                }
+            }
+        case let .switchApplication(binding):
+            settingsStore.updatePersonaAppBindingPersona(id: binding.id, personaID: selected.id)
+            if selected.id != nil {
+                Task { @MainActor in
+                    self.overlayController.showNotice(message: L("workflow.persona.applicationSwitched", selected.title))
+                }
+            } else {
+                Task { @MainActor in
+                    self.overlayController.showNotice(message: L("workflow.persona.applicationSwitchedOff"))
                 }
             }
         case let .applySelection(context):
@@ -82,13 +117,17 @@ extension WorkflowController {
         confirmPersonaSelection()
     }
 
-    func dismissPersonaPicker(closeOverlay: Bool = true) {
+    func dismissPersonaPicker(closeOverlay: Bool = true, immediate: Bool = false) {
         guard isPersonaPickerPresented else { return }
         isPersonaPickerPresented = false
         personaPickerItems = []
         personaPickerSelectedIndex = 0
         personaPickerMode = .switchDefault
         guard closeOverlay else { return }
+        if immediate {
+            overlayController.dismissImmediately()
+            return
+        }
         Task { @MainActor in
             self.overlayController.dismiss(after: 0.05)
         }
@@ -96,7 +135,7 @@ extension WorkflowController {
 
     // swiftlint:disable:next function_body_length
     func applyPersonaToSelection(_ context: PersonaSelectionContext, persona: PersonaProfile) {
-        let personaPrompt = persona.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let personaPrompt = settingsStore.resolvedPersonaPrompt(for: persona).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !personaPrompt.isEmpty else { return }
 
         cancelCurrentProcessing(resetUI: false, reason: L("workflow.cancel.newRecording"))
@@ -135,7 +174,8 @@ extension WorkflowController {
                         appSystemContext: AppSystemContext(snapshot: context.snapshot),
                     ),
                     sessionID: sessionID,
-                    showsStreamingPreview: !shouldShowResultDialog,
+                    showsStreamingPreview: WorkflowOverlayPresentationPolicy
+                        .shouldShowLLMStreamingPreviewForPersonaSelectionApplication(),
                 )
                 try ensureProcessingIsActive(sessionID)
 

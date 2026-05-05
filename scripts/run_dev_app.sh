@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="${TYPEFLUX_DEV_APP_DIR:-${TYPEFLUX_DEV_APP_DIR:-$HOME/Applications/Typeflux Dev.app}}"
 DEV_VARIANT="${TYPEFLUX_DEV_VARIANT:-minimal}"
 
+# Kill any running instance before rebuilding, so the binary copy succeeds.
+pkill -f "Typeflux Dev.app/Contents/MacOS/Typeflux" 2>/dev/null || true
+
 profile_supports_apple_sign_in() {
   local profile_path="$1"
   local decoded_profile
@@ -27,14 +30,21 @@ profile_supports_apple_sign_in() {
 
 install_bundled_models() {
   local bundled_models_dir="$APP_DIR/Contents/Resources/BundledModels"
+  local bundled_runtimes_dir="$APP_DIR/Contents/Resources/LocalRuntimes"
+  local sherpa_runtime_root="$bundled_runtimes_dir/sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts"
   rm -rf "$bundled_models_dir"
+  rm -rf "$bundled_runtimes_dir"
 
   case "$DEV_VARIANT" in
+    app-only)
+      ;;
     minimal)
+      "${ROOT_DIR}/scripts/install_bundled_sherpa_runtime.sh" "$sherpa_runtime_root"
       ;;
     full)
+      "${ROOT_DIR}/scripts/install_bundled_sherpa_runtime.sh" "$sherpa_runtime_root"
       local target_model_folder="$bundled_models_dir/senseVoiceSmall/sensevoice-small"
-      "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$target_model_folder"
+      "${ROOT_DIR}/scripts/install_bundled_sensevoice.sh" "$target_model_folder" "$sherpa_runtime_root"
 
       local expected_model_file="$target_model_folder/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"
       if [[ ! -f "$expected_model_file" ]]; then
@@ -97,11 +107,20 @@ chmod +x "$APP_DIR/Contents/MacOS/Typeflux"
 # identifier. Re-sign the assembled app bundle with a stable identifier so the
 # dev app is launchable and privacy services see a consistent app identity.
 if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v security >/dev/null 2>&1; then
+  # Prefer Apple Development identities, then the project's self-signed cert
+  # ("Typeflux Dev"). A stable identity ensures macOS privacy permissions
+  # (microphone, accessibility, etc.) persist across rebuilds.
+  # Run 'scripts/setup_dev_cert.sh' once to create the reusable self-signed cert.
   TYPEFLUX_DEV_CODESIGN_IDENTITY="$(
     security find-identity -v -p codesigning 2>/dev/null \
       | sed -n 's/.*"Apple Development: \(.*\)"/Apple Development: \1/p' \
       | head -n 1
   )"
+  if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]]; then
+    if security find-identity -v -p codesigning 2>/dev/null | grep -qF '"Typeflux Dev"'; then
+      TYPEFLUX_DEV_CODESIGN_IDENTITY="Typeflux Dev"
+    fi
+  fi
 fi
 
 RUNTIME_ENTITLEMENTS="$ROOT_DIR/app/TypefluxRuntime.entitlements"

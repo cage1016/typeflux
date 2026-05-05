@@ -3,6 +3,10 @@
 import Foundation
 
 extension WorkflowController {
+    private static func formatDurationSince(_ startDate: Date) -> String {
+        String(format: "%.1fms", Date().timeIntervalSince(startDate) * 1_000)
+    }
+
     enum AskWithoutSelectionAgentDisposition: Equatable {
         case answer(String)
         case insert(String)
@@ -16,6 +20,15 @@ extension WorkflowController {
     struct AskSelectionDecisionResult {
         let decision: AskSelectionDecision
         let completedAt: Date
+    }
+
+    var shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider: Bool {
+        switch settingsStore.sttProvider {
+        case .aliCloud, .doubaoRealtime, .googleCloud, .typefluxOfficial:
+            true
+        default:
+            false
+        }
     }
 
     func generateRewrite(
@@ -85,7 +98,10 @@ extension WorkflowController {
                 throw LLMRequestTimeoutError()
             }
             defer { group.cancelAll() }
-            return try await group.next()!
+            guard let result = try await group.next() else {
+                throw CancellationError()
+            }
+            return result
         }
     }
 
@@ -245,6 +261,7 @@ extension WorkflowController {
                     askDecisionResult.decision.trimmedContent,
                     replace: replaceSelection,
                     fallbackTitle: L("workflow.result.copyTitle"),
+                    targetSnapshot: selectionSnapshot,
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -270,6 +287,7 @@ extension WorkflowController {
         _ text: String,
         replace: Bool,
         fallbackTitle: String = L("workflow.result.copyTitle"),
+        targetSnapshot: TextSelectionSnapshot? = nil,
     ) -> ApplyOutcome {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         NetworkDebugLogger.logMessage(
@@ -281,6 +299,19 @@ extension WorkflowController {
             normalizedPreview: \(String(normalizedText.prefix(120)))
             """,
         )
+        if let targetSnapshot, shouldBypassTextInjection(for: targetSnapshot) {
+            NetworkDebugLogger.logMessage(
+                """
+                [Apply Text] bypassing text injection for Typeflux-owned target
+                process: \(targetSnapshot.processName ?? "<unknown>")
+                bundleIdentifier: \(targetSnapshot.bundleIdentifier ?? "<unknown>")
+                source: \(targetSnapshot.source)
+                window: \(targetSnapshot.windowTitle ?? "<unknown>")
+                """,
+            )
+            presentResultDialog(title: fallbackTitle, text: text)
+            return .presentedInDialog
+        }
         do {
             if replace {
                 dismissOverlayForExternalReplacement()
@@ -315,19 +346,47 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
     ) -> ApplyOutcome {
         let optimizedText = DictationOutputOptimizer.optimize(text)
-        return applyText(optimizedText, replace: shouldReplaceActiveSelection(for: selectionSnapshot))
+        return applyText(
+            optimizedText,
+            replace: shouldReplaceActiveSelection(for: selectionSnapshot),
+            targetSnapshot: selectionSnapshot,
+        )
     }
 
     func finishRecordingAndProcess(recordingStoppedAt: Date) async {
         do {
+            let finishStartedAt = Date()
+            NetworkDebugLogger.logMessage("[Ask Timing] finishRecordingAndProcess entered intent=\(recordingIntent.traceName)")
             let audioFile = try audioRecorder.stop()
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] audioRecorder.stop completed in \(Self.formatDurationSince(finishStartedAt))",
+            )
+            _ = await liveTranscriptionPreviewer?.finish()
+            let realtimeTranscriptionSession = activeRealtimeTranscriptionSession
+            let realtimeAudioBufferPump = activeRealtimeAudioBufferPump
+            activeRealtimeTranscriptionSession = nil
+            activeRealtimeAudioBufferPump = nil
+            isAudioRecorderStarted = false
             let audioFileReadyAt = Date()
             let recordingIntent = recordingIntent
             self.recordingIntent = .dictation
+            let selectionAwaitStartedAt = Date()
             let selectionSnapshot = await selectionTask?.value ?? TextSelectionSnapshot()
             selectionTask = nil
+            let inputContext = await inputContextTask?.value
+            inputContextTask = nil
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] context tasks completed in \(Self.formatDurationSince(selectionAwaitStartedAt))",
+            )
 
-            let audioAnalysis = try AudioContentAnalyzer.analyze(fileURL: audioFile.fileURL)
+            let audioAnalysisStartedAt = Date()
+            let audioFileURL = audioFile.fileURL
+            let audioAnalysis = try await Task.detached(priority: .userInitiated) {
+                try AudioContentAnalyzer.analyze(fileURL: audioFileURL)
+            }.value
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] audio analysis completed in \(Self.formatDurationSince(audioAnalysisStartedAt))",
+            )
             let validatedAudioFile = AudioFile(
                 fileURL: audioFile.fileURL,
                 duration: audioAnalysis.duration,
@@ -335,6 +394,8 @@ extension WorkflowController {
 
             if validatedAudioFile.duration < Self.minimumRecordingDuration {
                 try? FileManager.default.removeItem(at: validatedAudioFile.fileURL)
+                realtimeAudioBufferPump?.cancel()
+                await realtimeTranscriptionSession?.cancel()
                 await sttRouter.cancelPreparedRecording()
                 await MainActor.run {
                     self.appState.setStatus(.idle)
@@ -345,6 +406,8 @@ extension WorkflowController {
 
             if !audioAnalysis.containsAudibleSignal {
                 try? FileManager.default.removeItem(at: validatedAudioFile.fileURL)
+                realtimeAudioBufferPump?.cancel()
+                await realtimeTranscriptionSession?.cancel()
                 await sttRouter.cancelPreparedRecording()
                 await MainActor.run {
                     self.appState.setStatus(.idle)
@@ -360,12 +423,12 @@ extension WorkflowController {
                 ? editingSelectedText(from: selectionSnapshot)
                 : nil
             let askContextText = recordingIntent == .askSelection
-                ? selectionSnapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
+                ? askContextText(from: selectionSnapshot, inputContext: inputContext)
                 : nil
             currentSelectedText = selectedText
             let personaPrompt = recordingIntent == .askSelection
                 ? nil
-                : settingsStore.activePersona?.prompt
+                : activePersonaPrompt(selectionSnapshot: selectionSnapshot, inputContext: inputContext)
 
             NetworkDebugLogger.logMessage(selectionSnapshotLog(selectionSnapshot))
             if WorkflowOverlayPresentationPolicy.shouldShowProcessingAfterRecording() {
@@ -404,15 +467,26 @@ extension WorkflowController {
             startProcessingTimeout(sessionID: sessionID)
             processingTask = Task { [weak self] in
                 guard let self else { return }
+                let processingStartedAt = Date()
+                NetworkDebugLogger.logMessage("[Ask Timing] processing task entered intent=\(recordingIntent.traceName)")
+                await realtimeAudioBufferPump?.finishInput()
+                NetworkDebugLogger.logMessage(
+                    "[Ask Timing] realtime audio pump finished in \(Self.formatDurationSince(processingStartedAt))",
+                )
                 await process(
                     audioFile: validatedAudioFile,
+                    realtimeTranscriptionSession: realtimeTranscriptionSession,
                     record: record,
                     selectionSnapshot: selectionSnapshot,
                     selectedText: selectedText,
                     askContextText: askContextText,
+                    inputContext: inputContext,
                     personaPrompt: personaPrompt,
                     recordingIntent: recordingIntent,
                     sessionID: sessionID,
+                )
+                NetworkDebugLogger.logMessage(
+                    "[Ask Timing] process completed in \(Self.formatDurationSince(processingStartedAt))",
                 )
                 cancelProcessingTimeout()
                 await MainActor.run {
@@ -423,6 +497,12 @@ extension WorkflowController {
                 }
             }
         } catch {
+            await liveTranscriptionPreviewer?.cancel()
+            activeRealtimeAudioBufferPump?.cancel()
+            await activeRealtimeTranscriptionSession?.cancel()
+            activeRealtimeTranscriptionSession = nil
+            activeRealtimeAudioBufferPump = nil
+            isAudioRecorderStarted = false
             let msg = "Processing failed: \(error.localizedDescription)"
             ErrorLogStore.shared.log(msg)
 
@@ -497,6 +577,7 @@ extension WorkflowController {
             ),
             selectedText: selectedText,
             askContextText: selectedText,
+            inputContext: nil,
             personaPrompt: personaPrompt,
             recordingIntent: mutableRecord.mode == .editSelection || mutableRecord.mode == .askAnswer
                 ? .askSelection
@@ -509,10 +590,12 @@ extension WorkflowController {
     // swiftlint:disable:next cyclomatic_complexity
     func process(
         audioFile: AudioFile,
+        realtimeTranscriptionSession: (any RealtimeTranscriptionSession)? = nil,
         record: HistoryRecord,
         selectionSnapshot: TextSelectionSnapshot,
         selectedText: String?,
         askContextText: String?,
+        inputContext: InputContextSnapshot?,
         personaPrompt: String?,
         recordingIntent: RecordingIntent,
         sessionID: UUID,
@@ -527,10 +610,12 @@ extension WorkflowController {
                 && !(askContextText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
             let multimodalHandlesPersona = settingsStore.sttProvider.handlesPersonaInternally
                 && (selectedText == nil || selectedText!.isEmpty)
-            let shouldKeepProcessingCapsule =
-                requiresRewrite(selectedText: selectedText, personaPrompt: personaPrompt)
-                    && !multimodalHandlesPersona
-
+            let hasRewritePersona = Self.hasRewritePersona(personaPrompt)
+            let hasInputContext = inputContext?.hasContent == true
+            let shouldRewriteTranscript = Self.shouldRewriteTranscript(
+                personaPrompt: personaPrompt,
+                inputContext: inputContext,
+            )
             pipelineTiming.transcriptionStartedAt = Date()
             record.pipelineTiming = pipelineTiming
             saveHistoryRecord(record)
@@ -550,18 +635,33 @@ extension WorkflowController {
                 && settingsStore.llmRemoteProvider == .typefluxCloud
                 && recordingIntent == .dictation
                 && !multimodalHandlesPersona
-                && personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                && inputContext == nil
+                && hasRewritePersona
 
             let transcribedText: String
             var mergedLLMResult: String?
 
-            if canMergeWithLLM, let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !resolvedPersonaPrompt.isEmpty {
+            let transcriptionStartedAt = Date()
+            NetworkDebugLogger.logMessage("[Ask Timing] transcription entered intent=\(recordingIntent.traceName)")
+            if let realtimeTranscriptionSession {
+                do {
+                    transcribedText = try await realtimeTranscriptionSession.finish()
+                } catch {
+                    NetworkDebugLogger.logError(
+                        context: "Realtime STT session failed; falling back to recorded audio",
+                        error: error,
+                    )
+                    transcribedText = try await sttRouter.transcribeStream(
+                        audioFile: audioFile,
+                        scenario: cloudScenario,
+                    ) { _ in }
+                }
+            } else if canMergeWithLLM, let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !resolvedPersonaPrompt.isEmpty {
                 let mergedResult = try await performMergedCloudTranscription(
                     audioFile: audioFile,
                     personaPrompt: resolvedPersonaPrompt,
                     selectionSnapshot: selectionSnapshot,
                     cloudScenario: cloudScenario,
-                    shouldKeepProcessingCapsule: shouldKeepProcessingCapsule,
                     sessionID: sessionID,
                 )
                 transcribedText = mergedResult.transcript
@@ -570,16 +670,11 @@ extension WorkflowController {
                 transcribedText = try await sttRouter.transcribeStream(
                     audioFile: audioFile,
                     scenario: cloudScenario,
-                ) { [weak self] snapshot in
-                    guard let self, !snapshot.text.isEmpty else { return }
-                    guard !shouldKeepProcessingCapsule else { return }
-                    await MainActor.run {
-                        if self.processingSessionID == sessionID {
-                            self.overlayController.updateStreamingText(snapshot.text)
-                        }
-                    }
-                }
+                ) { _ in }
             }
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] transcription completed in \(Self.formatDurationSince(transcriptionStartedAt))",
+            )
 
             try ensureProcessingIsActive(sessionID)
             pipelineTiming.transcriptionCompletedAt = Date()
@@ -626,13 +721,14 @@ extension WorkflowController {
                     record: &record,
                     pipelineTiming: &pipelineTiming,
                 )
-            } else if let personaPrompt, !personaPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            } else if shouldRewriteTranscript {
                 detachedAgentExecution = false
                 try await processPersonaRewriteFlow(
                     transcribedText: transcribedText,
-                    personaPrompt: personaPrompt,
+                    personaPrompt: personaPrompt ?? "",
                     selectionSnapshot: selectionSnapshot,
-                    multimodalHandlesPersona: multimodalHandlesPersona,
+                    inputContext: inputContext,
+                    multimodalHandlesPersona: multimodalHandlesPersona && !hasInputContext,
                     mergedLLMResult: mergedLLMResult,
                     sessionID: sessionID,
                     record: &record,
@@ -891,6 +987,7 @@ extension WorkflowController {
         logPipelineEvent("llm-processing-started", for: record)
 
         if settingsStore.agentFrameworkEnabled, settingsStore.agentEnabled {
+            let agentLaunchStartedAt = Date()
             try await processAgentAskFlowWithoutSelection(
                 transcribedText: transcribedText,
                 askContextText: askContextText,
@@ -900,10 +997,14 @@ extension WorkflowController {
                 record: &record,
                 pipelineTiming: &pipelineTiming,
             )
+            NetworkDebugLogger.logMessage(
+                "[Ask Timing] detached agent ask launched in \(Self.formatDurationSince(agentLaunchStartedAt))",
+            )
             return true
         }
 
         let askDecisionResult: AskSelectionDecisionResult
+        let askDecisionStartedAt = Date()
         do {
             askDecisionResult = try await decideAskSelection(
                 selectedText: askContextText,
@@ -921,6 +1022,9 @@ extension WorkflowController {
             )
             return false
         }
+        NetworkDebugLogger.logMessage(
+            "[Ask Timing] ask decision completed in \(Self.formatDurationSince(askDecisionStartedAt))",
+        )
         try await applyLegacyAskDecision(
             askDecisionResult,
             question: transcribedText,
@@ -961,8 +1065,12 @@ extension WorkflowController {
         let task = Task { [weak self] in
             guard let self else { return }
             defer {
-                Task {
+                Task { [weak self] in
+                    guard let self else { return }
                     await self.agentExecutionRegistry.finish(jobID: jobID)
+                    await MainActor.run {
+                        self.finishDetachedAskOverlayIfStillProcessing(sessionID: sessionID)
+                    }
                 }
             }
 
@@ -996,8 +1104,7 @@ extension WorkflowController {
                 enforceHistoryRetentionPolicy()
                 await MainActor.run {
                     guard self.processingSessionID == sessionID else { return }
-                    self.lastRetryableFailureRecord = nil
-                    self.appState.setStatus(.idle)
+                    self.finishDetachedAskOverlay(dismiss: true)
                 }
             } catch is CancellationError {
                 await failDetachedAgentAskTask(
@@ -1050,8 +1157,7 @@ extension WorkflowController {
             record.pipelineTiming = pipelineTiming
             await MainActor.run {
                 if self.processingSessionID == sessionID {
-                    self.lastRetryableFailureRecord = nil
-                    self.appState.setStatus(.idle)
+                    self.finishDetachedAskOverlay(dismiss: false)
                 }
                 self.presentAskAnswer(
                     question: transcribedText,
@@ -1081,11 +1187,7 @@ extension WorkflowController {
 
             await MainActor.run {
                 guard self.processingSessionID == sessionID else { return }
-                self.lastRetryableFailureRecord = nil
-                self.appState.setStatus(.idle)
-                if outcome == .inserted {
-                    self.overlayController.dismissSoon()
-                }
+                self.finishDetachedAskOverlay(dismiss: outcome == .inserted)
             }
         }
 
@@ -1110,6 +1212,10 @@ extension WorkflowController {
             saveHistoryRecord(record)
             logPipelineEvent("pipeline-cancelled", for: record)
             enforceHistoryRetentionPolicy()
+            await MainActor.run {
+                guard self.processingSessionID == sessionID else { return }
+                self.finishDetachedAskOverlay(dismiss: true)
+            }
             return
         }
 
@@ -1127,6 +1233,25 @@ extension WorkflowController {
             self.overlayController.showFailure(message: errorMessage)
             self.overlayController.dismiss(after: 3.0)
         }
+    }
+
+    @MainActor
+    private func finishDetachedAskOverlay(dismiss: Bool) {
+        lastRetryableFailureRecord = nil
+        appState.setStatus(.idle)
+        if dismiss {
+            overlayController.dismissSoon()
+        }
+    }
+
+    @MainActor
+    private func finishDetachedAskOverlayIfStillProcessing(sessionID: UUID) {
+        guard processingSessionID == sessionID else { return }
+        if appState.status == .processing {
+            lastRetryableFailureRecord = nil
+            appState.setStatus(.idle)
+        }
+        overlayController.dismissProcessingIfVisible()
     }
 
     // Thread-safe accumulator for LLM streaming chunks captured in @Sendable closures.
@@ -1160,6 +1285,7 @@ extension WorkflowController {
             spokenInstruction: nil,
             personaPrompt: personaPrompt,
             appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
+            vocabularyTerms: VocabularyStore.activeTerms(),
         )
         let prompts = PromptCatalog.rewritePrompts(for: placeholderRequest)
         var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
@@ -1169,7 +1295,10 @@ extension WorkflowController {
         if let appContext = placeholderRequest.appSystemContext {
             let extra = PromptCatalog.appSpecificSystemContext(appContext)
             if !extra.isEmpty {
-                effectiveSystemPrompt += "\n\n\(extra)"
+                effectiveSystemPrompt = PromptCatalog.appendAdditionalSystemContext(
+                    extra,
+                    to: effectiveSystemPrompt,
+                )
             }
         }
         return ASRLLMConfig(
@@ -1186,24 +1315,17 @@ extension WorkflowController {
         personaPrompt: String,
         selectionSnapshot: TextSelectionSnapshot,
         cloudScenario: TypefluxCloudScenario,
-        shouldKeepProcessingCapsule: Bool,
         sessionID: UUID,
     ) async throws -> (transcript: String, rewritten: String?) {
         let llmConfig = buildASRLLMConfig(personaPrompt: personaPrompt, selectionSnapshot: selectionSnapshot)
         let llmBuffer = LLMStreamBuffer()
+        let suppressStreamingPreview = shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider
 
         return try await sttRouter.transcribeStreamWithLLMRewrite(
             audioFile: audioFile,
             llmConfig: llmConfig,
             scenario: cloudScenario,
-            onASRUpdate: { [weak self] snapshot in
-                guard let self, !snapshot.text.isEmpty, !shouldKeepProcessingCapsule else { return }
-                await MainActor.run {
-                    if self.processingSessionID == sessionID {
-                        self.overlayController.updateStreamingText(snapshot.text)
-                    }
-                }
-            },
+            onASRUpdate: { _ in },
             onLLMStart: { [weak self] in
                 guard let self else { return }
                 await MainActor.run {
@@ -1214,6 +1336,7 @@ extension WorkflowController {
             },
             onLLMChunk: { [weak self] chunk in
                 guard let self else { return }
+                guard !suppressStreamingPreview else { return }
                 llmBuffer.append(chunk)
                 let current = llmBuffer.text
                 await MainActor.run {
@@ -1229,13 +1352,14 @@ extension WorkflowController {
         transcribedText: String,
         personaPrompt: String,
         selectionSnapshot: TextSelectionSnapshot,
+        inputContext: InputContextSnapshot?,
         multimodalHandlesPersona: Bool,
         mergedLLMResult: String? = nil,
         sessionID: UUID,
         record: inout HistoryRecord,
         pipelineTiming: inout HistoryPipelineTiming,
     ) async throws {
-        record.mode = .personaRewrite
+        record.mode = Self.hasRewritePersona(personaPrompt) ? .personaRewrite : .dictation
 
         if multimodalHandlesPersona {
             record.personaResultText = transcribedText
@@ -1283,8 +1407,12 @@ extension WorkflowController {
                         spokenInstruction: nil,
                         personaPrompt: personaPrompt,
                         appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
+                        inputContext: inputContext,
+                        vocabularyTerms: VocabularyStore.activeTerms(),
                     ),
                     sessionID: sessionID,
+                    showsStreamingPreview: WorkflowOverlayPresentationPolicy
+                        .shouldShowLLMStreamingPreviewAfterTranscription(),
                     timeout: Self.llmTimeoutAfterTranscriptionSeconds,
                 )
 
@@ -1362,6 +1490,17 @@ extension WorkflowController {
 
     static func isServiceOverloadedError(_ error: Error) -> Bool {
         (error as NSError).code == 529
+    }
+
+    static func hasRewritePersona(_ personaPrompt: String?) -> Bool {
+        personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    static func shouldRewriteTranscript(
+        personaPrompt: String?,
+        inputContext: InputContextSnapshot?,
+    ) -> Bool {
+        hasRewritePersona(personaPrompt) || inputContext?.hasContent == true
     }
 
     func shouldTreatAsSkippedSpeechInput(error: Error, audioFile: AudioFile) -> Bool {
@@ -1509,8 +1648,18 @@ extension WorkflowController {
     func personaPrompt(for record: HistoryRecord) -> String? {
         switch record.mode {
         case .dictation, .editSelection, .personaRewrite, .askAnswer:
-            record.personaPrompt ?? settingsStore.activePersona?.prompt
+            record.personaPrompt ?? settingsStore.activePersonaPrompt
         }
+    }
+
+    func activePersonaPrompt(
+        selectionSnapshot: TextSelectionSnapshot,
+        inputContext: InputContextSnapshot?,
+    ) -> String? {
+        settingsStore.effectivePersonaPrompt(
+            appName: inputContext?.appName ?? selectionSnapshot.processName,
+            bundleIdentifier: inputContext?.bundleIdentifier ?? selectionSnapshot.bundleIdentifier,
+        )
     }
 
     func selectionSnapshotLog(_ snapshot: TextSelectionSnapshot) -> String {
@@ -1580,8 +1729,44 @@ extension WorkflowController {
         return snapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    func askContextText(
+        from snapshot: TextSelectionSnapshot,
+        inputContext: InputContextSnapshot?,
+    ) -> String? {
+        let snapshotText = snapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !snapshotText.isEmpty {
+            return snapshotText
+        }
+
+        let inputContextSelectedText = inputContext?.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return inputContextSelectedText.isEmpty ? nil : inputContextSelectedText
+    }
+
     func shouldReplaceActiveSelection(for snapshot: TextSelectionSnapshot) -> Bool {
         snapshot.canReplaceSelection
+    }
+
+    func shouldBypassTextInjection(for snapshot: TextSelectionSnapshot) -> Bool {
+        if snapshot.source == "typeflux-native" {
+            return false
+        }
+
+        if snapshot.source == "typeflux-ask-answer-window"
+            || snapshot.source == "typeflux-non-text-window"
+            || snapshot.source == "typeflux-owned-target"
+        {
+            return true
+        }
+
+        if snapshot.processID == getpid() {
+            return !snapshot.isEditable
+        }
+
+        if snapshot.bundleIdentifier == Bundle.main.bundleIdentifier {
+            return !snapshot.isEditable
+        }
+
+        return false
     }
 
     static func askWithoutSelectionAgentDisposition(for result: AskAgentResult) -> AskWithoutSelectionAgentDisposition {
@@ -1636,6 +1821,7 @@ extension WorkflowController {
             text,
             replace: replaceSelection,
             fallbackTitle: L("workflow.result.copyTitle"),
+            targetSnapshot: selectionSnapshot,
         )
     }
 

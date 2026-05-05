@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-struct AudioContentAnalysis {
+struct AudioContentAnalysis: Sendable {
     private static let minimumAudibleDuration: TimeInterval = 0.08
     private static let minimumAudibleFrameRatio = 0.04
 

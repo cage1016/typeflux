@@ -18,6 +18,11 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         XCTAssertNotNil(layout)
     }
 
+    func testFunASRReturnsLayout() {
+        let layout = SherpaOnnxModelLayout.layout(for: .funASR)
+        XCTAssertNotNil(layout)
+    }
+
     // MARK: - SenseVoice layout properties
 
     func testSenseVoiceSmallRuntimeDirectory() throws {
@@ -74,6 +79,24 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         )
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .senseVoiceSmall, source: .huggingFace))
         XCTAssertNil(LocalModelDownloadCatalog.sherpaOnnxModelArchiveURL(for: .whisperLocal, source: .huggingFace))
+    }
+
+    func testSherpaProbeURLsUseModelAssetsOnly() {
+        let runtimeArchiveURL = LocalModelDownloadCatalog.sherpaOnnxRuntimeArchiveURL(source: .huggingFace)
+
+        let senseVoiceURLs = LocalModelDownloadCatalog.probeURLs(for: .senseVoiceSmall, source: .huggingFace)
+        XCTAssertEqual(senseVoiceURLs, [
+            LocalModelDownloadURLCatalog.url(for: .senseVoiceHuggingFaceModel),
+            LocalModelDownloadURLCatalog.url(for: .senseVoiceHuggingFaceTokens),
+        ])
+        XCTAssertFalse(senseVoiceURLs.contains(runtimeArchiveURL))
+
+        let funASRURLs = LocalModelDownloadCatalog.probeURLs(for: .funASR, source: .huggingFace)
+        XCTAssertEqual(funASRURLs, [
+            LocalModelDownloadURLCatalog.url(for: .funASRHuggingFaceModel),
+            LocalModelDownloadURLCatalog.url(for: .funASRHuggingFaceTokens),
+        ])
+        XCTAssertFalse(funASRURLs.contains(runtimeArchiveURL))
     }
 
     func testDownloadCatalogProvidesChinaMirrorLocations() throws {
@@ -157,7 +180,10 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testSenseVoiceSmallRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
-        XCTAssertEqual(layout.requiredRelativePaths.count, 5)
+        XCTAssertEqual(layout.requiredRelativePaths.count, 6)
+        XCTAssertTrue(layout.requiredRelativePaths.contains(
+            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+        ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt"))
     }
@@ -176,10 +202,67 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
 
     func testQwen3ASRRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .qwen3ASR))
+        XCTAssertTrue(layout.requiredRelativePaths.contains(
+            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+        ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/encoder.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/decoder.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/tokenizer"))
+    }
+
+    // MARK: - FunASR layout properties
+
+    func testFunASRRuntimeDirectory() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+        XCTAssertEqual(layout.runtimeRootDirectory, "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts")
+    }
+
+    func testFunASRModelDirectory() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+        XCTAssertEqual(layout.modelRootDirectory, "sherpa-onnx-paraformer-zh-small-2024-03-09")
+    }
+
+    func testFunASRRequiredPaths() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+        XCTAssertEqual(layout.requiredRelativePaths.count, 6)
+        XCTAssertTrue(layout.requiredRelativePaths.contains(
+            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+        ))
+        XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-paraformer-zh-small-2024-03-09/model.int8.onnx"))
+        XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-paraformer-zh-small-2024-03-09/tokens.txt"))
+    }
+
+    func testFunASRUsesDirectFilesForHuggingFace() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
+
+        guard case let .files(files) = layout.modelArtifact else {
+            return XCTFail("Expected Hugging Face FunASR layout to use extracted files")
+        }
+
+        XCTAssertNil(layout.modelArchiveURL)
+        XCTAssertEqual(files.map(\.relativePath), [
+            "sherpa-onnx-paraformer-zh-small-2024-03-09/model.int8.onnx",
+            "sherpa-onnx-paraformer-zh-small-2024-03-09/tokens.txt",
+        ])
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.hasPrefix("https://huggingface.co/") })
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.contains("/resolve/main/") })
+    }
+
+    func testModelScopeFunASRUsesExtractedFilesFromChinaMirror() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR, downloadSource: .modelScope))
+
+        guard case let .files(files) = layout.modelArtifact else {
+            return XCTFail("Expected ModelScope FunASR layout to use extracted files")
+        }
+
+        XCTAssertEqual(files.map(\.relativePath), [
+            "sherpa-onnx-paraformer-zh-small-2024-03-09/model.int8.onnx",
+            "sherpa-onnx-paraformer-zh-small-2024-03-09/tokens.txt",
+        ])
+        XCTAssertTrue(files.allSatisfy { $0.url.host != "github.com" })
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.hasPrefix("https://hf-mirror.com/") })
+        XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.contains("/resolve/main/") })
     }
 
     // MARK: - URL computation
@@ -223,6 +306,97 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         try FileManager.default.createDirectory(at: tmpURL, withIntermediateDirectories: true)
 
         XCTAssertFalse(layout.isInstalled(storageURL: tmpURL))
+    }
+
+    func testIsInstalledReportsMissingVersionedOnnxRuntimeLibrary() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
+        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tmpURL) }
+
+        for relativePath in layout.requiredRelativePaths where !relativePath.hasSuffix(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName) {
+            let fullURL = tmpURL.appendingPathComponent(relativePath, isDirectory: false)
+            try FileManager.default.createDirectory(
+                at: fullURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+            )
+
+            switch fullURL.lastPathComponent {
+            case "sherpa-onnx-offline":
+                try machOFixtureData().write(to: fullURL)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: NSNumber(value: Int16(0o755))],
+                    ofItemAtPath: fullURL.path,
+                )
+            case let name where name.hasSuffix(".dylib"):
+                try machOFixtureData().write(to: fullURL)
+            case "tokens.txt":
+                try Data("<unk> 0\n<s> 1\n</s> 2\n".utf8).write(to: fullURL)
+            default:
+                try Data(repeating: 0x5A, count: 1_048_576).write(to: fullURL)
+            }
+        }
+
+        XCTAssertFalse(layout.isInstalled(storageURL: tmpURL))
+        XCTAssertEqual(
+            layout.missingOrUnusableRelativePaths(storageURL: tmpURL),
+            ["\(layout.runtimeRootDirectory)/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"],
+        )
+    }
+
+    func testIsInstalledRejectsRuntimeDylibRequiringNewerMacOS() throws {
+        let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
+        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tmpURL) }
+
+        for relativePath in layout.requiredRelativePaths {
+            let fullURL = tmpURL.appendingPathComponent(relativePath, isDirectory: false)
+            try FileManager.default.createDirectory(
+                at: fullURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+            )
+
+            switch fullURL.lastPathComponent {
+            case "sherpa-onnx-offline":
+                try machOFixtureData().write(to: fullURL)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: NSNumber(value: Int16(0o755))],
+                    ofItemAtPath: fullURL.path,
+                )
+            case let name where name == LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName:
+                try machOFixtureData(
+                    minimumOSVersion: OperatingSystemVersion(
+                        majorVersion: 15,
+                        minorVersion: 5,
+                        patchVersion: 0,
+                    )
+                ).write(to: fullURL)
+            case let name where name.hasSuffix(".dylib"):
+                try machOFixtureData().write(to: fullURL)
+            case "tokens.txt":
+                try Data("<unk> 0\n<s> 1\n</s> 2\n".utf8).write(to: fullURL)
+            default:
+                try Data(repeating: 0x5A, count: 1_048_576).write(to: fullURL)
+            }
+        }
+
+        let macOS154 = OperatingSystemVersion(majorVersion: 15, minorVersion: 4, patchVersion: 0)
+        let macOS155 = OperatingSystemVersion(majorVersion: 15, minorVersion: 5, patchVersion: 0)
+
+        XCTAssertFalse(layout.isInstalled(
+            storageURL: tmpURL,
+            runtimeCompatibilitySystemVersion: macOS154,
+        ))
+        XCTAssertEqual(
+            layout.missingOrUnusableRelativePaths(
+                storageURL: tmpURL,
+                runtimeCompatibilitySystemVersion: macOS154,
+            ),
+            ["\(layout.runtimeRootDirectory)/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"],
+        )
+        XCTAssertTrue(layout.isInstalled(
+            storageURL: tmpURL,
+            runtimeCompatibilitySystemVersion: macOS155,
+        ))
     }
 
     func testIsInstalledReturnsTrueWhenDirectoriesExist() throws {
@@ -373,5 +547,39 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
             modelFolder: "/tmp/models",
         )
         XCTAssertNil(decoder.parseJSONTranscript(stdoutLine: "{invalid json"))
+    }
+
+    private func machOFixtureData(minimumOSVersion: OperatingSystemVersion? = nil) -> Data {
+        guard let minimumOSVersion else {
+            return Data([0xCF, 0xFA, 0xED, 0xFE, 0x46, 0x49, 0x58, 0x54, 0x55, 0x52, 0x45])
+        }
+
+        var data = Data()
+        appendLittleEndianUInt32(0xFEED_FACF, to: &data)
+        appendLittleEndianUInt32(0x0100_0007, to: &data)
+        appendLittleEndianUInt32(3, to: &data)
+        appendLittleEndianUInt32(6, to: &data)
+        appendLittleEndianUInt32(1, to: &data)
+        appendLittleEndianUInt32(24, to: &data)
+        appendLittleEndianUInt32(0, to: &data)
+        appendLittleEndianUInt32(0, to: &data)
+
+        let encodedVersion = UInt32(minimumOSVersion.majorVersion << 16)
+            | UInt32(minimumOSVersion.minorVersion << 8)
+            | UInt32(minimumOSVersion.patchVersion)
+        appendLittleEndianUInt32(0x32, to: &data)
+        appendLittleEndianUInt32(24, to: &data)
+        appendLittleEndianUInt32(1, to: &data)
+        appendLittleEndianUInt32(encodedVersion, to: &data)
+        appendLittleEndianUInt32(encodedVersion, to: &data)
+        appendLittleEndianUInt32(0, to: &data)
+        return data
+    }
+
+    private func appendLittleEndianUInt32(_ value: UInt32, to data: inout Data) {
+        data.append(UInt8(value & 0xFF))
+        data.append(UInt8((value >> 8) & 0xFF))
+        data.append(UInt8((value >> 16) & 0xFF))
+        data.append(UInt8((value >> 24) & 0xFF))
     }
 }

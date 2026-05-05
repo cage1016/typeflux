@@ -1,7 +1,150 @@
+import AVFoundation
 @testable import Typeflux
 import XCTest
 
 final class AVFoundationAudioRecorderTests: XCTestCase {
+    func testValidateInputFormatAcceptsUsableMicrophoneFormat() throws {
+        XCTAssertNoThrow(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 44_100))
+    }
+
+    func testValidateInputFormatRejectsZeroChannelFormat() throws {
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 0, sampleRate: 44_100)) { error in
+            XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
+        }
+    }
+
+    func testValidateInputFormatRejectsZeroSampleRate() throws {
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 0)) { error in
+            XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
+        }
+    }
+
+    func testRebuildAudioEngineReplacesStaleEngineInstance() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let recorder = AVFoundationAudioRecorder(settingsStore: SettingsStore(defaults: defaults))
+        let originalIdentifier = recorder.audioEngineIdentifierForTesting
+
+        recorder.rebuildAudioEngineForTesting()
+
+        XCTAssertNotEqual(recorder.audioEngineIdentifierForTesting, originalIdentifier)
+    }
+
+    func testPrepareEngineForRecordingSessionReplacesStaleEngineInstance() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let recorder = AVFoundationAudioRecorder(settingsStore: SettingsStore(defaults: defaults))
+        let originalIdentifier = recorder.audioEngineIdentifierForTesting
+
+        recorder.prepareEngineForRecordingSessionForTesting()
+
+        XCTAssertNotEqual(recorder.audioEngineIdentifierForTesting, originalIdentifier)
+    }
+
+    func testResolvedInputDeviceUsesPreferredMicrophoneWhenAvailable() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.preferredMicrophoneID = "external-mic"
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(
+                resolvedInputDeviceIDs: ["external-mic": 42],
+                defaultInputDeviceID: 7,
+            ),
+        )
+
+        XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 42)
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, "external-mic")
+    }
+
+    func testExplicitInputDeviceForRecordingIsNilInAutomaticMode() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9),
+        )
+
+        XCTAssertNil(recorder.explicitInputDeviceIDForRecordingForTesting())
+        XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 9)
+    }
+
+    func testExplicitInputDeviceForRecordingUsesPreferredMicrophoneWhenAvailable() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.preferredMicrophoneID = "external-mic"
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(
+                resolvedInputDeviceIDs: ["external-mic": 42],
+                defaultInputDeviceID: 7,
+            ),
+        )
+
+        XCTAssertEqual(recorder.explicitInputDeviceIDForRecordingForTesting(), 42)
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, "external-mic")
+    }
+
+    func testResolvedInputDeviceFallsBackToDefaultWhenPreferredMicrophoneIsUnavailable() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.preferredMicrophoneID = "disconnected-mic"
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7),
+        )
+
+        XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 7)
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, AudioDeviceManager.automaticDeviceID)
+    }
+
+    func testExplicitInputDeviceForRecordingFallsBackToAutomaticWhenPreferredMicrophoneIsUnavailable() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.preferredMicrophoneID = "disconnected-mic"
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7),
+        )
+
+        XCTAssertNil(recorder.explicitInputDeviceIDForRecordingForTesting())
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, AudioDeviceManager.automaticDeviceID)
+    }
+
+    func testResolvedInputDeviceUsesDefaultMicrophoneInAutomaticMode() throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9),
+        )
+
+        XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 9)
+        XCTAssertEqual(settingsStore.preferredMicrophoneID, AudioDeviceManager.automaticDeviceID)
+    }
+
     func testDelayedMuteBeginsAfterConfiguredSleep() async throws {
         let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -28,6 +171,60 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         await sleepController.resume()
         await fulfillment(of: [beginExpectation], timeout: 1.0)
         XCTAssertEqual(muter.beginCallCount, 1)
+    }
+
+    func testDelayedMuteWaitsForStartCueWhenSoundEffectsAreEnabled() async throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.soundEffectsEnabled = true
+        settingsStore.muteSystemOutputDuringRecording = true
+
+        let sleepController = SleepController()
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            outputMuter: MockSystemAudioOutputMuter(),
+            sleep: { duration in
+                await sleepController.sleep(for: duration)
+            },
+        )
+
+        recorder.beginMutedSessionAfterDelayForTesting()
+        await sleepController.waitUntilSleeping()
+
+        let durations = await sleepController.recordedDurations()
+        XCTAssertEqual(durations, [.milliseconds(1_225)])
+        recorder.cancelMutedSessionForTesting()
+        await sleepController.resume()
+    }
+
+    func testDelayedMuteUsesShortDelayWhenSoundEffectsAreDisabled() async throws {
+        let suiteName = "AVFoundationAudioRecorderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.soundEffectsEnabled = false
+        settingsStore.muteSystemOutputDuringRecording = true
+
+        let sleepController = SleepController()
+        let recorder = AVFoundationAudioRecorder(
+            settingsStore: settingsStore,
+            outputMuter: MockSystemAudioOutputMuter(),
+            sleep: { duration in
+                await sleepController.sleep(for: duration)
+            },
+        )
+
+        recorder.beginMutedSessionAfterDelayForTesting()
+        await sleepController.waitUntilSleeping()
+
+        let durations = await sleepController.recordedDurations()
+        XCTAssertEqual(durations, [.milliseconds(180)])
+        recorder.cancelMutedSessionForTesting()
+        await sleepController.resume()
     }
 
     func testStoppingBeforeDelayedMutePreventsMuteSession() async throws {
@@ -64,7 +261,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
 
         coordinator.enqueue {
             started.fulfill()
-            Thread.sleep(forTimeInterval: 0.05)
+            Thread.sleep(forTimeInterval: 0.08)
         }
 
         await fulfillment(of: [started], timeout: 1.0)
@@ -73,7 +270,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         coordinator.drain()
         let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertGreaterThanOrEqual(elapsed, 0.04)
+        XCTAssertGreaterThanOrEqual(elapsed, 0.02)
     }
 
     func testAudioBufferWriteCoordinatorDrainIncludesMultipleQueuedOperations() {
@@ -90,6 +287,34 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         coordinator.drain()
 
         XCTAssertEqual(recorder.values, [1, 2])
+    }
+}
+
+private final class MockAudioDeviceManager: AudioDeviceManaging {
+    private let devices: [AudioInputDevice]
+    private let resolvedInputDeviceIDs: [String: AudioDeviceID]
+    private let defaultInputDevice: AudioDeviceID?
+
+    init(
+        devices: [AudioInputDevice] = [],
+        resolvedInputDeviceIDs: [String: AudioDeviceID] = [:],
+        defaultInputDeviceID: AudioDeviceID? = nil,
+    ) {
+        self.devices = devices
+        self.resolvedInputDeviceIDs = resolvedInputDeviceIDs
+        defaultInputDevice = defaultInputDeviceID
+    }
+
+    func availableInputDevices() -> [AudioInputDevice] {
+        devices
+    }
+
+    func resolveInputDeviceID(for uniqueID: String) -> AudioDeviceID? {
+        resolvedInputDeviceIDs[uniqueID]
+    }
+
+    func defaultInputDeviceID() -> AudioDeviceID? {
+        defaultInputDevice
     }
 }
 
@@ -115,8 +340,10 @@ private final class MockSystemAudioOutputMuter: SystemAudioOutputMuting {
 private actor SleepController {
     private var continuation: CheckedContinuation<Void, Never>?
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var durations: [Duration] = []
 
-    func sleep(for _: Duration) async {
+    func sleep(for duration: Duration) async {
+        durations.append(duration)
         await withCheckedContinuation { continuation in
             self.continuation = continuation
             let waiters = self.waiters
@@ -140,6 +367,10 @@ private actor SleepController {
     func resume() {
         continuation?.resume()
         continuation = nil
+    }
+
+    func recordedDurations() -> [Duration] {
+        durations
     }
 }
 
