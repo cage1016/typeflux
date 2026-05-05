@@ -319,6 +319,7 @@
 "workflow.ask.questionSectionTitle" = "あなたの質問";
 "workflow.ask.answerSectionTitle" = "答え";
 "workflow.ask.answerDisclaimer" = "内容は AI によって生成されています。重要な情報は確認してください。";
+"workflow.ask.followUpComingSoon" = "続けて質問する機能は近日公開予定です。現在ここからの入力には対応していません";
 "workflow.ask.answerPresented" = "回答が表示されました";
 "workflow.result.copied" = "クリップボードにコピーされました";
 "workflow.persona.finishRecordingFirst" = "ペルソナを切り替える前に、現在の録音を終了してください。";

@@ -2,19 +2,32 @@ import AppKit
 import SwiftUI
 import WebKit
 
+private final class PassthroughScrollWKWebView: WKWebView {
+    override func scrollWheel(with event: NSEvent) {
+        nextResponder?.scrollWheel(with: event)
+    }
+}
+
 struct MarkdownWebView: NSViewRepresentable {
     let markdown: String
     let appearanceMode: AppearanceMode
+    @Binding var contentHeight: CGFloat
+
+    init(markdown: String, appearanceMode: AppearanceMode, contentHeight: Binding<CGFloat> = .constant(0)) {
+        self.markdown = markdown
+        self.appearanceMode = appearanceMode
+        _contentHeight = contentHeight
+    }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(contentHeight: $contentHeight)
     }
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = PassthroughScrollWKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         webView.allowsMagnification = false
         webView.allowsBackForwardNavigationGestures = false
@@ -33,6 +46,7 @@ struct MarkdownWebView: NSViewRepresentable {
         let html = wrappedHTML(for: normalizedMarkdown)
         guard coordinator.lastHTML != html else { return }
         coordinator.lastHTML = html
+        coordinator.contentHeight = $contentHeight
         webView.loadHTMLString(html, baseURL: nil)
     }
 
@@ -217,6 +231,15 @@ struct MarkdownWebView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var lastHTML: String?
+        var contentHeight: Binding<CGFloat>
+
+        init(contentHeight: Binding<CGFloat>) {
+            self.contentHeight = contentHeight
+        }
+
+        func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
+            updateContentHeight(for: webView)
+        }
 
         func webView(
             _: WKWebView,
@@ -232,6 +255,27 @@ struct MarkdownWebView: NSViewRepresentable {
             }
 
             decisionHandler(.allow)
+        }
+
+        private func updateContentHeight(for webView: WKWebView) {
+            webView.evaluateJavaScript(
+                "Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight, document.body.getBoundingClientRect().height))"
+            ) { [weak self] result, _ in
+                guard let self else { return }
+                let rawHeight: CGFloat?
+                if let number = result as? NSNumber {
+                    rawHeight = CGFloat(truncating: number)
+                } else if let double = result as? Double {
+                    rawHeight = CGFloat(double)
+                } else {
+                    rawHeight = nil
+                }
+
+                guard let rawHeight, rawHeight.isFinite, rawHeight > 0 else { return }
+                DispatchQueue.main.async {
+                    self.contentHeight.wrappedValue = ceil(rawHeight)
+                }
+            }
         }
     }
 }

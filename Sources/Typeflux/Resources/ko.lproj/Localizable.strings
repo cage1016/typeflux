@@ -319,6 +319,7 @@
 "workflow.ask.questionSectionTitle" = "질문";
 "workflow.ask.answerSectionTitle" = "답변";
 "workflow.ask.answerDisclaimer" = "AI가 생성한 내용입니다. 중요한 정보는 확인해 주세요.";
+"workflow.ask.followUpComingSoon" = "후속 질문 기능은 곧 제공될 예정이며, 현재는 여기서 계속 입력할 수 없습니다";
 "workflow.ask.answerPresented" = "답변 표시됨";
 "workflow.result.copied" = "클립보드에 복사됨";
 "workflow.persona.finishRecordingFirst" = "페르소나를 전환하기 전에 현재 녹음을 완료하세요.";
