@@ -36,8 +36,12 @@ enum FeedbackAPIError: LocalizedError, Equatable {
             L("feedback.error.emptyContent")
         case .networkError(let message):
             message
-        case .serverError(_, let message):
-            message ?? L("feedback.error.server")
+        case .serverError(let code, let message):
+            TypefluxCloudServerErrorMessage.userMessage(
+                code: code,
+                message: message,
+                fallback: L("feedback.error.server")
+            )
         case .invalidResponse:
             L("feedback.error.invalidResponse")
         case .unauthorized:

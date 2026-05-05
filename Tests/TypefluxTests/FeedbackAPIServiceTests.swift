@@ -105,6 +105,10 @@ final class FeedbackAPIServiceTests: XCTestCase {
     }
 
     func testSubmitMapsServerErrorMessage() async throws {
+        let originalLanguage = AppLocalization.shared.language
+        AppLocalization.shared.setLanguage(.english)
+        defer { AppLocalization.shared.setLanguage(originalLanguage) }
+
         let session = FeedbackStubSession()
         await session.setHandler { request in
             let payload = Data(#"{"code":"VALIDATION_ERROR","message":"Content is too long","data":null}"#.utf8)
@@ -117,6 +121,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             XCTFail("Expected server error")
         } catch let error as FeedbackAPIError {
             XCTAssertEqual(error, .serverError(code: "VALIDATION_ERROR", message: "Content is too long"))
+            XCTAssertEqual(error.errorDescription, "The request was invalid. Please check the input and try again.")
         }
     }
 
