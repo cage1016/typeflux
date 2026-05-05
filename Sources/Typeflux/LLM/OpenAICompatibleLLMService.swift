@@ -142,7 +142,7 @@ final class OpenAICompatibleLLMService: LLMService {
             guard let token else {
                 throw TypefluxCloudLLMError.notLoggedIn
             }
-            let primary = await CloudEndpointRegistry.shared.primaryEndpoint()
+            let primary = await CloudEndpointRegistry.shared.latencyOptimizedEndpoint()
             let connection = try LLMConnectionResolver.resolve(
                 provider: config.provider,
                 baseURL: "",

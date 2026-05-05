@@ -69,6 +69,34 @@ final class CloudEndpointSelectorTests: XCTestCase {
         XCTAssertEqual(ordered, [urlB, urlC, urlA])
     }
 
+    func testPrimaryFirstEndpointsPreservesConfiguredOrderDespiteLatency() async {
+        let selector = CloudEndpointSelector(
+            baseURLs: [urlA, urlB, urlC],
+            prober: StubProber()
+        )
+        await selector.reportSuccess(urlA, latencyMs: 300)
+        await selector.reportSuccess(urlB, latencyMs: 50)
+        await selector.reportSuccess(urlC, latencyMs: 150)
+
+        let ordered = await selector.primaryFirstEndpoints()
+        XCTAssertEqual(ordered, [urlA, urlB, urlC])
+    }
+
+    func testPrimaryFirstEndpointsMovesCooldownPrimaryBehindHealthyBackups() async {
+        var config = CloudEndpointSelectorConfig.default
+        config.failureThreshold = 1
+        config.baseCooldown = 60
+        let selector = CloudEndpointSelector(
+            baseURLs: [urlA, urlB, urlC],
+            prober: StubProber(),
+            config: config
+        )
+        await selector.reportFailure(urlA, error: SampleError.boom)
+
+        let ordered = await selector.primaryFirstEndpoints()
+        XCTAssertEqual(ordered, [urlB, urlC, urlA])
+    }
+
     func testOrderedEndpointsSortsCooldownByExpiryAscending() async {
         var config = CloudEndpointSelectorConfig.default
         config.failureThreshold = 1

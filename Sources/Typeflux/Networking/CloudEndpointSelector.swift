@@ -86,11 +86,17 @@ actor CloudEndpointSelector {
         self.states = Dictionary(uniqueKeysWithValues: unique.map { ($0, EndpointState()) })
     }
 
-    /// Returns endpoints in the order callers should try them:
+    /// Returns endpoints in the order latency-sensitive callers should try them:
     /// 1. Healthy endpoints, sorted by EWMA latency ascending (unknown latency last,
     ///    falling back to the configured insertion order to break ties).
     /// 2. Endpoints currently in cooldown, sorted by cooldown expiry ascending.
     func orderedEndpoints() -> [URL] {
+        latencyOptimizedEndpoints()
+    }
+
+    /// Returns endpoints in latency-optimized order for APIs where the nearest
+    /// responsive cloud host should handle the request.
+    func latencyOptimizedEndpoints() -> [URL] {
         let snapshot = self.now()
 
         struct Ranked {
@@ -139,10 +145,58 @@ actor CloudEndpointSelector {
         }.map { $0.url }
     }
 
+    /// Returns endpoints in configured primary-first order. The first
+    /// configured endpoint remains preferred unless it is currently in
+    /// cooldown, in which case healthy backups are tried first.
+    func primaryFirstEndpoints() -> [URL] {
+        let snapshot = self.now()
+
+        struct Ranked {
+            let url: URL
+            let inCooldown: Bool
+            let cooldownUntil: Date?
+            let insertionIndex: Int
+        }
+
+        let ranked: [Ranked] = orderedURLs.enumerated().map { idx, url in
+            let state = states[url] ?? EndpointState()
+            let inCooldown = (state.cooldownUntil ?? .distantPast) > snapshot
+            return Ranked(
+                url: url,
+                inCooldown: inCooldown,
+                cooldownUntil: state.cooldownUntil,
+                insertionIndex: idx
+            )
+        }
+
+        return ranked.sorted { lhs, rhs in
+            if lhs.inCooldown != rhs.inCooldown {
+                return !lhs.inCooldown
+            }
+            if lhs.inCooldown && rhs.inCooldown {
+                let lhsExpiry = lhs.cooldownUntil ?? .distantFuture
+                let rhsExpiry = rhs.cooldownUntil ?? .distantFuture
+                if lhsExpiry != rhsExpiry { return lhsExpiry < rhsExpiry }
+            }
+            return lhs.insertionIndex < rhs.insertionIndex
+        }.map { $0.url }
+    }
+
     /// Returns the highest-priority endpoint. Always non-nil because the
     /// selector requires at least one base URL at construction time.
     func primaryEndpoint() -> URL {
-        orderedEndpoints().first ?? orderedURLs[0]
+        latencyOptimizedEndpoint()
+    }
+
+    /// Returns the configured primary endpoint: the first URL in the
+    /// de-duplicated configured list.
+    func configuredPrimaryEndpoint() -> URL {
+        orderedURLs[0]
+    }
+
+    /// Returns the current latency-optimized endpoint.
+    func latencyOptimizedEndpoint() -> URL {
+        latencyOptimizedEndpoints().first ?? orderedURLs[0]
     }
 
     /// All known base URLs in their original configured order.

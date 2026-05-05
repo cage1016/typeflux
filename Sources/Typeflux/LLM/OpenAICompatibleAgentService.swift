@@ -13,7 +13,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             guard let token else {
                 throw TypefluxCloudLLMError.notLoggedIn
             }
-            let primary = await CloudEndpointRegistry.shared.primaryEndpoint()
+            let primary = await CloudEndpointRegistry.shared.latencyOptimizedEndpoint()
             return try LLMConnectionResolver.resolve(
                 provider: config.provider,
                 baseURL: "",
@@ -63,7 +63,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             let connection = try await self.resolveConnection(for: llmConfig)
             let additionalHeaders = self.headers(for: connection, scenario: .askAnything)
             let cloudBaseURL: URL? = (llmConfig.provider == .typefluxCloud)
-                ? await CloudEndpointRegistry.shared.primaryEndpoint()
+                ? await CloudEndpointRegistry.shared.latencyOptimizedEndpoint()
                 : nil
             return try await Self.reportingFailures(cloudBaseURL: cloudBaseURL) {
                 try await RemoteAgentClient.runTool(
@@ -112,7 +112,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             let connection = try await self.resolveConnection(for: llmConfig)
             let additionalHeaders = self.headers(for: connection, scenario: .askAnything)
             let cloudBaseURL: URL? = (llmConfig.provider == .typefluxCloud)
-                ? await CloudEndpointRegistry.shared.primaryEndpoint()
+                ? await CloudEndpointRegistry.shared.latencyOptimizedEndpoint()
                 : nil
             return try await Self.reportingFailures(cloudBaseURL: cloudBaseURL) {
                 try await RemoteAgentClient.runAnyTool(

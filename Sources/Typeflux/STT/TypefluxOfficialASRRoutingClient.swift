@@ -72,7 +72,7 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
         accessToken: String,
         scenario: TypefluxCloudScenario
     ) async throws -> TypefluxOfficialASRRouteDecision {
-        let (data, response) = try await executor.execute { baseURL in
+        let (data, response) = try await executor.execute(apiPath: "/api/v1/asr/aliyun/token") { baseURL in
             var request = URLRequest(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/asr/aliyun/token"))
             request.httpMethod = "POST"
             request.timeoutInterval = 30
@@ -121,7 +121,7 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
             outputChars: outputChars
         )
         let payload = try JSONEncoder().encode(body)
-        let (data, response) = try await executor.execute { baseURL in
+        let (data, response) = try await executor.execute(apiPath: "/api/v1/asr/aliyun/usage") { baseURL in
             var request = URLRequest(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/asr/aliyun/usage"))
             request.httpMethod = "POST"
             request.timeoutInterval = 30

@@ -127,23 +127,81 @@ final class CloudRequestExecutorTests: XCTestCase {
         XCTAssertEqual(calls, [urlA, urlB])
     }
 
-    func testExecuteRecordsLatencyAndReshufflesPriority() async throws {
+    func testExecuteKeepsPrimaryFirstForNonSpecialAPIEvenWhenBackupIsFaster() async throws {
         let session = StubSession()
         await session.setHandler { request in
             (Data("ok".utf8), Self.httpResponse(url: request.url!, status: 200))
         }
         let selector = CloudEndpointSelector(baseURLs: [urlA, urlB], prober: NoOpProber())
-        // Pre-seed urlA with a high latency so urlB should be preferred.
+        // Pre-seed urlA with a high latency. Non-special APIs should still
+        // treat the first configured endpoint as primary.
         await selector.reportSuccess(urlA, latencyMs: 1000)
         await selector.reportSuccess(urlB, latencyMs: 50)
 
         let executor = CloudRequestExecutor(selector: selector, session: session)
-        _ = try await executor.execute { base in
+        _ = try await executor.execute(apiPath: "/api/v1/me") { base in
             URLRequest(url: base.appendingPathComponent("api/v1/me"))
         }
 
         let calls = await session.callOrder
+        XCTAssertEqual(calls.first, urlA)
+    }
+
+    func testExecuteUsesLatencyOptimizedRoutingForChatAPI() async throws {
+        let session = StubSession()
+        await session.setHandler { request in
+            (Data("ok".utf8), Self.httpResponse(url: request.url!, status: 200))
+        }
+        let selector = CloudEndpointSelector(baseURLs: [urlA, urlB], prober: NoOpProber())
+        await selector.reportSuccess(urlA, latencyMs: 1000)
+        await selector.reportSuccess(urlB, latencyMs: 50)
+
+        let executor = CloudRequestExecutor(selector: selector, session: session)
+        _ = try await executor.execute(apiPath: "/api/v1/chat/completions") { base in
+            URLRequest(url: base.appendingPathComponent("api/v1/chat/completions"))
+        }
+
+        let calls = await session.callOrder
         XCTAssertEqual(calls.first, urlB)
+    }
+
+    func testExecuteUsesLatencyOptimizedRoutingForASRAPI() async throws {
+        let session = StubSession()
+        await session.setHandler { request in
+            (Data("ok".utf8), Self.httpResponse(url: request.url!, status: 200))
+        }
+        let selector = CloudEndpointSelector(baseURLs: [urlA, urlB], prober: NoOpProber())
+        await selector.reportSuccess(urlA, latencyMs: 1000)
+        await selector.reportSuccess(urlB, latencyMs: 50)
+
+        let executor = CloudRequestExecutor(selector: selector, session: session)
+        _ = try await executor.execute(apiPath: "/api/v1/asr/aliyun/token") { base in
+            URLRequest(url: base.appendingPathComponent("api/v1/asr/aliyun/token"))
+        }
+
+        let calls = await session.callOrder
+        XCTAssertEqual(calls.first, urlB)
+    }
+
+    func testExecuteBuildsRequestOnlyForAttemptedEndpoints() async throws {
+        let session = StubSession()
+        await session.setHandler { request in
+            (Data("ok".utf8), Self.httpResponse(url: request.url!, status: 200))
+        }
+        let selector = CloudEndpointSelector(baseURLs: [urlA, urlB], prober: NoOpProber())
+        await selector.reportSuccess(urlA, latencyMs: 1000)
+        await selector.reportSuccess(urlB, latencyMs: 50)
+
+        let counter = BuildCounter()
+        let executor = CloudRequestExecutor(selector: selector, session: session)
+        _ = try await executor.execute(apiPath: "/api/v1/chat/completions") { base in
+            counter.increment()
+            return URLRequest(url: base.appendingPathComponent("api/v1/chat/completions"))
+        }
+
+        let calls = await session.callOrder
+        XCTAssertEqual(calls, [urlB])
+        XCTAssertEqual(counter.value, 1)
     }
 
     // MARK: - Helpers
@@ -183,5 +241,22 @@ private actor StubSession: CloudHTTPSession {
 private struct NoOpProber: CloudEndpointProbing {
     func probe(baseURL: URL, nonce: String, timeout: TimeInterval) async throws -> CloudEndpointProbeResult {
         throw CloudEndpointProbeError.timedOut
+    }
+}
+
+private final class BuildCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value = 0
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return _value
+    }
+
+    func increment() {
+        lock.lock()
+        defer { lock.unlock() }
+        _value += 1
     }
 }
