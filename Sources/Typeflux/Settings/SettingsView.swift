@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // swiftlint:disable file_length
 private enum VocabularyFilter: String, CaseIterable, Identifiable {
@@ -200,6 +201,8 @@ struct StudioView: View {
     @State private var isDirectFeedbackPresented = false
     @State private var feedbackContent = ""
     @State private var feedbackContact = ""
+    @State private var feedbackImages: [FeedbackImageAttachment] = []
+    @State private var feedbackImageUploadTasks: [FeedbackImageAttachment.ID: Task<Void, Never>] = [:]
     @State private var isSubmittingFeedback = false
     @State private var feedbackSubmissionError: String?
     @State private var agentConfigurationTab: AgentConfigurationTab = .general
@@ -369,7 +372,10 @@ struct StudioView: View {
         .sheet(isPresented: $viewModel.showingJobsPage) {
             agentJobsSheet
         }
-        .sheet(isPresented: $isDirectFeedbackPresented) {
+        .sheet(
+            isPresented: $isDirectFeedbackPresented,
+            onDismiss: cancelAllFeedbackImageUploads
+        ) {
             directFeedbackSheet
         }
     }
@@ -378,9 +384,13 @@ struct StudioView: View {
         DirectFeedbackSheet(
             content: $feedbackContent,
             contact: $feedbackContact,
+            images: $feedbackImages,
             isSubmitting: isSubmittingFeedback,
             errorMessage: feedbackSubmissionError,
+            onAddImages: selectFeedbackImages,
+            onRemoveImage: removeFeedbackImage,
             onCancel: {
+                cancelAllFeedbackImageUploads()
                 isDirectFeedbackPresented = false
             },
             onSubmit: submitDirectFeedback
@@ -388,8 +398,11 @@ struct StudioView: View {
     }
 
     private func openDirectFeedback() {
+        cancelAllFeedbackImageUploads()
         feedbackContent = ""
         feedbackContact = authState.userProfile?.email ?? ""
+        feedbackImages = []
+        feedbackImageUploadTasks = [:]
         feedbackSubmissionError = nil
         isSubmittingFeedback = false
         isDirectFeedbackPresented = true
@@ -418,23 +431,132 @@ struct StudioView: View {
     private func submitDirectFeedback() {
         let content = feedbackContent
         let contact = feedbackContact
+        let imageURLs = feedbackImages.compactMap(\.state.uploadedURL)
         let token = authState.accessToken
         isSubmittingFeedback = true
         feedbackSubmissionError = nil
 
         Task { @MainActor in
             do {
-                _ = try await FeedbackAPIService.submit(content: content, contact: contact, token: token)
+                _ = try await FeedbackAPIService.submit(
+                    content: content,
+                    contact: contact,
+                    imageURLs: imageURLs,
+                    token: token
+                )
                 isSubmittingFeedback = false
                 isDirectFeedbackPresented = false
                 feedbackContent = ""
                 feedbackContact = ""
+                feedbackImages = []
                 viewModel.showToast(L("feedback.toast.submitted"))
             } catch {
                 isSubmittingFeedback = false
                 feedbackSubmissionError = error.localizedDescription
             }
         }
+    }
+
+    private func selectFeedbackImages() {
+        let remainingSlots = max(0, 4 - feedbackImages.count)
+        guard remainingSlots > 0 else { return }
+
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.jpeg, .png, .webP, .gif]
+
+        guard panel.runModal() == .OK else { return }
+        let selectedURLs = Array(panel.urls.prefix(remainingSlots))
+        for url in selectedURLs {
+            enqueueFeedbackImageUpload(from: url)
+        }
+    }
+
+    private func removeFeedbackImage(id: FeedbackImageAttachment.ID) {
+        feedbackImageUploadTasks.removeValue(forKey: id)?.cancel()
+        feedbackImages.removeAll { $0.id == id }
+    }
+
+    private func enqueueFeedbackImageUpload(from url: URL) {
+        let id = UUID()
+        feedbackImages.append(
+            FeedbackImageAttachment(
+                id: id,
+                filename: url.lastPathComponent,
+                state: .preparing
+            )
+        )
+
+        let token = authState.accessToken
+        let task = Task.detached(priority: .utility) {
+            do {
+                try Task.checkCancellation()
+                let prepared = try FeedbackImageProcessor.prepare(url: url)
+                try Task.checkCancellation()
+                await updateFeedbackImage(id: id) { image in
+                    image.filename = prepared.filename
+                    image.thumbnail = prepared.thumbnail
+                    image.state = .uploading
+                }
+                try Task.checkCancellation()
+
+                let target = try await FeedbackAPIService.createImageUploadTarget(
+                    filename: prepared.filename,
+                    contentType: prepared.contentType,
+                    sizeBytes: Int64(prepared.data.count),
+                    token: token
+                )
+                try Task.checkCancellation()
+                try await FeedbackAPIService.uploadImage(
+                    data: prepared.data,
+                    filename: prepared.filename,
+                    contentType: prepared.contentType,
+                    to: target
+                )
+                try Task.checkCancellation()
+
+                await updateFeedbackImage(id: id) { image in
+                    image.state = .uploaded(target.imageURL)
+                }
+            } catch is CancellationError {
+                await clearFeedbackImageUploadTask(id: id)
+                return
+            } catch {
+                guard !Task.isCancelled else {
+                    await clearFeedbackImageUploadTask(id: id)
+                    return
+                }
+                await updateFeedbackImage(id: id) { image in
+                    image.state = .failed(error.localizedDescription)
+                }
+            }
+            await clearFeedbackImageUploadTask(id: id)
+        }
+        feedbackImageUploadTasks[id] = task
+    }
+
+    @MainActor
+    private func updateFeedbackImage(
+        id: FeedbackImageAttachment.ID,
+        mutate: (inout FeedbackImageAttachment) -> Void
+    ) {
+        guard let index = feedbackImages.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        mutate(&feedbackImages[index])
+    }
+
+    @MainActor
+    private func clearFeedbackImageUploadTask(id: FeedbackImageAttachment.ID) {
+        feedbackImageUploadTasks.removeValue(forKey: id)
+    }
+
+    @MainActor
+    private func cancelAllFeedbackImageUploads() {
+        feedbackImageUploadTasks.values.forEach { $0.cancel() }
+        feedbackImageUploadTasks = [:]
     }
 
     private func handleAccountAction() {

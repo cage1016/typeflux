@@ -34,9 +34,13 @@
 "feedback.direct.contentPlaceholder" = "請簡單說說你遇到的問題或想法。\n例如：我按下快捷鍵後沒有開始轉寫，重新啟動 App 後還是一樣。\n也可以寫：我希望轉寫完成後自動複製到剪貼簿。";
 "feedback.direct.contactLabel" = "聯絡方式（選填）";
 "feedback.direct.contactPlaceholder" = "電子郵件或其他聯絡方式";
+"feedback.direct.imagesLabel" = "圖片";
+"feedback.direct.addImage" = "新增圖片";
+"feedback.direct.removeImage" = "移除圖片";
 "feedback.direct.submit" = "提交";
 "feedback.toast.submitted" = "回饋已提交，謝謝。";
 "feedback.error.emptyContent" = "請輸入回饋內容。";
+"feedback.error.invalidImage" = "無法讀取這張圖片。";
 "feedback.error.server" = "提交回饋失敗。";
 "feedback.error.invalidResponse" = "收到的回饋回應無效。";
 

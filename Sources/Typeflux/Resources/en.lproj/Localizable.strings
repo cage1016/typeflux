@@ -34,9 +34,13 @@
 "feedback.direct.contentPlaceholder" = "Tell us what happened or what you would like to improve.\nExample: I pressed the shortcut, but dictation did not start, even after restarting the app.\nOr: I would like finished text to copy to the clipboard automatically.";
 "feedback.direct.contactLabel" = "Contact (optional)";
 "feedback.direct.contactPlaceholder" = "Email or other contact";
+"feedback.direct.imagesLabel" = "Images";
+"feedback.direct.addImage" = "Add image";
+"feedback.direct.removeImage" = "Remove image";
 "feedback.direct.submit" = "Submit";
 "feedback.toast.submitted" = "Feedback submitted. Thank you.";
 "feedback.error.emptyContent" = "Please enter feedback content.";
+"feedback.error.invalidImage" = "Unable to read this image.";
 "feedback.error.server" = "Failed to submit feedback.";
 "feedback.error.invalidResponse" = "Received an invalid feedback response.";
 

@@ -32,6 +32,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             let dict = try JSONSerialization.jsonObject(with: body) as? [String: Any]
             XCTAssertEqual(dict?["content"] as? String, "Please fix this")
             XCTAssertEqual(dict?["contact"] as? String, "user@example.com")
+            XCTAssertEqual(dict?["image_urls"] as? [String], ["https://cdn.example/image.jpg"])
 
             let payload = Data(#"{"code":"OK","data":{"id":"feedback-1","status":"pending"}}"#.utf8)
             return (payload, Self.httpResponse(url: request.url!, status: 200))
@@ -41,6 +42,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
         let response = try await FeedbackAPIService.submit(
             content: "  Please fix this  ",
             contact: " user@example.com ",
+            imageURLs: ["https://cdn.example/image.jpg"],
             token: "token-1",
             executor: executor
         )
@@ -71,6 +73,124 @@ final class FeedbackAPIServiceTests: XCTestCase {
         )
 
         XCTAssertEqual(response, FeedbackSubmissionResponse(id: "feedback-2", status: "pending"))
+    }
+
+    func testCreateImageUploadTargetPostsPresignRequest() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://api.example/api/v1/feedback/uploads/presign")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-1")
+
+            let body = try XCTUnwrap(request.httpBody)
+            let dict = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            XCTAssertEqual(dict?["filename"] as? String, "screen.jpg")
+            XCTAssertEqual(dict?["content_type"] as? String, "image/jpeg")
+            XCTAssertEqual(dict?["size_bytes"] as? Int, 123)
+
+            let payload = Data(
+                """
+                {"code":"OK","data":{"type":"s3_presigned_post","method":"POST","url":"https://s3.example/upload","bucket":"bucket","region":"us-east-1","key":"feedback/screen.jpg","expires_at":1777960800,"max_size_bytes":5242880,"headers":{"x-test":"1"},"fields":{"key":"feedback/screen.jpg","policy":"abc"},"image_url":"https://cdn.example/feedback/screen.jpg","upload_id":"upload-1"}}
+                """.utf8
+            )
+            return (payload, Self.httpResponse(url: request.url!, status: 200))
+        }
+        let executor = makeExecutor(session: session)
+
+        let target = try await FeedbackAPIService.createImageUploadTarget(
+            filename: "screen.jpg",
+            contentType: "image/jpeg",
+            sizeBytes: 123,
+            token: "token-1",
+            executor: executor
+        )
+
+        XCTAssertEqual(target.url, "https://s3.example/upload")
+        XCTAssertEqual(target.fields["policy"], "abc")
+        XCTAssertEqual(target.imageURL, "https://cdn.example/feedback/screen.jpg")
+    }
+
+    func testUploadImagePostsMultipartFieldsAndFileToPresignedTarget() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://s3.example/upload")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "x-amz-meta-purpose"), "feedback")
+            XCTAssertTrue(request.value(forHTTPHeaderField: "Content-Type")?.contains("multipart/form-data; boundary=") == true)
+
+            let body = String(data: try XCTUnwrap(request.httpBody), encoding: .utf8)
+            XCTAssertTrue(body?.contains("name=\"key\"") == true)
+            XCTAssertTrue(body?.contains("feedback/screen.jpg") == true)
+            XCTAssertTrue(body?.contains("name=\"file\"; filename=\"screen.jpg\"") == true)
+            XCTAssertTrue(body?.contains("Content-Type: image/jpeg") == true)
+            XCTAssertTrue(body?.contains("image-data") == true)
+
+            return (Data(), Self.httpResponse(url: request.url!, status: 204))
+        }
+
+        try await FeedbackAPIService.uploadImage(
+            data: Data("image-data".utf8),
+            filename: "screen.jpg",
+            contentType: "image/jpeg",
+            to: FeedbackUploadTarget(
+                type: "s3_presigned_post",
+                method: "POST",
+                url: "https://s3.example/upload",
+                bucket: "bucket",
+                region: "us-east-1",
+                key: "feedback/screen.jpg",
+                expiresAt: 1_777_960_800,
+                maxSizeBytes: 5_242_880,
+                headers: ["x-amz-meta-purpose": "feedback"],
+                fields: ["key": "feedback/screen.jpg", "policy": "abc"],
+                imageURL: "https://cdn.example/feedback/screen.jpg",
+                uploadID: "upload-1"
+            ),
+            session: session
+        )
+    }
+
+    func testUploadImagePropagatesTaskCancellation() async throws {
+        let session = FeedbackStubSession()
+        await session.setHandler { request in
+            try await Task.sleep(nanoseconds: 5_000_000_000)
+            return (Data(), Self.httpResponse(url: request.url!, status: 204))
+        }
+
+        let task = Task {
+            try await FeedbackAPIService.uploadImage(
+                data: Data("image-data".utf8),
+                filename: "screen.jpg",
+                contentType: "image/jpeg",
+                to: FeedbackUploadTarget(
+                    type: "s3_presigned_post",
+                    method: "POST",
+                    url: "https://s3.example/upload",
+                    bucket: "bucket",
+                    region: "us-east-1",
+                    key: "feedback/screen.jpg",
+                    expiresAt: 1_777_960_800,
+                    maxSizeBytes: 5_242_880,
+                    headers: [:],
+                    fields: ["key": "feedback/screen.jpg", "policy": "abc"],
+                    imageURL: "https://cdn.example/feedback/screen.jpg",
+                    uploadID: "upload-1"
+                ),
+                session: session
+            )
+        }
+
+        try await Task.sleep(nanoseconds: 10_000_000)
+        task.cancel()
+
+        do {
+            try await task.value
+            XCTFail("Expected cancelled upload to throw CancellationError")
+        } catch is CancellationError {
+            let callCount = await session.callCount
+            XCTAssertEqual(callCount, 1)
+        }
     }
 
     func testSubmitRejectsEmptyContentBeforeNetworkRequest() async throws {
