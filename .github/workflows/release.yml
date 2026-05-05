@@ -35,6 +35,16 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: macos-latest
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release_arch: arm64
+            package_arch: apple-silicon
+            release_script: ./scripts/release_notarize.sh
+          - release_arch: x86_64
+            package_arch: intel
+            release_script: ./scripts/release_intel.sh
     env:
       APP_NAME: Typeflux
       BUILD_DIR: .build/release
@@ -134,35 +144,107 @@ jobs:
             APP_ONLY_PACKAGE_NAME="Typeflux-app-only"
           fi
 
-          TYPEFLUX_RELEASE_ARCH=arm64 \
-          TYPEFLUX_RELEASE_VARIANT=minimal \
-          TYPEFLUX_PACKAGE_NAME="$MINIMAL_PACKAGE_NAME-apple-silicon" \
-          ./scripts/release_notarize.sh
+          ARTIFACT_STAGING_DIR="$RUNNER_TEMP/typeflux-release-artifacts"
+          rm -rf "$ARTIFACT_STAGING_DIR"
+          mkdir -p "$ARTIFACT_STAGING_DIR"
 
-          TYPEFLUX_RELEASE_ARCH=x86_64 \
-          TYPEFLUX_RELEASE_VARIANT=minimal \
-          TYPEFLUX_PACKAGE_NAME="$MINIMAL_PACKAGE_NAME-intel" \
-          ./scripts/release_intel.sh
+          require_package_artifacts() {
+            local package_name="$1"
+            local missing=false
 
-          TYPEFLUX_RELEASE_ARCH=arm64 \
-          TYPEFLUX_RELEASE_VARIANT=full \
-          TYPEFLUX_PACKAGE_NAME="$FULL_PACKAGE_NAME-apple-silicon" \
-          ./scripts/release_notarize.sh
+            for extension in dmg zip; do
+              local artifact_path="$BUILD_DIR/${package_name}.${extension}"
+              if [[ -f "$artifact_path" ]]; then
+                echo "Created artifact: ${artifact_path}"
+              else
+                echo "Error: expected artifact was not created: ${artifact_path}" >&2
+                missing=true
+              fi
+            done
 
-          TYPEFLUX_RELEASE_ARCH=x86_64 \
-          TYPEFLUX_RELEASE_VARIANT=full \
-          TYPEFLUX_PACKAGE_NAME="$FULL_PACKAGE_NAME-intel" \
-          ./scripts/release_intel.sh
+            if [[ "$missing" == true ]]; then
+              echo "Release artifacts currently in ${BUILD_DIR}:" >&2
+              find "$BUILD_DIR" -maxdepth 1 \( -name "Typeflux*.dmg" -o -name "Typeflux*.zip" \) -print | sort >&2
+              exit 1
+            fi
+          }
 
-          TYPEFLUX_RELEASE_ARCH=arm64 \
-          TYPEFLUX_RELEASE_VARIANT=app-only \
-          TYPEFLUX_PACKAGE_NAME="$APP_ONLY_PACKAGE_NAME-apple-silicon" \
-          ./scripts/release_notarize.sh
+          stage_package_artifacts() {
+            local package_name="$1"
 
-          TYPEFLUX_RELEASE_ARCH=x86_64 \
-          TYPEFLUX_RELEASE_VARIANT=app-only \
-          TYPEFLUX_PACKAGE_NAME="$APP_ONLY_PACKAGE_NAME-intel" \
-          ./scripts/release_intel.sh
+            for extension in dmg zip; do
+              local artifact_path="$BUILD_DIR/${package_name}.${extension}"
+              cp "$artifact_path" "$ARTIFACT_STAGING_DIR/"
+              echo "Staged artifact: ${ARTIFACT_STAGING_DIR}/${package_name}.${extension}"
+            done
+          }
+
+          run_release() {
+            local release_arch="$1"
+            local release_variant="$2"
+            local package_name="$3"
+            local release_script="$4"
+
+            echo "Building release package: ${package_name} (${release_variant}, ${release_arch})"
+            TYPEFLUX_RELEASE_ARCH="$release_arch" \
+            TYPEFLUX_RELEASE_VARIANT="$release_variant" \
+            TYPEFLUX_PACKAGE_NAME="$package_name" \
+            "$release_script"
+            require_package_artifacts "$package_name"
+            stage_package_artifacts "$package_name"
+          }
+
+          run_release "${{ matrix.release_arch }}" minimal "$MINIMAL_PACKAGE_NAME-${{ matrix.package_arch }}" "${{ matrix.release_script }}"
+          run_release "${{ matrix.release_arch }}" full "$FULL_PACKAGE_NAME-${{ matrix.package_arch }}" "${{ matrix.release_script }}"
+          run_release "${{ matrix.release_arch }}" app-only "$APP_ONLY_PACKAGE_NAME-${{ matrix.package_arch }}" "${{ matrix.release_script }}"
+
+          echo "Restoring staged release artifacts to ${BUILD_DIR}:"
+          mkdir -p "$BUILD_DIR"
+          cp "$ARTIFACT_STAGING_DIR"/Typeflux*.dmg "$ARTIFACT_STAGING_DIR"/Typeflux*.zip "$BUILD_DIR/"
+          find "$BUILD_DIR" -maxdepth 1 \( -name "Typeflux*.dmg" -o -name "Typeflux*.zip" \) -print | sort
+
+      - name: Upload architecture artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: typeflux-release-${{ matrix.package_arch }}-${{ github.sha }}
+          path: |
+            .build/release/Typeflux*-${{ matrix.package_arch }}.zip
+            .build/release/Typeflux*-${{ matrix.package_arch }}.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Cleanup signing keychain
+        if: always()
+        run: |
+          set -euo pipefail
+
+          security delete-keychain "$KEYCHAIN_PATH" || true
+          rm -f "$APPLE_CERTIFICATE_PATH"
+
+  publish-release-artifacts:
+    if: github.event_name != 'pull_request'
+    needs: build-signed-macos-app
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      APP_NAME: Typeflux
+      BUILD_DIR: .build/release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Apple Silicon artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: typeflux-release-apple-silicon-${{ github.sha }}
+          path: .build/release
+
+      - name: Download Intel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: typeflux-release-intel-${{ github.sha }}
+          path: .build/release
 
       - name: Verify release artifacts
         run: |
@@ -253,11 +335,3 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup signing keychain
-        if: always()
-        run: |
-          set -euo pipefail
-
-          security delete-keychain "$KEYCHAIN_PATH" || true
-          rm -f "$APPLE_CERTIFICATE_PATH"
