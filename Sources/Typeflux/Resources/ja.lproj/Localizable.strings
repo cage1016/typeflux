@@ -34,9 +34,13 @@
 "feedback.direct.contentPlaceholder" = "困っていることや改善してほしいことを簡単に書いてください。\n例：ショートカットを押しても文字起こしが始まらず、アプリを再起動しても同じです。\nまたは：文字起こし後のテキストを自動でクリップボードにコピーしてほしいです。";
 "feedback.direct.contactLabel" = "連絡先（任意）";
 "feedback.direct.contactPlaceholder" = "メールアドレスまたは連絡先";
+"feedback.direct.imagesLabel" = "画像";
+"feedback.direct.addImage" = "画像を追加";
+"feedback.direct.removeImage" = "画像を削除";
 "feedback.direct.submit" = "送信";
 "feedback.toast.submitted" = "フィードバックを送信しました。ありがとうございます。";
 "feedback.error.emptyContent" = "フィードバック内容を入力してください。";
+"feedback.error.invalidImage" = "この画像を読み込めません。";
 "feedback.error.server" = "フィードバックの送信に失敗しました。";
 "feedback.error.invalidResponse" = "フィードバックの応答が無効です。";
 

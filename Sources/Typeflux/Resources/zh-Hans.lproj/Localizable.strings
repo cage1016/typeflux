@@ -34,9 +34,13 @@
 "feedback.direct.contentPlaceholder" = "请简单说说你遇到的问题或想法。\n例如：我按下快捷键后没有开始转写，重启应用后还是一样。\n也可以写：我希望转写完成后自动复制到剪贴板。";
 "feedback.direct.contactLabel" = "联系方式（可选）";
 "feedback.direct.contactPlaceholder" = "邮箱或其他联系方式";
+"feedback.direct.imagesLabel" = "图片";
+"feedback.direct.addImage" = "添加图片";
+"feedback.direct.removeImage" = "移除图片";
 "feedback.direct.submit" = "提交";
 "feedback.toast.submitted" = "反馈已提交，谢谢。";
 "feedback.error.emptyContent" = "请输入反馈内容。";
+"feedback.error.invalidImage" = "无法读取这张图片。";
 "feedback.error.server" = "提交反馈失败。";
 "feedback.error.invalidResponse" = "收到的反馈响应无效。";
 

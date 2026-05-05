@@ -92,6 +92,8 @@ struct CloudRequestExecutor: Sendable {
                 return (data, http)
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let error as URLError where error.code == .cancelled {
+                throw CancellationError()
             } catch {
                 await selector.reportFailure(endpoint, error: error)
                 lastError = error

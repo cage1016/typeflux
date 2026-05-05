@@ -34,9 +34,13 @@
 "feedback.direct.contentPlaceholder" = "겪은 문제나 개선되면 좋을 점을 간단히 적어 주세요.\n예: 단축키를 눌러도 받아쓰기가 시작되지 않고, 앱을 다시 열어도 그대로입니다.\n또는: 받아쓰기가 끝나면 텍스트가 자동으로 클립보드에 복사되면 좋겠습니다.";
 "feedback.direct.contactLabel" = "연락처(선택 사항)";
 "feedback.direct.contactPlaceholder" = "이메일 또는 기타 연락처";
+"feedback.direct.imagesLabel" = "이미지";
+"feedback.direct.addImage" = "이미지 추가";
+"feedback.direct.removeImage" = "이미지 제거";
 "feedback.direct.submit" = "제출";
 "feedback.toast.submitted" = "피드백이 제출되었습니다. 감사합니다.";
 "feedback.error.emptyContent" = "피드백 내용을 입력하세요.";
+"feedback.error.invalidImage" = "이 이미지를 읽을 수 없습니다.";
 "feedback.error.server" = "피드백 제출에 실패했습니다.";
 "feedback.error.invalidResponse" = "피드백 응답이 올바르지 않습니다.";
 
