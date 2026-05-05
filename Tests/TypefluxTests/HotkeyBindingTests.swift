@@ -19,11 +19,21 @@ final class HotkeyBindingTests: XCTestCase {
         XCTAssertFalse(binding.matches(keyCode: 49, modifierFlags: 0))
     }
 
+    func testMatchesDoesNotTreatDoubleTapAsSinglePress() {
+        let binding = HotkeyBinding(keyCode: HotkeyBinding.functionKeyCode, modifierFlags: 1_048_576, pressCount: 2)
+        XCTAssertFalse(binding.matches(keyCode: HotkeyBinding.functionKeyCode, modifierFlags: 1_048_576))
+    }
+
     // MARK: - signature
 
     func testSignatureFormat() {
         let binding = HotkeyBinding(keyCode: 49, modifierFlags: 1_048_576)
-        XCTAssertEqual(binding.signature, "49:1048576")
+        XCTAssertEqual(binding.signature, "49:1048576:1")
+    }
+
+    func testSignatureIncludesDoubleTapPressCount() {
+        let binding = HotkeyBinding(keyCode: HotkeyBinding.functionKeyCode, modifierFlags: 1_048_576, pressCount: 2)
+        XCTAssertEqual(binding.signature, "63:1048576:2")
     }
 
     // MARK: - isRightCommandTrigger
@@ -72,6 +82,13 @@ final class HotkeyBindingTests: XCTestCase {
     func testIsNotFunctionTriggerWrongKeyCode() {
         let binding = HotkeyBinding(keyCode: 0, modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue))
         XCTAssertFalse(binding.isFunctionTrigger)
+    }
+
+    func testIsFunctionDoubleTapTrigger() {
+        XCTAssertTrue(HotkeyBinding.defaultAsk.isModifierDoubleTapTrigger)
+        XCTAssertFalse(HotkeyBinding.defaultActivation.isModifierDoubleTapTrigger)
+        XCTAssertTrue(HotkeyBinding.rightCommandAsk.isModifierDoubleTapTrigger)
+        XCTAssertTrue(HotkeyBinding.rightOptionAsk.isModifierDoubleTapTrigger)
     }
 
     // MARK: - isModifierOnlyTrigger
@@ -136,8 +153,10 @@ final class HotkeyBindingTests: XCTestCase {
         XCTAssertTrue(HotkeyBinding.defaultActivation.isFunctionTrigger)
     }
 
-    func testDefaultAskIsSpaceWithFn() {
-        XCTAssertEqual(HotkeyBinding.defaultAsk.keyCode, 49)
+    func testDefaultAskIsDoubleFn() {
+        XCTAssertEqual(HotkeyBinding.defaultAsk.keyCode, HotkeyBinding.functionKeyCode)
+        XCTAssertEqual(HotkeyBinding.defaultAsk.pressCount, 2)
+        XCTAssertTrue(HotkeyBinding.defaultAsk.isModifierDoubleTapTrigger)
     }
 
     func testDefaultPersonaIsPKey() {

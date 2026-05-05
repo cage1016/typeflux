@@ -4,7 +4,10 @@ import XCTest
 
 final class HotkeyGestureArbiterTests: XCTestCase {
     private let activation = HotkeyBinding.defaultActivation
-    private let ask = HotkeyBinding.defaultAsk
+    private let ask = HotkeyBinding(
+        keyCode: 49,
+        modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
+    )
     private let persona = HotkeyBinding.defaultPersona
 
     func testModifierOnlyActivationBeginsImmediatelyWhileArbitrating() {
@@ -242,6 +245,137 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         )
 
         XCTAssertEqual(events, [.activationTapped])
+    }
+
+    func testSecondFnTapBeginsDefaultAskShortcut() {
+        var arbiter = HotkeyGestureArbiter()
+        let doubleFnAsk = HotkeyBinding.defaultAsk
+
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.0,
+        )
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: 0,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.1,
+        )
+
+        let events = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.3,
+        )
+
+        XCTAssertEqual(events, [.begin(.ask)])
+        XCTAssertEqual(arbiter.phase, .active(.ask))
+    }
+
+    func testDefaultAskEndsWhenSecondFnTapIsReleased() {
+        var arbiter = HotkeyGestureArbiter()
+        let doubleFnAsk = HotkeyBinding.defaultAsk
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.0,
+        )
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: 0,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.1,
+        )
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.3,
+        )
+
+        let events = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: 0,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.4,
+        )
+
+        XCTAssertEqual(events, [.end(.ask)])
+        XCTAssertEqual(arbiter.phase, .idle)
+    }
+
+    func testSlowSecondFnTapDoesNotBeginDefaultAskShortcut() {
+        var arbiter = HotkeyGestureArbiter()
+        let doubleFnAsk = HotkeyBinding.defaultAsk
+
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.0,
+        )
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: 0,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.1,
+        )
+
+        let events = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.functionKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: doubleFnAsk,
+            timestamp: 1.7,
+        )
+
+        XCTAssertEqual(events, [.begin(.activation)])
+        XCTAssertEqual(arbiter.phase, .pendingModifierActivation)
+    }
+
+    func testSecondRightCommandTapBeginsReplacementAskShortcut() {
+        var arbiter = HotkeyGestureArbiter()
+        let activation = HotkeyBinding.rightCommandActivation
+        let ask = HotkeyBinding.rightCommandAsk
+
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: ask,
+            timestamp: 1.0,
+        )
+        _ = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: 0,
+            activationHotkey: activation,
+            askHotkey: ask,
+            timestamp: 1.1,
+        )
+
+        let events = arbiter.handleFlagsChanged(
+            keyCode: HotkeyBinding.rightCommandKeyCode,
+            modifierFlags: activation.modifierFlags,
+            activationHotkey: activation,
+            askHotkey: ask,
+            timestamp: 1.3,
+        )
+
+        XCTAssertEqual(events, [.begin(.ask)])
+        XCTAssertEqual(arbiter.phase, .active(.ask))
     }
 
     func testRightOptionModifierOnlyActivationBeginsAndEnds() {

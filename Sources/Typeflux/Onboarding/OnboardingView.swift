@@ -1864,16 +1864,29 @@ struct OnboardingView: View {
     @ViewBuilder
     private func hotkeySequence(_ binding: HotkeyBinding) -> some View {
         let keys = HotkeyFormat.components(binding)
+        let pressCount = HotkeyFormat.pressCount(binding)
 
-        ForEach(Array(keys.enumerated()), id: \.offset) { index, key in
-            if index > 0 {
-                Text("+")
-                    .font(.studioBody(12, weight: .semibold))
-                    .foregroundStyle(onboardingTertiaryText)
+        HStack(spacing: 5) {
+            HStack(spacing: 6) {
+                ForEach(Array(keys.enumerated()), id: \.offset) { index, key in
+                    if index > 0 {
+                        Text("+")
+                            .font(.studioBody(12, weight: .semibold))
+                            .foregroundStyle(onboardingTertiaryText)
+                    }
+
+                    hotkeyKeycap(key)
+                }
             }
 
-            hotkeyKeycap(key)
+            if let pressCount {
+                Text("×\(pressCount)")
+                    .font(.studioBody(12, weight: .bold))
+                    .foregroundStyle(onboardingSecondaryText)
+                    .baselineOffset(1)
+            }
         }
+        .help(binding.isModifierDoubleTapTrigger ? L("settings.shortcuts.doubleTapHelp") : "")
     }
 
     private func hotkeyKeycap(_ key: String) -> some View {

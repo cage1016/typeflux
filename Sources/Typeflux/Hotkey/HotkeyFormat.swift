@@ -3,10 +3,17 @@ import Foundation
 
 enum HotkeyFormat {
     static func display(_ binding: HotkeyBinding) -> String {
-        components(binding).joined(separator: " ")
+        let baseDisplay = components(binding).joined(separator: " ")
+        if let pressCount = pressCount(binding) {
+            return "\(baseDisplay)×\(pressCount)"
+        }
+        return baseDisplay
     }
 
     static func components(_ binding: HotkeyBinding) -> [String] {
+        if binding.isModifierDoubleTapTrigger {
+            return [singleKeyDisplay(binding)]
+        }
         if binding.isRightCommandTrigger {
             return ["⌘(R)"]
         }
@@ -15,12 +22,6 @@ enum HotkeyFormat {
         }
         if binding.isFunctionTrigger {
             return ["Fn"]
-        }
-        if binding.signature == HotkeyBinding.rightCommandAsk.signature {
-            return ["⌘(R)", "Space"]
-        }
-        if binding.signature == HotkeyBinding.rightOptionAsk.signature {
-            return ["⌥(R)", "Space"]
         }
 
         let flags = NSEvent.ModifierFlags(rawValue: binding.modifierFlags)
@@ -34,6 +35,24 @@ enum HotkeyFormat {
 
         parts.append(keyCodeDisplayName(binding.keyCode))
         return parts
+    }
+
+    static func pressCount(_ binding: HotkeyBinding) -> Int? {
+        guard let pressCount = binding.pressCount, pressCount > 1 else { return nil }
+        return pressCount
+    }
+
+    private static func singleKeyDisplay(_ binding: HotkeyBinding) -> String {
+        switch binding.keyCode {
+        case HotkeyBinding.rightCommandKeyCode:
+            "⌘(R)"
+        case HotkeyBinding.rightOptionKeyCode:
+            "⌥(R)"
+        case HotkeyBinding.functionKeyCode:
+            "Fn"
+        default:
+            keyCodeDisplayName(binding.keyCode)
+        }
     }
 
     private static func keyCodeDisplayName(_ keyCode: Int) -> String {

@@ -513,7 +513,7 @@
 "settings.shortcuts.activation.subtitle" = "하나의 단축키를 사용하여 음성 입력을 시작하세요. 길게 눌러 말하거나 빠르게 탭하여 녹음 세션을 잠급니다. 텍스트를 선택하면 스크립트가 해당 선택 항목을 직접 대체합니다.";
 "settings.shortcuts.activation.footnote" = "";
 "settings.shortcuts.ask.title" = "무엇이든 물어보세요";
-"settings.shortcuts.ask.subtitle" = "한 번 누르면 녹음이 시작되고 무엇이든 물어볼 수 있습니다. 답변이 팝업으로 나타납니다. 텍스트를 선택한 경우 명시적 편집 요청을 통해 직접 다시 작성할 수도 있습니다.";
+"settings.shortcuts.ask.subtitle" = "Fn을 두 번 누르면 녹음이 시작되고 무엇이든 물어볼 수 있습니다. 답변이 팝업으로 나타납니다. 텍스트를 선택한 경우 명시적 편집 요청을 통해 직접 다시 작성할 수도 있습니다.";
 "settings.shortcuts.ask.footnote" = "";
 "settings.shortcuts.persona.title" = "페르소나 스위처";
 "settings.shortcuts.persona.subtitle" = "중앙 선택 도구를 엽니다. 선택한 텍스트를 사용하면 해당 선택 항목에 페르소나를 직접 적용할 수도 있습니다.";
@@ -522,7 +522,7 @@
 "settings.advanced.personaHotkeyApply.subtitle" = "활성화되면 페르소나 단축키는 선택한 텍스트를 먼저 확인하고 기본 페르소나만 전환하는 대신 선택기를 사용하여 해당 선택 항목을 다시 작성합니다.";
 "settings.shortcuts.recording" = "새 바로가기 녹음";
 "settings.shortcuts.recordingActivation" = "지금 새로운 음성 입력 키나 키 조합을 누르세요.";
-"settings.shortcuts.recordingAsk" = "지금 새로운 무엇이든 물어보세요 키나 키 조합을 누르세요.";
+"settings.shortcuts.recordingAsk" = "지금 새로운 무엇이든 물어보세요 단축키를 누르세요. 같은 보조 키를 빠르게 두 번 누를 수도 있습니다.";
 "settings.shortcuts.recordingPersona" = "페르소나 선택기를 여는 바로가기를 누르세요.";
 "settings.shortcuts.recordingGeneric" = "사용하려는 키나 키 조합을 누르세요.";
 "settings.shortcuts.record" = "기록";
@@ -533,6 +533,7 @@
 "settings.shortcuts.askConflict" = "무엇이든 물어보세요 단축키는 음성 입력 또는 페르소나 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.askUpdated" = "무엇이든 물어보세요 바로가기가 업데이트되었습니다.";
 "settings.shortcuts.askUnset" = "무엇이든 물어보세요 단축키가 삭제되었습니다.";
+"settings.shortcuts.doubleTapHelp" = "이 키를 빠르게 두 번 누르세요.";
 "settings.shortcuts.personaConflict" = "페르소나 단축키는 음성 입력 또는 무엇이든 물어보세요 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.personaUpdated" = "페르소나 바로가기가 업데이트되었습니다.";
 "settings.shortcuts.personaUnset" = "페르소나 단축키가 삭제되었습니다.";
@@ -818,20 +819,20 @@
 "onboarding.shortcuts.globeKeyNotice.ready.title" = "FN / 🌐 키가 준비되었습니다";
 "onboarding.shortcuts.globeKeyNotice.ready.message" = "키보드 설정이 완료되어 Typeflux 가 FN / 🌐 키를 단축키로 사용할 수 있습니다. 그래도 반응이 없다면 한 번 로그아웃 후 다시 로그인하거나, Mac 을 재시작해 주세요.";
 "onboarding.shortcuts.externalKeyboard.title" = "외장 키보드에서 FN 키를 사용할 수 없나요?";
-"onboarding.shortcuts.externalKeyboard.message" = "오른쪽 Command 또는 오른쪽 Option 을 대신 사용할 수 있습니다. Typeflux 는 음성 입력을 해당 키로, 무엇이든 묻기를 해당 키 + Space 로 변경합니다.";
+"onboarding.shortcuts.externalKeyboard.message" = "오른쪽 Command 또는 오른쪽 Option 을 대신 사용할 수 있습니다. Typeflux 는 음성 입력을 해당 키로, 무엇이든 묻기를 해당 키 빠른 두 번 누르기로 변경합니다.";
 "onboarding.shortcuts.externalKeyboard.useRightCommand" = "오른쪽 Command 사용";
 "onboarding.shortcuts.externalKeyboard.useRightOption" = "오른쪽 Option 사용";
 "onboarding.shortcuts.replacement.rightCommand" = "오른쪽 Command";
 "onboarding.shortcuts.replacement.rightOption" = "오른쪽 Option";
 "onboarding.shortcuts.replacement.fn" = "FN / 🌐";
 "onboarding.shortcuts.replacement.active.title" = "%@ 단축키가 활성화되었습니다";
-"onboarding.shortcuts.replacement.active.message" = "단축키가 변경되었습니다. 음성 입력은 %@, 무엇이든 묻기는 %@ + Space 를 사용합니다.";
+"onboarding.shortcuts.replacement.active.message" = "단축키가 변경되었습니다. 음성 입력은 %@, 무엇이든 묻기는 %@×2 를 사용합니다.";
 "onboarding.shortcuts.replacement.restore" = "FN 단축키 복원";
 "onboarding.shortcuts.replacement.appliedAlert.title" = "단축키가 업데이트되었습니다";
-"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux 가 이제 음성 입력에 %@, 무엇이든 묻기에 %@ + Space 를 사용합니다.";
+"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux 가 이제 음성 입력에 %@, 무엇이든 묻기에 %@×2 를 사용합니다.";
 "onboarding.shortcuts.replacement.restoredAlert.message" = "Typeflux 가 기본 FN / 🌐 단축키로 복원되었습니다.";
 "onboarding.shortcuts.activation.hint" = "길게 눌러 말하고 녹음을 잠그려면 탭하세요.";
-"onboarding.shortcuts.ask.hint" = "무엇이든 물어보거나 선택한 텍스트를 다시 작성하세요";
+"onboarding.shortcuts.ask.hint" = "Fn을 두 번 눌러 질문하거나 선택한 텍스트 다시 작성";
 "onboarding.shortcuts.persona.hint" = "쓰기 페르소나 전환 또는 적용";
 "onboarding.shortcuts.changeInSettings" = "설정 → 음성 단축키에서 언제든지 단축키를 맞춤 설정할 수 있습니다.";
 

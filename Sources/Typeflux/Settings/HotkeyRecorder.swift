@@ -13,12 +13,22 @@ private func hotkeyRecorderEventTapCallback(
 }
 
 final class HotkeyRecorder: ObservableObject {
+    private static let doubleTapMaximumInterval: TimeInterval = 0.45
+
     @Published var isRecording: Bool = false
 
     private var localMonitor: Any?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var onRecorded: ((HotkeyBinding) -> Void)?
+    private var pendingModifierOnlyBinding: HotkeyBinding?
+    private var pendingModifierOnlyWorkItem: DispatchWorkItem?
+    private var lastModifierTap: ModifierTap?
+
+    private struct ModifierTap {
+        let binding: HotkeyBinding
+        let timestamp: TimeInterval
+    }
 
     func start(onRecorded: @escaping (HotkeyBinding) -> Void) {
         stop()
@@ -57,6 +67,10 @@ final class HotkeyRecorder: ObservableObject {
         eventTap = nil
         runLoopSource = nil
         onRecorded = nil
+        pendingModifierOnlyWorkItem?.cancel()
+        pendingModifierOnlyWorkItem = nil
+        pendingModifierOnlyBinding = nil
+        lastModifierTap = nil
         isRecording = false
     }
 
@@ -112,6 +126,14 @@ final class HotkeyRecorder: ObservableObject {
         modifierFlags: UInt,
         isRepeat: Bool,
     ) -> Bool {
+        if eventType == .flagsChanged {
+            return processModifierOnlyRecordingEvent(
+                keyCode: keyCode,
+                modifierFlags: modifierFlags,
+                timestamp: Date().timeIntervalSinceReferenceDate,
+            )
+        }
+
         guard let binding = Self.recordedBinding(
             eventType: eventType,
             keyCode: keyCode,
@@ -121,8 +143,7 @@ final class HotkeyRecorder: ObservableObject {
             return eventType == .keyDown && isRepeat
         }
 
-        onRecorded?(binding)
-        stop()
+        completeRecording(binding)
         return true
     }
 
@@ -149,6 +170,59 @@ final class HotkeyRecorder: ObservableObject {
 
         guard eventType == .keyDown, !isRepeat, modifierFlags != 0 else { return nil }
         return HotkeyBinding(keyCode: keyCode, modifierFlags: modifierFlags)
+    }
+
+    private func processModifierOnlyRecordingEvent(
+        keyCode: Int,
+        modifierFlags: UInt,
+        timestamp: TimeInterval,
+    ) -> Bool {
+        guard let binding = Self.modifierOnlyBinding(keyCode: keyCode, modifierFlags: modifierFlags) else {
+            return pendingModifierOnlyBinding?.keyCode == keyCode
+        }
+
+        if let lastModifierTap,
+           lastModifierTap.binding.keyCode == binding.keyCode,
+           lastModifierTap.binding.modifierFlags == binding.modifierFlags,
+           timestamp - lastModifierTap.timestamp <= Self.doubleTapMaximumInterval
+        {
+            pendingModifierOnlyWorkItem?.cancel()
+            pendingModifierOnlyWorkItem = nil
+            pendingModifierOnlyBinding = nil
+            self.lastModifierTap = nil
+            completeRecording(
+                HotkeyBinding(
+                    keyCode: binding.keyCode,
+                    modifierFlags: binding.modifierFlags,
+                    pressCount: 2,
+                ),
+            )
+            return true
+        }
+
+        pendingModifierOnlyWorkItem?.cancel()
+        pendingModifierOnlyBinding = binding
+        lastModifierTap = ModifierTap(binding: binding, timestamp: timestamp)
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, let pendingModifierOnlyBinding else { return }
+            completeRecording(pendingModifierOnlyBinding)
+        }
+        pendingModifierOnlyWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.doubleTapMaximumInterval,
+            execute: workItem,
+        )
+        return true
+    }
+
+    private func completeRecording(_ binding: HotkeyBinding) {
+        pendingModifierOnlyWorkItem?.cancel()
+        pendingModifierOnlyWorkItem = nil
+        pendingModifierOnlyBinding = nil
+        lastModifierTap = nil
+        onRecorded?(binding)
+        stop()
     }
 
     private static func modifierOnlyBinding(keyCode: Int, modifierFlags: UInt) -> HotkeyBinding? {

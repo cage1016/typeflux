@@ -2895,11 +2895,21 @@ struct StudioView: View {
     @ViewBuilder
     private func shortcutPill(_ binding: HotkeyBinding?, accentSymbol _: String) -> some View {
         if let binding {
-            HStack(spacing: StudioTheme.Spacing.xxxSmall) {
-                ForEach(HotkeyFormat.components(binding), id: \.self) { key in
-                    shortcutKeycap(key)
+            HStack(spacing: 5) {
+                HStack(spacing: StudioTheme.Spacing.xxxSmall) {
+                    ForEach(HotkeyFormat.components(binding), id: \.self) { key in
+                        shortcutKeycap(key)
+                    }
+                }
+
+                if let pressCount = HotkeyFormat.pressCount(binding) {
+                    Text("×\(pressCount)")
+                        .font(.studioBody(StudioTheme.Typography.bodySmall, weight: .bold))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .baselineOffset(1)
                 }
             }
+            .help(binding.isModifierDoubleTapTrigger ? L("settings.shortcuts.doubleTapHelp") : "")
         } else {
             shortcutKeycap(L("settings.shortcuts.none"))
                 .opacity(0.5)

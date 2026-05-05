@@ -518,7 +518,7 @@
 "settings.shortcuts.activation.subtitle" = "Use one shortcut to start voice input. Hold to talk, or tap quickly to lock the recording session. If text is selected, the transcript replaces that selection directly.";
 "settings.shortcuts.activation.footnote" = "";
 "settings.shortcuts.ask.title" = "Ask Anything";
-"settings.shortcuts.ask.subtitle" = "Press once to start recording and ask anything. Answers appear in a popup. If text is selected, explicit edit requests can also rewrite it directly.";
+"settings.shortcuts.ask.subtitle" = "Double-tap Fn to start recording and ask anything. Answers appear in a popup. If text is selected, explicit edit requests can also rewrite it directly.";
 "settings.shortcuts.ask.footnote" = "";
 "settings.shortcuts.persona.title" = "Persona switcher";
 "settings.shortcuts.persona.subtitle" = "Open a centered picker. With selected text, it can also apply a persona directly to that selection.";
@@ -527,7 +527,7 @@
 "settings.advanced.personaHotkeyApply.subtitle" = "When enabled, the persona shortcut checks for selected text first and uses the picker to rewrite that selection instead of only switching the default persona.";
 "settings.shortcuts.recording" = "Recording a new shortcut";
 "settings.shortcuts.recordingActivation" = "Press the new voice input key or key combination now.";
-"settings.shortcuts.recordingAsk" = "Press the new Ask Anything key or key combination now.";
+"settings.shortcuts.recordingAsk" = "Press the new Ask Anything shortcut now. You can quickly press the same modifier key twice.";
 "settings.shortcuts.recordingPersona" = "Press the shortcut that should open the persona picker.";
 "settings.shortcuts.recordingGeneric" = "Press the key or key combination you want to use.";
 "settings.shortcuts.record" = "Record";
@@ -538,6 +538,7 @@
 "settings.shortcuts.askConflict" = "Ask Anything shortcut cannot match the voice input or persona shortcut.";
 "settings.shortcuts.askUpdated" = "Ask Anything shortcut updated.";
 "settings.shortcuts.askUnset" = "Ask Anything shortcut cleared.";
+"settings.shortcuts.doubleTapHelp" = "Quickly press this key twice.";
 "settings.shortcuts.personaConflict" = "Persona shortcut cannot match the voice input or Ask Anything shortcut.";
 "settings.shortcuts.personaUpdated" = "Persona shortcut updated.";
 "settings.shortcuts.personaUnset" = "Persona shortcut cleared.";
@@ -825,20 +826,20 @@
 "onboarding.shortcuts.globeKeyNotice.ready.title" = "FN / 🌐 key is ready";
 "onboarding.shortcuts.globeKeyNotice.ready.message" = "Your keyboard setting looks good — Typeflux can use the FN / 🌐 key as a hotkey. If the hotkey still doesn't respond, try signing out and back in, or restart your Mac.";
 "onboarding.shortcuts.externalKeyboard.title" = "Using an external keyboard without a working FN key?";
-"onboarding.shortcuts.externalKeyboard.message" = "You can use Right Command or Right Option instead. Typeflux will change Voice Input to that key, and Ask Anything to that key + Space.";
+"onboarding.shortcuts.externalKeyboard.message" = "You can use Right Command or Right Option instead. Typeflux will change Voice Input to that key, and Ask Anything to a quick double-press of that key.";
 "onboarding.shortcuts.externalKeyboard.useRightCommand" = "Use Right Command";
 "onboarding.shortcuts.externalKeyboard.useRightOption" = "Use Right Option";
 "onboarding.shortcuts.replacement.rightCommand" = "Right Command";
 "onboarding.shortcuts.replacement.rightOption" = "Right Option";
 "onboarding.shortcuts.replacement.fn" = "FN / 🌐";
 "onboarding.shortcuts.replacement.active.title" = "%@ shortcuts are active";
-"onboarding.shortcuts.replacement.active.message" = "Your shortcuts have changed: Voice Input now uses %@, and Ask Anything uses %@ + Space.";
+"onboarding.shortcuts.replacement.active.message" = "Your shortcuts have changed: Voice Input now uses %@, and Ask Anything uses %@×2.";
 "onboarding.shortcuts.replacement.restore" = "Restore FN shortcuts";
 "onboarding.shortcuts.replacement.appliedAlert.title" = "Shortcuts updated";
-"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux now uses %@ for Voice Input and %@ + Space for Ask Anything.";
+"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux now uses %@ for Voice Input and %@×2 for Ask Anything.";
 "onboarding.shortcuts.replacement.restoredAlert.message" = "Typeflux has restored the default FN / 🌐 shortcuts.";
 "onboarding.shortcuts.activation.hint" = "Hold to talk, tap to lock recording";
-"onboarding.shortcuts.ask.hint" = "Ask anything, or rewrite selected text";
+"onboarding.shortcuts.ask.hint" = "Double-tap Fn to ask or rewrite selected text";
 "onboarding.shortcuts.persona.hint" = "Switch or apply a writing persona";
 "onboarding.shortcuts.changeInSettings" = "You can customize shortcuts anytime in Settings → Voice Shortcuts.";
 

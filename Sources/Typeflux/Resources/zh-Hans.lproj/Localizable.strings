@@ -518,7 +518,7 @@
 "settings.shortcuts.activation.subtitle" = "使用一个快捷键开始语音输入。可按住说话，也可快速轻触后锁定录音。若当前已有选区，识别结果会直接覆盖该选区。";
 "settings.shortcuts.activation.footnote" = "";
 "settings.shortcuts.ask.title" = "随便问";
-"settings.shortcuts.ask.subtitle" = "按一次即可开始录音提问，回答会在弹窗中展示。若有选中文字，明确的编辑请求也可以直接改写选区。";
+"settings.shortcuts.ask.subtitle" = "连按两次 Fn 即可开始录音提问，回答会在弹窗中展示。若有选中文字，明确的编辑请求也可以直接改写选区。";
 "settings.shortcuts.ask.footnote" = "";
 "settings.shortcuts.persona.title" = "人设切换器";
 "settings.shortcuts.persona.subtitle" = "打开居中选择器；如果当前存在选中文本，也可以直接将所选人设应用到这段文本。";
@@ -527,7 +527,7 @@
 "settings.advanced.personaHotkeyApply.subtitle" = "开启后，人设快捷键会先检查是否有选中文本；如果有，就用所选人设直接改写该文本，而不只是切换默认人设。";
 "settings.shortcuts.recording" = "正在录制新的快捷键";
 "settings.shortcuts.recordingActivation" = "现在按下新的语音输入按键或组合键。";
-"settings.shortcuts.recordingAsk" = "现在按下新的“随便问”按键或组合键。";
+"settings.shortcuts.recordingAsk" = "现在按下新的“随便问”快捷键。也可以快速连按两次同一个修饰键。";
 "settings.shortcuts.recordingPersona" = "现在按下用于打开人设选择器的快捷键。";
 "settings.shortcuts.recordingGeneric" = "按下你想使用的按键或组合键。";
 "settings.shortcuts.record" = "录制";
@@ -538,6 +538,7 @@
 "settings.shortcuts.askConflict" = "“随便问”快捷键不能与语音输入或人设快捷键相同。";
 "settings.shortcuts.askUpdated" = "“随便问”快捷键已更新。";
 "settings.shortcuts.askUnset" = "“随便问”快捷键已清除。";
+"settings.shortcuts.doubleTapHelp" = "快速连按两次这个按键。";
 "settings.shortcuts.personaConflict" = "人设快捷键不能与语音输入或“随便问”快捷键相同。";
 "settings.shortcuts.personaUpdated" = "人设快捷键已更新。";
 "settings.shortcuts.personaUnset" = "人设快捷键已清除。";
@@ -825,20 +826,20 @@
 "onboarding.shortcuts.globeKeyNotice.ready.title" = "FN / 🌐 键已就绪";
 "onboarding.shortcuts.globeKeyNotice.ready.message" = "键盘设置已经到位，Typeflux 可以使用 FN / 🌐 键作为快捷键了。若按键仍无响应，请尝试注销后重新登录，或重启 Mac。";
 "onboarding.shortcuts.externalKeyboard.title" = "使用外置键盘，且没有可用的 FN 键？";
-"onboarding.shortcuts.externalKeyboard.message" = "你可以改用右侧 Command 或右侧 Option。Typeflux 会将语音输入改为这个按键，将“随便问”改为这个按键 + 空格。";
+"onboarding.shortcuts.externalKeyboard.message" = "你可以改用右侧 Command 或右侧 Option。Typeflux 会将语音输入改为这个按键，将“随便问”改为快速连按两次这个按键。";
 "onboarding.shortcuts.externalKeyboard.useRightCommand" = "使用右侧 Command";
 "onboarding.shortcuts.externalKeyboard.useRightOption" = "使用右侧 Option";
 "onboarding.shortcuts.replacement.rightCommand" = "右侧 Command";
 "onboarding.shortcuts.replacement.rightOption" = "右侧 Option";
 "onboarding.shortcuts.replacement.fn" = "FN / 🌐";
 "onboarding.shortcuts.replacement.active.title" = "%@ 快捷键已启用";
-"onboarding.shortcuts.replacement.active.message" = "你的快捷键已经发生变化：语音输入现在使用 %@，“随便问”使用 %@ + 空格。";
+"onboarding.shortcuts.replacement.active.message" = "你的快捷键已经发生变化：语音输入现在使用 %@，“随便问”使用 %@×2。";
 "onboarding.shortcuts.replacement.restore" = "恢复 FN 快捷键";
 "onboarding.shortcuts.replacement.appliedAlert.title" = "快捷键已更新";
-"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux 现在使用 %@ 作为语音输入快捷键，使用 %@ + 空格打开“随便问”。";
+"onboarding.shortcuts.replacement.appliedAlert.message" = "Typeflux 现在使用 %@ 作为语音输入快捷键，使用 %@×2 打开“随便问”。";
 "onboarding.shortcuts.replacement.restoredAlert.message" = "Typeflux 已恢复默认的 FN / 🌐 快捷键。";
 "onboarding.shortcuts.activation.hint" = "按住录音，轻点锁定录制";
-"onboarding.shortcuts.ask.hint" = "随时提问，可选中文字改写";
+"onboarding.shortcuts.ask.hint" = "连按两次 Fn 提问，可选中文字改写";
 "onboarding.shortcuts.persona.hint" = "切换或应用写作人设";
 "onboarding.shortcuts.changeInSettings" = "随时可以在 设置 → 语音快捷键 中自定义快捷键。";
 
