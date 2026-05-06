@@ -78,7 +78,7 @@ final class AutoUpdater {
             do {
                 let (data, _) = try await executor.execute(apiPath: "/api/v1/app/update") { baseURL in
                     var components = URLComponents(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update"), resolvingAgainstBaseURL: false) ?? URLComponents()
-                    components.queryItems = [URLQueryItem(name: "version", value: currentVersion)]
+                    components.queryItems = AutoUpdateRequestSupport.queryItems(currentVersion: currentVersion)
                     let url = components.url ?? AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update")
                     var request = URLRequest(url: url)
                     request.httpMethod = "GET"
@@ -495,6 +495,29 @@ enum GitHubProxyDownloadURL {
     static func proxyURL(for url: URL) -> URL? {
         guard url.host?.lowercased() == "github.com" else { return nil }
         return URL(string: "\(proxyBaseURL.absoluteString)/\(url.absoluteString)")
+    }
+}
+
+enum AutoUpdateRequestSupport {
+    static func queryItems(
+        currentVersion: String,
+        architecture: String? = packageArchitecture()
+    ) -> [URLQueryItem] {
+        var items = [URLQueryItem(name: "version", value: currentVersion)]
+        if let architecture, !architecture.isEmpty {
+            items.append(URLQueryItem(name: "arch", value: architecture))
+        }
+        return items
+    }
+
+    static func packageArchitecture() -> String {
+        #if arch(arm64)
+            "arm64"
+        #elseif arch(x86_64)
+            "amd64"
+        #else
+            "unknown"
+        #endif
     }
 }
 
