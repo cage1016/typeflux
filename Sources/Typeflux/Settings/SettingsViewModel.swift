@@ -229,6 +229,7 @@ final class StudioViewModel: ObservableObject {
     private let historyRefreshQueue = DispatchQueue(label: "typeflux.settings.history-refresh", qos: .userInitiated)
     private var historyObserver: NSObjectProtocol?
     private var personaSelectionObserver: NSObjectProtocol?
+    private var hotkeySettingsObserver: NSObjectProtocol?
     private var appearanceObserver: NSObjectProtocol?
     private var vocabularyObserver: NSObjectProtocol?
     private var agentJobObserver: NSObjectProtocol?
@@ -390,6 +391,15 @@ final class StudioViewModel: ObservableObject {
                 self?.syncPersonaSelectionFromStore()
             }
         }
+        hotkeySettingsObserver = NotificationCenter.default.addObserver(
+            forName: .hotkeySettingsDidChange,
+            object: settingsStore,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.syncHotkeysFromStore()
+            }
+        }
         appearanceObserver = NotificationCenter.default.addObserver(
             forName: .appearanceModeDidChange,
             object: settingsStore,
@@ -436,6 +446,9 @@ final class StudioViewModel: ObservableObject {
         }
         if let personaSelectionObserver {
             NotificationCenter.default.removeObserver(personaSelectionObserver)
+        }
+        if let hotkeySettingsObserver {
+            NotificationCenter.default.removeObserver(hotkeySettingsObserver)
         }
         if let appearanceObserver {
             NotificationCenter.default.removeObserver(appearanceObserver)
@@ -1585,6 +1598,12 @@ final class StudioViewModel: ObservableObject {
         personaHotkey = nil
         settingsStore.personaHotkey = nil
         showToast(L("settings.shortcuts.personaUnset"))
+    }
+
+    private func syncHotkeysFromStore() {
+        activationHotkey = settingsStore.activationHotkey
+        askHotkey = settingsStore.askHotkey
+        personaHotkey = settingsStore.personaHotkey
     }
 
     func applyPersonaSelection(_ id: UUID?) {
