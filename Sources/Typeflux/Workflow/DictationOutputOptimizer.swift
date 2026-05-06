@@ -6,10 +6,11 @@ enum DictationOutputOptimizer {
     private static let sentenceBoundaryCharacters: Set<Character> = [".", "!", "?", "。", "！", "？"]
 
     static func optimize(_ text: String) -> String {
-        let startTrimmedIndex = text.firstIndex(where: { !$0.isWhitespace && !$0.isNewline }) ?? text.endIndex
-        let endTrimmedIndex = text.lastIndex(where: { !$0.isWhitespace && !$0.isNewline }) ?? text.startIndex
-
-        guard startTrimmedIndex <= endTrimmedIndex else { return text }
+        guard let startTrimmedIndex = text.firstIndex(where: { !$0.isWhitespace && !$0.isNewline }),
+              let endTrimmedIndex = text.lastIndex(where: { !$0.isWhitespace && !$0.isNewline })
+        else {
+            return text
+        }
 
         let trimmed = String(text[startTrimmedIndex ... endTrimmedIndex])
         guard shouldRemoveTrailingPunctuation(from: trimmed) else { return text }

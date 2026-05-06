@@ -49,4 +49,8 @@ final class DictationOutputOptimizerTests: XCTestCase {
         XCTAssertEqual(DictationOutputOptimizer.optimize("\tSounds good?!\n"), "\tSounds good\n")
         XCTAssertEqual(DictationOutputOptimizer.optimize("  "), "  ")
     }
+
+    func testOptimizeLeavesEmptyTextUnchanged() {
+        XCTAssertEqual(DictationOutputOptimizer.optimize(""), "")
+    }
 }

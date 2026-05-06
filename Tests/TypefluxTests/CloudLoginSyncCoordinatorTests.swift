@@ -19,12 +19,36 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(settingsStore.sttProvider, .typefluxOfficial)
         XCTAssertEqual(settingsStore.llmProvider, .openAICompatible)
         XCTAssertEqual(settingsStore.llmRemoteProvider, .typefluxCloud)
+        XCTAssertEqual(settingsStore.activePersonaID, SettingsStore.defaultPersonaID.uuidString)
 
         let first = await notifications.firstNotification()
         let notification = try XCTUnwrap(first)
         XCTAssertEqual(notification.title, L("cloud.autoSwitch.title"))
         XCTAssertEqual(notification.body, L("cloud.autoSwitch.body"))
         XCTAssertEqual(notification.identifier, CloudLoginSyncCoordinator.notificationIdentifier)
+        withExtendedLifetime(coordinator) {}
+    }
+
+    func testPostsModelDefaultsNotificationAfterApplyingCloudDefaults() async throws {
+        let settingsStore = makeSettingsStore()
+        settingsStore.sttProvider = .localModel
+        settingsStore.llmProvider = .ollama
+
+        let notifications = RecordingLocalNotificationService()
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, notifications: notifications)
+        let expectation = expectation(description: "cloud defaults notification")
+        let observer = NotificationCenter.default.addObserver(
+            forName: .cloudAccountModelDefaultsDidApply,
+            object: settingsStore,
+            queue: .main,
+        ) { _ in
+            expectation.fulfill()
+        }
+
+        coordinator.applyCloudDefaults()
+
+        await fulfillment(of: [expectation], timeout: 1)
+        NotificationCenter.default.removeObserver(observer)
         withExtendedLifetime(coordinator) {}
     }
 

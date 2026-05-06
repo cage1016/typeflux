@@ -1,6 +1,14 @@
 import Foundation
 import os
 
+extension Notification.Name {
+    /// Posted after account-backed Typeflux Cloud model defaults have been
+    /// applied to ``SettingsStore``.
+    static let cloudAccountModelDefaultsDidApply = Notification.Name(
+        "CloudLoginSyncCoordinator.cloudAccountModelDefaultsDidApply",
+    )
+}
+
 /// Switches STT and LLM selections to the Typeflux Cloud providers after a
 /// successful explicit login, and notifies the user about the change.
 ///
@@ -50,6 +58,8 @@ final class CloudLoginSyncCoordinator {
         settingsStore.sttProvider = .typefluxOfficial
         settingsStore.llmProvider = .openAICompatible
         settingsStore.llmRemoteProvider = .typefluxCloud
+        settingsStore.applyDefaultPersonaIfLLMConfigured()
+        NotificationCenter.default.post(name: .cloudAccountModelDefaultsDidApply, object: settingsStore)
 
         let title = L("cloud.autoSwitch.title")
         let body = L("cloud.autoSwitch.body")

@@ -64,6 +64,23 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCloudDefaultsNotificationSyncsOnboardingState() async throws {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .account
+        store.sttProvider = .typefluxOfficial
+        store.llmProvider = .openAICompatible
+        store.llmRemoteProvider = .typefluxCloud
+
+        NotificationCenter.default.post(name: .cloudAccountModelDefaultsDidApply, object: store)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.visibleSteps, [.language, .account, .permissions, .shortcuts])
+        XCTAssertEqual(viewModel.sttProvider, .typefluxOfficial)
+        XCTAssertEqual(viewModel.llmProvider, .openAICompatible)
+        XCTAssertEqual(viewModel.llmRemoteProvider, .typefluxCloud)
+    }
+
+    @MainActor
     func testMultimodalSTTSkipsLLMStep() {
         let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
 

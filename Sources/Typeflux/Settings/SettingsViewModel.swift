@@ -232,6 +232,7 @@ final class StudioViewModel: ObservableObject {
     private var appearanceObserver: NSObjectProtocol?
     private var vocabularyObserver: NSObjectProtocol?
     private var agentJobObserver: NSObjectProtocol?
+    private var cloudAccountModelDefaultsObserver: NSObjectProtocol?
     private var llmTestTask: Task<Void, Never>?
     private var sttTestTask: Task<Void, Never>?
     private var mcpTestTask: Task<Void, Never>?
@@ -423,6 +424,15 @@ final class StudioViewModel: ObservableObject {
                 self?.refreshAgentJobs()
             }
         }
+        cloudAccountModelDefaultsObserver = NotificationCenter.default.addObserver(
+            forName: .cloudAccountModelDefaultsDidApply,
+            object: settingsStore,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.syncCloudAccountModelsFromStore()
+            }
+        }
         audioPreviewPlayer.onPlaybackFinished = { [weak self] in
             Task { @MainActor [weak self] in
                 self?.playingAudioRecordID = nil
@@ -445,6 +455,9 @@ final class StudioViewModel: ObservableObject {
         }
         if let agentJobObserver {
             NotificationCenter.default.removeObserver(agentJobObserver)
+        }
+        if let cloudAccountModelDefaultsObserver {
+            NotificationCenter.default.removeObserver(cloudAccountModelDefaultsObserver)
         }
         historyRefreshTask?.cancel()
         audioPreviewPlayer.stop()
@@ -995,6 +1008,17 @@ final class StudioViewModel: ObservableObject {
         llmBaseURL = settingsStore.llmBaseURL(for: provider)
         llmModel = settingsStore.llmModel(for: provider)
         llmAPIKey = settingsStore.llmAPIKey(for: provider)
+    }
+
+    private func syncCloudAccountModelsFromStore() {
+        sttProvider = .typefluxOfficial
+        llmProvider = .openAICompatible
+        llmRemoteProvider = .typefluxCloud
+        loadLLMConfiguration(for: .typefluxCloud)
+        focusedModelProvider = activeProvider(for: modelDomain)
+        sttConnectionTestState = .idle
+        llmConnectionTestState = .idle
+        syncPersonaSelectionFromStore()
     }
 
     func setModelDomain(_ domain: StudioModelDomain) {

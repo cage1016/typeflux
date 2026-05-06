@@ -104,6 +104,7 @@ final class OnboardingViewModel: ObservableObject {
     private let authState: AuthState
     private let globeKeyReader: GlobeKeyPreferenceReading
     let onComplete: () -> Void
+    private var cloudAccountModelDefaultsObserver: NSObjectProtocol?
 
     init(
         settingsStore: SettingsStore,
@@ -175,6 +176,22 @@ final class OnboardingViewModel: ObservableObject {
             activationHotkey: storedActivationHotkey,
             askHotkey: storedAskHotkey,
         )
+
+        cloudAccountModelDefaultsObserver = NotificationCenter.default.addObserver(
+            forName: .cloudAccountModelDefaultsDidApply,
+            object: settingsStore,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.syncCloudAccountModelsFromStore()
+            }
+        }
+    }
+
+    deinit {
+        if let cloudAccountModelDefaultsObserver {
+            NotificationCenter.default.removeObserver(cloudAccountModelDefaultsObserver)
+        }
     }
 
     var canGoBack: Bool {
@@ -259,7 +276,7 @@ final class OnboardingViewModel: ObservableObject {
 
     func useCloudAccountModelsAndContinue() {
         guard authState.isLoggedIn else { return }
-        useCloudAccountModels = true
+        syncCloudAccountModelsFromStore()
         advance()
     }
 
@@ -560,6 +577,21 @@ final class OnboardingViewModel: ObservableObject {
         case .permissions, .shortcuts:
             break
         }
+    }
+
+    private func syncCloudAccountModelsFromStore() {
+        useCloudAccountModels = true
+        sttProvider = .typefluxOfficial
+        llmProvider = .openAICompatible
+        llmRemoteProvider = .typefluxCloud
+        llmBaseURL = settingsStore.llmBaseURL(for: .typefluxCloud)
+        llmModel = settingsStore.llmModel(for: .typefluxCloud)
+        llmAPIKey = settingsStore.llmAPIKey(for: .typefluxCloud)
+        settingsStore.sttProvider = .typefluxOfficial
+        settingsStore.llmProvider = .openAICompatible
+        settingsStore.llmRemoteProvider = .typefluxCloud
+        sttConnectionTestState = .idle
+        llmConnectionTestState = .idle
     }
 
     private func complete() {

@@ -1418,8 +1418,14 @@ extension WorkflowController {
 
                 try ensureProcessingIsActive(sessionID)
                 pipelineTiming.llmProcessingCompletedAt = rewriteResult.completedAt
-                rewriteOutput = rewriteResult.text
-                record.personaResultText = rewriteResult.text
+                if rewriteResult.text.isEmpty {
+                    ErrorLogStore.shared.log("Persona rewrite returned an empty response, using transcript as fallback")
+                    rewriteOutput = transcribedText
+                    record.personaResultText = transcribedText
+                } else {
+                    rewriteOutput = rewriteResult.text
+                    record.personaResultText = rewriteResult.text
+                }
                 logPipelineEvent("llm-processing-completed", for: record)
             } catch is LLMRequestTimeoutError {
                 // Timeout: insert transcript as fallback so the user isn't left empty-handed
