@@ -631,10 +631,15 @@ struct StudioShell<Content: View>: View {
 
                 GeometryReader { proxy in
                     ScrollView {
+                        let contentWidth = min(
+                            StudioTheme.contentMaxWidth,
+                            max(proxy.size.width - StudioTheme.contentInset * 2, 0),
+                        )
+
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.section) {
-                            content(proxy.size)
+                            content(CGSize(width: contentWidth, height: proxy.size.height))
                         }
-                        .frame(maxWidth: StudioTheme.contentMaxWidth, alignment: .leading)
+                        .frame(width: contentWidth, alignment: .topLeading)
                         .padding(.horizontal, StudioTheme.contentInset)
                         .padding(.top, StudioTheme.Layout.shellContentTopInset)
                         .padding(.bottom, StudioTheme.Layout.shellContentBottomInset)

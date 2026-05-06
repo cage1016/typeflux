@@ -2,7 +2,7 @@
 
 # Typeflux - Talk. We'll Type.
 
-Press `Fn` and speak naturally. Typeflux delivers lightning-fast, accurate voice-to-text directly into any macOS application. Free, open-source, and supports local models — your voice never has to leave your Mac.
+Hold `Fn` to dictate, or double-press `Fn` to ask anything. Typeflux delivers lightning-fast, accurate voice-to-text directly into any macOS application. Free, open-source, and supports local models — your voice never has to leave your Mac.
 
 [![Tests](https://github.com/mylxsw/typeflux/actions/workflows/test.yml/badge.svg)](https://github.com/mylxsw/typeflux/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/mylxsw/typeflux/graph/badge.svg)](https://codecov.io/gh/mylxsw/typeflux)
@@ -42,7 +42,7 @@ Most voice input tools force you to switch apps — dictating in one place, then
 
 Typeflux injects text directly into whichever app you're already using, at the cursor position, the moment you release the hotkey. It feels like typing, just **4× faster** (~200 WPM vs. ~50 WPM).
 
-And when you need more than dictation, **Voice Agent** turns your voice into an AI assistant for Q&A, rewriting, translation, and complex workflows.
+And when you need more than dictation, **Ask Anything** turns your voice into an AI assistant for Q&A, rewriting, translation, and complex workflows.
 
 ---
 
@@ -50,12 +50,14 @@ And when you need more than dictation, **Voice Agent** turns your voice into an 
 
 ```
 Hold Fn → Speak → Release → Text appears instantly
+Fn ×2 → Ask → Release → Answer, edit, or action
 ```
 
 1. **Press and hold** `Fn` (default hotkey)
 2. **Speak naturally**
 3. **Release** — Typeflux transcribes and injects the text at your cursor
-4. The result is also copied to clipboard as a fallback
+4. **Double-press** `Fn` to use Ask Anything for Q&A, selected-text edits, and agent workflows
+5. The result is also copied to clipboard as a fallback
 
 ---
 
@@ -64,8 +66,8 @@ Hold Fn → Speak → Release → Text appears instantly
 ### One-Click Voice Input
 Hold `Fn` to start, release to stop. No switching input methods, no clicking buttons — works in any text field across browsers, code editors, terminals, and native apps.
 
-### Voice Agent (`Fn + Space`)
-More than just dictation. Press `Fn + Space` to chat with an AI agent using your voice:
+### Ask Anything (`Fn` ×2)
+More than just dictation. Double-press `Fn`, speak on the second press, then release to chat with an AI agent using your voice:
 
 - **Voice Q&A** — Ask questions and get instant answers
 - **Content Rewrite** — Select text, then speak an instruction like "make this shorter" or "translate to English"
@@ -95,7 +97,8 @@ When you choose **Local Model**, Typeflux downloads and runs the model entirely 
 
 | Model | Size | Params | Best For |
 |-------|------|--------|----------|
-| SenseVoice Small | ~350 MB | 234M | Fast multilingual, strong Chinese/Japanese/Korean |
+| SenseVoice | ~350 MB | 234M | Fast multilingual, strong Mandarin/Cantonese/English/Japanese/Korean |
+| FunASR (Paraformer) | ~180 MB | 220M | Fast, accurate Chinese-focused offline ASR |
 | WhisperKit Medium | ~1.5 GB | 769M | Balanced English and multilingual dictation |
 | WhisperKit Large | ~3 GB | 1.55B | Highest accuracy offline transcription |
 | Qwen3-ASR | ~1.3 GB | 0.6B | Strong context understanding, long-form recognition |
@@ -160,7 +163,7 @@ Join the community to share feedback, ask questions, and follow development upda
 - [X](https://x.com/mylxsw)
 - WeChat group:
 
-  <img src="./assets/wechat-group-20260426.jpg" alt="Typeflux WeChat group QR code" width="260">
+  <img src="./assets/wechat-group-20260506.jpg" alt="Typeflux WeChat group QR code" width="260">
 
 ---
 

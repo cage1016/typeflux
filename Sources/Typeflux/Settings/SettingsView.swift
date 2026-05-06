@@ -3826,144 +3826,155 @@ struct StudioView: View {
     }
 
     private var overviewPanel: some View {
-        HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
-            StudioCard(padding: StudioTheme.Insets.cardDense) {
-                VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                    HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
-                        VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                            HStack(spacing: StudioTheme.Spacing.small) {
-                                RoundedRectangle(
-                                    cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
-                                )
-                                .fill(StudioTheme.iconTileSurface)
-                                .frame(
-                                    width: StudioTheme.ControlSize.overviewBadge,
-                                    height: StudioTheme.ControlSize.overviewBadge,
-                                )
-                                .overlay(
-                                    Image(systemName: "waveform.and.magnifyingglass")
-                                        .font(
-                                            .system(
-                                                size: StudioTheme.Typography.iconSmall,
-                                                weight: .semibold,
-                                            ),
-                                        )
-                                        .foregroundStyle(StudioTheme.accent),
-                                )
-                                Text(L("home.activity.title"))
-                                    .font(
-                                        .studioBody(StudioTheme.Typography.bodySmall, weight: .semibold),
-                                    )
-                                    .foregroundStyle(StudioTheme.textSecondary)
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                            }
+        GeometryReader { proxy in
+            let spacing = StudioTheme.Spacing.large
+            let availableWidth = max(proxy.size.width, 0)
+            let metricsWidth = min(
+                StudioTheme.Layout.overviewSideMetricsWidth,
+                max((availableWidth - spacing) * 0.46, 0),
+            )
+            let activityWidth = max(availableWidth - metricsWidth - spacing, 0)
 
-                            Text("\(viewModel.statsCompletionRate)%")
-                                .font(
-                                    .studioDisplay(StudioTheme.Typography.displayLarge, weight: .bold),
-                                )
-                                .foregroundStyle(StudioTheme.textPrimary)
+            HStack(alignment: .top, spacing: spacing) {
+                overviewActivityCard
+                    .frame(width: activityWidth)
+                    .frame(minHeight: StudioTheme.Layout.overviewPrimaryMinHeight)
 
-                            Text(L("home.activity.completionRate"))
-                                .font(.studioBody(StudioTheme.Typography.body))
-                                .foregroundStyle(StudioTheme.textSecondary)
-                        }
+                overviewMetricsGrid(width: metricsWidth)
+            }
+        }
+        .frame(height: StudioTheme.Layout.overviewPrimaryMinHeight)
+    }
 
-                        Spacer(minLength: StudioTheme.Spacing.medium)
-
-                        Circle()
-                            .stroke(
-                                StudioTheme.controlSurface,
-                                lineWidth: StudioTheme.BorderWidth.overviewDonut,
+    private var overviewActivityCard: some View {
+        StudioCard(padding: StudioTheme.Insets.cardDense) {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+                        HStack(spacing: StudioTheme.Spacing.small) {
+                            RoundedRectangle(
+                                cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
                             )
+                            .fill(StudioTheme.iconTileSurface)
                             .frame(
-                                width: StudioTheme.Layout.overviewDonutSize,
-                                height: StudioTheme.Layout.overviewDonutSize,
+                                width: StudioTheme.ControlSize.overviewBadge,
+                                height: StudioTheme.ControlSize.overviewBadge,
                             )
                             .overlay(
-                                Circle()
-                                    .trim(from: 0, to: CGFloat(viewModel.statsCompletionRate) / 100)
-                                    .stroke(
-                                        LinearGradient(
-                                            colors: [
-                                                StudioTheme.accent.opacity(0.52),
-                                                StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress),
-                                            ],
-                                            startPoint: .bottomLeading,
-                                            endPoint: .topTrailing,
-                                        ),
-                                        style: StrokeStyle(
-                                            lineWidth: StudioTheme.BorderWidth.overviewDonut,
-                                            lineCap: .round,
+                                Image(systemName: "waveform.and.magnifyingglass")
+                                    .font(
+                                        .system(
+                                            size: StudioTheme.Typography.iconSmall,
+                                            weight: .semibold,
                                         ),
                                     )
-                                    .rotationEffect(.degrees(StudioTheme.Angles.overviewProgressStart)),
+                                    .foregroundStyle(StudioTheme.accent),
                             )
-                            .padding(.trailing, StudioTheme.Spacing.smallMedium)
-                            .padding(.vertical, StudioTheme.Spacing.smallMedium)
+
+                            Text(L("home.activity.title"))
+                                .font(
+                                    .studioBody(StudioTheme.Typography.bodySmall, weight: .semibold),
+                                )
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+
+                        Text("\(viewModel.statsCompletionRate)%")
+                            .font(.studioDisplay(StudioTheme.Typography.displayLarge, weight: .bold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+
+                        Text(L("home.activity.completionRate"))
+                            .font(.studioBody(StudioTheme.Typography.body))
+                            .foregroundStyle(StudioTheme.textSecondary)
                     }
 
-                    Spacer(minLength: StudioTheme.Spacing.smallMedium)
+                    Spacer(minLength: StudioTheme.Spacing.medium)
 
-                    Text(L("home.activity.privacy"))
-                        .font(.studioBody(StudioTheme.Typography.caption))
-                        .foregroundStyle(StudioTheme.textTertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Circle()
+                        .stroke(
+                            StudioTheme.controlSurface,
+                            lineWidth: StudioTheme.BorderWidth.overviewDonut,
+                        )
+                        .frame(
+                            width: StudioTheme.Layout.overviewDonutSize,
+                            height: StudioTheme.Layout.overviewDonutSize,
+                        )
+                        .overlay(
+                            Circle()
+                                .trim(from: 0, to: CGFloat(viewModel.statsCompletionRate) / 100)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            StudioTheme.accent.opacity(0.52),
+                                            StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress),
+                                        ],
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing,
+                                    ),
+                                    style: StrokeStyle(
+                                        lineWidth: StudioTheme.BorderWidth.overviewDonut,
+                                        lineCap: .round,
+                                    ),
+                                )
+                                .rotationEffect(.degrees(StudioTheme.Angles.overviewProgressStart)),
+                        )
+                        .padding(.trailing, StudioTheme.Spacing.smallMedium)
+                        .padding(.vertical, StudioTheme.Spacing.smallMedium)
                 }
+
+                Spacer(minLength: StudioTheme.Spacing.smallMedium)
+
+                Text(L("home.activity.privacy"))
+                    .font(.studioBody(StudioTheme.Typography.caption))
+                    .foregroundStyle(StudioTheme.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, minHeight: StudioTheme.Layout.overviewPrimaryMinHeight)
-            .background(Color.clear)
-            .clipShape(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous),
-            )
-
-            GeometryReader { proxy in
-                let spacing = StudioTheme.Spacing.large
-                let cardWidth = max((proxy.size.width - spacing) / 2, 0)
-                let cardHeight = max((proxy.size.height - spacing) / 2, 0)
-
-                VStack(spacing: spacing) {
-                    HStack(spacing: spacing) {
-                        homeMiniMetric(
-                            icon: "clock",
-                            value: "\(viewModel.transcriptionMinutesText) min",
-                            title: L("home.metric.totalDictation"),
-                            size: CGSize(width: cardWidth, height: cardHeight),
-                        )
-                        homeMiniMetric(
-                            icon: "mic",
-                            value: "\(viewModel.statsTotalCharacters)",
-                            title: L("home.metric.charactersDictated"),
-                            size: CGSize(width: cardWidth, height: cardHeight),
-                        )
-                    }
-
-                    HStack(spacing: spacing) {
-                        homeMiniMetric(
-                            icon: "hourglass",
-                            value: "\(viewModel.statsSavedMinutes) min",
-                            title: L("home.metric.timeSaved"),
-                            size: CGSize(width: cardWidth, height: cardHeight),
-                        )
-                        homeMiniMetric(
-                            icon: "bolt",
-                            value: viewModel.statsAveragePaceWPM > 0
-                                ? "\(viewModel.statsAveragePaceWPM) wpm" : "--",
-                            title: L("home.metric.averagePace"),
-                            size: CGSize(width: cardWidth, height: cardHeight),
-                        )
-                    }
-                }
-            }
-            .frame(
-                minWidth: StudioTheme.Layout.overviewSideMetricsWidth,
-                maxWidth: .infinity,
-                minHeight: StudioTheme.Layout.overviewPrimaryMinHeight,
-                maxHeight: StudioTheme.Layout.overviewPrimaryMinHeight,
-                alignment: .top,
-            )
         }
+    }
+
+    private func overviewMetricsGrid(width: CGFloat) -> some View {
+        let spacing = StudioTheme.Spacing.large
+        let cardWidth = max((width - spacing) / 2, 0)
+        let cardHeight = max((StudioTheme.Layout.overviewPrimaryMinHeight - spacing) / 2, 0)
+
+        return VStack(spacing: spacing) {
+            HStack(spacing: spacing) {
+                homeMiniMetric(
+                    icon: "clock",
+                    value: "\(viewModel.transcriptionMinutesText) min",
+                    title: L("home.metric.totalDictation"),
+                    size: CGSize(width: cardWidth, height: cardHeight),
+                )
+                homeMiniMetric(
+                    icon: "mic",
+                    value: "\(viewModel.statsTotalCharacters)",
+                    title: L("home.metric.charactersDictated"),
+                    size: CGSize(width: cardWidth, height: cardHeight),
+                )
+            }
+
+            HStack(spacing: spacing) {
+                homeMiniMetric(
+                    icon: "hourglass",
+                    value: "\(viewModel.statsSavedMinutes) min",
+                    title: L("home.metric.timeSaved"),
+                    size: CGSize(width: cardWidth, height: cardHeight),
+                )
+                homeMiniMetric(
+                    icon: "bolt",
+                    value: viewModel.statsAveragePaceWPM > 0
+                        ? "\(viewModel.statsAveragePaceWPM) wpm" : "--",
+                    title: L("home.metric.averagePace"),
+                    size: CGSize(width: cardWidth, height: cardHeight),
+                )
+            }
+        }
+        .frame(
+            width: width,
+            height: StudioTheme.Layout.overviewPrimaryMinHeight,
+            alignment: .top,
+        )
     }
 
     private func homeMiniMetric(icon: String, value: String, title: String, size: CGSize)
