@@ -2,6 +2,24 @@
 import XCTest
 
 final class AutoUpdateArchiveInstallerTests: XCTestCase {
+    func testUpdateQueryItemsIncludeVersionAndArchitecture() {
+        let items = AutoUpdateRequestSupport.queryItems(currentVersion: "1.2.0", architecture: "amd64")
+
+        XCTAssertEqual(items.map(\.name), ["version", "arch"])
+        XCTAssertEqual(items.first(where: { $0.name == "version" })?.value, "1.2.0")
+        XCTAssertEqual(items.first(where: { $0.name == "arch" })?.value, "amd64")
+    }
+
+    func testUpdateQueryItemsOmitEmptyArchitecture() {
+        let items = AutoUpdateRequestSupport.queryItems(currentVersion: "1.2.0", architecture: "")
+
+        XCTAssertEqual(items.map(\.name), ["version"])
+    }
+
+    func testPackageArchitectureUsesSupportedUpdateAPIValue() {
+        XCTAssertTrue(["arm64", "amd64", "unknown"].contains(AutoUpdateRequestSupport.packageArchitecture()))
+    }
+
     func testArchiveKindDetectsDMGCaseInsensitively() throws {
         let url = try XCTUnwrap(URL(string: "https://example.com/releases/Typeflux.DMG?download=1"))
 
