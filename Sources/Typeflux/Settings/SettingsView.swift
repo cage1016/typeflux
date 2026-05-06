@@ -620,6 +620,8 @@ struct StudioView: View {
                         vocabularyMoreMenuLabel
                     }
                     .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize(horizontal: true, vertical: false)
                     .disabled(viewModel.isSynchronizingVocabulary)
                 }
             } else if viewModel.currentSection == .agent {
@@ -3427,9 +3429,16 @@ struct StudioView: View {
     }
 
     private var vocabularyMoreMenuLabel: some View {
-        Text(L("vocabulary.action.more"))
-            .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
-            .foregroundStyle(StudioTheme.textSecondary)
+        HStack(spacing: StudioTheme.Spacing.xSmall) {
+            Text(L("vocabulary.action.more"))
+                .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
+                .foregroundStyle(StudioTheme.textSecondary)
+                .lineLimit(1)
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
+                .foregroundStyle(StudioTheme.textSecondary)
+        }
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
             .padding(.vertical, StudioTheme.Insets.buttonVertical)
             .background(
@@ -3443,6 +3452,8 @@ struct StudioView: View {
                         lineWidth: StudioTheme.BorderWidth.thin,
                     ),
             )
+            .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
     }
 
     private func vocabularyMenuItemIcon(for source: VocabularySource) -> some View {

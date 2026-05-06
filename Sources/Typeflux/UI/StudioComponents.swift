@@ -811,7 +811,7 @@ struct StudioSidebar: View {
 
     private var feedbackMenuButton: some View {
         StudioSidebarIconMenuButton(
-            systemImage: "envelope.stack",
+            systemImage: "envelope.fill",
             accessibilityLabel: L("sidebar.feedbackAccessibility"),
         ) {
             Button(L("sidebar.feedback.directOption"), action: onSendDirectFeedback)
