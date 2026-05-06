@@ -5,6 +5,7 @@ extension Notification.Name {
     static let personaSelectionDidChange = Notification.Name(
         "SettingsStore.personaSelectionDidChange",
     )
+    static let hotkeySettingsDidChange = Notification.Name("SettingsStore.hotkeySettingsDidChange")
     static let appearanceModeDidChange = Notification.Name("SettingsStore.appearanceModeDidChange")
     static let agentConfigurationDidChange = Notification.Name("SettingsStore.agentConfigurationDidChange")
     static let localOptimizationDidEnable = Notification.Name("SettingsStore.localOptimizationDidEnable")
@@ -709,6 +710,7 @@ final class SettingsStore {
                 activationHotkeyJSON = "__unset__"
             }
             defaults.removeObject(forKey: "hotkey.custom.json")
+            NotificationCenter.default.post(name: .hotkeySettingsDidChange, object: self)
         }
     }
 
@@ -733,6 +735,7 @@ final class SettingsStore {
             } else {
                 askHotkeyJSON = "__unset__"
             }
+            NotificationCenter.default.post(name: .hotkeySettingsDidChange, object: self)
         }
     }
 
@@ -757,6 +760,7 @@ final class SettingsStore {
             } else {
                 personaHotkeyJSON = "__unset__"
             }
+            NotificationCenter.default.post(name: .hotkeySettingsDidChange, object: self)
         }
     }
 
