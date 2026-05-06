@@ -111,6 +111,43 @@ private func vocabularySourceLogoURL(for resourceName: String) -> URL? {
     return nil
 }
 
+private struct StudioAutoHidingScrollIndicatorConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard let scrollView = enclosingScrollView(from: nsView) else { return }
+            scrollView.autohidesScrollers = true
+            scrollView.scrollerStyle = .overlay
+        }
+    }
+
+    private func enclosingScrollView(from view: NSView) -> NSScrollView? {
+        var currentView: NSView? = view
+
+        while let view = currentView {
+            if let scrollView = view as? NSScrollView {
+                return scrollView
+            }
+
+            currentView = view.superview
+        }
+
+        return nil
+    }
+}
+
+private extension View {
+    func studioAutoHidingScrollIndicators() -> some View {
+        background(
+            StudioAutoHidingScrollIndicatorConfigurator()
+                .frame(width: 0, height: 0),
+        )
+    }
+}
+
 // swiftlint:disable:next type_body_length
 struct StudioView: View {
     private struct ShortcutConfiguration {
@@ -747,6 +784,7 @@ struct StudioView: View {
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .studioAutoHidingScrollIndicators()
                     }
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
@@ -758,6 +796,7 @@ struct StudioView: View {
 
                     ScrollView {
                         focusedProviderConfigurationPanel
+                            .studioAutoHidingScrollIndicators()
                     }
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
