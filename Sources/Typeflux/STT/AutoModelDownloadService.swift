@@ -238,12 +238,9 @@ final class AutoModelDownloadService {
 
     private func setStatus(_ newStatus: AutoModelDownloadStatus) {
         let needsNotify = stateLock.withLock { () -> Bool in
-            let wasDownloading: Bool
-            if case .downloading = _status { wasDownloading = true } else { wasDownloading = false }
-            let isDownloading: Bool
-            if case .downloading = newStatus { isDownloading = true } else { isDownloading = false }
+            let needsNotify = _status != newStatus
             _status = newStatus
-            return wasDownloading != isDownloading
+            return needsNotify
         }
         if needsNotify {
             notifyStateChanged()

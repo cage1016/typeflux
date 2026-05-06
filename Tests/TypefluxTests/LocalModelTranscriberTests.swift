@@ -355,6 +355,42 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertNotNil(service.makeTranscriberIfReady())
     }
 
+    func testAutoModelDownloadServiceNotifiesProgressUpdates() async throws {
+        let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.localOptimizationEnabled = true
+
+        let service = AutoModelDownloadService(
+            modelManager: LocalModelManager(
+                fileManager: .default,
+                sherpaOnnxInstaller: FakeSherpaOnnxInstaller(),
+                applicationSupportURL: makeTemporaryApplicationSupportURL(),
+                downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.huggingFace]),
+                bundledModelsRootURL: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("typeflux-auto-empty-bundle-\(UUID().uuidString)", isDirectory: true),
+            ),
+            settingsStore: settingsStore,
+        )
+        let progressNotification = expectation(description: "Auto model download progress notifications")
+        progressNotification.expectedFulfillmentCount = 2
+
+        let observer = NotificationCenter.default.addObserver(
+            forName: .autoModelDownloadStateDidChange,
+            object: nil,
+            queue: .main,
+        ) { _ in
+            progressNotification.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        service.triggerIfNeeded()
+
+        await fulfillment(of: [progressNotification], timeout: 2)
+    }
+
     func testLocalModelManagerPersistsQwen3PreparedModelInfo() async throws {
         let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
