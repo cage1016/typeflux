@@ -7,18 +7,11 @@ Hold `Fn` to dictate, or double-press `Fn` to ask anything. Typeflux delivers li
 [![Tests](https://github.com/mylxsw/typeflux/actions/workflows/test.yml/badge.svg)](https://github.com/mylxsw/typeflux/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/mylxsw/typeflux/graph/badge.svg)](https://codecov.io/gh/mylxsw/typeflux)
 
-<table>
-  <tr>
-    <td><img src="./assets/EN-promotional-1.png" alt="Typeflux promotional screenshot 1"></td>
-    <td><img src="./assets/EN-promotional-2.png" alt="Typeflux promotional screenshot 2"></td>
-  </tr>
-  <tr>
-    <td><img src="./assets/EN-promotional-3.png" alt="Typeflux promotional screenshot 3"></td>
-    <td><img src="./assets/EN-n-input-process.png" alt="Typeflux input process screenshot"></td>
-  </tr>
-</table>
+English | [简体中文](./README.zh-CN.md)
 
-[View application screenshots](./docs/SCREENSHOTS.md)
+![product-image](./assets/product-image.png)
+
+[View more screenshots](./docs/SCREENSHOTS.md)
 
 </div>
 
