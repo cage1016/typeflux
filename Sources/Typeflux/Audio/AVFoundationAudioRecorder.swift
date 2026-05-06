@@ -5,6 +5,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
     private static let outputMuteDelayWithStartCue: Duration = .milliseconds(1_225)
     private static let outputMuteDelayWithoutStartCue: Duration = .milliseconds(180)
     private static let silentInputRecoveryDelay: Duration = .milliseconds(1_000)
+    private static let silentInputRecoveryPeakPowerThreshold: Float = -58
     private static let audioStartupTimeout: DispatchTimeInterval = .seconds(5)
 
     enum RecorderError: LocalizedError, Equatable {
@@ -41,6 +42,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
     private var activeRecordingID: UUID?
     private var activeBufferCallbacks = 0
     private var inputBufferCallbackCount = 0
+    private var peakInputPowerSinceStart: Float = -.infinity
 
     init(
         settingsStore: SettingsStore,
@@ -109,6 +111,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         activeRecordingID = preparedSession.id
         isRecording = true
         let callbackCountAtStart = inputBufferCallbackCount
+        peakInputPowerSinceStart = -.infinity
         stateCondition.unlock()
         scheduleSilentInputRecoveryIfNeeded(callbackCountAtStart: callbackCountAtStart)
         if settingsStore.muteSystemOutputDuringRecording {
@@ -151,6 +154,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         audioBufferHandler = nil
         isRecording = false
         activeRecordingID = nil
+        peakInputPowerSinceStart = -.infinity
         stateCondition.unlock()
         muteTask?.cancel()
         muteTask = nil
@@ -187,6 +191,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         audioBufferHandler = nil
         isRecording = false
         activeRecordingID = nil
+        peakInputPowerSinceStart = -.infinity
         stateCondition.unlock()
         muteTask?.cancel()
         muteTask = nil
@@ -323,12 +328,17 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         defer { lifecycleLock.unlock() }
 
         stateCondition.lock()
-        let shouldRecover = isRecording && inputBufferCallbackCount == callbackCountAtStart
+        let shouldRecover = Self.shouldRecoverSilentInput(
+            isRecording: isRecording,
+            callbackCountAtStart: callbackCountAtStart,
+            currentCallbackCount: inputBufferCallbackCount,
+            peakInputPowerSinceStart: peakInputPowerSinceStart,
+        )
         stateCondition.unlock()
         guard shouldRecover else { return }
 
         NetworkDebugLogger.logMessage(
-            "[Audio Recorder] No input buffers received after start; rebuilding audio engine.",
+            "[Audio Recorder] Microphone input is silent after start; rebuilding audio engine.",
         )
 
         do {
@@ -508,7 +518,12 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             do {
                 let monoBuffer = try makeMonoPCMBuffer(from: buffer)
                 let previewBuffer = clone(buffer: monoBuffer)
-                let normalizedLevel = normalizePower(rmsPower(for: monoBuffer))
+                let inputPower = rmsPower(for: monoBuffer)
+                let normalizedLevel = normalizePower(inputPower)
+
+                stateCondition.lock()
+                peakInputPowerSinceStart = max(peakInputPowerSinceStart, inputPower)
+                stateCondition.unlock()
 
                 writeCoordinator.enqueue {
                     do {
@@ -644,6 +659,17 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         let minDb: Float = -60
         let clamped = max(minDb, power)
         return (clamped - minDb) / -minDb
+    }
+
+    static func shouldRecoverSilentInput(
+        isRecording: Bool,
+        callbackCountAtStart: Int,
+        currentCallbackCount: Int,
+        peakInputPowerSinceStart: Float,
+    ) -> Bool {
+        guard isRecording else { return false }
+        guard currentCallbackCount > callbackCountAtStart else { return true }
+        return peakInputPowerSinceStart <= silentInputRecoveryPeakPowerThreshold
     }
 }
 
