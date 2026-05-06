@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum FeedbackImageUploadState: Equatable {
@@ -56,9 +57,6 @@ struct DirectFeedbackSheet: View {
     let onCancel: () -> Void
     let onSubmit: () -> Void
 
-    @FocusState private var isContentFocused: Bool
-
-    private let contentEditorPadding: CGFloat = 10
     private let contentPlaceholderHorizontalPadding: CGFloat = 13
     private let contentPlaceholderVerticalPadding: CGFloat = 15
 
@@ -87,10 +85,8 @@ struct DirectFeedbackSheet: View {
                     .foregroundStyle(StudioTheme.textSecondary)
 
                 ZStack(alignment: .topLeading) {
-                    TextEditor(text: $content)
+                    FeedbackContentTextView(text: $content)
                         .font(.studioBody(13))
-                        .scrollContentBackground(.hidden)
-                        .padding(contentEditorPadding)
                         .frame(minHeight: 160)
                         .background(StudioTheme.controlSurface)
                         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous))
@@ -98,7 +94,6 @@ struct DirectFeedbackSheet: View {
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
                                 .stroke(StudioTheme.border.opacity(0.72), lineWidth: 1)
                         }
-                        .focused($isContentFocused)
 
                     if content.isEmpty {
                         Text(L("feedback.direct.contentPlaceholder"))
@@ -192,8 +187,79 @@ struct DirectFeedbackSheet: View {
         }
         .padding(24)
         .frame(width: 480)
-        .onAppear {
-            isContentFocused = true
+    }
+}
+
+private struct FeedbackContentTextView: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+
+        let textView = NSTextView()
+        textView.delegate = context.coordinator
+        textView.drawsBackground = false
+        textView.isRichText = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.allowsUndo = true
+        textView.font = NSFont.systemFont(ofSize: 13)
+        textView.textColor = NSColor.labelColor
+        textView.string = text
+        textView.textContainerInset = NSSize(width: 10, height: 10)
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = true
+
+        scrollView.documentView = textView
+
+        DispatchQueue.main.async {
+            textView.window?.makeFirstResponder(textView)
+        }
+
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        textView.font = NSFont.systemFont(ofSize: 13)
+        textView.textColor = NSColor.labelColor
+
+        if textView.string != text {
+            textView.string = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        @Binding private var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text = textView.string
         }
     }
 }
