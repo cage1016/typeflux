@@ -16,7 +16,6 @@ English | [简体中文](./README.zh-CN.md)
 </div>
 
 
-
 ## Download
 
 **[⬇ Download latest release (.dmg)](https://github.com/mylxsw/typeflux/releases/latest)**
@@ -27,8 +26,6 @@ English | [简体中文](./README.zh-CN.md)
 
 > **macOS 13+** · Free · No subscription · Fully local inference supported
 
----
-
 ## Why Typeflux
 
 Most voice input tools force you to switch apps — dictating in one place, then copying and pasting into another. That context switch breaks flow.
@@ -36,8 +33,6 @@ Most voice input tools force you to switch apps — dictating in one place, then
 Typeflux injects text directly into whichever app you're already using, at the cursor position, the moment you release the hotkey. It feels like typing, just **4× faster** (~200 WPM vs. ~50 WPM).
 
 And when you need more than dictation, **Ask Anything** turns your voice into an AI assistant for Q&A, rewriting, translation, and complex workflows.
-
----
 
 ## How It Works
 
@@ -51,8 +46,6 @@ Fn ×2 → Ask → Release → Answer, edit, or action
 3. **Release** — Typeflux transcribes and injects the text at your cursor
 4. **Double-press** `Fn` to use Ask Anything for Q&A, selected-text edits, and agent workflows
 5. The result is also copied to clipboard as a fallback
-
----
 
 ## Features
 
@@ -102,8 +95,6 @@ See partial transcription results while still speaking, so you get immediate fee
 ### History & Replay
 Every session is saved locally. Review past sessions, replay audio, retry transcription with different settings, or export records to Markdown.
 
----
-
 ## Requirements
 
 - macOS 13 or later
@@ -112,8 +103,6 @@ Every session is saved locally. Review past sessions, replay audio, retry transc
 
 For cloud providers: API keys and endpoint URLs.  
 For local inference: model files are downloaded automatically on first use.
-
----
 
 ## Build from Source
 
@@ -137,16 +126,12 @@ swift test        # run tests
 
 See [CLAUDE.md](./CLAUDE.md) for the full development guide.
 
----
-
 ## Documentation
 
 - [Usage Guide](./docs/USAGE.md)
 - [Make Commands](./docs/MAKE_COMMANDS.md)
 - [Release Guide](./docs/RELEASE.md)
 - [Changelog](./CHANGELOG.md)
-
----
 
 ## Community
 
@@ -158,8 +143,6 @@ Join the community to share feedback, ask questions, and follow development upda
 
   <img src="./assets/wechat-group-20260506.jpg" alt="Typeflux WeChat group QR code" width="260">
 
----
-
 ## Contributing
 
 Typeflux is a completely open-source project. We believe great tools should belong to everyone.
@@ -170,8 +153,6 @@ Contributions welcome — STT provider integrations, overlay UX, settings views,
 2. Run the app locally with `make dev`
 3. Add or update tests for any logic changes
 4. Open a PR with a description of user-visible impact
-
----
 
 ## License
 
