@@ -338,7 +338,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify remote endpoint
-        if: github.event_name == 'release' && env.NOTIFICATION_REMOTE_URL != ''
+        if: (github.event_name == 'release' || (github.event_name == 'push' && github.ref_name == 'pre-release')) && env.NOTIFICATION_REMOTE_URL != ''
         run: |
           curl -X POST "${{ env.NOTIFICATION_REMOTE_URL }}" \
             -H "Content-Type: application/json" \
