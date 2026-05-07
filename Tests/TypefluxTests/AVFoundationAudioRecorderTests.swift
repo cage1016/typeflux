@@ -288,6 +288,51 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
 
         XCTAssertEqual(recorder.values, [1, 2])
     }
+
+    func testSilentInputRecoveryTriggersWhenNoStartupBuffersArrive() {
+        XCTAssertTrue(AVFoundationAudioRecorder.shouldRecoverSilentInput(
+            isRecording: true,
+            callbackCountAtStart: 4,
+            currentCallbackCount: 4,
+            peakInputPowerSinceStart: -.infinity,
+        ))
+    }
+
+    func testSilentInputRecoveryTriggersWhenStartupBuffersAreSilent() {
+        XCTAssertTrue(AVFoundationAudioRecorder.shouldRecoverSilentInput(
+            isRecording: true,
+            callbackCountAtStart: 4,
+            currentCallbackCount: 7,
+            peakInputPowerSinceStart: -60,
+        ))
+    }
+
+    func testSilentInputRecoveryDoesNotTriggerAfterAudibleStartupInput() {
+        XCTAssertFalse(AVFoundationAudioRecorder.shouldRecoverSilentInput(
+            isRecording: true,
+            callbackCountAtStart: 4,
+            currentCallbackCount: 7,
+            peakInputPowerSinceStart: -30,
+        ))
+    }
+
+    func testSilentInputRecoveryDoesNotTriggerForLowButNonZeroStartupInput() {
+        XCTAssertFalse(AVFoundationAudioRecorder.shouldRecoverSilentInput(
+            isRecording: true,
+            callbackCountAtStart: 4,
+            currentCallbackCount: 7,
+            peakInputPowerSinceStart: -56,
+        ))
+    }
+
+    func testSilentInputRecoveryDoesNotTriggerAfterRecordingStops() {
+        XCTAssertFalse(AVFoundationAudioRecorder.shouldRecoverSilentInput(
+            isRecording: false,
+            callbackCountAtStart: 4,
+            currentCallbackCount: 4,
+            peakInputPowerSinceStart: -.infinity,
+        ))
+    }
 }
 
 private final class MockAudioDeviceManager: AudioDeviceManaging {
