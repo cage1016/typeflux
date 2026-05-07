@@ -414,11 +414,30 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertFalse(controller.shouldFinishRecordingAfterAudioStart)
         XCTAssertNil(controller.pendingRecordingStartID)
         XCTAssertEqual(controller.recordingMode, .holdToTalk)
-        XCTAssertEqual(audioRecorder.startCallCount, 1)
+        XCTAssertEqual(audioRecorder.startCallCount, 3)
         XCTAssertEqual(audioRecorder.stopCallCount, 0)
         await MainActor.run {
             controller.overlayController.dismissImmediately()
         }
+    }
+
+    func testBeginRecordingRetriesUntilAudioStartupSucceeds() async {
+        let audioRecorder = TransientTimeoutAudioRecorder(timeoutCount: 2)
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            sleep: { _ in },
+        )
+
+        await controller.beginRecording(intent: .dictation, startLocked: false)
+        await waitForMainActorWork()
+
+        XCTAssertTrue(controller.isRecording)
+        XCTAssertTrue(controller.isAudioRecorderStarted)
+        XCTAssertFalse(controller.isAudioRecorderStarting)
+        XCTAssertEqual(audioRecorder.startCallCount, 3)
+
+        controller.cancelRecording()
+        await waitForMainActorWork()
     }
 
     func testReleasingAfterImmediateAudioStartStopsRecorder() async {
@@ -949,6 +968,44 @@ private final class ThrowingStartAudioRecorder: AudioRecorder {
         starts += 1
         lock.unlock()
         throw error
+    }
+
+    func stop() throws -> AudioFile {
+        lock.lock()
+        stops += 1
+        lock.unlock()
+        return AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+    }
+}
+
+private final class TransientTimeoutAudioRecorder: AudioRecorder {
+    private let timeoutCount: Int
+    private let lock = NSLock()
+    private var starts = 0
+    private var stops = 0
+
+    init(timeoutCount: Int) {
+        self.timeoutCount = timeoutCount
+    }
+
+    var startCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return starts
+    }
+
+    func start(
+        levelHandler _: @escaping (Float) -> Void,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+    ) throws {
+        lock.lock()
+        starts += 1
+        let shouldTimeout = starts <= timeoutCount
+        lock.unlock()
+
+        if shouldTimeout {
+            throw AVFoundationAudioRecorder.RecorderError.inputStartupTimedOut
+        }
     }
 
     func stop() throws -> AudioFile {
