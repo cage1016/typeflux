@@ -1,6 +1,12 @@
 import AppKit
 import SwiftUI
 
+private final class TransparentAboutHostingView<Content: View>: NSHostingView<Content> {
+    override var isOpaque: Bool {
+        false
+    }
+}
+
 @MainActor
 final class AboutWindowController: NSObject {
     static let shared = AboutWindowController()
@@ -50,7 +56,7 @@ final class AboutWindowController: NSObject {
             return
         }
 
-        let hosting = NSHostingView(rootView: rootView)
+        let hosting = TransparentAboutHostingView(rootView: rootView)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
@@ -60,8 +66,11 @@ final class AboutWindowController: NSObject {
         window.title = L("window.about")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = true
-        window.backgroundColor = NSColor(StudioTheme.windowBackground)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
         window.contentView = hosting
         window.center()
         window.isReleasedWhenClosed = false
