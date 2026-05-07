@@ -870,6 +870,11 @@ private struct StudioSidebarIconMenuButton<MenuContent: View>: View {
         .menuIndicator(.hidden)
         .buttonStyle(StudioInteractiveButtonStyle())
         .tint(StudioTheme.textSecondary)
+        .frame(
+            width: StudioTheme.ControlSize.sidebarUtilityButton,
+            height: StudioTheme.ControlSize.sidebarUtilityButton,
+        )
+        .contentShape(Circle())
         .accessibilityLabel(accessibilityLabel)
         .studioTooltip(accessibilityLabel, yOffset: 34)
         .onHover { isHovered = $0 }

@@ -30,7 +30,8 @@ final class WorkflowController {
     static let localModelPreheatDebounce: Duration = .milliseconds(180)
     static let audioStartupMaxAttemptCount = 3
     static let audioStartupRetryDelay: Duration = .milliseconds(250)
-    static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 120
+    static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 30
+    var llmTimeoutAfterTranscription: TimeInterval = WorkflowController.llmTimeoutAfterTranscriptionSeconds
     struct LLMRequestTimeoutError: LocalizedError {
         var errorDescription: String? {
             "Persona rewrite timed out after \(Int(WorkflowController.llmTimeoutAfterTranscriptionSeconds)) seconds, inserting transcript as fallback"
