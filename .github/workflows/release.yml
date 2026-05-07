@@ -339,11 +339,46 @@ jobs:
 
       - name: Notify remote endpoint
         if: (github.event_name == 'release' || (github.event_name == 'push' && github.ref_name == 'pre-release')) && env.NOTIFICATION_REMOTE_URL != ''
+        continue-on-error: true
+        env:
+          RELEASE_IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_HTML_URL: ${{ github.event.release.html_url }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
-          curl -X POST "${{ env.NOTIFICATION_REMOTE_URL }}" \
+          set -euo pipefail
+
+          release_kind="other"
+          version=""
+          version_url=""
+
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            if [[ "${RELEASE_IS_PRERELEASE}" == "true" ]]; then
+              release_kind="pre-release"
+            else
+              release_kind="release"
+            fi
+            version="${RELEASE_TAG_NAME}"
+            version_url="${RELEASE_HTML_URL}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "pre-release" ]]; then
+            release_kind="pre-release"
+            version="${TYPEFLUX_PRERELEASE_TAG}"
+            version_url="${SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TYPEFLUX_PRERELEASE_TAG}"
+          fi
+
+          export release_kind version version_url
+          payload="$(ruby -r json <<'RUBY'
+          puts JSON.generate({
+            "branch" => ENV.fetch("GITHUB_REF_NAME", ""),
+            "action" => ENV.fetch("GITHUB_EVENT_NAME", ""),
+            "repo" => ENV.fetch("GITHUB_REPOSITORY", ""),
+            "release_type" => ENV.fetch("release_kind", ""),
+            "version" => ENV.fetch("version", ""),
+            "version_url" => ENV.fetch("version_url", "")
+          })
+          RUBY
+          )"
+
+          curl --fail --show-error --silent -X POST "${{ env.NOTIFICATION_REMOTE_URL }}" \
             -H "Content-Type: application/json" \
-            -d '{
-                  "branch": "${{ github.ref_name }}",
-                  "action": "${{ github.event_name }}",
-                  "repo": "${{ github.repository }}"
-                }'
+            -d "${payload}"
