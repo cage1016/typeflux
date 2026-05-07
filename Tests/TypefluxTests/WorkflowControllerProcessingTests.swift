@@ -325,6 +325,72 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         }
     }
 
+    func testPersonaRewriteTimeoutAfterTranscriptionIsThirtySeconds() {
+        XCTAssertEqual(WorkflowController.llmTimeoutAfterTranscriptionSeconds, 30)
+    }
+
+    func testGenerateRewriteThrowsTimeoutWhenStreamDoesNotFinish() async {
+        let controller = makeWorkflowController(
+            llmService: SlowProcessingLLMService(delay: .milliseconds(200)),
+            configureSettings: configureReadyLLM,
+        )
+
+        await XCTAssertThrowsErrorAsync(
+            try await controller.generateRewrite(
+                request: LLMRewriteRequest(
+                    mode: .rewriteTranscript,
+                    sourceText: "hello",
+                    spokenInstruction: nil,
+                    personaPrompt: "Rewrite this",
+                ),
+                sessionID: controller.processingSessionID,
+                timeout: 0.01,
+            )
+        ) { error in
+            XCTAssertTrue(error is WorkflowController.LLMRequestTimeoutError)
+        }
+    }
+
+    func testDictationWithPersonaFallsBackToTranscriptWhenRewriteTimesOut() async {
+        let transcript = "insert the transcript"
+        let textInjector = MockProcessingTextInjector()
+        let historyStore = MockProcessingHistoryStore()
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            sttTranscriber: MockProcessingTranscriber(transcript: transcript),
+            llmService: SlowProcessingLLMService(delay: .milliseconds(200)),
+            historyStore: historyStore,
+            configureSettings: configureReadyLLM,
+        )
+        controller.llmTimeoutAfterTranscription = 0.01
+        let sessionID = controller.processingSessionID
+
+        await controller.process(
+            audioFile: AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1),
+            record: HistoryRecord(
+                date: Date(),
+                personaPrompt: "Clean up the transcript.",
+                recordingStatus: .succeeded,
+            ),
+            selectionSnapshot: TextSelectionSnapshot(),
+            selectedText: nil,
+            askContextText: nil,
+            inputContext: nil,
+            personaPrompt: "Clean up the transcript.",
+            recordingIntent: .dictation,
+            sessionID: sessionID,
+        )
+
+        XCTAssertEqual(textInjector.insertedTexts, [transcript])
+        XCTAssertTrue(textInjector.replacedTexts.isEmpty)
+        let savedRecord = historyStore.list().last
+        XCTAssertEqual(savedRecord?.mode, .personaRewrite)
+        XCTAssertEqual(savedRecord?.transcriptText, transcript)
+        XCTAssertEqual(savedRecord?.personaResultText, transcript)
+        XCTAssertEqual(savedRecord?.processingStatus, .succeeded)
+        XCTAssertEqual(savedRecord?.applyStatus, .succeeded)
+    }
+
     func testDecideAskSelectionThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 
@@ -604,7 +670,9 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     private func makeWorkflowController(
         textInjector: TextInjector = MockProcessingTextInjector(),
         audioRecorder: AudioRecorder = MockProcessingAudioRecorder(),
+        sttTranscriber: Transcriber = MockProcessingTranscriber(),
         llmService: LLMService = MockProcessingLLMService(),
+        historyStore: HistoryStore = MockProcessingHistoryStore(),
         soundEffectPlayer: SoundEffectPlayer? = nil,
         sleep: @escaping @Sendable (Duration) async -> Void = { _ in },
         configureSettings: ((SettingsStore) -> Void)? = nil,
@@ -624,22 +692,22 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             audioRecorder: audioRecorder,
             sttRouter: STTRouter(
                 settingsStore: settingsStore,
-                whisper: MockProcessingTranscriber(),
-                freeSTT: MockProcessingTranscriber(),
-                appleSpeech: MockProcessingTranscriber(),
-                localModel: MockProcessingTranscriber(),
-                multimodal: MockProcessingTranscriber(),
-                aliCloud: MockProcessingTranscriber(),
-                doubaoRealtime: MockProcessingTranscriber(),
-                googleCloud: MockProcessingTranscriber(),
-                groq: MockProcessingTranscriber(),
-                typefluxOfficial: MockProcessingTranscriber(),
+                whisper: sttTranscriber,
+                freeSTT: sttTranscriber,
+                appleSpeech: sttTranscriber,
+                localModel: sttTranscriber,
+                multimodal: sttTranscriber,
+                aliCloud: sttTranscriber,
+                doubaoRealtime: sttTranscriber,
+                googleCloud: sttTranscriber,
+                groq: sttTranscriber,
+                typefluxOfficial: sttTranscriber,
             ),
             llmService: llmService,
             llmAgentService: MockProcessingLLMAgentService(),
             textInjector: textInjector,
             clipboard: MockClipboardService(),
-            historyStore: MockProcessingHistoryStore(),
+            historyStore: historyStore,
             agentJobStore: MockProcessingAgentJobStore(),
             agentExecutionRegistry: AgentExecutionRegistry(),
             mcpRegistry: MCPRegistry(),
@@ -654,6 +722,13 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             soundEffectPlayer: soundEffectPlayer ?? SoundEffectPlayer(settingsStore: settingsStore),
             sleep: sleep,
         )
+    }
+
+    private func configureReadyLLM(settingsStore: SettingsStore) {
+        settingsStore.setLLMBaseURL("https://example.com/v1", for: .custom)
+        settingsStore.setLLMModel("test-model", for: .custom)
+        settingsStore.llmProvider = .openAICompatible
+        settingsStore.llmRemoteProvider = .custom
     }
 
     private func makeRecordingSoundEffectPlayer(
@@ -772,6 +847,36 @@ private final class MockProcessingLLMService: LLMService {
     func streamRewrite(request _: LLMRewriteRequest) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             continuation.finish()
+        }
+    }
+
+    func complete(systemPrompt _: String, userPrompt _: String) async throws -> String {
+        ""
+    }
+
+    func completeJSON(systemPrompt _: String, userPrompt _: String, schema _: LLMJSONSchema) async throws -> String {
+        "{}"
+    }
+}
+
+private final class SlowProcessingLLMService: LLMService {
+    private let delay: Duration
+
+    init(delay: Duration) {
+        self.delay = delay
+    }
+
+    func streamRewrite(request _: LLMRewriteRequest) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    try await Task.sleep(for: delay)
+                    continuation.yield("late")
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
         }
     }
 
@@ -1069,19 +1174,35 @@ private final class ThreadSafeEventRecorder: @unchecked Sendable {
 }
 
 private final class MockProcessingTranscriber: Transcriber {
+    private let transcript: String
+
+    init(transcript: String = "") {
+        self.transcript = transcript
+    }
+
     func transcribe(audioFile _: AudioFile) async throws -> String {
-        ""
+        transcript
     }
 }
 
 private final class MockProcessingHistoryStore: HistoryStore {
-    func save(record _: HistoryRecord) {}
-    func list() -> [HistoryRecord] { [] }
-    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] { [] }
-    func record(id _: UUID) -> HistoryRecord? { nil }
-    func delete(id _: UUID) {}
+    private var records: [UUID: HistoryRecord] = [:]
+
+    func save(record: HistoryRecord) {
+        records[record.id] = record
+    }
+
+    func list() -> [HistoryRecord] {
+        records.values.sorted { $0.date < $1.date }
+    }
+
+    func list(limit: Int, offset: Int, searchQuery _: String?) -> [HistoryRecord] {
+        Array(list().dropFirst(offset).prefix(limit))
+    }
+    func record(id: UUID) -> HistoryRecord? { records[id] }
+    func delete(id: UUID) { records[id] = nil }
     func purge(olderThanDays _: Int) {}
-    func clear() {}
+    func clear() { records.removeAll() }
     func exportMarkdown() throws -> URL { URL(fileURLWithPath: "/tmp/history.md") }
 }
 

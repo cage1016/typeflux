@@ -28,7 +28,8 @@ final class WorkflowController {
     // still considered for analysis.
     static let automaticVocabularyEditRatioLimit: Double = 0.8
     static let localModelPreheatDebounce: Duration = .milliseconds(180)
-    static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 120
+    static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 30
+    var llmTimeoutAfterTranscription: TimeInterval = WorkflowController.llmTimeoutAfterTranscriptionSeconds
     struct LLMRequestTimeoutError: LocalizedError {
         var errorDescription: String? {
             "Persona rewrite timed out after \(Int(WorkflowController.llmTimeoutAfterTranscriptionSeconds)) seconds, inserting transcript as fallback"

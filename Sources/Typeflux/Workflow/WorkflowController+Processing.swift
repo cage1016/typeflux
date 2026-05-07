@@ -1413,7 +1413,7 @@ extension WorkflowController {
                     sessionID: sessionID,
                     showsStreamingPreview: WorkflowOverlayPresentationPolicy
                         .shouldShowLLMStreamingPreviewAfterTranscription(),
-                    timeout: Self.llmTimeoutAfterTranscriptionSeconds,
+                    timeout: llmTimeoutAfterTranscription,
                 )
 
                 try ensureProcessingIsActive(sessionID)
@@ -1431,7 +1431,7 @@ extension WorkflowController {
                 // Timeout: insert transcript as fallback so the user isn't left empty-handed
                 // after waiting the full timeout period. Log for diagnostics.
                 ErrorLogStore.shared.log(
-                    "Persona rewrite timed out after \(Int(Self.llmTimeoutAfterTranscriptionSeconds))s, using transcript as fallback",
+                    "Persona rewrite timed out after \(String(format: "%.2f", llmTimeoutAfterTranscription))s, using transcript as fallback",
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
