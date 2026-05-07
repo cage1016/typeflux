@@ -9,6 +9,8 @@
 
 [English](./README.md) | 简体中文
 
+[![观看视频](https://img.youtube.com/vi/ZxWWUOEgaJ4/maxresdefault.jpg)](https://youtu.be/ZxWWUOEgaJ4)
+
 ![product-image](./assets/product-image.png)
 
 [查看更多截图](./docs/SCREENSHOTS.md)
