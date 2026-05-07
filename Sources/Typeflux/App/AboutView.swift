@@ -12,7 +12,7 @@ struct AboutView: View {
 
     var body: some View {
         ZStack {
-            StudioTheme.windowBackground
+            StudioGlassBackground(tintOpacity: StudioTheme.Opacity.glassBackgroundTint)
                 .ignoresSafeArea()
 
             ScrollView {
