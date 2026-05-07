@@ -114,7 +114,6 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertFalse(prompts.system.contains(PromptCatalog.languageConsistencyRule(for: "source text")))
         XCTAssertTrue(prompts.user.contains("<raw_transcript>\nraw text\n</raw_transcript>"))
         XCTAssertTrue(prompts.user.contains("<persona_definition>\nformal and concise\n</persona_definition>"))
-        XCTAssertTrue(prompts.user.contains("Process <raw_transcript> according to the system prompt."))
     }
 
     func testRewritePromptsAllowPersonaTranslationInstructionToOverrideSourceLanguage() {
@@ -226,7 +225,6 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertTrue(debugPrompt.contains("<terms>\nTypeflux, SeedASR\n</terms>"))
         XCTAssertTrue(debugPrompt.contains("<persona_definition>\n任务：将用户的中文口述内容翻译并整理成自然的英文表达。"))
         XCTAssertTrue(debugPrompt.contains("- 输出英文"))
-        XCTAssertTrue(debugPrompt.contains("Process <raw_transcript> according to the system prompt."))
     }
 
     func testRewritePromptsIncludeLanguageConsistencyForSelectionEditing() {

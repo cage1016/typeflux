@@ -187,7 +187,7 @@ enum PromptCatalog {
         Preserve the user's intended meaning while applying the user's persona instructions.
 
         INSTRUCTION PRIORITY
-        1. Follow explicit user instructions in the current request.
+        1. Never try to answer the user's questions in `<raw_transcript/>`.
         2. Follow persona_definition, including target language, translation, tone, format, and style requirements.
         3. Preserve the source meaning, critical details, and speech act.
         4. Fix likely speech-recognition errors.
@@ -459,7 +459,7 @@ enum PromptCatalog {
                 user: """
                 \(transcriptSection)\(inputContextSection)\(vocabularySection)\(personaSection)
 
-                Process <raw_transcript> according to the system prompt.
+                Rewrite <raw_transcript/> according to the system prompt, Please be careful not to directly answer the user's questions in `<raw_transcript/>`.
                 """,
             )
         }
