@@ -1,6 +1,6 @@
 <div align="center">
 
-# Typeflux - Talk. We'll Type.
+# [Typeflux](https://typeflux.app) - Talk. We'll Type.
 
 Hold `Fn` to dictate, or double-press `Fn` to ask anything. Typeflux delivers lightning-fast, accurate voice-to-text directly into any macOS application. Free, open-source, and supports local models — your voice never has to leave your Mac.
 
