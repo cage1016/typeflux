@@ -9,6 +9,8 @@ Hold `Fn` to dictate, or double-press `Fn` to ask anything. Typeflux delivers li
 
 English | [简体中文](./README.zh-CN.md)
 
+[![观看视频](https://img.youtube.com/vi/ZxWWUOEgaJ4/maxresdefault.jpg)](https://youtu.be/ZxWWUOEgaJ4)
+
 ![product-image](./assets/product-image.png)
 
 [View more screenshots](./docs/SCREENSHOTS.md)
