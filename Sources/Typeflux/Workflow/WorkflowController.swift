@@ -28,6 +28,8 @@ final class WorkflowController {
     // still considered for analysis.
     static let automaticVocabularyEditRatioLimit: Double = 0.8
     static let localModelPreheatDebounce: Duration = .milliseconds(180)
+    static let audioStartupMaxAttemptCount = 3
+    static let audioStartupRetryDelay: Duration = .milliseconds(250)
     static let llmTimeoutAfterTranscriptionSeconds: TimeInterval = 30
     var llmTimeoutAfterTranscription: TimeInterval = WorkflowController.llmTimeoutAfterTranscriptionSeconds
     struct LLMRequestTimeoutError: LocalizedError {
@@ -784,7 +786,7 @@ final class WorkflowController {
             activeRealtimeTranscriptionSession = realtimeSession
             activeRealtimeAudioBufferPump = realtimeAudioBufferPump
             await realtimeSession?.start()
-            try audioRecorder.start(
+            try await startAudioRecorderWithStartupRetry(
                 levelHandler: { [weak self] level in
                     self?.overlayController.updateLevel(level)
                 },
