@@ -352,6 +352,7 @@
 
 "history.action.copyResult" = "Copy result";
 "history.action.copyTranscript" = "Copy transcript";
+"history.action.more" = "More actions";
 "history.action.downloadAudio" = "Download audio";
 "history.action.playAudio" = "Play audio";
 "history.action.stopAudio" = "Stop audio";
