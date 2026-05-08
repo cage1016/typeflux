@@ -97,6 +97,7 @@ final class AutoModelDownloadService {
     func triggerIfNeeded() {
         guard settingsStore.localOptimizationEnabled else {
             setStatus(.disabled)
+            LocalModelDownloadProgressCenter.shared.clear()
             return
         }
 
@@ -172,6 +173,7 @@ final class AutoModelDownloadService {
     private func performDownload() async {
         let config = Self.recommendedConfiguration()
         setStatus(.downloading(progress: 0))
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: config.model, progress: 0)
 
         var state = loadState()
         state.attemptCount += 1
@@ -185,6 +187,10 @@ final class AutoModelDownloadService {
                 configuration: config,
             ) { [weak self] update in
                 self?.setStatus(.downloading(progress: update.progress))
+                LocalModelDownloadProgressCenter.shared.reportDownloading(
+                    model: config.model,
+                    progress: update.progress,
+                )
             }
 
             guard modelManager.isStoragePathReady(storagePath, for: config.model) else {
@@ -202,9 +208,11 @@ final class AutoModelDownloadService {
             completedState.completedStoragePath = storagePath
             completedState.nextRetryDate = nil
             saveState(completedState)
+            LocalModelDownloadProgressCenter.shared.clear()
             await notifyLocalModelReady()
 
         } catch {
+            LocalModelDownloadProgressCenter.shared.clear()
             guard !Task.isCancelled else { return }
             NetworkDebugLogger.logError(context: "Auto model download failed", error: error)
             setStatus(.failed)
@@ -233,6 +241,7 @@ final class AutoModelDownloadService {
             _readyStoragePath = storagePath
             _status = .completed
         }
+        LocalModelDownloadProgressCenter.shared.clear()
         notifyStateChanged()
     }
 
