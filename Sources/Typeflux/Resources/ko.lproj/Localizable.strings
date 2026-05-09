@@ -350,6 +350,7 @@
 
 "history.action.copyResult" = "결과 복사";
 "history.action.copyTranscript" = "성적표 복사";
+"history.action.more" = "추가 작업";
 "history.action.downloadAudio" = "오디오 다운로드";
 "history.action.playAudio" = "오디오 재생";
 "history.action.stopAudio" = "오디오 정지";

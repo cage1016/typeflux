@@ -352,6 +352,7 @@
 
 "history.action.copyResult" = "复制结果";
 "history.action.copyTranscript" = "复制转写";
+"history.action.more" = "更多操作";
 "history.action.downloadAudio" = "下载音频";
 "history.action.playAudio" = "播放音频";
 "history.action.stopAudio" = "停止音频";

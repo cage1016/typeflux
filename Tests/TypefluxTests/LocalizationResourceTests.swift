@@ -93,6 +93,20 @@ final class LocalizationResourceTests: XCTestCase {
         }
     }
 
+    func testHistoryActionMenuDiscoverabilityCopyExistsForAllSupportedLanguages() throws {
+        for language in AppLanguage.allCases {
+            let bundle = try localizationBundle(for: language)
+            let localized = bundle.localizedString(forKey: "history.action.more", value: nil, table: nil)
+
+            XCTAssertNotEqual(
+                localized,
+                "history.action.more",
+                "Missing localized history actions menu label for \(language.rawValue)",
+            )
+            XCTAssertFalse(localized.isEmpty)
+        }
+    }
+
     func testAgentClarificationTranscribingHintUsesThinkingCopyForAllSupportedLanguages() throws {
         let expectedValues: [AppLanguage: String] = [
             .english: "Thinking...",

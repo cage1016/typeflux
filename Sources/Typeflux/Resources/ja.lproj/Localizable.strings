@@ -350,6 +350,7 @@
 
 "history.action.copyResult" = "結果をコピー";
 "history.action.copyTranscript" = "トランスクリプトをコピーする";
+"history.action.more" = "その他の操作";
 "history.action.downloadAudio" = "音声をダウンロードする";
 "history.action.playAudio" = "音声を再生";
 "history.action.stopAudio" = "音声を停止";
