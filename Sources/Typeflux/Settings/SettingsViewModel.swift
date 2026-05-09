@@ -138,12 +138,14 @@ final class StudioViewModel: ObservableObject {
     @Published var groqSTTModel: String
 
     @Published var localSTTModel: LocalSTTModel
+    @Published var localSTTFocusedModel: LocalSTTModel
     @Published var localSTTModelIdentifier: String
     @Published var localSTTDownloadSource: ModelDownloadSource
     @Published var localSTTAutoSetup: Bool
     @Published var localSTTStatus = L("settings.models.localSTT.notPrepared")
     @Published var localSTTPreparationProgress: Double = 0
     @Published var localSTTPreparationDetail = L("settings.models.localSTT.autoPrepareHint")
+    @Published var localSTTTransferDetail = ""
     @Published var localSTTStoragePath: String
     @Published var localSTTPreparedSource = L("common.automatic")
     @Published var isLocalSTTPrepared = false
@@ -238,6 +240,8 @@ final class StudioViewModel: ObservableObject {
     private var sttTestTask: Task<Void, Never>?
     private var mcpTestTask: Task<Void, Never>?
     private var historyRefreshTask: Task<Void, Never>?
+    private var localSTTPreparationTask: Task<Void, Never>?
+    private var localSTTPreparationID: UUID?
     private var historyRefreshGeneration = 0
     private let audioPreviewPlayer: HistoryAudioPreviewPlaying
 
@@ -327,6 +331,7 @@ final class StudioViewModel: ObservableObject {
         groqSTTAPIKey = settingsStore.groqSTTAPIKey
         groqSTTModel = settingsStore.groqSTTModel
         localSTTModel = settingsStore.localSTTModel
+        localSTTFocusedModel = settingsStore.localSTTModel
         localSTTModelIdentifier = settingsStore.localSTTModelIdentifier
         localSTTDownloadSource = settingsStore.localSTTDownloadSource
         localSTTAutoSetup = true
@@ -490,6 +495,23 @@ final class StudioViewModel: ObservableObject {
 
     var localSTTPreparationPercentText: String {
         "\(Int((localSTTPreparationProgress * 100).rounded()))%"
+    }
+
+    static func localSTTTransferText(downloadedBytes: Int64?, totalBytes: Int64?) -> String {
+        guard let downloadedBytes, let totalBytes, totalBytes > 0 else {
+            return ""
+        }
+
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useMB, .useGB]
+        formatter.countStyle = .file
+        let percentage = Int((Double(downloadedBytes) / Double(totalBytes) * 100).rounded())
+        return L(
+            "settings.models.localSTT.transferProgress",
+            "\(min(max(percentage, 0), 100))%",
+            formatter.string(fromByteCount: downloadedBytes),
+            formatter.string(fromByteCount: totalBytes),
+        )
     }
 
     var localSTTPreparationTint: Color {
@@ -936,9 +958,6 @@ final class StudioViewModel: ObservableObject {
             focusedModelProvider = .localSTT
             settingsStore.localSTTAutoSetup = true
             localSTTAutoSetup = true
-            if !isLocalSTTPrepared, !isPreparingLocalSTT {
-                prepareLocalSTTModel()
-            }
         case .whisperAPI:
             focusedModelProvider = .whisperAPI
         case .multimodalLLM:
@@ -988,7 +1007,40 @@ final class StudioViewModel: ObservableObject {
     }
 
     func setLocalSTTModel(_ value: LocalSTTModel) {
+        commitLocalSTTModel(value)
+    }
+
+    func focusLocalSTTModel(_ value: LocalSTTModel) {
+        if isPreparingLocalSTT, value != localSTTFocusedModel {
+            cancelLocalSTTPreparation()
+        }
+
+        localSTTFocusedModel = value
+        if localModelManager.isModelAvailable(value) {
+            commitLocalSTTModel(value)
+            return
+        }
+
+        let configuration = localSTTConfiguration(for: value)
+        localSTTModelIdentifier = configuration.modelIdentifier
+        localSTTDownloadSource = configuration.downloadSource
+        localSTTAutoSetup = configuration.autoSetup
+        localSTTStoragePath = localModelManager.storagePath(for: configuration)
+        localSTTPreparedSource = L("common.automatic")
+        localSTTStatus = L("settings.models.localSTT.notPrepared")
+        localSTTPreparationDetail = L("settings.models.localSTT.autoPrepareHint")
+        localSTTTransferDetail = ""
+        localSTTPreparationProgress = 0
+        isLocalSTTPrepared = false
+    }
+
+    private func commitLocalSTTModel(_ value: LocalSTTModel) {
+        if isPreparingLocalSTT, value != localSTTFocusedModel {
+            cancelLocalSTTPreparation()
+        }
+
         localSTTModel = value
+        localSTTFocusedModel = value
         settingsStore.localSTTModel = value
 
         let recommendedIdentifier = value.defaultModelIdentifier
@@ -1002,6 +1054,14 @@ final class StudioViewModel: ObservableObject {
         settingsStore.localSTTAutoSetup = true
         refreshLocalSTTStoragePath()
         refreshLocalSTTPreparedState()
+    }
+
+    private func cancelLocalSTTPreparation() {
+        localSTTPreparationID = nil
+        localSTTPreparationTask?.cancel()
+        localSTTPreparationTask = nil
+        isPreparingLocalSTT = false
+        LocalModelDownloadProgressCenter.shared.clear()
     }
 
     func setLLMModelSelection(_ provider: LLMProvider, suggestedModel: String) {
@@ -1887,58 +1947,98 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
-    func prepareLocalSTTModel() {
+    func prepareLocalSTTModel(_ model: LocalSTTModel? = nil) {
         guard !isPreparingLocalSTT else { return }
 
-        setLocalSTTModelIdentifier(localSTTModel.defaultModelIdentifier)
+        let targetModel = model ?? localSTTFocusedModel
+        let configuration = localSTTConfiguration(for: targetModel)
+        localSTTFocusedModel = targetModel
+        localSTTModelIdentifier = configuration.modelIdentifier
+        localSTTDownloadSource = configuration.downloadSource
         localSTTAutoSetup = true
-        settingsStore.localSTTAutoSetup = true
 
-        if localModelManager.preparedModelInfo(settingsStore: settingsStore) != nil {
-            refreshLocalSTTPreparedState()
-            showToast(L("settings.models.localSTT.ready"))
+        if localModelManager.isModelAvailable(targetModel) {
+            commitLocalSTTModel(targetModel)
             return
         }
 
+        let preparationID = UUID()
+        localSTTPreparationID = preparationID
         isPreparingLocalSTT = true
         localSTTStatus = L("settings.models.localSTT.preparing")
         localSTTPreparationProgress = 0.02
         localSTTPreparationDetail = L("settings.models.localSTT.preparing")
+        localSTTTransferDetail = ""
         isLocalSTTPrepared = false
         localSTTPreparedSource = L("common.automatic")
-        refreshLocalSTTStoragePath()
+        localSTTStoragePath = localModelManager.storagePath(for: configuration)
+        LocalModelDownloadProgressCenter.shared.reportDownloading(
+            model: targetModel,
+            progress: localSTTPreparationProgress,
+        )
 
-        settingsStore.localSTTModel = localSTTModel
-        settingsStore.localSTTModelIdentifier = localSTTModelIdentifier
-        settingsStore.localSTTDownloadSource = localSTTDownloadSource
-        settingsStore.localSTTAutoSetup = localSTTAutoSetup
-
-        Task {
+        localSTTPreparationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
             do {
-                try await localModelManager.prepareModel(settingsStore: settingsStore) { [weak self] update in
+                try await localModelManager.prepareModel(configuration: configuration) { [weak self] update in
                     Task { @MainActor in
+                        guard self?.localSTTPreparationID == preparationID,
+                              self?.localSTTFocusedModel == targetModel
+                        else {
+                            return
+                        }
+                        LocalModelDownloadProgressCenter.shared.reportDownloading(
+                            model: targetModel,
+                            progress: update.progress,
+                        )
                         self?.localSTTPreparationProgress = update.progress
                         self?.localSTTPreparationDetail = update.message
+                        self?.localSTTTransferDetail = Self.localSTTTransferText(
+                            downloadedBytes: update.downloadedBytes,
+                            totalBytes: update.totalBytes,
+                        )
                         self?.localSTTStoragePath = update.storagePath
                         if let source = update.source {
                             self?.localSTTPreparedSource = source
                         }
                     }
                 }
-                localSTTStatus = L("settings.models.localSTT.readyNamed", localSTTModel.displayName)
+
+                guard !Task.isCancelled,
+                      localSTTPreparationID == preparationID,
+                      localSTTFocusedModel == targetModel
+                else {
+                    return
+                }
+
+                commitLocalSTTModel(targetModel)
+                localSTTStatus = L("settings.models.localSTT.readyNamed", targetModel.displayName)
                 localSTTPreparationProgress = 1
                 localSTTPreparationDetail = L("settings.models.localSTT.downloadComplete")
+                localSTTTransferDetail = ""
                 isLocalSTTPrepared = true
-                refreshLocalSTTPreparedState()
-                showToast(L("settings.models.localSTT.ready"))
+                LocalModelDownloadProgressCenter.shared.clear()
                 await notifyLocalModelReady()
             } catch {
+                guard !Task.isCancelled,
+                      localSTTPreparationID == preparationID,
+                      localSTTFocusedModel == targetModel
+                else {
+                    return
+                }
+
                 localSTTStatus = L("common.failedWithReason", error.localizedDescription)
                 localSTTPreparationDetail = L("settings.models.localSTT.prepareFailed")
+                localSTTTransferDetail = ""
                 isLocalSTTPrepared = false
+                LocalModelDownloadProgressCenter.shared.clear()
                 showToast(L("settings.models.localSTT.prepareFailed"))
             }
-            isPreparingLocalSTT = false
+            if localSTTPreparationID == preparationID {
+                isPreparingLocalSTT = false
+                localSTTPreparationID = nil
+                localSTTPreparationTask = nil
+            }
         }
     }
 
@@ -1950,8 +2050,9 @@ final class StudioViewModel: ObservableObject {
         do {
             try localModelManager.deleteModelFiles(model)
             if model == localSTTModel {
-                refreshLocalSTTStoragePath()
-                refreshLocalSTTPreparedState()
+                selectLocalSTTFallbackAfterDeleting(model)
+            } else if model == localSTTFocusedModel {
+                focusLocalSTTModel(localSTTModel)
             }
             let toastKey = localModelManager.isModelAvailable(model)
                 ? "settings.models.localSTT.ready"
@@ -1962,15 +2063,23 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    private func selectLocalSTTFallbackAfterDeleting(_ deletedModel: LocalSTTModel) {
+        let fallback = LocalSTTModel.displayOrder.first { model in
+            model != deletedModel && localModelManager.isModelAvailable(model)
+        } ?? LocalSTTModel.defaultModel
+
+        commitLocalSTTModel(fallback)
+        refreshLocalSTTPreparedState()
+    }
+
     func redownloadLocalSTTModel(_ model: LocalSTTModel) {
         try? localModelManager.deleteModelFiles(model)
-        if localSTTModel != model {
-            setLocalSTTModel(model)
-        } else {
+        localSTTFocusedModel = model
+        if localSTTModel == model {
             isLocalSTTPrepared = false
             localSTTPreparationProgress = 0
         }
-        prepareLocalSTTModel()
+        prepareLocalSTTModel(model)
     }
 
     func exportHistory() {
@@ -2592,6 +2701,15 @@ final class StudioViewModel: ObservableObject {
         localSTTStoragePath = localModelManager.storagePath(for: configuration)
     }
 
+    private func localSTTConfiguration(for model: LocalSTTModel) -> LocalSTTConfiguration {
+        LocalSTTConfiguration(
+            model: model,
+            modelIdentifier: model.defaultModelIdentifier,
+            downloadSource: model.recommendedDownloadSource,
+            autoSetup: true,
+        )
+    }
+
     private func refreshLocalSTTPreparedState() {
         if let prepared = localModelManager.preparedModelInfo(settingsStore: settingsStore) {
             isLocalSTTPrepared = true
@@ -2599,12 +2717,14 @@ final class StudioViewModel: ObservableObject {
             localSTTStoragePath = prepared.storagePath
             localSTTStatus = L("settings.models.localSTT.readyNamed", localSTTModel.displayName)
             localSTTPreparationDetail = L("settings.models.localSTT.downloadComplete")
+            localSTTTransferDetail = ""
             localSTTPreparationProgress = 1
         } else {
             isLocalSTTPrepared = false
             localSTTPreparedSource = L("common.automatic")
             localSTTStatus = L("settings.models.localSTT.notPrepared")
             localSTTPreparationDetail = L("settings.models.localSTT.autoPrepareHint")
+            localSTTTransferDetail = ""
             localSTTPreparationProgress = 0
         }
     }

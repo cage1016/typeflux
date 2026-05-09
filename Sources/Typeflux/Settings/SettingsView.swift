@@ -227,6 +227,7 @@ struct StudioView: View {
     @State private var hasLoadedPersonaAppInstalledCandidates = false
     @State private var personaAppCandidateLoadToken = UUID()
     @State private var localSTTPendingDelete: LocalSTTModel? = nil
+    @State private var localSTTPendingDownload: LocalSTTModel? = nil
 
     @State private var localSTTPendingRedownload: LocalSTTModel? = nil
     @State private var llmActivationMissingAPIKeyProviderName: String?
@@ -4622,35 +4623,6 @@ struct StudioView: View {
 
                 if viewModel.focusedModelProvider == .localSTT {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                        if viewModel.localSTTNeedsRetry {
-                            StudioButton(
-                                title: viewModel.localSTTPreparationProgress > 0
-                                    ? L("common.retry") : L("settings.models.prepareLocalModel"),
-                                systemImage: viewModel.localSTTPreparationProgress > 0
-                                    ? "arrow.clockwise" : "arrow.down.circle",
-                                variant: .primary,
-                            ) {
-                                viewModel.prepareLocalSTTModel()
-                            }
-                        }
-
-                        HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
-                            ProgressView(value: viewModel.localSTTPreparationProgress, total: 1)
-                                .progressViewStyle(.linear)
-                                .tint(viewModel.localSTTPreparationTint)
-
-                            Text(viewModel.localSTTPreparationPercentText)
-                                .font(
-                                    .studioBody(StudioTheme.Typography.caption, weight: .semibold),
-                                )
-                                .foregroundStyle(StudioTheme.textSecondary)
-                                .frame(width: 40, alignment: .trailing)
-                        }
-
-                        Text(viewModel.localSTTPreparationDetail)
-                            .font(.studioBody(StudioTheme.Typography.caption))
-                            .foregroundStyle(StudioTheme.textSecondary)
-
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
                             HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
                                 Text(L("settings.models.storagePath"))
@@ -4779,6 +4751,28 @@ struct StudioView: View {
                     ForEach(LocalSTTModel.displayOrder, id: \.self) { model in
                         localSTTModelOptionCard(model)
                     }
+                }
+                .confirmationDialog(
+                    localSTTPendingDownload.map {
+                        L("settings.models.downloadDialog.title", $0.displayName)
+                    } ?? "",
+                    isPresented: Binding(
+                        get: { localSTTPendingDownload != nil },
+                        set: { if !$0 { localSTTPendingDownload = nil } },
+                    ),
+                    titleVisibility: .visible,
+                ) {
+                    Button(L("settings.models.prepareLocalModel")) {
+                        if let model = localSTTPendingDownload {
+                            viewModel.prepareLocalSTTModel(model)
+                            localSTTPendingDownload = nil
+                        }
+                    }
+                    Button(L("common.cancel"), role: .cancel) {
+                        localSTTPendingDownload = nil
+                    }
+                } message: {
+                    Text(L("settings.models.downloadDialog.message"))
                 }
                 .confirmationDialog(
                     localSTTPendingRedownload.map {
@@ -5355,72 +5349,94 @@ struct StudioView: View {
     }
 
     private func localSTTModelOptionCard(_ model: LocalSTTModel) -> some View {
-        let isSelected = viewModel.localSTTModel == model
+        let isFocused = viewModel.localSTTFocusedModel == model
+        let isDownloaded = viewModel.isModelAvailable(model)
+        let isActive = viewModel.localSTTModel == model && isDownloaded
         let specs = model.specs
 
-        return Button {
-            viewModel.setLocalSTTModel(model)
-        } label: {
-            VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
-                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
-                        HStack(spacing: StudioTheme.Spacing.xSmall) {
-                            Text(model.displayName)
-                                .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
-                                .foregroundStyle(StudioTheme.textPrimary)
+        return VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
+            HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
+                    HStack(spacing: StudioTheme.Spacing.xSmall) {
+                        Text(model.displayName)
+                            .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
 
-                            if let recommendationBadgeTitle = model.recommendationBadgeTitle {
-                                localSTTRecommendationPill(recommendationBadgeTitle)
-                            }
+                        if let recommendationBadgeTitle = model.recommendationBadgeTitle {
+                            localSTTRecommendationPill(recommendationBadgeTitle)
                         }
-
-                        Text(specs.summary)
-                            .font(.studioBody(StudioTheme.Typography.bodySmall))
-                            .foregroundStyle(StudioTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Spacer(minLength: 0)
-
-                    if isSelected {
-                        StudioPill(
-                            title: L("settings.models.selected"),
-                            tone: StudioTheme.accent,
-                            fill: StudioTheme.accentSoft,
-                        )
-                    }
+                    Text(specs.summary)
+                        .font(.studioBody(StudioTheme.Typography.bodySmall))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                HStack(spacing: StudioTheme.Spacing.xSmall) {
-                    localSTTSpecPill(model.displayName)
-                    localSTTSpecPill("\(specs.parameterValue) parameters")
-                    localSTTSpecPill(specs.sizeValue)
+                Spacer(minLength: 0)
+
+                if isActive {
+                    StudioPill(
+                        title: L("settings.models.selected"),
+                        tone: StudioTheme.accent,
+                        fill: StudioTheme.accentSoft,
+                    )
                 }
             }
-            .padding(StudioTheme.Insets.cardCompact)
-            .background(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.localModelOptionSurface),
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .stroke(
-                        StudioTheme.border.opacity(0.75),
-                        lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
-            )
+
+            HStack(spacing: StudioTheme.Spacing.xSmall) {
+                localSTTSpecPill(model.displayName)
+                localSTTSpecPill("\(specs.parameterValue) parameters")
+                localSTTSpecPill(specs.sizeValue)
+            }
+
+            if isFocused {
+                localSTTModelProgressRow(model)
+
+                if !isDownloaded {
+                    Text(viewModel.localSTTPreparationDetail)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+
+                if !viewModel.localSTTTransferDetail.isEmpty {
+                    Text(viewModel.localSTTTransferDetail)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                }
+            }
         }
-        .buttonStyle(StudioInteractiveButtonStyle())
+        .padding(StudioTheme.Insets.cardCompact)
+        .background(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                .fill(isFocused ? StudioTheme.selectionSurfaceRaised : StudioTheme.localModelOptionSurface),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                .stroke(
+                    StudioTheme.border.opacity(0.75),
+                    lineWidth: StudioTheme.BorderWidth.thin,
+                ),
+        )
+        .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
+        .onTapGesture {
+            selectLocalSTTModelCard(model)
+        }
         .contextMenu {
             Button {
-                if viewModel.isModelAvailable(model) {
+                let isAvailable = viewModel.isModelAvailable(model)
+                if isAvailable {
                     localSTTPendingRedownload = model
                 } else {
-                    viewModel.setLocalSTTModel(model)
-                    viewModel.prepareLocalSTTModel()
+                    viewModel.focusLocalSTTModel(model)
+                    localSTTPendingDownload = model
                 }
             } label: {
-                Label(L("settings.models.redownload"), systemImage: "arrow.clockwise")
+                let isAvailable = viewModel.isModelAvailable(model)
+                Label(
+                    isAvailable ? L("settings.models.redownload") : L("settings.models.prepareLocalModel"),
+                    systemImage: isAvailable ? "arrow.clockwise" : "arrow.down",
+                )
             }
 
             if viewModel.isModelAvailable(model) {
@@ -5431,6 +5447,56 @@ struct StudioView: View {
                     Label(L("settings.models.deleteModelFiles"), systemImage: "trash")
                 }
             }
+        }
+    }
+
+    private func localSTTModelProgressRow(_ model: LocalSTTModel) -> some View {
+        HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
+            ProgressView(value: viewModel.localSTTPreparationProgress, total: 1)
+                .progressViewStyle(.linear)
+                .tint(viewModel.localSTTPreparationTint)
+
+            Text(viewModel.localSTTPreparationPercentText)
+                .font(.studioBody(StudioTheme.Typography.caption, weight: .semibold))
+                .foregroundStyle(StudioTheme.textSecondary)
+                .frame(width: 40, alignment: .trailing)
+
+            localSTTModelDownloadIconButton(model)
+        }
+    }
+
+    private func localSTTModelDownloadIconButton(_ model: LocalSTTModel) -> some View {
+        let isDownloaded = viewModel.isModelAvailable(model)
+        let title = viewModel.isPreparingLocalSTT
+            ? L("settings.models.preparing")
+            : (isDownloaded ? L("settings.models.redownload") : L("settings.models.prepareLocalModel"))
+        let systemImage = isDownloaded ? "arrow.clockwise" : "arrow.down"
+
+        return Button {
+            guard !viewModel.isPreparingLocalSTT else { return }
+            viewModel.focusLocalSTTModel(model)
+            if isDownloaded {
+                localSTTPendingRedownload = model
+            } else {
+                localSTTPendingDownload = model
+            }
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
+                .foregroundStyle(viewModel.isPreparingLocalSTT ? StudioTheme.textTertiary : StudioTheme.textSecondary)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(StudioInteractiveButtonStyle())
+        .disabled(viewModel.isPreparingLocalSTT)
+        .help(title)
+        .accessibilityLabel(title)
+    }
+
+    private func selectLocalSTTModelCard(_ model: LocalSTTModel) {
+        viewModel.focusLocalSTTModel(model)
+        if !viewModel.isModelAvailable(model) {
+            localSTTPendingDownload = model
         }
     }
 

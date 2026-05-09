@@ -124,7 +124,7 @@
 "menu.checkForUpdates" = "檢查更新";
 "menu.downloadingUpdate" = "正在下載更新…";
 "menu.installingUpdate" = "正在安裝更新…";
-"menu.downloadingLocalModel" = "正在下載本地模型… %d%%";
+"menu.downloadingLocalModelNamed" = "正在下載 %@… %d%%";
 "menu.quit" = "結束";
 "menu.status.ready" = "已就緒";
 "menu.status.recording" = "錄音中…";
@@ -749,6 +749,7 @@
 "settings.models.localSTT.readyNamed" = "%@ 已就緒。";
 "settings.models.localSTT.prepareFailed" = "本地語音模型準備失敗。";
 "settings.models.localSTT.deleted" = "模型檔案已刪除。";
+"settings.models.localSTT.transferProgress" = "已下載 %@（%@ / %@）";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "本地模型已就緒。";
 "cloud.autoSwitch.title" = "已啟用 Typeflux Cloud";
@@ -757,6 +758,8 @@
 "settings.models.deleteModelFiles" = "刪除模型檔案";
 "settings.models.redownloadDialog.title" = "重新下載 %@？";
 "settings.models.redownloadDialog.message" = "本地模型檔案已存在，將先刪除已有檔案再重新下載。";
+"settings.models.downloadDialog.title" = "下載 %@？";
+"settings.models.downloadDialog.message" = "此本地語音模型需要先下載完成，才能被選取並用於辨識。";
 "settings.models.deleteDialog.title" = "刪除 %@？";
 "settings.models.deleteDialog.message" = "模型檔案將被刪除，下次使用時需要重新下載。";
 "settings.advanced.autoVocabulary.title" = "自動加入修正生詞";

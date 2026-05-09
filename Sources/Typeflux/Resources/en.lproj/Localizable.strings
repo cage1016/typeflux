@@ -124,7 +124,7 @@
 "menu.checkForUpdates" = "Check for Updates";
 "menu.downloadingUpdate" = "Downloading Update…";
 "menu.installingUpdate" = "Installing Update…";
-"menu.downloadingLocalModel" = "Downloading Local Model… %d%%";
+"menu.downloadingLocalModelNamed" = "Downloading %@… %d%%";
 "menu.quit" = "Quit";
 "menu.status.ready" = "Ready";
 "menu.status.recording" = "Recording in progress…";
@@ -753,6 +753,7 @@
 "settings.models.localSTT.readyNamed" = "%@ is ready.";
 "settings.models.localSTT.prepareFailed" = "Local speech model preparation failed.";
 "settings.models.localSTT.deleted" = "Model files deleted.";
+"settings.models.localSTT.transferProgress" = "%@ downloaded (%@ of %@)";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "Local model is ready.";
 "cloud.autoSwitch.title" = "Typeflux Cloud is ready";
@@ -761,6 +762,8 @@
 "settings.models.deleteModelFiles" = "Delete Model Files";
 "settings.models.redownloadDialog.title" = "Re-download %@?";
 "settings.models.redownloadDialog.message" = "The existing model files will be deleted before re-downloading.";
+"settings.models.downloadDialog.title" = "Download %@?";
+"settings.models.downloadDialog.message" = "This local speech model needs to be downloaded before it can be selected for use.";
 "settings.models.deleteDialog.title" = "Delete %@?";
 "settings.models.deleteDialog.message" = "Model files will be deleted. You'll need to re-download before next use.";
 "settings.advanced.autoVocabulary.title" = "Auto-add corrected vocabulary";
