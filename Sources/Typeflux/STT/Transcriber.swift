@@ -79,6 +79,7 @@ final class STTRouter {
     private let groq: Transcriber
     private let typefluxOfficial: Transcriber
     private let autoModelDownloadService: AutoModelDownloadService?
+    private let isTypefluxCloudLoggedIn: @Sendable () async -> Bool
 
     init(
         settingsStore: SettingsStore,
@@ -93,6 +94,9 @@ final class STTRouter {
         groq: Transcriber,
         typefluxOfficial: Transcriber,
         autoModelDownloadService: AutoModelDownloadService? = nil,
+        isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = {
+            await MainActor.run { AuthState.shared.isLoggedIn }
+        },
     ) {
         self.settingsStore = settingsStore
         self.whisper = whisper
@@ -106,6 +110,7 @@ final class STTRouter {
         self.groq = groq
         self.typefluxOfficial = typefluxOfficial
         self.autoModelDownloadService = autoModelDownloadService
+        self.isTypefluxCloudLoggedIn = isTypefluxCloudLoggedIn
     }
 
     func transcribe(
@@ -131,6 +136,33 @@ final class STTRouter {
             return nil
         }
         return try? await transcriber.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+    }
+
+    private func transcribeWithTypefluxOfficial(
+        audioFile: AudioFile,
+        scenario: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> String {
+        try await RequestRetry.perform(operationName: "Typeflux Official STT request") { [self] in
+            if let scenarioAware = typefluxOfficial as? TypefluxCloudScenarioAwareTranscriber {
+                return try await scenarioAware.transcribeStream(
+                    audioFile: audioFile,
+                    scenario: scenario,
+                    onUpdate: onUpdate,
+                )
+            }
+            return try await typefluxOfficial.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+        }
+    }
+
+    private func shouldUseTypefluxCloudForUnavailableLocalModel(error: Error) async -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == LocalModelTranscriber.notPreparedErrorDomain,
+              nsError.code == LocalModelTranscriber.notPreparedErrorCode
+        else {
+            return false
+        }
+        return await isTypefluxCloudLoggedIn()
     }
 
     func prepareForRecording() async {
@@ -271,6 +303,27 @@ final class STTRouter {
                     NetworkDebugLogger.logMessage("Auto local model succeeded after local STT failure")
                     return localResult
                 }
+                if await shouldUseTypefluxCloudForUnavailableLocalModel(error: error) {
+                    do {
+                        NetworkDebugLogger.logMessage(
+                            "Falling back to Typeflux Cloud while local STT model downloads",
+                        )
+                        return try await transcribeWithTypefluxOfficial(
+                            audioFile: audioFile,
+                            scenario: scenario,
+                            onUpdate: onUpdate,
+                        )
+                    } catch {
+                        NetworkDebugLogger.logError(context: "Typeflux Cloud fallback failed", error: error)
+                        if settingsStore.useAppleSpeechFallback {
+                            NetworkDebugLogger.logMessage(
+                                "Falling back to Apple Speech after Typeflux Cloud fallback failure",
+                            )
+                            return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+                        }
+                        throw error
+                    }
+                }
                 if settingsStore.useAppleSpeechFallback {
                     NetworkDebugLogger.logMessage("Falling back to Apple Speech after local STT failure")
                     return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -378,16 +431,11 @@ final class STTRouter {
                 return localResult
             }
             do {
-                return try await RequestRetry.perform(operationName: "Typeflux Official STT request") { [self] in
-                    if let scenarioAware = typefluxOfficial as? TypefluxCloudScenarioAwareTranscriber {
-                        return try await scenarioAware.transcribeStream(
-                            audioFile: audioFile,
-                            scenario: scenario,
-                            onUpdate: onUpdate,
-                        )
-                    }
-                    return try await typefluxOfficial.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
-                }
+                return try await transcribeWithTypefluxOfficial(
+                    audioFile: audioFile,
+                    scenario: scenario,
+                    onUpdate: onUpdate,
+                )
             } catch {
                 NetworkDebugLogger.logError(context: "Typeflux Official STT failed", error: error)
                 if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {

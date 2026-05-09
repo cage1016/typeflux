@@ -503,6 +503,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             "openai_whisper-medium/TextDecoder.mlmodelc/weights/weight.bin",
         ])
         let fileDownloader = CapturingWhisperFileDownloader()
+        let updates = PreparationUpdateRecorder()
         let manager = LocalModelManager(
             fileManager: .default,
             sherpaOnnxInstaller: FakeSherpaOnnxInstaller(),
@@ -516,8 +517,9 @@ final class LocalModelTranscriberTests: XCTestCase {
             remoteRepositoryFileListLoader: { url in
                 try await repositoryLoader.load(from: url)
             },
-            remoteFileDownloader: { sourceURL, destinationURL in
+            remoteFileDownloader: { sourceURL, destinationURL, onProgress in
                 try await fileDownloader.download(from: sourceURL, to: destinationURL)
+                onProgress?(1, 1)
             },
             downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.modelScope]),
         )
@@ -529,6 +531,9 @@ final class LocalModelTranscriberTests: XCTestCase {
                 downloadSource: .modelScope,
                 autoSetup: true,
             ),
+            onUpdate: { update in
+                updates.append(update)
+            },
         )
 
         XCTAssertEqual(
@@ -552,6 +557,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             "https://hf-mirror.com/argmaxinc/whisperkit-coreml/resolve/main/openai_whisper-medium/MelSpectrogram.mlmodelc/weights/weight.bin",
             "https://hf-mirror.com/argmaxinc/whisperkit-coreml/resolve/main/openai_whisper-medium/TextDecoder.mlmodelc/weights/weight.bin",
         ])
+        XCTAssertTrue(updates.values().contains { $0.downloadedBytes == 1 && $0.totalBytes == 1 })
         let tokenizerRoot = URL(fileURLWithPath: downloadBasePath, isDirectory: true)
             .appendingPathComponent("models/openai/whisper-medium", isDirectory: true)
         XCTAssertTrue(FileManager.default.fileExists(atPath: tokenizerRoot.appendingPathComponent("tokenizer.json").path))
@@ -580,8 +586,9 @@ final class LocalModelTranscriberTests: XCTestCase {
             remoteRepositoryFileListLoader: { url in
                 try await repositoryLoader.load(from: url)
             },
-            remoteFileDownloader: { sourceURL, destinationURL in
+            remoteFileDownloader: { sourceURL, destinationURL, onProgress in
                 try await fileDownloader.download(from: sourceURL, to: destinationURL)
+                onProgress?(1, 1)
             },
             downloadSourceResolver: FixedLocalModelDownloadSourceResolver(sources: [.modelScope]),
         )

@@ -124,7 +124,7 @@
 "menu.checkForUpdates" = "업데이트 확인";
 "menu.downloadingUpdate" = "업데이트 다운로드 중…";
 "menu.installingUpdate" = "업데이트 설치 중…";
-"menu.downloadingLocalModel" = "로컬 모델 다운로드 중… %d%%";
+"menu.downloadingLocalModelNamed" = "%@ 다운로드 중… %d%%";
 "menu.quit" = "종료";
 "menu.status.ready" = "준비";
 "menu.status.recording" = "녹음 진행 중…";
@@ -747,6 +747,7 @@
 "settings.models.localSTT.readyNamed" = "%@이 준비되었습니다.";
 "settings.models.localSTT.prepareFailed" = "로컬 음성 모델 준비에 실패했습니다.";
 "settings.models.localSTT.deleted" = "모델 파일이 삭제되었습니다.";
+"settings.models.localSTT.transferProgress" = "%@ 다운로드됨(%@ / %@)";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "로컬 모델이 준비되었습니다.";
 "cloud.autoSwitch.title" = "Typeflux Cloud이(가) 활성화되었습니다";
@@ -755,6 +756,8 @@
 "settings.models.deleteModelFiles" = "모델 파일 삭제";
 "settings.models.redownloadDialog.title" = "%@을(를) 다시 다운로드하시겠습니까?";
 "settings.models.redownloadDialog.message" = "다시 다운로드하기 전에 기존 모델 파일이 삭제됩니다.";
+"settings.models.downloadDialog.title" = "%@을(를) 다운로드하시겠습니까?";
+"settings.models.downloadDialog.message" = "이 로컬 음성 모델은 다운로드가 완료된 뒤 선택하여 사용할 수 있습니다.";
 "settings.models.deleteDialog.title" = "%@을 삭제하시겠습니까?";
 "settings.models.deleteDialog.message" = "모델 파일이 삭제됩니다. 다음번 사용 전에 다시 다운로드해야 합니다.";
 "settings.advanced.autoVocabulary.title" = "수정된 어휘 자동 추가";

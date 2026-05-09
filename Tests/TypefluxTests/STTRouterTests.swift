@@ -139,6 +139,7 @@ final class STTRouterTests: XCTestCase {
     private func makeRouter(
         localModelOverride: Transcriber? = nil,
         doubaoRealtimeOverride: Transcriber? = nil,
+        isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = { false },
     ) -> STTRouter {
         STTRouter(
             settingsStore: settings,
@@ -152,6 +153,7 @@ final class STTRouterTests: XCTestCase {
             googleCloud: googleCloud,
             groq: groq,
             typefluxOfficial: typefluxOfficial,
+            isTypefluxCloudLoggedIn: isTypefluxCloudLoggedIn,
         )
     }
 
@@ -277,6 +279,41 @@ final class STTRouterTests: XCTestCase {
             XCTFail("Expected error")
         } catch {
             XCTAssertEqual((error as NSError).domain, "test")
+        }
+    }
+
+    func testFallsBackToTypefluxCloudWhenSelectedLocalModelIsNotPreparedAndLoggedIn() async throws {
+        settings.sttProvider = .localModel
+        settings.useAppleSpeechFallback = false
+        localModel.errorToThrow = NSError(
+            domain: LocalModelTranscriber.notPreparedErrorDomain,
+            code: LocalModelTranscriber.notPreparedErrorCode,
+        )
+        typefluxOfficial.resultToReturn = "cloud fallback"
+        let router = makeRouter(isTypefluxCloudLoggedIn: { true })
+
+        let result = try await router.transcribe(audioFile: dummyAudioFile())
+
+        XCTAssertEqual(result, "cloud fallback")
+        XCTAssertEqual(typefluxOfficial.transcribeCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
+    }
+
+    func testDoesNotUseTypefluxCloudForUnpreparedLocalModelWhenLoggedOut() async {
+        settings.sttProvider = .localModel
+        settings.useAppleSpeechFallback = false
+        localModel.errorToThrow = NSError(
+            domain: LocalModelTranscriber.notPreparedErrorDomain,
+            code: LocalModelTranscriber.notPreparedErrorCode,
+        )
+        let router = makeRouter(isTypefluxCloudLoggedIn: { false })
+
+        do {
+            _ = try await router.transcribe(audioFile: dummyAudioFile())
+            XCTFail("Expected local model not prepared error")
+        } catch {
+            XCTAssertEqual((error as NSError).domain, LocalModelTranscriber.notPreparedErrorDomain)
+            XCTAssertEqual(typefluxOfficial.transcribeCallCount, 0)
         }
     }
 
