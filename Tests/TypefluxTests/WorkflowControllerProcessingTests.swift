@@ -263,6 +263,86 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
     }
 
+    func testHistoryPickerConfirmCopiesAndInsertsSelectedHistory() {
+        let textInjector = MockProcessingTextInjector()
+        let clipboard = MockClipboardService()
+        let historyStore = MockProcessingHistoryStore()
+        let baseDate = Date(timeIntervalSince1970: 1_000)
+        historyStore.save(record: HistoryRecord(date: baseDate, transcriptText: "old result"))
+        historyStore.save(record: HistoryRecord(date: baseDate.addingTimeInterval(10), personaResultText: "new result"))
+
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            historyStore: historyStore,
+            clipboard: clipboard,
+        )
+
+        controller.handleHistoryPickerRequested()
+        XCTAssertTrue(controller.isHistoryPickerPresented)
+        XCTAssertEqual(controller.historyPickerItems.map(\.text), ["new result", "old result"])
+
+        controller.confirmHistorySelection()
+
+        XCTAssertFalse(controller.isHistoryPickerPresented)
+        XCTAssertEqual(clipboard.storedText, "new result")
+        XCTAssertEqual(textInjector.insertedTexts, ["new result"])
+        XCTAssertTrue(textInjector.replacedTexts.isEmpty)
+    }
+
+    func testHistoryPickerCopyActionDoesNotInsertText() {
+        let textInjector = MockProcessingTextInjector()
+        let clipboard = MockClipboardService()
+        let historyStore = MockProcessingHistoryStore()
+        historyStore.save(record: HistoryRecord(date: Date(timeIntervalSince1970: 1_000), transcriptText: "copy only"))
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            historyStore: historyStore,
+            clipboard: clipboard,
+        )
+
+        controller.handleHistoryPickerRequested()
+        controller.copyHistorySelection(at: 0)
+
+        XCTAssertFalse(controller.isHistoryPickerPresented)
+        XCTAssertEqual(clipboard.storedText, "copy only")
+        XCTAssertTrue(textInjector.insertedTexts.isEmpty)
+        XCTAssertTrue(textInjector.replacedTexts.isEmpty)
+    }
+
+    func testHistoryPickerShowsMostRecentTwentyRecords() {
+        let historyStore = MockProcessingHistoryStore()
+        let baseDate = Date(timeIntervalSince1970: 1_000)
+        for index in 0 ..< 25 {
+            historyStore.save(record: HistoryRecord(
+                date: baseDate.addingTimeInterval(TimeInterval(index)),
+                transcriptText: "result \(index)",
+            ))
+        }
+
+        let controller = makeWorkflowController(historyStore: historyStore)
+
+        controller.handleHistoryPickerRequested()
+
+        XCTAssertEqual(controller.historyPickerItems.count, 20)
+        XCTAssertEqual(controller.historyPickerItems.first?.text, "result 24")
+        XCTAssertEqual(controller.historyPickerItems.last?.text, "result 5")
+    }
+
+    func testHistoryPickerRetryActionStartsRetryFlow() {
+        let historyStore = MockProcessingHistoryStore()
+        historyStore.save(record: HistoryRecord(
+            date: Date(timeIntervalSince1970: 1_000),
+            transcriptText: "retry me",
+        ))
+        let controller = makeWorkflowController(historyStore: historyStore)
+
+        controller.handleHistoryPickerRequested()
+        controller.retryHistorySelection(at: 0)
+
+        XCTAssertFalse(controller.isHistoryPickerPresented)
+        XCTAssertNotNil(controller.processingTask)
+    }
+
     func testConfirmingPersonaSelectionPlaysTipCue() async throws {
         let eventRecorder = ThreadSafeEventRecorder()
         let controller = makeWorkflowController(
@@ -692,6 +772,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         sttTranscriber: Transcriber = MockProcessingTranscriber(),
         llmService: LLMService = MockProcessingLLMService(),
         historyStore: HistoryStore = MockProcessingHistoryStore(),
+        clipboard: ClipboardService = MockClipboardService(),
         soundEffectPlayer: SoundEffectPlayer? = nil,
         sleep: @escaping @Sendable (Duration) async -> Void = { _ in },
         configureSettings: ((SettingsStore) -> Void)? = nil,
@@ -725,7 +806,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             llmService: llmService,
             llmAgentService: MockProcessingLLMAgentService(),
             textInjector: textInjector,
-            clipboard: MockClipboardService(),
+            clipboard: clipboard,
             historyStore: historyStore,
             agentJobStore: MockProcessingAgentJobStore(),
             agentExecutionRegistry: AgentExecutionRegistry(),
@@ -922,6 +1003,7 @@ private final class MockProcessingHotkeyService: HotkeyService {
     var onAskPressBegan: (() -> Void)?
     var onAskPressEnded: (() -> Void)?
     var onPersonaPickerRequested: (() -> Void)?
+    var onHistoryRequested: (() -> Void)?
     var onError: ((String) -> Void)?
 
     func start() {}

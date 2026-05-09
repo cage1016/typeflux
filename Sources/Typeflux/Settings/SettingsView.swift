@@ -165,6 +165,7 @@ struct StudioView: View {
         case activation
         case ask
         case persona
+        case history
     }
 
     private enum PersonaAppPickerScope: String, CaseIterable, Sendable {
@@ -2198,6 +2199,33 @@ struct StudioView: View {
                                 viewModel.unsetPersonaHotkey()
                             },
                         )
+
+                        shortcutConfigurationRow(
+                            configuration: ShortcutConfiguration(
+                                title: L("settings.shortcuts.history.title"),
+                                subtitle: L("settings.shortcuts.history.subtitle"),
+                                footnote: L("settings.shortcuts.history.footnote"),
+                                icon: "clock.arrow.circlepath",
+                                badgeSymbol: "clock",
+                                binding: viewModel.historyHotkey,
+                                isDefault: viewModel.historyHotkey?.signature
+                                    == HotkeyBinding.defaultHistory.signature,
+                                isThisRecording: recordingTarget == .history,
+                            ),
+                            onStartRecording: {
+                                recordingTarget = .history
+                                recorder.start { binding in
+                                    viewModel.setHistoryHotkey(binding)
+                                    recordingTarget = nil
+                                }
+                            },
+                            onReset: {
+                                viewModel.resetHistoryHotkey()
+                            },
+                            onUnset: {
+                                viewModel.unsetHistoryHotkey()
+                            },
+                        )
                     }
 
                     if recorder.isRecording {
@@ -3005,6 +3033,8 @@ struct StudioView: View {
             L("settings.shortcuts.recordingAsk")
         case .persona:
             L("settings.shortcuts.recordingPersona")
+        case .history:
+            L("settings.shortcuts.recordingHistory")
         case nil:
             L("settings.shortcuts.recordingGeneric")
         }

@@ -764,6 +764,31 @@ final class SettingsStore {
         }
     }
 
+    var historyHotkeyJSON: String {
+        get { defaults.string(forKey: "hotkey.history.json") ?? "" }
+        set { defaults.set(newValue, forKey: "hotkey.history.json") }
+    }
+
+    var historyHotkey: HotkeyBinding? {
+        get {
+            if historyHotkeyJSON == "__unset__" { return nil }
+            guard let data = historyHotkeyJSON.data(using: .utf8), !historyHotkeyJSON.isEmpty else {
+                return .defaultHistory
+            }
+
+            return (try? JSONDecoder().decode(HotkeyBinding.self, from: data)) ?? .defaultHistory
+        }
+        set {
+            if let newValue {
+                let data = (try? JSONEncoder().encode(newValue)) ?? Data()
+                historyHotkeyJSON = String(decoding: data, as: UTF8.self)
+            } else {
+                historyHotkeyJSON = "__unset__"
+            }
+            NotificationCenter.default.post(name: .hotkeySettingsDidChange, object: self)
+        }
+    }
+
     private var legacyActivationHotkey: HotkeyBinding? {
         guard activationHotkeyJSON.isEmpty else { return nil }
         let legacyJSON = defaults.string(forKey: "hotkey.custom.json") ?? "[]"

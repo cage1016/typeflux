@@ -97,6 +97,7 @@ final class OnboardingViewModel: ObservableObject {
     @Published var isGlobeKeyReady: Bool = true
     @Published private(set) var activationHotkey: HotkeyBinding
     @Published private(set) var askHotkey: HotkeyBinding?
+    @Published private(set) var historyHotkey: HotkeyBinding
     @Published private(set) var externalKeyboardShortcutReplacement: ExternalKeyboardShortcutReplacement?
     @Published var showShortcutReplacementAppliedAlert = false
 
@@ -170,8 +171,10 @@ final class OnboardingViewModel: ObservableObject {
         isGlobeKeyReady = globeKeyReader.isReadyForHotkey
         let storedActivationHotkey = settingsStore.activationHotkey ?? .defaultActivation
         let storedAskHotkey = settingsStore.askHotkey
+        let storedHistoryHotkey = settingsStore.historyHotkey ?? .defaultHistory
         activationHotkey = storedActivationHotkey
         askHotkey = storedAskHotkey
+        historyHotkey = storedHistoryHotkey
         externalKeyboardShortcutReplacement = Self.detectExternalKeyboardShortcutReplacement(
             activationHotkey: storedActivationHotkey,
             askHotkey: storedAskHotkey,

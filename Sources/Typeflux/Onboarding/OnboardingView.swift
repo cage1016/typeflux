@@ -1530,6 +1530,12 @@ struct OnboardingView: View {
                     subtitle: L("onboarding.shortcuts.persona.hint"),
                     binding: HotkeyBinding.defaultPersona,
                 )
+
+                shortcutWideCard(
+                    title: L("settings.shortcuts.history.title"),
+                    subtitle: L("onboarding.shortcuts.history.hint"),
+                    binding: viewModel.historyHotkey,
+                )
             }
 
             if viewModel.externalKeyboardShortcutReplacement == nil {

@@ -5,6 +5,7 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
     static let rightCommandKeyCode = 54
     static let rightOptionKeyCode = 61
     static let functionKeyCode = 63
+    static let oKeyCode = 31
 
     var id: UUID
     var keyCode: Int
@@ -72,6 +73,10 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
         pressCount: 2,
     )
     static let defaultPersona = HotkeyBinding(keyCode: 35, modifierFlags: 1_572_864)
+    static let defaultHistory = HotkeyBinding(
+        keyCode: oKeyCode,
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.union(.option).rawValue),
+    )
 
     static let rightCommandActivation = HotkeyBinding(
         keyCode: rightCommandKeyCode,

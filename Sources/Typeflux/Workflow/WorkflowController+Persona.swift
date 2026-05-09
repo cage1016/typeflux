@@ -2,6 +2,38 @@ import AppKit
 import Foundation
 
 extension WorkflowController {
+    func moveOverlayPickerSelection(delta: Int) {
+        if isHistoryPickerPresented {
+            moveHistorySelection(delta: delta)
+            return
+        }
+        movePersonaSelection(delta: delta)
+    }
+
+    func selectOverlayPickerSelection(at index: Int) {
+        if isHistoryPickerPresented {
+            selectHistorySelection(at: index)
+            return
+        }
+        selectPersonaSelection(at: index)
+    }
+
+    func confirmOverlayPickerSelection() {
+        if isHistoryPickerPresented {
+            confirmHistorySelection()
+            return
+        }
+        confirmPersonaSelection()
+    }
+
+    func dismissOverlayPicker() {
+        if isHistoryPickerPresented {
+            dismissHistoryPicker()
+            return
+        }
+        dismissPersonaPicker()
+    }
+
     func personaPickerTitle(for mode: PersonaPickerMode) -> String {
         switch mode {
         case .switchDefault:
