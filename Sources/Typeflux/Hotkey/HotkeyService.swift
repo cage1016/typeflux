@@ -4,6 +4,7 @@ enum HotkeyAction {
     case activation
     case ask
     case personaPicker
+    case history
 }
 
 protocol HotkeyService: AnyObject {
@@ -14,6 +15,7 @@ protocol HotkeyService: AnyObject {
     var onAskPressBegan: (() -> Void)? { get set }
     var onAskPressEnded: (() -> Void)? { get set }
     var onPersonaPickerRequested: (() -> Void)? { get set }
+    var onHistoryRequested: (() -> Void)? { get set }
     var onError: ((String) -> Void)? { get set }
 
     func start()

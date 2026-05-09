@@ -302,6 +302,12 @@
 "overlay.personaPicker.switchApplicationInstructions" = "현재 애플리케이션의 페르소나를 선택하세요. 전역 페르소나 설정은 변경되지 않습니다.";
 "overlay.personaPicker.applyTitle" = "페르소나 적용";
 "overlay.personaPicker.applyInstructions" = "선택한 텍스트를 다시 쓰려면 페르소나를 선택하세요. 적용하려면 Return을 누르고, 취소하려면 Esc을 누르세요.";
+"overlay.historyPicker.title" = "최근 기록";
+"overlay.historyPicker.instructions" = "위/아래 키로 기록을 선택하고 Return을 눌러 커서 위치에 붙여넣으세요.";
+"overlay.historyPicker.empty" = "아직 재사용할 수 있는 기록이 없습니다.";
+"overlay.historyPicker.pasteFallbackTitle" = "기록 결과";
+"overlay.historyPicker.insertAtCursor" = "현재 위치에 삽입";
+"overlay.historyPicker.retryTranscription" = "전사 다시 시도";
 
 "workflow.apply.inserted" = "활성 앱에 적용됩니다.";
 "workflow.apply.presentedInDialog" = "직접 삽입이 불가능하여 결과가 대화상자에 표시되었습니다.";
@@ -523,25 +529,32 @@
 "settings.shortcuts.persona.title" = "페르소나 스위처";
 "settings.shortcuts.persona.subtitle" = "중앙 선택 도구를 엽니다. 선택한 텍스트를 사용하면 해당 선택 항목에 페르소나를 직접 적용할 수도 있습니다.";
 "settings.shortcuts.persona.footnote" = "";
+"settings.shortcuts.history.title" = "기록";
+"settings.shortcuts.history.subtitle" = "어디서든 기록 섹션을 즉시 엽니다.";
+"settings.shortcuts.history.footnote" = "";
 "settings.advanced.personaHotkeyApply.title" = "선택한 텍스트에 페르소나 적용";
 "settings.advanced.personaHotkeyApply.subtitle" = "활성화되면 페르소나 단축키는 선택한 텍스트를 먼저 확인하고 기본 페르소나만 전환하는 대신 선택기를 사용하여 해당 선택 항목을 다시 작성합니다.";
 "settings.shortcuts.recording" = "새 바로가기 녹음";
 "settings.shortcuts.recordingActivation" = "지금 새로운 음성 입력 키나 키 조합을 누르세요.";
 "settings.shortcuts.recordingAsk" = "지금 새로운 무엇이든 물어보세요 단축키를 누르세요. 같은 보조 키를 빠르게 두 번 누를 수도 있습니다.";
 "settings.shortcuts.recordingPersona" = "페르소나 선택기를 여는 바로가기를 누르세요.";
+"settings.shortcuts.recordingHistory" = "기록을 여는 바로가기를 누르세요.";
 "settings.shortcuts.recordingGeneric" = "사용하려는 키나 키 조합을 누르세요.";
 "settings.shortcuts.record" = "기록";
 "settings.shortcuts.stopRecording" = "녹음 중지";
-"settings.shortcuts.activationConflict" = "음성 입력 바로가기는 무엇이든 물어보세요 또는 페르소나 바로가기와 일치할 수 없습니다.";
+"settings.shortcuts.activationConflict" = "음성 입력 바로가기는 무엇이든 물어보세요, 페르소나 또는 기록 바로가기와 일치할 수 없습니다.";
 "settings.shortcuts.activationUpdated" = "음성 입력 단축키가 업데이트되었습니다.";
 "settings.shortcuts.activationUnset" = "음성 입력 단축키가 삭제되었습니다.";
-"settings.shortcuts.askConflict" = "무엇이든 물어보세요 단축키는 음성 입력 또는 페르소나 단축키와 일치할 수 없습니다.";
+"settings.shortcuts.askConflict" = "무엇이든 물어보세요 단축키는 음성 입력, 페르소나 또는 기록 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.askUpdated" = "무엇이든 물어보세요 바로가기가 업데이트되었습니다.";
 "settings.shortcuts.askUnset" = "무엇이든 물어보세요 단축키가 삭제되었습니다.";
 "settings.shortcuts.doubleTapHelp" = "이 키를 빠르게 두 번 누르세요.";
-"settings.shortcuts.personaConflict" = "페르소나 단축키는 음성 입력 또는 무엇이든 물어보세요 단축키와 일치할 수 없습니다.";
+"settings.shortcuts.personaConflict" = "페르소나 단축키는 음성 입력, 무엇이든 물어보세요 또는 기록 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.personaUpdated" = "페르소나 바로가기가 업데이트되었습니다.";
 "settings.shortcuts.personaUnset" = "페르소나 단축키가 삭제되었습니다.";
+"settings.shortcuts.historyConflict" = "기록 단축키는 음성 입력, 무엇이든 물어보세요 또는 페르소나 단축키와 일치할 수 없습니다.";
+"settings.shortcuts.historyUpdated" = "기록 단축키가 업데이트되었습니다.";
+"settings.shortcuts.historyUnset" = "기록 단축키가 삭제되었습니다.";
 "settings.shortcuts.unset" = "해제";
 "settings.shortcuts.none" = "없음";
 
@@ -843,6 +856,7 @@
 "onboarding.shortcuts.ask.hint" = "Fn을 두 번 눌러 질문하거나 선택한 텍스트 다시 작성";
 "onboarding.shortcuts.persona.hint" = "쓰기 페르소나 전환 또는 적용";
 "onboarding.shortcuts.changeInSettings" = "설정 → 음성 단축키에서 언제든지 단축키를 맞춤 설정할 수 있습니다.";
+"onboarding.shortcuts.history.hint" = "최근 기록을 열고 선택한 결과 붙여넣기";
 
 "onboarding.action.back" = "이전";
 "onboarding.action.continue" = "다음";

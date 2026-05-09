@@ -125,6 +125,9 @@ final class WorkflowController {
     var personaPickerItems: [PersonaPickerEntry] = []
     var personaPickerSelectedIndex = 0
     var personaPickerMode: PersonaPickerMode = .switchDefault
+    var isHistoryPickerPresented = false
+    var historyPickerItems: [HistoryPickerEntry] = []
+    var historyPickerSelectedIndex = 0
 
     // Clarification mode: set when the agent workflow is paused waiting for a user voice reply.
     var pendingClarificationContinuation: CheckedContinuation<String, Error>?
@@ -134,6 +137,14 @@ final class WorkflowController {
         let id: UUID?
         let title: String
         let subtitle: String
+    }
+
+    struct HistoryPickerEntry {
+        let id: UUID
+        let title: String
+        let subtitle: String
+        let text: String
+        let record: HistoryRecord
     }
 
     struct PersonaSelectionContext {
@@ -210,11 +221,16 @@ final class WorkflowController {
             },
         )
         self.overlayController.setPersonaPickerHandlers(
-            onMoveUp: { [weak self] in self?.movePersonaSelection(delta: -1) },
-            onMoveDown: { [weak self] in self?.movePersonaSelection(delta: 1) },
-            onSelect: { [weak self] index in self?.selectPersonaSelection(at: index) },
-            onConfirm: { [weak self] in self?.confirmPersonaSelection() },
-            onCancel: { [weak self] in self?.dismissPersonaPicker() },
+            onMoveUp: { [weak self] in self?.moveOverlayPickerSelection(delta: -1) },
+            onMoveDown: { [weak self] in self?.moveOverlayPickerSelection(delta: 1) },
+            onSelect: { [weak self] index in self?.selectOverlayPickerSelection(at: index) },
+            onConfirm: { [weak self] in self?.confirmOverlayPickerSelection() },
+            onCancel: { [weak self] in self?.dismissOverlayPicker() },
+        )
+        self.overlayController.setHistoryPickerActionHandlers(
+            onCopy: { [weak self] index in self?.copyHistorySelection(at: index) },
+            onInsert: { [weak self] index in self?.insertHistorySelection(at: index) },
+            onRetry: { [weak self] index in self?.retryHistorySelection(at: index) },
         )
         self.agentClarificationWindowController.onDismiss = { [weak self] in
             self?.dismissClarification()
@@ -262,6 +278,9 @@ final class WorkflowController {
         }
         hotkeyService.onPersonaPickerRequested = { [weak self] in
             self?.handlePersonaPickerRequested()
+        }
+        hotkeyService.onHistoryRequested = { [weak self] in
+            self?.handleHistoryPickerRequested()
         }
         hotkeyService.onError = { [weak self] message in
             guard let self else { return }
@@ -319,6 +338,7 @@ final class WorkflowController {
     func stop() {
         hotkeyService.stop()
         dismissPersonaPicker()
+        dismissHistoryPicker()
         askAnswerWindowController.dismiss()
         agentClarificationWindowController.dismiss()
         cancelRecording()
@@ -469,6 +489,9 @@ final class WorkflowController {
         if isPersonaPickerPresented {
             dismissPersonaPicker()
         }
+        if isHistoryPickerPresented {
+            dismissHistoryPicker()
+        }
 
         if !isRecording, isAudioRecorderStarted {
             NSLog("[Workflow] Audio recorder is still stopping, ignoring press")
@@ -599,6 +622,9 @@ final class WorkflowController {
         if isPersonaPickerPresented {
             dismissPersonaPicker()
             return
+        }
+        if isHistoryPickerPresented {
+            dismissHistoryPicker()
         }
 
         let personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection

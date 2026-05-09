@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import QuartzCore
 import SwiftUI
 
@@ -174,6 +175,34 @@ private func overlayEventTapCallback(
     return controller.handleEventTapEvent(type: type, event: event)
 }
 
+private let overlayPickerSystemKeySignature: OSType = 0x5450_4B59 // TPKY
+
+private func overlayPickerSystemKeyCallback(
+    nextHandler _: EventHandlerCallRef?,
+    event: EventRef?,
+    userData: UnsafeMutableRawPointer?,
+) -> OSStatus {
+    guard let event, let userData else { return noErr }
+
+    var hotkeyID = EventHotKeyID()
+    let status = GetEventParameter(
+        event,
+        EventParamName(kEventParamDirectObject),
+        EventParamType(typeEventHotKeyID),
+        nil,
+        MemoryLayout<EventHotKeyID>.size,
+        nil,
+        &hotkeyID,
+    )
+    guard status == noErr, hotkeyID.signature == overlayPickerSystemKeySignature else {
+        return noErr
+    }
+
+    let controller = Unmanaged<OverlayController>.fromOpaque(userData).takeUnretainedValue()
+    controller.handlePickerSystemKey(keyCode: Int(hotkeyID.id))
+    return noErr
+}
+
 struct OverlayFailureAction {
     enum Style {
         case primary
@@ -212,6 +241,11 @@ final class OverlayController {
         let subtitle: String
     }
 
+    enum PickerStyle {
+        case persona
+        case history
+    }
+
     enum PersonaPickerIcon: Equatable {
         case none
         case global
@@ -234,6 +268,8 @@ final class OverlayController {
     private var dismissWorkItem: DispatchWorkItem?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var pickerSystemKeyHandlerRef: EventHandlerRef?
+    private var pickerSystemKeyRefs: [Int: EventHotKeyRef] = [:]
     private var lastPositionedFrame: NSRect?
     private var lastPositionedPresentation: OverlayViewModel.Presentation?
     private var pendingFrameAnimationWorkItem: DispatchWorkItem?
@@ -248,6 +284,10 @@ final class OverlayController {
 
     deinit {
         removeKeyMonitoring()
+        removePickerSystemKeyCapture()
+        if let pickerSystemKeyHandlerRef {
+            RemoveEventHandler(pickerSystemKeyHandlerRef)
+        }
     }
 
     func setRecordingActionHandlers(onCancel: (() -> Void)?, onConfirm: (() -> Void)?) {
@@ -267,6 +307,16 @@ final class OverlayController {
         model.onPersonaSelectRequested = onSelect
         model.onPersonaConfirmRequested = onConfirm
         model.onPersonaCancelRequested = onCancel
+    }
+
+    func setHistoryPickerActionHandlers(
+        onCopy: ((Int) -> Void)?,
+        onInsert: ((Int) -> Void)?,
+        onRetry: ((Int) -> Void)?,
+    ) {
+        model.onHistoryCopyRequested = onCopy
+        model.onHistoryInsertRequested = onInsert
+        model.onHistoryRetryRequested = onRetry
     }
 
     func setResultDialogHandler(onCopy: (() -> Void)?) {
@@ -614,12 +664,13 @@ final class OverlayController {
         title: String,
         instructions: String,
         icon: PersonaPickerIcon,
+        style: PickerStyle = .persona,
     ) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
                 self?.showPersonaPicker(
                     items: items, selectedIndex: selectedIndex, title: title,
-                    instructions: instructions, icon: icon,
+                    instructions: instructions, icon: icon, style: style,
                 )
             }
             return
@@ -635,6 +686,7 @@ final class OverlayController {
         model.statusText = title
         model.detailText = instructions
         model.personaPickerIcon = icon
+        model.pickerStyle = style
         refreshWindow()
     }
 
@@ -700,6 +752,7 @@ final class OverlayController {
             model.level = 0
             model.processingProgress = 0
             removeKeyMonitoring()
+            removePickerSystemKeyCapture()
             removeMouseMonitoring()
         }
         if Thread.isMainThread {
@@ -725,6 +778,7 @@ final class OverlayController {
             self?.model.level = 0
             self?.model.processingProgress = 0
             self?.removeKeyMonitoring()
+            self?.removePickerSystemKeyCapture()
             self?.removeMouseMonitoring()
         }
         dismissWorkItem = workItem
@@ -933,14 +987,22 @@ final class OverlayController {
     }
 
     private func updateKeyMonitoring() {
-        if model.presentation == .recordingLocked
+        if model.presentation == .personaPicker {
+            installPickerSystemKeyCaptureIfNeeded()
+            if pickerSystemKeyRefs.isEmpty {
+                installKeyMonitoringIfNeeded()
+            } else {
+                removeKeyMonitoring()
+            }
+        } else if model.presentation == .recordingLocked
             || model.presentation == .recordingLockedPreview
             || model.presentation == .failure
-            || model.presentation == .personaPicker
             || model.presentation == .resultDialog
         {
+            removePickerSystemKeyCapture()
             installKeyMonitoringIfNeeded()
         } else {
+            removePickerSystemKeyCapture()
             removeKeyMonitoring()
         }
 
@@ -949,6 +1011,58 @@ final class OverlayController {
         } else {
             removeMouseMonitoring()
         }
+    }
+
+    private func installPickerSystemKeyCaptureIfNeeded() {
+        guard pickerSystemKeyRefs.isEmpty else { return }
+        installPickerSystemKeyHandlerIfNeeded()
+        guard pickerSystemKeyHandlerRef != nil else { return }
+
+        for keyCode in [53, 125, 126, 36, 76] {
+            let hotkeyID = EventHotKeyID(signature: overlayPickerSystemKeySignature, id: UInt32(keyCode))
+            var hotkeyRef: EventHotKeyRef?
+            let status = RegisterEventHotKey(
+                UInt32(keyCode),
+                0,
+                hotkeyID,
+                GetApplicationEventTarget(),
+                0,
+                &hotkeyRef,
+            )
+            if status == noErr, let hotkeyRef {
+                pickerSystemKeyRefs[keyCode] = hotkeyRef
+            } else {
+                ErrorLogStore.shared.log("Overlay: failed to register picker system key \(keyCode), status \(status)")
+            }
+        }
+    }
+
+    private func installPickerSystemKeyHandlerIfNeeded() {
+        guard pickerSystemKeyHandlerRef == nil else { return }
+
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed),
+        )
+        let userData = Unmanaged.passUnretained(self).toOpaque()
+        let status = InstallEventHandler(
+            GetApplicationEventTarget(),
+            overlayPickerSystemKeyCallback,
+            1,
+            &eventType,
+            userData,
+            &pickerSystemKeyHandlerRef,
+        )
+        if status != noErr {
+            ErrorLogStore.shared.log("Overlay: failed to install picker system key handler, status \(status)")
+        }
+    }
+
+    private func removePickerSystemKeyCapture() {
+        for ref in pickerSystemKeyRefs.values {
+            UnregisterEventHotKey(ref)
+        }
+        pickerSystemKeyRefs = [:]
     }
 
     private func installKeyMonitoringIfNeeded() {
@@ -1035,6 +1149,12 @@ final class OverlayController {
         if let m = _fallbackLocalMonitor { NSEvent.removeMonitor(m) }
         _fallbackGlobalMonitor = nil
         _fallbackLocalMonitor = nil
+    }
+
+    fileprivate func handlePickerSystemKey(keyCode: Int) {
+        DispatchQueue.main.async { [weak self] in
+            _ = self?.handleKeyCode(keyCode)
+        }
     }
 
     /// Called from the CGEventTap C callback on the main run loop.
@@ -1164,6 +1284,7 @@ final class OverlayViewModel: ObservableObject {
     @Published var personaSelectedIndex: Int = 0
     @Published var personaViewportHeight: CGFloat = 240
     @Published var personaPickerIcon: OverlayController.PersonaPickerIcon = .none
+    @Published var pickerStyle: OverlayController.PickerStyle = .persona
     @Published var failureActions: [OverlayFailureAction] = []
     var onDismissRequested: (() -> Void)?
     var onCancelRequested: (() -> Void)?
@@ -1173,6 +1294,9 @@ final class OverlayViewModel: ObservableObject {
     var onPersonaSelectRequested: ((Int) -> Void)?
     var onPersonaConfirmRequested: (() -> Void)?
     var onPersonaCancelRequested: (() -> Void)?
+    var onHistoryCopyRequested: ((Int) -> Void)?
+    var onHistoryInsertRequested: ((Int) -> Void)?
+    var onHistoryRetryRequested: ((Int) -> Void)?
     var onResultCopyRequested: (() -> Void)?
     var onFailureRetryHandler: (() -> Void)?
 
@@ -1216,6 +1340,18 @@ final class OverlayViewModel: ObservableObject {
 
     func requestPersonaCancel() {
         onPersonaCancelRequested?()
+    }
+
+    func requestHistoryCopy(at index: Int) {
+        onHistoryCopyRequested?(index)
+    }
+
+    func requestHistoryInsert(at index: Int) {
+        onHistoryInsertRequested?(index)
+    }
+
+    func requestHistoryRetry(at index: Int) {
+        onHistoryRetryRequested?(index)
     }
 
     func requestResultCopy() {
@@ -1699,7 +1835,80 @@ private struct OverlayView: View {
     private func personaPickerRow(
         item: OverlayController.PersonaPickerItem, index: Int, isSelected: Bool,
     ) -> some View {
-        HStack(spacing: 12) {
+        OverlayPickerRow(
+            model: model,
+            item: item,
+            index: index,
+            isSelected: isSelected,
+            isHistory: model.pickerStyle == .history,
+        )
+    }
+
+    private func scrollPersonaSelection(with proxy: ScrollViewProxy) {
+        guard model.personaItems.indices.contains(model.personaSelectedIndex) else { return }
+        withAnimation(.easeInOut(duration: 0.12)) {
+            proxy.scrollTo(model.personaSelectedIndex, anchor: .center)
+        }
+    }
+
+    private struct OverlayPickerRow: View {
+        @ObservedObject var model: OverlayViewModel
+        let item: OverlayController.PersonaPickerItem
+        let index: Int
+        let isSelected: Bool
+        let isHistory: Bool
+
+        @State private var isHovered = false
+
+        var body: some View {
+            rowContent
+                .contextMenu {
+                    if isHistory {
+                        historyActions
+                    }
+                }
+        }
+
+        private var rowContent: some View {
+            HStack(spacing: 12) {
+                if !isHistory {
+                    personaAvatar
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(isSelected ? 0.98 : 0.94))
+                        .lineLimit(isHistory ? 2 : 1)
+                        .shadow(color: Color.black.opacity(0.34), radius: 2, x: 0, y: 1)
+                    Text(item.subtitle)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(isSelected ? 0.76 : 0.58))
+                        .lineLimit(2)
+                        .shadow(color: Color.black.opacity(0.25), radius: 2, x: 0, y: 1)
+                }
+
+                Spacer(minLength: 0)
+
+                if isHistory {
+                    historyCopyButton
+                        .opacity(isHovered ? 1 : 0)
+                        .accessibilityHidden(!isHovered)
+                } else if isSelected {
+                    selectedCheckmark
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, isHistory ? 12 : 10)
+            .background(rowBackground)
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onTapGesture {
+                model.requestPersonaSelection(at: index)
+            }
+            .onHover { isHovered = $0 }
+        }
+
+        private var personaAvatar: some View {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(
                     isSelected
@@ -1716,35 +1925,47 @@ private struct OverlayView: View {
                     RoundedRectangle(cornerRadius: 11, style: .continuous)
                         .stroke(Color.white.opacity(isSelected ? 0.20 : 0.10), lineWidth: 0.8),
                 )
+        }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(isSelected ? 0.98 : 0.94))
-                    .shadow(color: Color.black.opacity(0.34), radius: 2, x: 0, y: 1)
-                Text(item.subtitle)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(isSelected ? 0.76 : 0.58))
-                    .lineLimit(2)
-                    .shadow(color: Color.black.opacity(0.25), radius: 2, x: 0, y: 1)
+        private var selectedCheckmark: some View {
+            ZStack {
+                Circle()
+                    .fill(StudioTheme.accent.opacity(0.95))
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(Color.white)
             }
+            .frame(width: 21, height: 21)
+        }
 
-            Spacer(minLength: 0)
+        private var historyCopyButton: some View {
+            Button {
+                model.requestHistoryCopy(at: index)
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 18, height: 18)
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .help(L("common.copy"))
+        }
 
-            if isSelected {
-                ZStack {
-                    Circle()
-                        .fill(StudioTheme.accent.opacity(0.95))
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundStyle(Color.white)
-                }
-                .frame(width: 21, height: 21)
+        @ViewBuilder
+        private var historyActions: some View {
+            Button(L("common.copy")) {
+                model.requestHistoryCopy(at: index)
+            }
+            Button(L("overlay.historyPicker.insertAtCursor")) {
+                model.requestHistoryInsert(at: index)
+            }
+            Button(L("overlay.historyPicker.retryTranscription")) {
+                model.requestHistoryRetry(at: index)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(
+
+        private var rowBackground: some View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     isSelected
@@ -1770,18 +1991,7 @@ private struct OverlayView: View {
                                 endPoint: .bottom,
                             ),
                         ),
-                ),
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onTapGesture {
-            model.requestPersonaSelection(at: index)
-        }
-    }
-
-    private func scrollPersonaSelection(with proxy: ScrollViewProxy) {
-        guard model.personaItems.indices.contains(model.personaSelectedIndex) else { return }
-        withAnimation(.easeInOut(duration: 0.12)) {
-            proxy.scrollTo(model.personaSelectedIndex, anchor: .center)
+                )
         }
     }
 

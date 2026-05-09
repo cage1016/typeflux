@@ -461,6 +461,7 @@ private final class MockWorkflowHotkeyService: HotkeyService {
     var onAskPressBegan: (() -> Void)?
     var onAskPressEnded: (() -> Void)?
     var onPersonaPickerRequested: (() -> Void)?
+    var onHistoryRequested: (() -> Void)?
     var onError: ((String) -> Void)?
 
     func start() {}

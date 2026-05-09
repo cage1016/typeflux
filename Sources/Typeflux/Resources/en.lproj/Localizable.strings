@@ -304,6 +304,12 @@
 "overlay.personaPicker.switchApplicationInstructions" = "Choose the persona for the current application. Global persona settings will not change.";
 "overlay.personaPicker.applyTitle" = "Apply Persona";
 "overlay.personaPicker.applyInstructions" = "Choose a persona to rewrite the selected text. Press Return to apply or Esc to cancel.";
+"overlay.historyPicker.title" = "Recent History";
+"overlay.historyPicker.instructions" = "Use Up and Down to choose a record. Press Return to paste it at the cursor.";
+"overlay.historyPicker.empty" = "No reusable history entries yet.";
+"overlay.historyPicker.pasteFallbackTitle" = "History Result";
+"overlay.historyPicker.insertAtCursor" = "Insert at Cursor";
+"overlay.historyPicker.retryTranscription" = "Retry Transcription";
 
 "workflow.apply.inserted" = "Applied to the active app.";
 "workflow.apply.presentedInDialog" = "Direct insertion was unavailable, so the result was shown in a dialog.";
@@ -528,25 +534,32 @@
 "settings.shortcuts.persona.title" = "Persona switcher";
 "settings.shortcuts.persona.subtitle" = "Open a centered picker. With selected text, it can also apply a persona directly to that selection.";
 "settings.shortcuts.persona.footnote" = "";
+"settings.shortcuts.history.title" = "History";
+"settings.shortcuts.history.subtitle" = "Open the History section immediately from anywhere.";
+"settings.shortcuts.history.footnote" = "";
 "settings.advanced.personaHotkeyApply.title" = "Apply persona to selected text";
 "settings.advanced.personaHotkeyApply.subtitle" = "When enabled, the persona shortcut checks for selected text first and uses the picker to rewrite that selection instead of only switching the default persona.";
 "settings.shortcuts.recording" = "Recording a new shortcut";
 "settings.shortcuts.recordingActivation" = "Press the new voice input key or key combination now.";
 "settings.shortcuts.recordingAsk" = "Press the new Ask Anything shortcut now. You can quickly press the same modifier key twice.";
 "settings.shortcuts.recordingPersona" = "Press the shortcut that should open the persona picker.";
+"settings.shortcuts.recordingHistory" = "Press the shortcut that should open history.";
 "settings.shortcuts.recordingGeneric" = "Press the key or key combination you want to use.";
 "settings.shortcuts.record" = "Record";
 "settings.shortcuts.stopRecording" = "Stop Recording";
-"settings.shortcuts.activationConflict" = "Voice input shortcut cannot match the Ask Anything or persona shortcut.";
+"settings.shortcuts.activationConflict" = "Voice input shortcut cannot match the Ask Anything, persona, or history shortcut.";
 "settings.shortcuts.activationUpdated" = "Voice input shortcut updated.";
 "settings.shortcuts.activationUnset" = "Voice input shortcut cleared.";
-"settings.shortcuts.askConflict" = "Ask Anything shortcut cannot match the voice input or persona shortcut.";
+"settings.shortcuts.askConflict" = "Ask Anything shortcut cannot match the voice input, persona, or history shortcut.";
 "settings.shortcuts.askUpdated" = "Ask Anything shortcut updated.";
 "settings.shortcuts.askUnset" = "Ask Anything shortcut cleared.";
 "settings.shortcuts.doubleTapHelp" = "Quickly press this key twice.";
-"settings.shortcuts.personaConflict" = "Persona shortcut cannot match the voice input or Ask Anything shortcut.";
+"settings.shortcuts.personaConflict" = "Persona shortcut cannot match the voice input, Ask Anything, or history shortcut.";
 "settings.shortcuts.personaUpdated" = "Persona shortcut updated.";
 "settings.shortcuts.personaUnset" = "Persona shortcut cleared.";
+"settings.shortcuts.historyConflict" = "History shortcut cannot match the voice input, Ask Anything, or persona shortcut.";
+"settings.shortcuts.historyUpdated" = "History shortcut updated.";
+"settings.shortcuts.historyUnset" = "History shortcut cleared.";
 "settings.shortcuts.unset" = "Unset";
 "settings.shortcuts.none" = "None";
 
@@ -849,6 +862,7 @@
 "onboarding.shortcuts.activation.hint" = "Hold to talk, tap to lock recording";
 "onboarding.shortcuts.ask.hint" = "Double-tap Fn to ask or rewrite selected text";
 "onboarding.shortcuts.persona.hint" = "Switch or apply a writing persona";
+"onboarding.shortcuts.history.hint" = "Open recent history and paste a selected result";
 "onboarding.shortcuts.changeInSettings" = "You can customize shortcuts anytime in Settings → Voice Shortcuts.";
 
 "onboarding.action.back" = "Previous";

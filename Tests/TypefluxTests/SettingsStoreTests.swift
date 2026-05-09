@@ -1,4 +1,5 @@
 @testable import Typeflux
+import AppKit
 import XCTest
 
 final class SettingsStoreTests: XCTestCase {
@@ -833,6 +834,20 @@ extension SettingsStoreTests {
         XCTAssertNotNil(store.askHotkey)
         XCTAssertEqual(store.askHotkey?.keyCode, 32)
         XCTAssertEqual(store.askHotkey?.modifierFlags, 256)
+    }
+
+    func testHistoryHotkeyDefaultIsCommandOptionO() {
+        let defaultHotkey = store.historyHotkey
+        XCTAssertNotNil(defaultHotkey)
+        XCTAssertEqual(defaultHotkey?.keyCode, HotkeyBinding.oKeyCode)
+        XCTAssertEqual(defaultHotkey?.modifierFlags, UInt(NSEvent.ModifierFlags.command.union(.option).rawValue))
+    }
+
+    func testHistoryHotkeyRoundTrip() {
+        let testHotkey = HotkeyBinding(keyCode: 45, modifierFlags: 256)
+        store.historyHotkey = testHotkey
+        XCTAssertEqual(store.historyHotkey?.keyCode, 45)
+        XCTAssertEqual(store.historyHotkey?.modifierFlags, 256)
     }
 
     // MARK: - automaticVocabularyCollectionEnabled

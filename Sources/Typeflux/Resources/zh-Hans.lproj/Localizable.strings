@@ -304,6 +304,12 @@
 "overlay.personaPicker.switchApplicationInstructions" = "为当前应用选择人设。全局人设设置不会改变。";
 "overlay.personaPicker.applyTitle" = "应用人设";
 "overlay.personaPicker.applyInstructions" = "选择一个人设来改写当前选中文本。按回车应用，按 Esc 取消。";
+"overlay.historyPicker.title" = "最近历史";
+"overlay.historyPicker.instructions" = "使用上下键选择记录，按回车粘贴到当前光标。";
+"overlay.historyPicker.empty" = "还没有可复用的历史记录。";
+"overlay.historyPicker.pasteFallbackTitle" = "历史结果";
+"overlay.historyPicker.insertAtCursor" = "插入当前位置";
+"overlay.historyPicker.retryTranscription" = "重新转写";
 
 "workflow.apply.inserted" = "已应用到当前活动应用。";
 "workflow.apply.presentedInDialog" = "由于无法直接插入，结果已显示在提示框中。";
@@ -528,25 +534,32 @@
 "settings.shortcuts.persona.title" = "人设切换器";
 "settings.shortcuts.persona.subtitle" = "打开居中选择器；如果当前存在选中文本，也可以直接将所选人设应用到这段文本。";
 "settings.shortcuts.persona.footnote" = "";
+"settings.shortcuts.history.title" = "历史记录";
+"settings.shortcuts.history.subtitle" = "在任何地方立即打开历史记录页面。";
+"settings.shortcuts.history.footnote" = "";
 "settings.advanced.personaHotkeyApply.title" = "将人设应用到选中文本";
 "settings.advanced.personaHotkeyApply.subtitle" = "开启后，人设快捷键会先检查是否有选中文本；如果有，就用所选人设直接改写该文本，而不只是切换默认人设。";
 "settings.shortcuts.recording" = "正在录制新的快捷键";
 "settings.shortcuts.recordingActivation" = "现在按下新的语音输入按键或组合键。";
 "settings.shortcuts.recordingAsk" = "现在按下新的“随便问”快捷键。也可以快速连按两次同一个修饰键。";
 "settings.shortcuts.recordingPersona" = "现在按下用于打开人设选择器的快捷键。";
+"settings.shortcuts.recordingHistory" = "现在按下用于打开历史记录的快捷键。";
 "settings.shortcuts.recordingGeneric" = "按下你想使用的按键或组合键。";
 "settings.shortcuts.record" = "录制";
 "settings.shortcuts.stopRecording" = "停止录制";
-"settings.shortcuts.activationConflict" = "语音输入快捷键不能与“随便问”或人设快捷键相同。";
+"settings.shortcuts.activationConflict" = "语音输入快捷键不能与“随便问”、人设或历史记录快捷键相同。";
 "settings.shortcuts.activationUpdated" = "语音输入快捷键已更新。";
 "settings.shortcuts.activationUnset" = "语音输入快捷键已清除。";
-"settings.shortcuts.askConflict" = "“随便问”快捷键不能与语音输入或人设快捷键相同。";
+"settings.shortcuts.askConflict" = "“随便问”快捷键不能与语音输入、人设或历史记录快捷键相同。";
 "settings.shortcuts.askUpdated" = "“随便问”快捷键已更新。";
 "settings.shortcuts.askUnset" = "“随便问”快捷键已清除。";
 "settings.shortcuts.doubleTapHelp" = "快速连按两次这个按键。";
-"settings.shortcuts.personaConflict" = "人设快捷键不能与语音输入或“随便问”快捷键相同。";
+"settings.shortcuts.personaConflict" = "人设快捷键不能与语音输入、“随便问”或历史记录快捷键相同。";
 "settings.shortcuts.personaUpdated" = "人设快捷键已更新。";
 "settings.shortcuts.personaUnset" = "人设快捷键已清除。";
+"settings.shortcuts.historyConflict" = "历史记录快捷键不能与语音输入、“随便问”或人设快捷键相同。";
+"settings.shortcuts.historyUpdated" = "历史记录快捷键已更新。";
+"settings.shortcuts.historyUnset" = "历史记录快捷键已清除。";
 "settings.shortcuts.unset" = "取消设置";
 "settings.shortcuts.none" = "未设置";
 
@@ -849,6 +862,7 @@
 "onboarding.shortcuts.activation.hint" = "按住录音，轻点锁定录制";
 "onboarding.shortcuts.ask.hint" = "连按两次 Fn 提问，可选中文字改写";
 "onboarding.shortcuts.persona.hint" = "切换或应用写作人设";
+"onboarding.shortcuts.history.hint" = "打开最近历史并粘贴选中结果";
 "onboarding.shortcuts.changeInSettings" = "随时可以在 设置 → 语音快捷键 中自定义快捷键。";
 
 "onboarding.action.back" = "上一步";
