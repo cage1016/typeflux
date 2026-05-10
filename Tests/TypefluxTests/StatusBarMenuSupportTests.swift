@@ -27,6 +27,31 @@ final class StatusBarMenuSupportTests: XCTestCase {
     }
 
     @MainActor
+    func testStatusBarMenuReadsSharedLocalModelDownloadProgress() throws {
+        if ProcessInfo.processInfo.environment["CI"] == "true" {
+            throw XCTSkip("Status bar menu test requires a GUI WindowServer session.")
+        }
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let controller = StatusBarController(
+            appState: AppStateStore(),
+            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "StatusBarMenuProgressTests.\(UUID().uuidString)")!),
+            historyStore: EmptyHistoryStore(),
+            agentJobStore: EmptyAgentJobStore(),
+        )
+
+        controller.start()
+        defer { controller.stop() }
+
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: .whisperLocal, progress: 0.35)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        let title = L("menu.downloadingLocalModelNamed", LocalSTTModel.whisperLocal.displayName, 35)
+        XCTAssertTrue(controller.menu?.items.contains { $0.title == title } ?? false)
+    }
+
+    @MainActor
     func testStatusBarMenuIncludesSettingsItemNearAppearanceControls() throws {
         if ProcessInfo.processInfo.environment["CI"] == "true" {
             throw XCTSkip("Status bar menu test requires a GUI WindowServer session.")

@@ -237,6 +237,7 @@ final class StudioViewModel: ObservableObject {
     private var vocabularyObserver: NSObjectProtocol?
     private var agentJobObserver: NSObjectProtocol?
     private var cloudAccountModelDefaultsObserver: NSObjectProtocol?
+    private var localModelDownloadProgressObserver: NSObjectProtocol?
     private var llmTestTask: Task<Void, Never>?
     private var sttTestTask: Task<Void, Never>?
     private var mcpTestTask: Task<Void, Never>?
@@ -450,6 +451,16 @@ final class StudioViewModel: ObservableObject {
                 self?.syncCloudAccountModelsFromStore()
             }
         }
+        localModelDownloadProgressObserver = NotificationCenter.default.addObserver(
+            forName: .localModelDownloadProgressDidChange,
+            object: nil,
+            queue: .main,
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.syncLocalModelDownloadProgress()
+            }
+        }
+        syncLocalModelDownloadProgress()
         audioPreviewPlayer.onPlaybackFinished = { [weak self] in
             Task { @MainActor [weak self] in
                 self?.playingAudioRecordID = nil
@@ -479,6 +490,9 @@ final class StudioViewModel: ObservableObject {
         if let cloudAccountModelDefaultsObserver {
             NotificationCenter.default.removeObserver(cloudAccountModelDefaultsObserver)
         }
+        if let localModelDownloadProgressObserver {
+            NotificationCenter.default.removeObserver(localModelDownloadProgressObserver)
+        }
         historyRefreshTask?.cancel()
         audioPreviewPlayer.stop()
     }
@@ -496,7 +510,15 @@ final class StudioViewModel: ObservableObject {
     }
 
     var localSTTPreparationPercentText: String {
-        "\(Int((localSTTPreparationProgress * 100).rounded()))%"
+        "\(Int((localSTTDisplayedPreparationProgress * 100).rounded()))%"
+    }
+
+    var localSTTDisplayedPreparationProgress: Double {
+        if case .downloading(let model, let progress) = LocalModelDownloadProgressCenter.shared.status,
+           model == localSTTFocusedModel {
+            return progress
+        }
+        return localSTTPreparationProgress
     }
 
     static func localSTTTransferText(downloadedBytes: Int64?, totalBytes: Int64?) -> String {
@@ -1064,6 +1086,30 @@ final class StudioViewModel: ObservableObject {
         localSTTPreparationTask = nil
         isPreparingLocalSTT = false
         LocalModelDownloadProgressCenter.shared.clear()
+    }
+
+    private func syncLocalModelDownloadProgress() {
+        switch LocalModelDownloadProgressCenter.shared.status {
+        case .downloading(let model, let progress) where model == localSTTFocusedModel:
+            localSTTPreparationProgress = progress
+            localSTTStatus = L("settings.models.localSTT.preparing")
+            isLocalSTTPrepared = false
+            if !isPreparingLocalSTT {
+                localSTTPreparationDetail = L("settings.models.localSTT.preparing")
+                localSTTTransferDetail = ""
+                localSTTPreparedSource = L("common.automatic")
+                localSTTStoragePath = localModelManager.storagePath(for: localSTTConfiguration(for: model))
+            }
+        case .failed(let model, let message) where model == localSTTFocusedModel:
+            localSTTStatus = L("common.failedWithReason", message)
+            localSTTPreparationDetail = L("settings.models.localSTT.prepareFailed")
+            localSTTTransferDetail = ""
+            isLocalSTTPrepared = false
+        case .idle where !isPreparingLocalSTT:
+            refreshLocalSTTPreparedState()
+        default:
+            break
+        }
     }
 
     func setLLMModelSelection(_ provider: LLMProvider, suggestedModel: String) {

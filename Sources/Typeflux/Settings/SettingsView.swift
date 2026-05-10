@@ -5482,7 +5482,7 @@ struct StudioView: View {
 
     private func localSTTModelProgressRow(_ model: LocalSTTModel) -> some View {
         HStack(alignment: .center, spacing: StudioTheme.Spacing.small) {
-            ProgressView(value: viewModel.localSTTPreparationProgress, total: 1)
+            ProgressView(value: viewModel.localSTTDisplayedPreparationProgress, total: 1)
                 .progressViewStyle(.linear)
                 .tint(viewModel.localSTTPreparationTint)
 

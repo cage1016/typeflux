@@ -100,6 +100,61 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         await fulfillment(of: [progressExpectation], timeout: 2)
     }
 
+    func testFocusedLocalSTTModelMirrorsSharedDownloadProgress() async throws {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let suiteName = "SettingsViewModelCloudDefaultsTests.sharedProgress.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.localSTTModel = .whisperLocal
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: EmptyHistoryStore(),
+            initialSection: .models,
+            modelManager: NoopOllamaModelManager(),
+            localModelManager: NoopLocalSTTModelManager(),
+            notificationService: NoopLocalNotificationService(),
+        )
+
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: .whisperLocal, progress: 0.35)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.localSTTPreparationProgress, 0.35, accuracy: 0.001)
+        XCTAssertEqual(viewModel.localSTTDisplayedPreparationProgress, 0.35, accuracy: 0.001)
+        XCTAssertEqual(viewModel.localSTTPreparationPercentText, "35%")
+        XCTAssertEqual(viewModel.localSTTPreparationDetail, L("settings.models.localSTT.preparing"))
+    }
+
+    func testUnfocusedLocalSTTModelDoesNotMirrorSharedDownloadProgress() async throws {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let suiteName = "SettingsViewModelCloudDefaultsTests.unfocusedSharedProgress.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settingsStore = SettingsStore(defaults: defaults)
+        settingsStore.localSTTModel = .senseVoiceSmall
+        let viewModel = StudioViewModel(
+            settingsStore: settingsStore,
+            historyStore: EmptyHistoryStore(),
+            initialSection: .models,
+            modelManager: NoopOllamaModelManager(),
+            localModelManager: NoopLocalSTTModelManager(),
+            notificationService: NoopLocalNotificationService(),
+        )
+        viewModel.focusLocalSTTModel(.qwen3ASR)
+
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: .whisperLocal, progress: 0.35)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.localSTTFocusedModel, .qwen3ASR)
+        XCTAssertEqual(viewModel.localSTTPreparationProgress, 0)
+        XCTAssertEqual(viewModel.localSTTDisplayedPreparationProgress, 0, accuracy: 0.001)
+        XCTAssertEqual(viewModel.localSTTPreparationPercentText, "0%")
+    }
+
     func testFocusingDifferentLocalSTTModelDuringPreparationPreventsStaleCommit() async throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.stalePreparation.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
