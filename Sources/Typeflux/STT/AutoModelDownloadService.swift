@@ -212,10 +212,16 @@ final class AutoModelDownloadService {
             await notifyLocalModelReady()
 
         } catch {
-            LocalModelDownloadProgressCenter.shared.clear()
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                LocalModelDownloadProgressCenter.shared.clear()
+                return
+            }
             NetworkDebugLogger.logError(context: "Auto model download failed", error: error)
             setStatus(.failed)
+            LocalModelDownloadProgressCenter.shared.reportFailed(
+                model: config.model,
+                message: error.localizedDescription,
+            )
 
             var failedState = loadState()
             failedState.nextRetryDate = Date().addingTimeInterval(

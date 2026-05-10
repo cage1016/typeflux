@@ -9,6 +9,7 @@ extension Notification.Name {
 enum LocalModelDownloadProgressStatus: Equatable {
     case idle
     case downloading(model: LocalSTTModel, progress: Double)
+    case failed(model: LocalSTTModel, message: String)
 }
 
 final class LocalModelDownloadProgressCenter {
@@ -24,6 +25,10 @@ final class LocalModelDownloadProgressCenter {
     func reportDownloading(model: LocalSTTModel, progress: Double) {
         let clampedProgress = min(max(progress, 0), 1)
         updateStatus(.downloading(model: model, progress: clampedProgress))
+    }
+
+    func reportFailed(model: LocalSTTModel, message: String) {
+        updateStatus(.failed(model: model, message: message))
     }
 
     func clear() {

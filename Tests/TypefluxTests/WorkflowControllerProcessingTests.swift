@@ -766,6 +766,113 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         audioRecorder.releasePendingStop()
     }
 
+    func testPressShowsLocalModelDownloadAlertAndDoesNotRecord() async {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let audioRecorder = MockProcessingAudioRecorder()
+        let alertPresenter = MockLocalModelDownloadAlertPresenter()
+        let localModelManager = MockWorkflowLocalModelManager()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            localModelManager: localModelManager,
+            localModelDownloadAlertPresenter: alertPresenter,
+            configureSettings: { settingsStore in
+                settingsStore.sttProvider = .localModel
+                settingsStore.localSTTModel = .senseVoiceSmall
+            },
+        )
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: .senseVoiceSmall, progress: 0.42)
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await waitForMainActorWork()
+        controller.handleActivationTap()
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.startCallCount, 0)
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertEqual(alertPresenter.presentedModels, [.senseVoiceSmall])
+        XCTAssertEqual(alertPresenter.presentedProgresses, [0.42])
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.startCallCount, 0)
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertEqual(alertPresenter.presentedModels, [.senseVoiceSmall, .senseVoiceSmall])
+        XCTAssertEqual(alertPresenter.presentedProgresses, [0.42, 0.42])
+    }
+
+    func testPressStartsLocalModelDownloadWhenSelectedModelIsMissing() async {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let audioRecorder = MockProcessingAudioRecorder()
+        let alertPresenter = MockLocalModelDownloadAlertPresenter()
+        let localModelManager = MockWorkflowLocalModelManager()
+        let prepared = expectation(description: "selected local model preparation started")
+        localModelManager.onPrepare = {
+            prepared.fulfill()
+        }
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            localModelManager: localModelManager,
+            localModelDownloadAlertPresenter: alertPresenter,
+            configureSettings: { settingsStore in
+                settingsStore.sttProvider = .localModel
+                settingsStore.localSTTModel = .senseVoiceSmall
+            },
+        )
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await fulfillment(of: [prepared], timeout: 1)
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.startCallCount, 0)
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertEqual(localModelManager.preparedConfigurations.first?.model, .senseVoiceSmall)
+        XCTAssertEqual(alertPresenter.presentedModels, [.senseVoiceSmall])
+        XCTAssertEqual(alertPresenter.presentedProgresses, [0.02])
+    }
+
+    func testLocalModelDownloadFailureUpdatesProgressCenter() async {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let localModelManager = MockWorkflowLocalModelManager()
+        localModelManager.prepareError = NSError(
+            domain: "WorkflowControllerProcessingTests",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Network unavailable"],
+        )
+        let prepared = expectation(description: "selected local model preparation attempted")
+        localModelManager.onPrepare = {
+            prepared.fulfill()
+        }
+        let controller = makeWorkflowController(
+            localModelManager: localModelManager,
+            configureSettings: { settingsStore in
+                settingsStore.sttProvider = .localModel
+                settingsStore.localSTTModel = .senseVoiceSmall
+            },
+        )
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await fulfillment(of: [prepared], timeout: 1)
+
+        for _ in 0..<100 {
+            if case let .failed(model, message) = LocalModelDownloadProgressCenter.shared.status {
+                XCTAssertEqual(model, .senseVoiceSmall)
+                XCTAssertEqual(message, "Network unavailable")
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        XCTFail("Expected local model download failure status")
+    }
+
     private func makeWorkflowController(
         textInjector: TextInjector = MockProcessingTextInjector(),
         audioRecorder: AudioRecorder = MockProcessingAudioRecorder(),
@@ -774,6 +881,9 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         historyStore: HistoryStore = MockProcessingHistoryStore(),
         clipboard: ClipboardService = MockClipboardService(),
         soundEffectPlayer: SoundEffectPlayer? = nil,
+        localModelManager: (any LocalSTTModelManaging)? = nil,
+        localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting =
+            MockLocalModelDownloadAlertPresenter(),
         sleep: @escaping @Sendable (Duration) async -> Void = { _ in },
         configureSettings: ((SettingsStore) -> Void)? = nil,
     ) -> WorkflowController {
@@ -820,6 +930,8 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 settingsStore: settingsStore,
             ),
             soundEffectPlayer: soundEffectPlayer ?? SoundEffectPlayer(settingsStore: settingsStore),
+            localModelManager: localModelManager,
+            localModelDownloadAlertPresenter: localModelDownloadAlertPresenter,
             sleep: sleep,
         )
     }
@@ -1309,6 +1421,79 @@ private final class ThreadSafeEventRecorder: @unchecked Sendable {
             }
             try? await Task.sleep(for: .milliseconds(10))
         }
+    }
+}
+
+private final class MockLocalModelDownloadAlertPresenter: LocalModelDownloadAlertPresenting {
+    private(set) var presentedModels: [LocalSTTModel] = []
+    private(set) var presentedProgresses: [Double] = []
+
+    @MainActor
+    func showDownloadingAlert(model: LocalSTTModel, progress: Double) {
+        presentedModels.append(model)
+        presentedProgresses.append(progress)
+    }
+}
+
+private final class MockWorkflowLocalModelManager: LocalSTTModelManaging {
+    var onPrepare: (() -> Void)?
+    var prepareError: Error?
+
+    private let lock = NSLock()
+    private var _availableModels: Set<LocalSTTModel> = []
+    private var _preparedConfigurations: [LocalSTTConfiguration] = []
+
+    var preparedConfigurations: [LocalSTTConfiguration] {
+        lock.withLock { _preparedConfigurations }
+    }
+
+    func prepareModel(
+        settingsStore: SettingsStore,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
+        try await prepareModel(configuration: LocalSTTConfiguration(settingsStore: settingsStore), onUpdate: onUpdate)
+    }
+
+    func prepareModel(
+        configuration: LocalSTTConfiguration,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
+        lock.withLock {
+            _preparedConfigurations.append(configuration)
+        }
+        onUpdate?(LocalSTTPreparationUpdate(
+            message: "Preparing",
+            progress: 0.5,
+            storagePath: storagePath(for: configuration),
+            source: "Test",
+        ))
+        onPrepare?()
+        if let prepareError {
+            throw prepareError
+        }
+        let _: Void = lock.withLock {
+            _availableModels.insert(configuration.model)
+        }
+    }
+
+    func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo? {
+        let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
+        guard isModelAvailable(configuration.model) else { return nil }
+        return LocalSTTPreparedModelInfo(storagePath: storagePath(for: configuration), sourceDisplayName: "Test")
+    }
+
+    func isModelAvailable(_ model: LocalSTTModel) -> Bool {
+        lock.withLock { _availableModels.contains(model) }
+    }
+
+    func deleteModelFiles(_ model: LocalSTTModel) throws {
+        _ = lock.withLock {
+            _availableModels.remove(model)
+        }
+    }
+
+    func storagePath(for configuration: LocalSTTConfiguration) -> String {
+        "/tmp/\(configuration.model.rawValue)"
     }
 }
 

@@ -49,6 +49,8 @@ final class AppCoordinator {
                 openAIBackendFactory: { OpenAIRealtimePreviewBackend(settingsStore: settingsStore) },
                 appleBackendFactory: { AppleSpeechPreviewBackend() },
             ),
+            localModelManager: localModelManager,
+            notificationService: di.notificationService,
         )
         self.workflowController = workflowController
 
@@ -100,7 +102,11 @@ final class AppCoordinator {
     private func presentOnboarding() {
         let controller = OnboardingWindowController()
         onboardingWindowController = controller
-        controller.show(settingsStore: di.settingsStore) { [weak self] in
+        controller.show(
+            settingsStore: di.settingsStore,
+            localModelManager: di.localModelManager,
+            notificationService: di.notificationService,
+        ) { [weak self] in
             self?.onboardingWindowController = nil
             self?.presentPermissionGuidanceIfNeeded()
         }

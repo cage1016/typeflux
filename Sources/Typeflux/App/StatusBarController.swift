@@ -628,9 +628,15 @@ enum StatusBarMenuSupport {
     private static let titleTextLimit = 42
 
     static func localModelDownloadTitle(for status: LocalModelDownloadProgressStatus) -> String? {
-        guard case .downloading(let model, let progress) = status else { return nil }
-        let percent = Int((progress * 100).rounded())
-        return L("menu.downloadingLocalModelNamed", model.displayName, percent)
+        switch status {
+        case .idle:
+            return nil
+        case .downloading(let model, let progress):
+            let percent = Int((progress * 100).rounded())
+            return L("menu.downloadingLocalModelNamed", model.displayName, percent)
+        case .failed(let model, _):
+            return L("menu.localModelDownloadFailedNamed", model.displayName)
+        }
     }
 
     static func recentTranscriptionRecords(from records: [HistoryRecord], limit: Int = 10) -> [HistoryRecord] {

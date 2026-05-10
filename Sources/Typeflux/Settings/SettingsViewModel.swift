@@ -2068,6 +2068,7 @@ final class StudioViewModel: ObservableObject {
                       localSTTPreparationID == preparationID,
                       localSTTFocusedModel == targetModel
                 else {
+                    LocalModelDownloadProgressCenter.shared.clear()
                     return
                 }
 
@@ -2075,7 +2076,10 @@ final class StudioViewModel: ObservableObject {
                 localSTTPreparationDetail = L("settings.models.localSTT.prepareFailed")
                 localSTTTransferDetail = ""
                 isLocalSTTPrepared = false
-                LocalModelDownloadProgressCenter.shared.clear()
+                LocalModelDownloadProgressCenter.shared.reportFailed(
+                    model: targetModel,
+                    message: error.localizedDescription,
+                )
                 showToast(L("settings.models.localSTT.prepareFailed"))
             }
             if localSTTPreparationID == preparationID {

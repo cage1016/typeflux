@@ -92,6 +92,8 @@ final class OnboardingViewModel: ObservableObject {
     @Published var permissions: [PrivacyGuard.PermissionSnapshot] = []
     @Published var requestingPermissions: Set<PrivacyGuard.PermissionID> = []
     @Published var showIncompletePermissionsAlert = false
+    @Published var showIncompleteSTTConfigurationAlert = false
+    @Published var showIncompleteLLMConfigurationAlert = false
 
     // Globe key (🌐) macOS keyboard setting
     @Published var isGlobeKeyReady: Bool = true
@@ -104,19 +106,27 @@ final class OnboardingViewModel: ObservableObject {
     private let settingsStore: SettingsStore
     private let authState: AuthState
     private let globeKeyReader: GlobeKeyPreferenceReading
+    private let localModelManager: (any LocalSTTModelManaging)?
+    private let notificationService: LocalNotificationSending
     let onComplete: () -> Void
     private var cloudAccountModelDefaultsObserver: NSObjectProtocol?
+    private var localSTTPreparationTask: Task<Void, Never>?
+    private var localSTTPreparationModel: LocalSTTModel?
 
     init(
         settingsStore: SettingsStore,
         authState: AuthState? = nil,
         globeKeyReader: GlobeKeyPreferenceReading = SystemGlobeKeyPreferenceReader(),
+        localModelManager: (any LocalSTTModelManaging)? = nil,
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
         onComplete: @escaping () -> Void
     ) {
         self.settingsStore = settingsStore
         let resolvedAuthState = authState ?? .shared
         self.authState = resolvedAuthState
         self.globeKeyReader = globeKeyReader
+        self.localModelManager = localModelManager
+        self.notificationService = notificationService
         self.onComplete = onComplete
         let initialUseCloudAccountModels = resolvedAuthState.isLoggedIn
             && settingsStore.sttProvider == .typefluxOfficial
@@ -195,6 +205,7 @@ final class OnboardingViewModel: ObservableObject {
         if let cloudAccountModelDefaultsObserver {
             NotificationCenter.default.removeObserver(cloudAccountModelDefaultsObserver)
         }
+        localSTTPreparationTask?.cancel()
     }
 
     var canGoBack: Bool {
@@ -217,10 +228,49 @@ final class OnboardingViewModel: ObservableObject {
 
     var isSkippable: Bool {
         switch currentStep {
-        case .language, .stt, .llm, .permissions:
+        case .language, .permissions:
             true
-        case .account, .shortcuts:
+        case .account, .stt, .llm, .shortcuts:
             false
+        }
+    }
+
+    var isSTTConfigurationComplete: Bool {
+        switch sttProvider {
+        case .localModel, .appleSpeech, .typefluxOfficial:
+            true
+        case .freeModel:
+            hasText(freeSTTModel)
+        case .whisperAPI:
+            hasText(whisperBaseURL) && hasText(whisperAPIKey) && hasText(whisperModel)
+        case .multimodalLLM:
+            hasText(multimodalLLMBaseURL) && hasText(multimodalLLMAPIKey) && hasText(multimodalLLMModel)
+        case .aliCloud:
+            hasText(aliCloudAPIKey)
+        case .doubaoRealtime:
+            hasText(doubaoAppID) && hasText(doubaoAccessToken) && hasText(doubaoResourceID)
+        case .googleCloud:
+            hasText(googleCloudProjectID) && hasText(googleCloudModel)
+        case .groq:
+            hasText(groqSTTAPIKey) && hasText(groqSTTModel)
+        }
+    }
+
+    var isLLMConfigurationComplete: Bool {
+        switch llmProvider {
+        case .ollama:
+            hasText(ollamaBaseURL) && hasText(ollamaModel)
+        case .openAICompatible:
+            switch llmRemoteProvider {
+            case .typefluxCloud:
+                authState.isLoggedIn
+            case .freeModel:
+                hasText(llmModel)
+            case .custom:
+                hasText(llmBaseURL) && hasText(llmModel)
+            default:
+                hasText(llmBaseURL) && hasText(llmModel) && hasText(llmAPIKey)
+            }
         }
     }
 
@@ -241,21 +291,29 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     func advance() {
+        if currentStep == .stt && !isSTTConfigurationComplete {
+            showIncompleteSTTConfigurationAlert = true
+            return
+        }
+        if currentStep == .stt {
+            showIncompleteSTTConfigurationAlert = false
+        }
+
+        if currentStep == .llm && !isLLMConfigurationComplete {
+            showIncompleteLLMConfigurationAlert = true
+            return
+        }
+        if currentStep == .llm {
+            showIncompleteLLMConfigurationAlert = false
+        }
+
         if currentStep == .permissions && !allRequiredPermissionsGranted {
             showIncompletePermissionsAlert = true
             return
         }
 
         saveCurrentStepSettings()
-        if isLastStep {
-            complete()
-        } else {
-            let nextStep = adjacentStep(offset: 1) ?? (visibleSteps.last ?? .shortcuts)
-            stepDirection = 1
-            withAnimation(.easeInOut(duration: 0.22)) {
-                currentStep = nextStep
-            }
-        }
+        advanceToNextStepOrComplete()
     }
 
     func skip() {
@@ -288,6 +346,13 @@ final class OnboardingViewModel: ObservableObject {
         advance()
     }
 
+    func skipIncompleteLLMConfiguration() {
+        guard currentStep == .llm else { return }
+        showIncompleteLLMConfigurationAlert = false
+        saveCurrentStepSettings()
+        advanceToNextStepOrComplete()
+    }
+
     func selectOllama() {
         llmProvider = .ollama
         llmConnectionTestState = .idle
@@ -296,6 +361,15 @@ final class OnboardingViewModel: ObservableObject {
     func selectSTTProvider(_ provider: STTProvider) {
         sttProvider = provider
         sttConnectionTestState = .idle
+        if provider == .localModel {
+            prepareSelectedLocalSTTModelInBackground()
+        }
+    }
+
+    func selectLocalSTTModel(_ model: LocalSTTModel) {
+        localSTTModel = model
+        guard sttProvider == .localModel else { return }
+        prepareSelectedLocalSTTModelInBackground()
     }
 
     func selectLLMRemoteProvider(_ provider: LLMRemoteProvider) {
@@ -546,6 +620,7 @@ final class OnboardingViewModel: ObservableObject {
                 settingsStore.whisperModel = whisperModel
             case .localModel:
                 settingsStore.localSTTModel = localSTTModel
+                applySelectedLocalSTTDefaults()
             case .multimodalLLM:
                 settingsStore.multimodalLLMBaseURL = multimodalLLMBaseURL
                 settingsStore.multimodalLLMAPIKey = multimodalLLMAPIKey
@@ -601,6 +676,91 @@ final class OnboardingViewModel: ObservableObject {
         settingsStore.applyDefaultPersonaIfLLMConfigured()
         settingsStore.isOnboardingCompleted = true
         onComplete()
+    }
+
+    private func advanceToNextStepOrComplete() {
+        if isLastStep {
+            complete()
+        } else {
+            let nextStep = adjacentStep(offset: 1) ?? (visibleSteps.last ?? .shortcuts)
+            stepDirection = 1
+            withAnimation(.easeInOut(duration: 0.22)) {
+                currentStep = nextStep
+            }
+        }
+    }
+
+    private func prepareSelectedLocalSTTModelInBackground() {
+        guard let localModelManager else { return }
+
+        applySelectedLocalSTTDefaults()
+        let targetModel = localSTTModel
+        let configuration = localSTTConfiguration(for: targetModel)
+
+        if localModelManager.isModelAvailable(targetModel) {
+            LocalModelDownloadProgressCenter.shared.clear()
+            return
+        }
+
+        if localSTTPreparationModel == targetModel, localSTTPreparationTask != nil {
+            return
+        }
+
+        localSTTPreparationTask?.cancel()
+        localSTTPreparationModel = targetModel
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: targetModel, progress: 0.02)
+        localSTTPreparationTask = Task { [weak self, localModelManager, notificationService] in
+            do {
+                try await localModelManager.prepareModel(configuration: configuration) { update in
+                    LocalModelDownloadProgressCenter.shared.reportDownloading(
+                        model: targetModel,
+                        progress: update.progress,
+                    )
+                }
+                guard !Task.isCancelled else { return }
+                LocalModelDownloadProgressCenter.shared.clear()
+                await notificationService.sendLocalNotification(
+                    title: L("notification.localModelReady.title"),
+                    body: L("notification.localModelReady.body"),
+                    identifier: "ai.gulu.app.typeflux.local-model-ready",
+                )
+            } catch {
+                guard !Task.isCancelled else {
+                    LocalModelDownloadProgressCenter.shared.clear()
+                    return
+                }
+                NetworkDebugLogger.logError(context: "Onboarding local STT model download failed", error: error)
+                LocalModelDownloadProgressCenter.shared.reportFailed(
+                    model: targetModel,
+                    message: error.localizedDescription,
+                )
+            }
+            await MainActor.run {
+                guard self?.localSTTPreparationModel == targetModel else { return }
+                self?.localSTTPreparationModel = nil
+                self?.localSTTPreparationTask = nil
+            }
+        }
+    }
+
+    private func applySelectedLocalSTTDefaults() {
+        settingsStore.localSTTModel = localSTTModel
+        settingsStore.localSTTModelIdentifier = localSTTModel.defaultModelIdentifier
+        settingsStore.localSTTDownloadSource = localSTTModel.recommendedDownloadSource
+        settingsStore.localSTTAutoSetup = true
+    }
+
+    private func localSTTConfiguration(for model: LocalSTTModel) -> LocalSTTConfiguration {
+        LocalSTTConfiguration(
+            model: model,
+            modelIdentifier: model.defaultModelIdentifier,
+            downloadSource: model.recommendedDownloadSource,
+            autoSetup: true,
+        )
+    }
+
+    private func hasText(_ value: String) -> Bool {
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func adjacentStep(offset: Int) -> Step? {
