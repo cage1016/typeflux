@@ -364,8 +364,10 @@ extension WorkflowController {
             _ = await liveTranscriptionPreviewer?.finish()
             let realtimeTranscriptionSession = activeRealtimeTranscriptionSession
             let realtimeAudioBufferPump = activeRealtimeAudioBufferPump
+            let recordingPreviewText = latestRecordingPreviewText.trimmingCharacters(in: .whitespacesAndNewlines)
             activeRealtimeTranscriptionSession = nil
             activeRealtimeAudioBufferPump = nil
+            latestRecordingPreviewText = ""
             isAudioRecorderStarted = false
             let audioFileReadyAt = Date()
             let recordingIntent = recordingIntent
@@ -404,7 +406,7 @@ extension WorkflowController {
                 return
             }
 
-            if !audioAnalysis.containsAudibleSignal {
+            if !audioAnalysis.containsAudibleSignal, recordingPreviewText.isEmpty {
                 try? FileManager.default.removeItem(at: validatedAudioFile.fileURL)
                 realtimeAudioBufferPump?.cancel()
                 await realtimeTranscriptionSession?.cancel()
@@ -414,6 +416,20 @@ extension WorkflowController {
                     self.overlayController.showNotice(message: L("workflow.transcription.noSpeech"))
                 }
                 return
+            }
+
+            if !audioAnalysis.containsAudibleSignal {
+                NetworkDebugLogger.logMessage(
+                    """
+                    [Audio Analysis] continuing despite low saved-audio signal because recording preview produced text
+                    duration: \(String(format: "%.3f", audioAnalysis.duration))
+                    rmsPowerDB: \(audioAnalysis.rmsPowerDB)
+                    peakPowerDB: \(audioAnalysis.peakPowerDB)
+                    audibleDuration: \(String(format: "%.3f", audioAnalysis.audibleDuration))
+                    audibleFrameRatio: \(audioAnalysis.audibleFrameRatio)
+                    previewLength: \(recordingPreviewText.count)
+                    """,
+                )
             }
 
             await MainActor.run { () -> Void in
@@ -484,6 +500,7 @@ extension WorkflowController {
                     personaPrompt: personaPrompt,
                     recordingIntent: recordingIntent,
                     sessionID: sessionID,
+                    recordingPreviewText: recordingPreviewText,
                 )
                 NetworkDebugLogger.logMessage(
                     "[Ask Timing] process completed in \(Self.formatDurationSince(processingStartedAt))",
@@ -502,6 +519,7 @@ extension WorkflowController {
             await activeRealtimeTranscriptionSession?.cancel()
             activeRealtimeTranscriptionSession = nil
             activeRealtimeAudioBufferPump = nil
+            latestRecordingPreviewText = ""
             isAudioRecorderStarted = false
             let msg = "Processing failed: \(error.localizedDescription)"
             ErrorLogStore.shared.log(msg)
@@ -600,6 +618,7 @@ extension WorkflowController {
         recordingIntent: RecordingIntent,
         sessionID: UUID,
         forceResultDialogOnSuccess: Bool = false,
+        recordingPreviewText: String = "",
     ) async {
         var record = record
         do {
@@ -638,20 +657,21 @@ extension WorkflowController {
                 && inputContext == nil
                 && hasRewritePersona
 
-            let transcribedText: String
+            let rawTranscribedText: String
             var mergedLLMResult: String?
+            let fallbackPreviewText = recordingPreviewText.trimmingCharacters(in: .whitespacesAndNewlines)
 
             let transcriptionStartedAt = Date()
             NetworkDebugLogger.logMessage("[Ask Timing] transcription entered intent=\(recordingIntent.traceName)")
             if let realtimeTranscriptionSession {
                 do {
-                    transcribedText = try await realtimeTranscriptionSession.finish()
+                    rawTranscribedText = try await realtimeTranscriptionSession.finish()
                 } catch {
                     NetworkDebugLogger.logError(
                         context: "Realtime STT session failed; falling back to recorded audio",
                         error: error,
                     )
-                    transcribedText = try await sttRouter.transcribeStream(
+                    rawTranscribedText = try await sttRouter.transcribeStream(
                         audioFile: audioFile,
                         scenario: cloudScenario,
                     ) { _ in }
@@ -664,10 +684,10 @@ extension WorkflowController {
                     cloudScenario: cloudScenario,
                     sessionID: sessionID,
                 )
-                transcribedText = mergedResult.transcript
+                rawTranscribedText = mergedResult.transcript
                 mergedLLMResult = mergedResult.rewritten
             } else {
-                transcribedText = try await sttRouter.transcribeStream(
+                rawTranscribedText = try await sttRouter.transcribeStream(
                     audioFile: audioFile,
                     scenario: cloudScenario,
                 ) { _ in }
@@ -677,6 +697,16 @@ extension WorkflowController {
             )
 
             try ensureProcessingIsActive(sessionID)
+            let normalizedRawTranscript = rawTranscribedText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let transcribedText: String
+            if normalizedRawTranscript.isEmpty, !fallbackPreviewText.isEmpty {
+                transcribedText = fallbackPreviewText
+                NetworkDebugLogger.logMessage(
+                    "[Transcription] using recording preview text because final transcription was empty",
+                )
+            } else {
+                transcribedText = rawTranscribedText
+            }
             pipelineTiming.transcriptionCompletedAt = Date()
             record.pipelineTiming = pipelineTiming
             record.transcriptText = transcribedText

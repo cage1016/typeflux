@@ -686,6 +686,80 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         audioRecorder.releasePendingStop()
     }
 
+    func testFinishRecordingContinuesWhenPreviewTextExistsDespiteSilentAudioGate() async throws {
+        let audioURL = try writeSilentTestAudio(duration: 1.0)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+
+        let textInjector = MockProcessingTextInjector()
+        let audioRecorder = FileReturningAudioRecorder(fileURL: audioURL)
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            audioRecorder: audioRecorder,
+            sttTranscriber: MockProcessingTranscriber(transcript: "final transcript"),
+            sleep: { _ in },
+        )
+        controller.latestRecordingPreviewText = "preview transcript"
+        controller.isAudioRecorderStarted = true
+
+        await controller.finishRecordingAndProcess(recordingStoppedAt: Date())
+        await waitUntil {
+            textInjector.insertedTexts == ["final transcript"]
+        }
+
+        XCTAssertEqual(audioRecorder.stopCallCount, 1)
+        XCTAssertEqual(textInjector.insertedTexts, ["final transcript"])
+        XCTAssertTrue(controller.latestRecordingPreviewText.isEmpty)
+    }
+
+    func testFinishRecordingUsesPreviewTextWhenFinalTranscriptionIsEmpty() async throws {
+        let audioURL = try writeSilentTestAudio(duration: 1.0)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+
+        let textInjector = MockProcessingTextInjector()
+        let historyStore = MockProcessingHistoryStore()
+        let audioRecorder = FileReturningAudioRecorder(fileURL: audioURL)
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            audioRecorder: audioRecorder,
+            sttTranscriber: MockProcessingTranscriber(transcript: ""),
+            historyStore: historyStore,
+            sleep: { _ in },
+        )
+        controller.latestRecordingPreviewText = "preview transcript"
+        controller.isAudioRecorderStarted = true
+
+        await controller.finishRecordingAndProcess(recordingStoppedAt: Date())
+        await waitUntil {
+            textInjector.insertedTexts == ["preview transcript"]
+        }
+
+        XCTAssertEqual(audioRecorder.stopCallCount, 1)
+        XCTAssertEqual(textInjector.insertedTexts, ["preview transcript"])
+        XCTAssertEqual(historyStore.list().last?.transcriptText, "preview transcript")
+        XCTAssertTrue(controller.latestRecordingPreviewText.isEmpty)
+    }
+
+    func testFinishRecordingCancelsSilentAudioWhenPreviewTextIsEmpty() async throws {
+        let audioURL = try writeSilentTestAudio(duration: 1.0)
+
+        let textInjector = MockProcessingTextInjector()
+        let audioRecorder = FileReturningAudioRecorder(fileURL: audioURL)
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            audioRecorder: audioRecorder,
+            sttTranscriber: MockProcessingTranscriber(transcript: "should not transcribe"),
+            sleep: { _ in },
+        )
+        controller.isAudioRecorderStarted = true
+
+        await controller.finishRecordingAndProcess(recordingStoppedAt: Date())
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.stopCallCount, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: audioURL.path))
+        XCTAssertTrue(textInjector.insertedTexts.isEmpty)
+    }
+
     private func makeWorkflowController(
         textInjector: TextInjector = MockProcessingTextInjector(),
         audioRecorder: AudioRecorder = MockProcessingAudioRecorder(),
@@ -782,6 +856,42 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     private func waitForMainActorWork() async {
         await MainActor.run {}
         try? await Task.sleep(for: .milliseconds(20))
+    }
+
+    private func waitUntil(
+        timeout: TimeInterval = 1,
+        condition: @escaping () -> Bool,
+    ) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    private func writeSilentTestAudio(duration: TimeInterval, sampleRate: Double = 16_000) throws -> URL {
+        guard let format = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: sampleRate,
+            channels: 1,
+            interleaved: false,
+        ) else {
+            throw NSError(domain: "WorkflowControllerProcessingTests", code: 1)
+        }
+
+        let frameCount = Int(duration * sampleRate)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("wav")
+        let audioFile = try AVAudioFile(forWriting: url, settings: format.settings)
+        guard let buffer = AVAudioPCMBuffer(
+            pcmFormat: format,
+            frameCapacity: AVAudioFrameCount(frameCount),
+        ) else {
+            throw NSError(domain: "WorkflowControllerProcessingTests", code: 2)
+        }
+        buffer.frameLength = AVAudioFrameCount(frameCount)
+        try audioFile.write(from: buffer)
+        return url
     }
 }
 
@@ -974,6 +1084,34 @@ private final class MockProcessingAudioRecorder: AudioRecorder {
         stops += 1
         lock.unlock()
         return AudioFile(fileURL: URL(fileURLWithPath: "/tmp/mock.wav"), duration: 1)
+    }
+}
+
+private final class FileReturningAudioRecorder: AudioRecorder {
+    private let fileURL: URL
+    private let lock = NSLock()
+    private var stops = 0
+
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+
+    var stopCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return stops
+    }
+
+    func start(
+        levelHandler _: @escaping (Float) -> Void,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+    ) throws {}
+
+    func stop() throws -> AudioFile {
+        lock.lock()
+        stops += 1
+        lock.unlock()
+        return AudioFile(fileURL: fileURL, duration: 1)
     }
 }
 

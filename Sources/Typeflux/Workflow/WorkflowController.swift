@@ -117,6 +117,7 @@ final class WorkflowController {
     var activeProcessingRecordID: UUID?
     var lastRetryableFailureRecord: HistoryRecord?
     var lastDialogResultText: String?
+    var latestRecordingPreviewText = ""
     var shouldPreserveLLMConfigurationNotice = false
     var localModelPreheatTask: Task<Void, Never>?
     var lastLocalModelPreheatConfiguration: LocalSTTConfiguration?
@@ -375,6 +376,7 @@ final class WorkflowController {
         if shouldStopAudioRecorder {
             _ = try? audioRecorder.stop()
         }
+        latestRecordingPreviewText = ""
         activeRealtimeAudioBufferPump?.cancel()
         activeRealtimeAudioBufferPump = nil
         Task {
@@ -413,6 +415,7 @@ final class WorkflowController {
                     guard !trimmed.isEmpty else { return }
                     Task { @MainActor [weak self] in
                         guard let self, self.isRecording else { return }
+                        self.latestRecordingPreviewText = trimmed
                         self.overlayController.updateRecordingPreviewText(trimmed)
                     }
                 }
@@ -740,6 +743,7 @@ final class WorkflowController {
         recordingMode = effectiveStartLocked ? .locked : .holdToTalk
         recordingIntent = effectiveIntent
         lastRetryableFailureRecord = nil
+        latestRecordingPreviewText = ""
         NSLog("[Workflow] Recording started")
 
         Task { @MainActor in
@@ -772,6 +776,7 @@ final class WorkflowController {
                         guard !trimmed.isEmpty else { return }
                         Task { @MainActor [weak self] in
                             guard let self, self.isRecording else { return }
+                            self.latestRecordingPreviewText = trimmed
                             self.overlayController.updateRecordingPreviewText(trimmed)
                         }
                     },
