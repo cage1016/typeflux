@@ -47,6 +47,23 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertTrue(textInjector.insertedTexts.isEmpty)
     }
 
+    func testApplyTextPresentsCopyDialogWhenInsertThrows() {
+        let textInjector = MockProcessingTextInjector(
+            insertError: NSError(
+                domain: "AXTextInjector",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Paste insertion could not be verified"],
+            ),
+        )
+        let controller = makeWorkflowController(textInjector: textInjector)
+
+        let outcome = controller.applyText("Manual copy fallback", replace: false)
+
+        XCTAssertEqual(outcome, .presentedInDialog)
+        XCTAssertEqual(controller.lastDialogResultText, "Manual copy fallback")
+        XCTAssertTrue(textInjector.insertedTexts.isEmpty)
+    }
+
     func testHandleDetachedAgentLaunchKeepsProcessingStatusVisible() {
         let controller = makeWorkflowController()
         controller.activeProcessingRecordID = UUID()
@@ -261,6 +278,86 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
         XCTAssertTrue(controller.isPersonaPickerPresented)
         XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
+    }
+
+    func testHistoryPickerConfirmCopiesAndInsertsSelectedHistory() {
+        let textInjector = MockProcessingTextInjector()
+        let clipboard = MockClipboardService()
+        let historyStore = MockProcessingHistoryStore()
+        let baseDate = Date(timeIntervalSince1970: 1_000)
+        historyStore.save(record: HistoryRecord(date: baseDate, transcriptText: "old result"))
+        historyStore.save(record: HistoryRecord(date: baseDate.addingTimeInterval(10), personaResultText: "new result"))
+
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            historyStore: historyStore,
+            clipboard: clipboard,
+        )
+
+        controller.handleHistoryPickerRequested()
+        XCTAssertTrue(controller.isHistoryPickerPresented)
+        XCTAssertEqual(controller.historyPickerItems.map(\.text), ["new result", "old result"])
+
+        controller.confirmHistorySelection()
+
+        XCTAssertFalse(controller.isHistoryPickerPresented)
+        XCTAssertEqual(clipboard.storedText, "new result")
+        XCTAssertEqual(textInjector.insertedTexts, ["new result"])
+        XCTAssertTrue(textInjector.replacedTexts.isEmpty)
+    }
+
+    func testHistoryPickerCopyActionDoesNotInsertText() {
+        let textInjector = MockProcessingTextInjector()
+        let clipboard = MockClipboardService()
+        let historyStore = MockProcessingHistoryStore()
+        historyStore.save(record: HistoryRecord(date: Date(timeIntervalSince1970: 1_000), transcriptText: "copy only"))
+        let controller = makeWorkflowController(
+            textInjector: textInjector,
+            historyStore: historyStore,
+            clipboard: clipboard,
+        )
+
+        controller.handleHistoryPickerRequested()
+        controller.copyHistorySelection(at: 0)
+
+        XCTAssertFalse(controller.isHistoryPickerPresented)
+        XCTAssertEqual(clipboard.storedText, "copy only")
+        XCTAssertTrue(textInjector.insertedTexts.isEmpty)
+        XCTAssertTrue(textInjector.replacedTexts.isEmpty)
+    }
+
+    func testHistoryPickerShowsMostRecentTwentyRecords() {
+        let historyStore = MockProcessingHistoryStore()
+        let baseDate = Date(timeIntervalSince1970: 1_000)
+        for index in 0 ..< 25 {
+            historyStore.save(record: HistoryRecord(
+                date: baseDate.addingTimeInterval(TimeInterval(index)),
+                transcriptText: "result \(index)",
+            ))
+        }
+
+        let controller = makeWorkflowController(historyStore: historyStore)
+
+        controller.handleHistoryPickerRequested()
+
+        XCTAssertEqual(controller.historyPickerItems.count, 20)
+        XCTAssertEqual(controller.historyPickerItems.first?.text, "result 24")
+        XCTAssertEqual(controller.historyPickerItems.last?.text, "result 5")
+    }
+
+    func testHistoryPickerRetryActionStartsRetryFlow() {
+        let historyStore = MockProcessingHistoryStore()
+        historyStore.save(record: HistoryRecord(
+            date: Date(timeIntervalSince1970: 1_000),
+            transcriptText: "retry me",
+        ))
+        let controller = makeWorkflowController(historyStore: historyStore)
+
+        controller.handleHistoryPickerRequested()
+        controller.retryHistorySelection(at: 0)
+
+        XCTAssertFalse(controller.isHistoryPickerPresented)
+        XCTAssertNotNil(controller.processingTask)
     }
 
     func testConfirmingPersonaSelectionPlaysTipCue() async throws {
@@ -760,13 +857,124 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertTrue(textInjector.insertedTexts.isEmpty)
     }
 
+    func testPressShowsLocalModelDownloadAlertAndDoesNotRecord() async {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let audioRecorder = MockProcessingAudioRecorder()
+        let alertPresenter = MockLocalModelDownloadAlertPresenter()
+        let localModelManager = MockWorkflowLocalModelManager()
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            localModelManager: localModelManager,
+            localModelDownloadAlertPresenter: alertPresenter,
+            configureSettings: { settingsStore in
+                settingsStore.sttProvider = .localModel
+                settingsStore.localSTTModel = .senseVoiceSmall
+            },
+        )
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: .senseVoiceSmall, progress: 0.42)
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await waitForMainActorWork()
+        controller.handleActivationTap()
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.startCallCount, 0)
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertEqual(alertPresenter.presentedModels, [.senseVoiceSmall])
+        XCTAssertEqual(alertPresenter.presentedProgresses, [0.42])
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.startCallCount, 0)
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertEqual(alertPresenter.presentedModels, [.senseVoiceSmall, .senseVoiceSmall])
+        XCTAssertEqual(alertPresenter.presentedProgresses, [0.42, 0.42])
+    }
+
+    func testPressStartsLocalModelDownloadWhenSelectedModelIsMissing() async {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let audioRecorder = MockProcessingAudioRecorder()
+        let alertPresenter = MockLocalModelDownloadAlertPresenter()
+        let localModelManager = MockWorkflowLocalModelManager()
+        let prepared = expectation(description: "selected local model preparation started")
+        localModelManager.onPrepare = {
+            prepared.fulfill()
+        }
+        let controller = makeWorkflowController(
+            audioRecorder: audioRecorder,
+            localModelManager: localModelManager,
+            localModelDownloadAlertPresenter: alertPresenter,
+            configureSettings: { settingsStore in
+                settingsStore.sttProvider = .localModel
+                settingsStore.localSTTModel = .senseVoiceSmall
+            },
+        )
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await fulfillment(of: [prepared], timeout: 1)
+        await waitForMainActorWork()
+
+        XCTAssertEqual(audioRecorder.startCallCount, 0)
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertEqual(localModelManager.preparedConfigurations.first?.model, .senseVoiceSmall)
+        XCTAssertEqual(alertPresenter.presentedModels, [.senseVoiceSmall])
+        XCTAssertEqual(alertPresenter.presentedProgresses, [0.02])
+    }
+
+    func testLocalModelDownloadFailureUpdatesProgressCenter() async {
+        LocalModelDownloadProgressCenter.shared.clear()
+        defer { LocalModelDownloadProgressCenter.shared.clear() }
+
+        let localModelManager = MockWorkflowLocalModelManager()
+        localModelManager.prepareError = NSError(
+            domain: "WorkflowControllerProcessingTests",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Network unavailable"],
+        )
+        let prepared = expectation(description: "selected local model preparation attempted")
+        localModelManager.onPrepare = {
+            prepared.fulfill()
+        }
+        let controller = makeWorkflowController(
+            localModelManager: localModelManager,
+            configureSettings: { settingsStore in
+                settingsStore.sttProvider = .localModel
+                settingsStore.localSTTModel = .senseVoiceSmall
+            },
+        )
+
+        controller.handlePressBegan(intent: .dictation, startLocked: false)
+        await fulfillment(of: [prepared], timeout: 1)
+
+        for _ in 0..<100 {
+            if case let .failed(model, message) = LocalModelDownloadProgressCenter.shared.status {
+                XCTAssertEqual(model, .senseVoiceSmall)
+                XCTAssertEqual(message, "Network unavailable")
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        XCTFail("Expected local model download failure status")
+    }
+
     private func makeWorkflowController(
         textInjector: TextInjector = MockProcessingTextInjector(),
         audioRecorder: AudioRecorder = MockProcessingAudioRecorder(),
         sttTranscriber: Transcriber = MockProcessingTranscriber(),
         llmService: LLMService = MockProcessingLLMService(),
         historyStore: HistoryStore = MockProcessingHistoryStore(),
+        clipboard: ClipboardService = MockClipboardService(),
         soundEffectPlayer: SoundEffectPlayer? = nil,
+        localModelManager: (any LocalSTTModelManaging)? = nil,
+        localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting =
+            MockLocalModelDownloadAlertPresenter(),
         sleep: @escaping @Sendable (Duration) async -> Void = { _ in },
         configureSettings: ((SettingsStore) -> Void)? = nil,
     ) -> WorkflowController {
@@ -799,7 +1007,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             llmService: llmService,
             llmAgentService: MockProcessingLLMAgentService(),
             textInjector: textInjector,
-            clipboard: MockClipboardService(),
+            clipboard: clipboard,
             historyStore: historyStore,
             agentJobStore: MockProcessingAgentJobStore(),
             agentExecutionRegistry: AgentExecutionRegistry(),
@@ -813,6 +1021,8 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 settingsStore: settingsStore,
             ),
             soundEffectPlayer: soundEffectPlayer ?? SoundEffectPlayer(settingsStore: settingsStore),
+            localModelManager: localModelManager,
+            localModelDownloadAlertPresenter: localModelDownloadAlertPresenter,
             sleep: sleep,
         )
     }
@@ -914,13 +1124,19 @@ private final class MockProcessingTextInjector: TextInjector {
     private(set) var replacedTexts: [String] = []
     private let selectionSnapshot: TextSelectionSnapshot
     private let inputSnapshot: CurrentInputTextSnapshot
+    private let insertError: Error?
+    private let replaceError: Error?
 
     init(
         selectionSnapshot: TextSelectionSnapshot = TextSelectionSnapshot(),
         inputSnapshot: CurrentInputTextSnapshot = CurrentInputTextSnapshot(),
+        insertError: Error? = nil,
+        replaceError: Error? = nil,
     ) {
         self.selectionSnapshot = selectionSnapshot
         self.inputSnapshot = inputSnapshot
+        self.insertError = insertError
+        self.replaceError = replaceError
     }
 
     func getSelectionSnapshot() async -> TextSelectionSnapshot {
@@ -936,10 +1152,16 @@ private final class MockProcessingTextInjector: TextInjector {
     }
 
     func insert(text: String) throws {
+        if let insertError {
+            throw insertError
+        }
         insertedTexts.append(text)
     }
 
     func replaceSelection(text: String) throws {
+        if let replaceError {
+            throw replaceError
+        }
         replacedTexts.append(text)
     }
 }
@@ -1032,6 +1254,7 @@ private final class MockProcessingHotkeyService: HotkeyService {
     var onAskPressBegan: (() -> Void)?
     var onAskPressEnded: (() -> Void)?
     var onPersonaPickerRequested: (() -> Void)?
+    var onHistoryRequested: (() -> Void)?
     var onError: ((String) -> Void)?
 
     func start() {}
@@ -1365,6 +1588,79 @@ private final class ThreadSafeEventRecorder: @unchecked Sendable {
             }
             try? await Task.sleep(for: .milliseconds(10))
         }
+    }
+}
+
+private final class MockLocalModelDownloadAlertPresenter: LocalModelDownloadAlertPresenting {
+    private(set) var presentedModels: [LocalSTTModel] = []
+    private(set) var presentedProgresses: [Double] = []
+
+    @MainActor
+    func showDownloadingAlert(model: LocalSTTModel, progress: Double) {
+        presentedModels.append(model)
+        presentedProgresses.append(progress)
+    }
+}
+
+private final class MockWorkflowLocalModelManager: LocalSTTModelManaging {
+    var onPrepare: (() -> Void)?
+    var prepareError: Error?
+
+    private let lock = NSLock()
+    private var _availableModels: Set<LocalSTTModel> = []
+    private var _preparedConfigurations: [LocalSTTConfiguration] = []
+
+    var preparedConfigurations: [LocalSTTConfiguration] {
+        lock.withLock { _preparedConfigurations }
+    }
+
+    func prepareModel(
+        settingsStore: SettingsStore,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
+        try await prepareModel(configuration: LocalSTTConfiguration(settingsStore: settingsStore), onUpdate: onUpdate)
+    }
+
+    func prepareModel(
+        configuration: LocalSTTConfiguration,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
+        lock.withLock {
+            _preparedConfigurations.append(configuration)
+        }
+        onUpdate?(LocalSTTPreparationUpdate(
+            message: "Preparing",
+            progress: 0.5,
+            storagePath: storagePath(for: configuration),
+            source: "Test",
+        ))
+        onPrepare?()
+        if let prepareError {
+            throw prepareError
+        }
+        let _: Void = lock.withLock {
+            _availableModels.insert(configuration.model)
+        }
+    }
+
+    func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo? {
+        let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
+        guard isModelAvailable(configuration.model) else { return nil }
+        return LocalSTTPreparedModelInfo(storagePath: storagePath(for: configuration), sourceDisplayName: "Test")
+    }
+
+    func isModelAvailable(_ model: LocalSTTModel) -> Bool {
+        lock.withLock { _availableModels.contains(model) }
+    }
+
+    func deleteModelFiles(_ model: LocalSTTModel) throws {
+        _ = lock.withLock {
+            _availableModels.remove(model)
+        }
+    }
+
+    func storagePath(for configuration: LocalSTTConfiguration) -> String {
+        "/tmp/\(configuration.model.rawValue)"
     }
 }
 

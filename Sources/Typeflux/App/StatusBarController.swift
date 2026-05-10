@@ -28,7 +28,6 @@ final class StatusBarController: NSObject {
     private let settingsStore: SettingsStore
     private let historyStore: HistoryStore
     private let agentJobStore: AgentJobStore
-    private let autoModelDownloadService: AutoModelDownloadService?
     private let notificationService: LocalNotificationSending
     private let onRetryHistory: (HistoryRecord) -> Void
     private let onOpenOnboarding: () -> Void
@@ -44,7 +43,7 @@ final class StatusBarController: NSObject {
     private var historyObserver: NSObjectProtocol?
     private var personaSelectionObserver: NSObjectProtocol?
     private var autoUpdateStateObserver: NSObjectProtocol?
-    private var autoModelDownloadObserver: NSObjectProtocol?
+    private var localModelDownloadProgressObserver: NSObjectProtocol?
     private var runningJobDurationTimer: Timer?
     private var runningAgentJobs: [AgentJob] = []
 
@@ -53,7 +52,6 @@ final class StatusBarController: NSObject {
         settingsStore: SettingsStore,
         historyStore: HistoryStore,
         agentJobStore: AgentJobStore,
-        autoModelDownloadService: AutoModelDownloadService? = nil,
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         onOpenOnboarding: @escaping () -> Void = {},
@@ -64,7 +62,6 @@ final class StatusBarController: NSObject {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
         self.agentJobStore = agentJobStore
-        self.autoModelDownloadService = autoModelDownloadService
         self.notificationService = notificationService
         self.onRetryHistory = onRetryHistory
         self.onOpenOnboarding = onOpenOnboarding
@@ -132,8 +129,8 @@ final class StatusBarController: NSObject {
                 self?.rebuildMenu()
             }
         }
-        autoModelDownloadObserver = NotificationCenter.default.addObserver(
-            forName: .autoModelDownloadStateDidChange,
+        localModelDownloadProgressObserver = NotificationCenter.default.addObserver(
+            forName: .localModelDownloadProgressDidChange,
             object: nil,
             queue: .main,
         ) { [weak self] _ in
@@ -182,10 +179,10 @@ final class StatusBarController: NSObject {
             NotificationCenter.default.removeObserver(autoUpdateStateObserver)
         }
         autoUpdateStateObserver = nil
-        if let autoModelDownloadObserver {
-            NotificationCenter.default.removeObserver(autoModelDownloadObserver)
+        if let localModelDownloadProgressObserver {
+            NotificationCenter.default.removeObserver(localModelDownloadProgressObserver)
         }
-        autoModelDownloadObserver = nil
+        localModelDownloadProgressObserver = nil
         stopRunningJobDurationTimer()
         cancellables.removeAll()
     }
@@ -245,7 +242,7 @@ final class StatusBarController: NSObject {
         menu.addItem(appearanceItem)
         menu.addItem(makeSettingsItem())
         menu.addItem(makeUpdateMenuItem())
-        if let downloadItem = makeAutoModelDownloadMenuItem() {
+        if let downloadItem = makeLocalModelDownloadMenuItem() {
             menu.addItem(downloadItem)
         }
         menu.addItem(NSMenuItem.separator())
@@ -379,12 +376,12 @@ final class StatusBarController: NSObject {
     }
 
     /// Returns a menu item showing local model download progress, or nil when there is nothing to display.
-    private func makeAutoModelDownloadMenuItem() -> NSMenuItem? {
-        guard let service = autoModelDownloadService else { return nil }
-        if case .downloading(let progress) = service.status {
-            let percent = Int(progress * 100)
+    private func makeLocalModelDownloadMenuItem() -> NSMenuItem? {
+        if let title = StatusBarMenuSupport.localModelDownloadTitle(
+            for: LocalModelDownloadProgressCenter.shared.status,
+        ) {
             let item = NSMenuItem(
-                title: L("menu.downloadingLocalModel", percent),
+                title: title,
                 action: nil,
                 keyEquivalent: "",
             )
@@ -629,6 +626,18 @@ extension StatusBarController: NSMenuDelegate {
 
 enum StatusBarMenuSupport {
     private static let titleTextLimit = 42
+
+    static func localModelDownloadTitle(for status: LocalModelDownloadProgressStatus) -> String? {
+        switch status {
+        case .idle:
+            return nil
+        case .downloading(let model, let progress):
+            let percent = Int((progress * 100).rounded())
+            return L("menu.downloadingLocalModelNamed", model.displayName, percent)
+        case .failed(let model, _):
+            return L("menu.localModelDownloadFailedNamed", model.displayName)
+        }
+    }
 
     static func recentTranscriptionRecords(from records: [HistoryRecord], limit: Int = 10) -> [HistoryRecord] {
         records

@@ -1534,6 +1534,11 @@ struct StudioHistoryRow: View {
                             .animation(.easeOut(duration: 0.12), value: isHovered)
                     }
 
+                    historyActionsMenuButton
+                        .opacity(isHovered ? 1 : 0)
+                        .allowsHitTesting(isHovered)
+                        .animation(.easeOut(duration: 0.12), value: isHovered)
+
                     historyIconButton(
                         systemImage: isExpanded ? "chevron.up" : "chevron.down",
                         helpText: isExpanded ? L("common.collapse") : L("common.expand"),
@@ -1571,27 +1576,47 @@ struct StudioHistoryRow: View {
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
-            if let onCopyResult, record.hasTranscriptToCopy {
-                Button(L("history.action.copyResult"), systemImage: "doc.on.doc", action: onCopyResult)
-            }
-            if let onCopyTranscript, !(record.transcriptText?.isEmpty ?? true) {
-                Button(L("history.action.copyTranscript"), systemImage: "doc.on.doc", action: onCopyTranscript)
-            }
-            if (onCopyResult != nil && record.hasTranscriptToCopy) || !(record.transcriptText?.isEmpty ?? true) {
-                Divider()
-            }
-            if let onRetry {
-                Button(L("common.retry"), systemImage: "arrow.clockwise", action: onRetry)
-                    .disabled(!record.canRetry)
-            }
-            if let onDownloadAudio {
-                Button(L("history.action.downloadAudio"), systemImage: "arrow.down.circle", action: onDownloadAudio)
-                    .disabled(record.audioFilePath == nil)
-            }
+            historyActionsMenuContent
+        }
+    }
+
+    private var historyActionsMenuButton: some View {
+        Menu {
+            historyActionsMenuContent
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: StudioTheme.Typography.iconRegular, weight: .medium))
+                .frame(width: 32, height: 32)
+                .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .studioTooltip(L("history.action.more"), yOffset: 42)
+        .accessibilityLabel(L("history.action.more"))
+    }
+
+    @ViewBuilder
+    private var historyActionsMenuContent: some View {
+        if let onCopyResult, record.hasTranscriptToCopy {
+            Button(L("history.action.copyResult"), systemImage: "doc.on.doc", action: onCopyResult)
+        }
+        if let onCopyTranscript, !(record.transcriptText?.isEmpty ?? true) {
+            Button(L("history.action.copyTranscript"), systemImage: "doc.on.doc", action: onCopyTranscript)
+        }
+        if (onCopyResult != nil && record.hasTranscriptToCopy) || !(record.transcriptText?.isEmpty ?? true) {
             Divider()
-            if let onDelete {
-                Button(L("history.action.deleteTranscript"), systemImage: "trash", role: .destructive, action: onDelete)
-            }
+        }
+        if let onRetry {
+            Button(L("common.retry"), systemImage: "arrow.clockwise", action: onRetry)
+                .disabled(!record.canRetry)
+        }
+        if let onDownloadAudio {
+            Button(L("history.action.downloadAudio"), systemImage: "arrow.down.circle", action: onDownloadAudio)
+                .disabled(record.audioFilePath == nil)
+        }
+        Divider()
+        if let onDelete {
+            Button(L("history.action.deleteTranscript"), systemImage: "trash", role: .destructive, action: onDelete)
         }
     }
 

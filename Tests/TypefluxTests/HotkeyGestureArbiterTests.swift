@@ -10,6 +10,23 @@ final class HotkeyGestureArbiterTests: XCTestCase {
     )
     private let persona = HotkeyBinding.defaultPersona
 
+    func testHistoryHotkeyRequestsHistory() {
+        var arbiter = HotkeyGestureArbiter()
+
+        let events = arbiter.handleKeyDown(
+            keyCode: HotkeyBinding.defaultHistory.keyCode,
+            modifierFlags: HotkeyBinding.defaultHistory.modifierFlags,
+            isRepeat: false,
+            activationHotkey: activation,
+            askHotkey: ask,
+            personaHotkey: persona,
+            historyHotkey: HotkeyBinding.defaultHistory,
+        )
+
+        XCTAssertEqual(events, [.historyRequested])
+        XCTAssertEqual(arbiter.phase, .idle)
+    }
+
     func testModifierOnlyActivationBeginsImmediatelyWhileArbitrating() {
         var arbiter = HotkeyGestureArbiter()
 

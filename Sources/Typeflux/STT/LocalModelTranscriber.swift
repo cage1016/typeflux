@@ -12,6 +12,8 @@ protocol LocalWhisperKitTranscribing: AnyObject {
 final class LocalModelTranscriber: Transcriber {
     static let defaultWhisperKitKeepAliveDuration: TimeInterval = 30 * 60
     static let persistentWhisperKitKeepAliveDuration: TimeInterval? = nil
+    static let notPreparedErrorDomain = "LocalModelTranscriber"
+    static let notPreparedErrorCode = 1
 
     private let settingsStore: SettingsStore
     private let modelManager: LocalSTTModelManaging
@@ -185,8 +187,8 @@ final class LocalModelTranscriber: Transcriber {
 
     private func notPreparedError() -> NSError {
         NSError(
-            domain: "LocalModelTranscriber",
-            code: 1,
+            domain: Self.notPreparedErrorDomain,
+            code: Self.notPreparedErrorCode,
             userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.notPrepared")],
         )
     }

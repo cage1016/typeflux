@@ -124,7 +124,8 @@
 "menu.checkForUpdates" = "업데이트 확인";
 "menu.downloadingUpdate" = "업데이트 다운로드 중…";
 "menu.installingUpdate" = "업데이트 설치 중…";
-"menu.downloadingLocalModel" = "로컬 모델 다운로드 중… %d%%";
+"menu.downloadingLocalModelNamed" = "%@ 다운로드 중… %d%%";
+"menu.localModelDownloadFailedNamed" = "%@ 다운로드 실패";
 "menu.quit" = "종료";
 "menu.status.ready" = "준비";
 "menu.status.recording" = "녹음 진행 중…";
@@ -302,6 +303,12 @@
 "overlay.personaPicker.switchApplicationInstructions" = "현재 애플리케이션의 페르소나를 선택하세요. 전역 페르소나 설정은 변경되지 않습니다.";
 "overlay.personaPicker.applyTitle" = "페르소나 적용";
 "overlay.personaPicker.applyInstructions" = "선택한 텍스트를 다시 쓰려면 페르소나를 선택하세요. 적용하려면 Return을 누르고, 취소하려면 Esc을 누르세요.";
+"overlay.historyPicker.title" = "최근 기록";
+"overlay.historyPicker.instructions" = "위/아래 키로 기록을 선택하고 Return을 눌러 커서 위치에 붙여넣으세요.";
+"overlay.historyPicker.empty" = "아직 재사용할 수 있는 기록이 없습니다.";
+"overlay.historyPicker.pasteFallbackTitle" = "기록 결과";
+"overlay.historyPicker.insertAtCursor" = "현재 위치에 삽입";
+"overlay.historyPicker.retryTranscription" = "전사 다시 시도";
 
 "workflow.apply.inserted" = "활성 앱에 적용됩니다.";
 "workflow.apply.presentedInDialog" = "직접 삽입이 불가능하여 결과가 대화상자에 표시되었습니다.";
@@ -350,6 +357,7 @@
 
 "history.action.copyResult" = "결과 복사";
 "history.action.copyTranscript" = "성적표 복사";
+"history.action.more" = "추가 작업";
 "history.action.downloadAudio" = "오디오 다운로드";
 "history.action.playAudio" = "오디오 재생";
 "history.action.stopAudio" = "오디오 정지";
@@ -522,25 +530,32 @@
 "settings.shortcuts.persona.title" = "페르소나 스위처";
 "settings.shortcuts.persona.subtitle" = "중앙 선택 도구를 엽니다. 선택한 텍스트를 사용하면 해당 선택 항목에 페르소나를 직접 적용할 수도 있습니다.";
 "settings.shortcuts.persona.footnote" = "";
+"settings.shortcuts.history.title" = "기록";
+"settings.shortcuts.history.subtitle" = "어디서든 기록 섹션을 즉시 엽니다.";
+"settings.shortcuts.history.footnote" = "";
 "settings.advanced.personaHotkeyApply.title" = "선택한 텍스트에 페르소나 적용";
 "settings.advanced.personaHotkeyApply.subtitle" = "활성화되면 페르소나 단축키는 선택한 텍스트를 먼저 확인하고 기본 페르소나만 전환하는 대신 선택기를 사용하여 해당 선택 항목을 다시 작성합니다.";
 "settings.shortcuts.recording" = "새 바로가기 녹음";
 "settings.shortcuts.recordingActivation" = "지금 새로운 음성 입력 키나 키 조합을 누르세요.";
 "settings.shortcuts.recordingAsk" = "지금 새로운 무엇이든 물어보세요 단축키를 누르세요. 같은 보조 키를 빠르게 두 번 누를 수도 있습니다.";
 "settings.shortcuts.recordingPersona" = "페르소나 선택기를 여는 바로가기를 누르세요.";
+"settings.shortcuts.recordingHistory" = "기록을 여는 바로가기를 누르세요.";
 "settings.shortcuts.recordingGeneric" = "사용하려는 키나 키 조합을 누르세요.";
 "settings.shortcuts.record" = "기록";
 "settings.shortcuts.stopRecording" = "녹음 중지";
-"settings.shortcuts.activationConflict" = "음성 입력 바로가기는 무엇이든 물어보세요 또는 페르소나 바로가기와 일치할 수 없습니다.";
+"settings.shortcuts.activationConflict" = "음성 입력 바로가기는 무엇이든 물어보세요, 페르소나 또는 기록 바로가기와 일치할 수 없습니다.";
 "settings.shortcuts.activationUpdated" = "음성 입력 단축키가 업데이트되었습니다.";
 "settings.shortcuts.activationUnset" = "음성 입력 단축키가 삭제되었습니다.";
-"settings.shortcuts.askConflict" = "무엇이든 물어보세요 단축키는 음성 입력 또는 페르소나 단축키와 일치할 수 없습니다.";
+"settings.shortcuts.askConflict" = "무엇이든 물어보세요 단축키는 음성 입력, 페르소나 또는 기록 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.askUpdated" = "무엇이든 물어보세요 바로가기가 업데이트되었습니다.";
 "settings.shortcuts.askUnset" = "무엇이든 물어보세요 단축키가 삭제되었습니다.";
 "settings.shortcuts.doubleTapHelp" = "이 키를 빠르게 두 번 누르세요.";
-"settings.shortcuts.personaConflict" = "페르소나 단축키는 음성 입력 또는 무엇이든 물어보세요 단축키와 일치할 수 없습니다.";
+"settings.shortcuts.personaConflict" = "페르소나 단축키는 음성 입력, 무엇이든 물어보세요 또는 기록 단축키와 일치할 수 없습니다.";
 "settings.shortcuts.personaUpdated" = "페르소나 바로가기가 업데이트되었습니다.";
 "settings.shortcuts.personaUnset" = "페르소나 단축키가 삭제되었습니다.";
+"settings.shortcuts.historyConflict" = "기록 단축키는 음성 입력, 무엇이든 물어보세요 또는 페르소나 단축키와 일치할 수 없습니다.";
+"settings.shortcuts.historyUpdated" = "기록 단축키가 업데이트되었습니다.";
+"settings.shortcuts.historyUnset" = "기록 단축키가 삭제되었습니다.";
 "settings.shortcuts.unset" = "해제";
 "settings.shortcuts.none" = "없음";
 
@@ -746,14 +761,23 @@
 "settings.models.localSTT.readyNamed" = "%@이 준비되었습니다.";
 "settings.models.localSTT.prepareFailed" = "로컬 음성 모델 준비에 실패했습니다.";
 "settings.models.localSTT.deleted" = "모델 파일이 삭제되었습니다.";
+"settings.models.localSTT.transferProgress" = "%@ 다운로드됨(%@ / %@)";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "로컬 모델이 준비되었습니다.";
+"workflow.localModelDownloadingAlert.title" = "로컬 음성 모델 다운로드 중";
+"workflow.localModelDownloadingAlert.message" = "%@ 모델은 아직 다운로드 중이어서 사용할 수 없습니다. 준비가 완료되면 Typeflux가 시스템 알림으로 알려드립니다.";
+"workflow.localModelDownloadingAlert.progress" = "현재 진행률: %d%%";
+"workflow.localModelDownloadingAlert.failedTitle" = "로컬 음성 모델 다운로드 실패";
+"workflow.localModelDownloadingAlert.failedMessage" = "다운로드에 실패했습니다: %@. 네트워크가 사용 가능할 때 단축키를 다시 누르면 재시도할 수 있습니다.";
+"workflow.localModelDownloadingAlert.failedProgress" = "다운로드 실패";
 "cloud.autoSwitch.title" = "Typeflux Cloud이(가) 활성화되었습니다";
 "cloud.autoSwitch.body" = "음성 인식과 AI 모델이 Typeflux Cloud로 전환되었습니다. 「설정」에서 언제든지 본인의 모델로 되돌릴 수 있습니다.";
 "settings.models.redownload" = "다시 다운로드";
 "settings.models.deleteModelFiles" = "모델 파일 삭제";
 "settings.models.redownloadDialog.title" = "%@을(를) 다시 다운로드하시겠습니까?";
 "settings.models.redownloadDialog.message" = "다시 다운로드하기 전에 기존 모델 파일이 삭제됩니다.";
+"settings.models.downloadDialog.title" = "%@을(를) 다운로드하시겠습니까?";
+"settings.models.downloadDialog.message" = "이 로컬 음성 모델은 다운로드가 완료된 뒤 선택하여 사용할 수 있습니다.";
 "settings.models.deleteDialog.title" = "%@을 삭제하시겠습니까?";
 "settings.models.deleteDialog.message" = "모델 파일이 삭제됩니다. 다음번 사용 전에 다시 다운로드해야 합니다.";
 "settings.advanced.autoVocabulary.title" = "수정된 어휘 자동 추가";
@@ -803,8 +827,15 @@
 
 "onboarding.sttProvider.subtitle" = "음성을 텍스트로 변환하는 엔진을 선택하세요";
 "onboarding.sttConfig.subtitle" = "자격 증명 및 기본 설정 구성";
+"onboarding.sttConfig.incomplete.message" = "계속하기 전에 선택한 음성 모델 설정을 완료하세요.";
+"onboarding.sttConfig.incompleteAlert.title" = "음성 모델 설정이 완료되지 않았습니다";
+"onboarding.sttConfig.incompleteAlert.message" = "다음 단계로 진행하기 전에 선택한 음성 모델 설정을 완료하세요.";
 "onboarding.llmProvider.subtitle" = "받아쓰기를 다시 작성하고 다듬는 모델을 선택하세요";
 "onboarding.llmConfig.subtitle" = "자격 증명 및 기본 설정 구성";
+"onboarding.llmConfig.incompleteAlert.title" = "언어 모델 설정이 완료되지 않았습니다";
+"onboarding.llmConfig.incompleteAlert.message" = "음성 전사는 계속 사용할 수 있지만, 언어 모델이 필요한 다시 쓰기와 다듬기 기능은 당분간 제한됩니다.";
+"onboarding.llmConfig.incompleteAlert.continueConfig" = "계속 설정";
+"onboarding.llmConfig.incompleteAlert.skip" = "건너뛰기";
 
 "onboarding.permissions.title" = "권한 부여";
 "onboarding.permissions.subtitle" = "Typeflux에 음성을 캡처하고 다른 앱에 텍스트를 삽입하려면 몇 가지 시스템 권한이 필요합니다.";
@@ -839,11 +870,12 @@
 "onboarding.shortcuts.ask.hint" = "Fn을 두 번 눌러 질문하거나 선택한 텍스트 다시 작성";
 "onboarding.shortcuts.persona.hint" = "쓰기 페르소나 전환 또는 적용";
 "onboarding.shortcuts.changeInSettings" = "설정 → 음성 단축키에서 언제든지 단축키를 맞춤 설정할 수 있습니다.";
+"onboarding.shortcuts.history.hint" = "최근 기록을 열고 선택한 결과 붙여넣기";
 
 "onboarding.action.back" = "이전";
 "onboarding.action.continue" = "다음";
 "onboarding.action.skip" = "건너뛰기";
-"onboarding.account.skip" = "건너뛰기";
+"onboarding.account.skip" = "건너뛰고 내 모델 설정";
 "onboarding.action.getStarted" = "시작하기";
 
 // MARK: - Agent Framework

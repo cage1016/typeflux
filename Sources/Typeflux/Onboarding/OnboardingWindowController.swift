@@ -18,7 +18,12 @@ final class OnboardingWindowController: NSObject {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    func show(settingsStore: SettingsStore, onComplete: @escaping () -> Void) {
+    func show(
+        settingsStore: SettingsStore,
+        localModelManager: LocalModelManager? = nil,
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
+        onComplete: @escaping () -> Void,
+    ) {
         if let window {
             DockVisibilityController.shared.windowDidShow(window)
             window.makeKeyAndOrderFront(nil)
@@ -28,7 +33,11 @@ final class OnboardingWindowController: NSObject {
 
         onCompleteHandler = onComplete
 
-        let viewModel = OnboardingViewModel(settingsStore: settingsStore) { [weak self] in
+        let viewModel = OnboardingViewModel(
+            settingsStore: settingsStore,
+            localModelManager: localModelManager,
+            notificationService: notificationService,
+        ) { [weak self] in
             self?.handleComplete()
         }
 

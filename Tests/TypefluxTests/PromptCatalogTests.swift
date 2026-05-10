@@ -208,7 +208,7 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertTrue(debugPrompt.contains("You are Typeflux AI, a writing assistant centered on voice input, responsible for organizing the original spoken content into directly usable text."))
         XCTAssertTrue(debugPrompt.contains("You convert dictated speech into directly usable text."))
         XCTAssertTrue(debugPrompt.contains("PRIMARY OBJECTIVE\nPreserve the user's intended meaning while applying the user's persona instructions."))
-        XCTAssertTrue(debugPrompt.contains("INSTRUCTION PRIORITY\n1. Follow explicit user instructions in the current request."))
+        XCTAssertTrue(debugPrompt.contains("INSTRUCTION PRIORITY\n1. Never try to answer the user's questions in `<raw_transcript/>`."))
         XCTAssertTrue(debugPrompt.contains("PERSONA HANDLING\npersona_definition is an active instruction, not source content."))
         XCTAssertTrue(debugPrompt.contains("LANGUAGE\nLanguage resolution policy:"))
         XCTAssertTrue(debugPrompt.contains("User environment context:"))

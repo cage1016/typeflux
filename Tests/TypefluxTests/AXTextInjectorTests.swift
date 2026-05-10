@@ -650,6 +650,28 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertEqual(result, .failure("focused-element-not-editable"))
     }
 
+    func testEvaluatePasteVerificationFailsForInsertWhenAccessibilityIsNotTrusted() {
+        let after = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "Notes",
+            role: "AXTextArea",
+            text: nil,
+            isEditable: false,
+            isFocusedTarget: false,
+            failureReason: "accessibility-not-trusted",
+        )
+
+        let result = AXTextInjector.evaluatePasteVerification(
+            insertedText: "hello",
+            replaceSelection: false,
+            targetProcessID: 42,
+            before: nil,
+            after: after,
+        )
+
+        XCTAssertEqual(result, .failure("accessibility-not-trusted"))
+    }
+
     func testShouldActivateTargetBeforePasteReturnsFalseWhenFlagDisabled() {
         let result = AXTextInjector.shouldActivateTargetBeforePaste(
             flagEnabled: false,
@@ -808,6 +830,42 @@ final class AXTextInjectorTests: XCTestCase {
         )
 
         XCTAssertFalse(result)
+    }
+
+    func testShouldAttemptPasteVerificationReturnsTrueForInsertWhenFlagDisabled() {
+        let result = AXTextInjector.shouldAttemptPasteVerification(
+            replaceSelection: false,
+            strictFallbackEnabled: false,
+        )
+
+        XCTAssertTrue(result)
+    }
+
+    func testShouldAttemptPasteVerificationReturnsTrueForInsertWhenFlagEnabled() {
+        let result = AXTextInjector.shouldAttemptPasteVerification(
+            replaceSelection: false,
+            strictFallbackEnabled: true,
+        )
+
+        XCTAssertTrue(result)
+    }
+
+    func testShouldAttemptPasteVerificationReturnsFalseForReplaceWhenFlagDisabled() {
+        let result = AXTextInjector.shouldAttemptPasteVerification(
+            replaceSelection: true,
+            strictFallbackEnabled: false,
+        )
+
+        XCTAssertFalse(result)
+    }
+
+    func testShouldAttemptPasteVerificationReturnsTrueForReplaceWhenFlagEnabled() {
+        let result = AXTextInjector.shouldAttemptPasteVerification(
+            replaceSelection: true,
+            strictFallbackEnabled: true,
+        )
+
+        XCTAssertTrue(result)
     }
 
     func testShouldRestoreCapturedPasteboardReturnsTrueWhenChangeCountMatches() {

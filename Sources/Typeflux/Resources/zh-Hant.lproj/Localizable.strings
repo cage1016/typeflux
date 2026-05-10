@@ -124,7 +124,8 @@
 "menu.checkForUpdates" = "檢查更新";
 "menu.downloadingUpdate" = "正在下載更新…";
 "menu.installingUpdate" = "正在安裝更新…";
-"menu.downloadingLocalModel" = "正在下載本地模型… %d%%";
+"menu.downloadingLocalModelNamed" = "正在下載 %@… %d%%";
+"menu.localModelDownloadFailedNamed" = "%@ 下載失敗";
 "menu.quit" = "結束";
 "menu.status.ready" = "已就緒";
 "menu.status.recording" = "錄音中…";
@@ -302,6 +303,12 @@
 "overlay.personaPicker.switchApplicationInstructions" = "為目前應用選擇人設。全域人設設定不會改變。";
 "overlay.personaPicker.applyTitle" = "套用人設";
 "overlay.personaPicker.applyInstructions" = "選擇一個人設來改寫目前選取的文字。按 Enter 套用，按 Esc 取消。";
+"overlay.historyPicker.title" = "最近歷史";
+"overlay.historyPicker.instructions" = "使用上下鍵選擇記錄，按 Enter 貼到目前游標。";
+"overlay.historyPicker.empty" = "還沒有可重用的歷史記錄。";
+"overlay.historyPicker.pasteFallbackTitle" = "歷史結果";
+"overlay.historyPicker.insertAtCursor" = "插入目前位置";
+"overlay.historyPicker.retryTranscription" = "重新轉寫";
 
 "workflow.apply.inserted" = "已套用到目前活動應用。";
 "workflow.apply.presentedInDialog" = "因無法直接插入，結果已顯示在提示框中。";
@@ -350,6 +357,7 @@
 
 "history.action.copyResult" = "複製結果";
 "history.action.copyTranscript" = "複製轉寫";
+"history.action.more" = "更多操作";
 "history.action.downloadAudio" = "下載音訊";
 "history.action.playAudio" = "播放音訊";
 "history.action.stopAudio" = "停止音訊";
@@ -525,25 +533,32 @@
 "settings.shortcuts.persona.title" = "人設切換器";
 "settings.shortcuts.persona.subtitle" = "打開置中的選擇器；如果目前有選取文字，也可以直接把所選人設套用到這段文字。";
 "settings.shortcuts.persona.footnote" = "";
+"settings.shortcuts.history.title" = "歷史記錄";
+"settings.shortcuts.history.subtitle" = "在任何地方立即打開歷史記錄頁面。";
+"settings.shortcuts.history.footnote" = "";
 "settings.advanced.personaHotkeyApply.title" = "將人設套用到選取文字";
 "settings.advanced.personaHotkeyApply.subtitle" = "開啟後，人設快捷鍵會先檢查是否有選取文字；如果有，就用所選人設直接改寫該文字，而不只是切換預設人設。";
 "settings.shortcuts.recording" = "正在錄製新的快捷鍵";
 "settings.shortcuts.recordingActivation" = "現在按下新的語音輸入按鍵或組合鍵。";
 "settings.shortcuts.recordingAsk" = "現在按下新的「隨便問」快捷鍵。也可以快速連按兩次同一個修飾鍵。";
 "settings.shortcuts.recordingPersona" = "現在按下用於打開人設選擇器的快捷鍵。";
+"settings.shortcuts.recordingHistory" = "現在按下用於打開歷史記錄的快捷鍵。";
 "settings.shortcuts.recordingGeneric" = "按下你想使用的按鍵或組合鍵。";
 "settings.shortcuts.record" = "錄製";
 "settings.shortcuts.stopRecording" = "停止錄製";
-"settings.shortcuts.activationConflict" = "語音輸入快捷鍵不能與「隨便問」或人設快捷鍵相同。";
+"settings.shortcuts.activationConflict" = "語音輸入快捷鍵不能與「隨便問」、人設或歷史記錄快捷鍵相同。";
 "settings.shortcuts.activationUpdated" = "語音輸入快捷鍵已更新。";
 "settings.shortcuts.activationUnset" = "語音輸入快捷鍵已清除。";
-"settings.shortcuts.askConflict" = "「隨便問」快捷鍵不能與語音輸入或人設快捷鍵相同。";
+"settings.shortcuts.askConflict" = "「隨便問」快捷鍵不能與語音輸入、人設或歷史記錄快捷鍵相同。";
 "settings.shortcuts.askUpdated" = "「隨便問」快捷鍵已更新。";
 "settings.shortcuts.askUnset" = "「隨便問」快捷鍵已清除。";
 "settings.shortcuts.doubleTapHelp" = "快速連按兩次這個按鍵。";
-"settings.shortcuts.personaConflict" = "人設快捷鍵不能與語音輸入或「隨便問」快捷鍵相同。";
+"settings.shortcuts.personaConflict" = "人設快捷鍵不能與語音輸入、「隨便問」或歷史記錄快捷鍵相同。";
 "settings.shortcuts.personaUpdated" = "人設快捷鍵已更新。";
 "settings.shortcuts.personaUnset" = "人設快捷鍵已清除。";
+"settings.shortcuts.historyConflict" = "歷史記錄快捷鍵不能與語音輸入、「隨便問」或人設快捷鍵相同。";
+"settings.shortcuts.historyUpdated" = "歷史記錄快捷鍵已更新。";
+"settings.shortcuts.historyUnset" = "歷史記錄快捷鍵已清除。";
 "settings.shortcuts.unset" = "取消設定";
 "settings.shortcuts.none" = "未設定";
 
@@ -749,14 +764,23 @@
 "settings.models.localSTT.readyNamed" = "%@ 已就緒。";
 "settings.models.localSTT.prepareFailed" = "本地語音模型準備失敗。";
 "settings.models.localSTT.deleted" = "模型檔案已刪除。";
+"settings.models.localSTT.transferProgress" = "已下載 %@（%@ / %@）";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "本地模型已就緒。";
+"workflow.localModelDownloadingAlert.title" = "本地語音模型正在下載";
+"workflow.localModelDownloadingAlert.message" = "%@ 仍在下載中，暫時無法使用。下載完成後，Typeflux 會透過系統通知提醒你。";
+"workflow.localModelDownloadingAlert.progress" = "目前進度：%d%%";
+"workflow.localModelDownloadingAlert.failedTitle" = "本地語音模型下載失敗";
+"workflow.localModelDownloadingAlert.failedMessage" = "下載失敗：%@。網路恢復後，再次按快捷鍵即可重新嘗試。";
+"workflow.localModelDownloadingAlert.failedProgress" = "下載失敗";
 "cloud.autoSwitch.title" = "已啟用 Typeflux Cloud";
 "cloud.autoSwitch.body" = "語音辨識與 AI 模型已自動切換為 Typeflux Cloud 雲端服務，可隨時在「設定」中切換回您自己的模型。";
 "settings.models.redownload" = "重新下載";
 "settings.models.deleteModelFiles" = "刪除模型檔案";
 "settings.models.redownloadDialog.title" = "重新下載 %@？";
 "settings.models.redownloadDialog.message" = "本地模型檔案已存在，將先刪除已有檔案再重新下載。";
+"settings.models.downloadDialog.title" = "下載 %@？";
+"settings.models.downloadDialog.message" = "此本地語音模型需要先下載完成，才能被選取並用於辨識。";
 "settings.models.deleteDialog.title" = "刪除 %@？";
 "settings.models.deleteDialog.message" = "模型檔案將被刪除，下次使用時需要重新下載。";
 "settings.advanced.autoVocabulary.title" = "自動加入修正生詞";
@@ -806,8 +830,15 @@
 
 "onboarding.sttProvider.subtitle" = "選擇將語音轉換為文字的引擎";
 "onboarding.sttConfig.subtitle" = "設定憑據與偏好設定";
+"onboarding.sttConfig.incomplete.message" = "請先完成目前語音模型設定，再繼續。";
+"onboarding.sttConfig.incompleteAlert.title" = "語音模型尚未設定完成";
+"onboarding.sttConfig.incompleteAlert.message" = "請先完成目前選擇的語音模型設定，然後再繼續下一步。";
 "onboarding.llmProvider.subtitle" = "選擇用於潤色和優化語音內容的模型";
 "onboarding.llmConfig.subtitle" = "設定憑據與偏好設定";
+"onboarding.llmConfig.incompleteAlert.title" = "語言模型尚未設定完成";
+"onboarding.llmConfig.incompleteAlert.message" = "語音轉寫仍可繼續使用，但潤色、改寫等需要語言模型的功能會暫時受限。";
+"onboarding.llmConfig.incompleteAlert.continueConfig" = "繼續設定";
+"onboarding.llmConfig.incompleteAlert.skip" = "略過";
 
 "onboarding.permissions.title" = "授予權限";
 "onboarding.permissions.subtitle" = "Typeflux 需要少量系統權限，用於錄製語音並將文字輸入其他應用程式。";
@@ -841,12 +872,13 @@
 "onboarding.shortcuts.activation.hint" = "按住錄音，輕點鎖定錄製";
 "onboarding.shortcuts.ask.hint" = "連按兩次 Fn 提問，可選取文字改寫";
 "onboarding.shortcuts.persona.hint" = "切換或套用寫作人設";
+"onboarding.shortcuts.history.hint" = "打開最近歷史並貼上選取結果";
 "onboarding.shortcuts.changeInSettings" = "隨時可在 設定 → 語音快捷鍵 中自訂快捷鍵。";
 
 "onboarding.action.back" = "上一步";
 "onboarding.action.continue" = "下一步";
 "onboarding.action.skip" = "略過";
-"onboarding.account.skip" = "略過";
+"onboarding.account.skip" = "略過，我要自行設定模型";
 "onboarding.action.getStarted" = "開始使用";
 
 // MARK: - Agent 框架

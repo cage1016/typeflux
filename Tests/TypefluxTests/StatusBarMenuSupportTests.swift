@@ -9,6 +9,23 @@ final class StatusBarMenuSupportTests: XCTestCase {
         XCTAssertLessThanOrEqual(StatusBarController.IconLayout.pointSize, 16)
     }
 
+    func testLocalModelDownloadTitleIncludesModelAndProgress() {
+        let title = StatusBarMenuSupport.localModelDownloadTitle(
+            for: .downloading(model: .qwen3ASR, progress: 0.42),
+        )
+
+        XCTAssertEqual(title, L("menu.downloadingLocalModelNamed", LocalSTTModel.qwen3ASR.displayName, 42))
+        XCTAssertNil(StatusBarMenuSupport.localModelDownloadTitle(for: .idle))
+    }
+
+    func testLocalModelDownloadTitleIncludesFailureState() {
+        let title = StatusBarMenuSupport.localModelDownloadTitle(
+            for: .failed(model: .senseVoiceSmall, message: "Network unavailable"),
+        )
+
+        XCTAssertEqual(title, L("menu.localModelDownloadFailedNamed", LocalSTTModel.senseVoiceSmall.displayName))
+    }
+
     @MainActor
     func testStatusBarMenuIncludesSettingsItemNearAppearanceControls() throws {
         if ProcessInfo.processInfo.environment["CI"] == "true" {

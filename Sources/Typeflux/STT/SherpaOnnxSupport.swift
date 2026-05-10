@@ -631,7 +631,11 @@ protocol SherpaOnnxArchiveDownloading {
     func downloadArchive(from url: URL) async throws -> URL
 }
 
-final class URLSessionSherpaOnnxArchiveDownloader: SherpaOnnxArchiveDownloading {
+protocol SherpaOnnxArchiveProgressDownloading: SherpaOnnxArchiveDownloading {
+    func downloadArchive(from url: URL, onProgress: (@Sendable (Int64, Int64?) -> Void)?) async throws -> URL
+}
+
+final class URLSessionSherpaOnnxArchiveDownloader: SherpaOnnxArchiveProgressDownloading {
     private let urlSession: URLSession
 
     init(urlSession: URLSession = .shared) {
@@ -639,7 +643,15 @@ final class URLSessionSherpaOnnxArchiveDownloader: SherpaOnnxArchiveDownloading 
     }
 
     func downloadArchive(from url: URL) async throws -> URL {
-        let (downloadedURL, response) = try await urlSession.download(from: url)
+        try await downloadArchive(from: url, onProgress: nil)
+    }
+
+    func downloadArchive(from url: URL, onProgress: (@Sendable (Int64, Int64?) -> Void)?) async throws -> URL {
+        let (downloadedURL, response) = try await DownloadProgressReporter.download(
+            request: URLRequest(url: url),
+            session: urlSession,
+            onProgress: onProgress,
+        )
         guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
             throw NSError(
                 domain: "URLSessionSherpaOnnxArchiveDownloader",
@@ -716,6 +728,12 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
                 destinationURL: runtimeStorageURL,
                 extractedRootDirectoryName: layout.runtimeRootDirectory,
                 archiveFileName: "\(layout.runtimeRootDirectory).tar.bz2",
+                progressStart: 0.15,
+                progressEnd: 0.45,
+                storagePath: storageURL.path,
+                source: downloadSource.displayName,
+                message: L("localSTT.prepare.runtimeDownloading"),
+                onUpdate: onUpdate,
             )
             try pruneRuntimePayload(in: runtimeStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true))
         }
@@ -734,6 +752,12 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
                 layout.modelArtifact,
                 destinationURL: storageURL,
                 extractedRootDirectoryName: layout.modelRootDirectory,
+                progressStart: 0.55,
+                progressEnd: 0.9,
+                storagePath: storageURL.path,
+                source: downloadSource.displayName,
+                message: L("localSTT.prepare.modelDownloading", model.displayName),
+                onUpdate: onUpdate,
             )
         }
 
@@ -882,6 +906,12 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         destinationURL: URL,
         extractedRootDirectoryName: String,
         archiveFileName: String,
+        progressStart: Double,
+        progressEnd: Double,
+        storagePath: String,
+        source: String?,
+        message: String,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws {
         let extractedRootURL = destinationURL.appendingPathComponent(
             extractedRootDirectoryName,
@@ -904,7 +934,16 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             try fileManager.removeItem(at: localArchiveURL)
         }
 
-        try await downloadArchive(from: archiveURL, to: localArchiveURL)
+        try await downloadArchive(
+            from: archiveURL,
+            to: localArchiveURL,
+            progressStart: progressStart,
+            progressEnd: progressEnd,
+            storagePath: storagePath,
+            source: source,
+            message: message,
+            onUpdate: onUpdate,
+        )
 
         _ = try await processRunner.run(
             executablePath: "/usr/bin/tar",
@@ -1016,6 +1055,12 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         _ artifact: SherpaOnnxModelArtifact,
         destinationURL: URL,
         extractedRootDirectoryName: String,
+        progressStart: Double,
+        progressEnd: Double,
+        storagePath: String,
+        source: String?,
+        message: String,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws {
         switch artifact {
         case let .archive(url, fileName):
@@ -1024,12 +1069,24 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
                 destinationURL: destinationURL,
                 extractedRootDirectoryName: extractedRootDirectoryName,
                 archiveFileName: fileName,
+                progressStart: progressStart,
+                progressEnd: progressEnd,
+                storagePath: storagePath,
+                source: source,
+                message: message,
+                onUpdate: onUpdate,
             )
         case let .files(files):
             try await downloadExtractedFiles(
                 files,
                 destinationURL: destinationURL,
                 extractedRootDirectoryName: extractedRootDirectoryName,
+                progressStart: progressStart,
+                progressEnd: progressEnd,
+                storagePath: storagePath,
+                source: source,
+                message: message,
+                onUpdate: onUpdate,
             )
         }
     }
@@ -1038,6 +1095,12 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         _ files: [SherpaOnnxModelFile],
         destinationURL: URL,
         extractedRootDirectoryName: String,
+        progressStart: Double,
+        progressEnd: Double,
+        storagePath: String,
+        source: String?,
+        message: String,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws {
         let extractedRootURL = destinationURL.appendingPathComponent(
             extractedRootDirectoryName,
@@ -1049,21 +1112,56 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
 
         try fileManager.createDirectory(at: extractedRootURL, withIntermediateDirectories: true)
 
-        for file in files {
+        for (index, file) in files.enumerated() {
             let destinationFileURL = destinationURL.appendingPathComponent(file.relativePath, isDirectory: false)
             try fileManager.createDirectory(
                 at: destinationFileURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true,
             )
-            try await downloadArchive(from: file.url, to: destinationFileURL)
+            let fileStart = progressStart + (progressEnd - progressStart) * Double(index) / Double(max(files.count, 1))
+            let fileEnd = progressStart + (progressEnd - progressStart) * Double(index + 1) / Double(max(files.count, 1))
+            try await downloadArchive(
+                from: file.url,
+                to: destinationFileURL,
+                progressStart: fileStart,
+                progressEnd: fileEnd,
+                storagePath: storagePath,
+                source: source,
+                message: message,
+                onUpdate: onUpdate,
+            )
         }
     }
 
-    private func downloadArchive(from archiveURL: URL, to localArchiveURL: URL) async throws {
+    private func downloadArchive(
+        from archiveURL: URL,
+        to localArchiveURL: URL,
+        progressStart: Double,
+        progressEnd: Double,
+        storagePath: String,
+        source: String?,
+        message: String,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
         let downloadedURL = try await RequestRetry.perform(
             operationName: "Sherpa-ONNX file download \(archiveURL.absoluteString)",
         ) { [self] in
-            try await archiveDownloader.downloadArchive(from: archiveURL)
+            if let progressDownloader = archiveDownloader as? SherpaOnnxArchiveProgressDownloading {
+                try await progressDownloader.downloadArchive(from: archiveURL) { receivedBytes, totalBytes in
+                    guard let totalBytes, totalBytes > 0 else { return }
+                    let fileProgress = min(max(Double(receivedBytes) / Double(totalBytes), 0), 1)
+                    onUpdate?(LocalSTTPreparationUpdate(
+                        message: message,
+                        progress: progressStart + fileProgress * (progressEnd - progressStart),
+                        storagePath: storagePath,
+                        source: source,
+                        downloadedBytes: receivedBytes,
+                        totalBytes: totalBytes,
+                    ))
+                }
+            } else {
+                try await archiveDownloader.downloadArchive(from: archiveURL)
+            }
         }
         if fileManager.fileExists(atPath: localArchiveURL.path) {
             try fileManager.removeItem(at: localArchiveURL)

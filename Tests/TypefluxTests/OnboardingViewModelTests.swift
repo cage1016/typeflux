@@ -49,6 +49,17 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testContinueWithoutCloudAccountMovesToManualSetup() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .account
+
+        viewModel.continueWithoutCloudAccount()
+
+        XCTAssertFalse(viewModel.useCloudAccountModels)
+        XCTAssertEqual(viewModel.currentStep, .stt)
+    }
+
+    @MainActor
     func testUsingCloudAccountSkipsModelConfigurationSteps() {
         let authState = makeLoggedInAuthState()
         let viewModel = OnboardingViewModel(settingsStore: store, authState: authState, onComplete: {})
@@ -86,6 +97,9 @@ final class OnboardingViewModelTests: XCTestCase {
 
         viewModel.currentStep = .stt
         viewModel.sttProvider = .multimodalLLM
+        viewModel.multimodalLLMBaseURL = "https://api.openai.com/v1"
+        viewModel.multimodalLLMAPIKey = "sk-test"
+        viewModel.multimodalLLMModel = "gpt-4o-mini-transcribe"
 
         viewModel.advance()
         XCTAssertEqual(viewModel.currentStep, .permissions)
@@ -93,6 +107,98 @@ final class OnboardingViewModelTests: XCTestCase {
 
         viewModel.goBack()
         XCTAssertEqual(viewModel.currentStep, .stt)
+    }
+
+    @MainActor
+    func testRemoteSTTConfigurationBlocksAdvanceUntilComplete() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .stt
+        viewModel.selectSTTProvider(.whisperAPI)
+        viewModel.whisperBaseURL = "https://api.openai.com/v1"
+        viewModel.whisperModel = "whisper-1"
+        viewModel.whisperAPIKey = ""
+
+        XCTAssertFalse(viewModel.isSTTConfigurationComplete)
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .stt)
+        XCTAssertTrue(viewModel.showIncompleteSTTConfigurationAlert)
+
+        viewModel.whisperAPIKey = "sk-test"
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .llm)
+        XCTAssertFalse(viewModel.showIncompleteSTTConfigurationAlert)
+    }
+
+    @MainActor
+    func testLocalSTTCanAdvanceWithoutManualCredentialConfiguration() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .stt
+        viewModel.selectSTTProvider(.localModel)
+
+        XCTAssertTrue(viewModel.isSTTConfigurationComplete)
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .llm)
+        XCTAssertEqual(store.sttProvider, .localModel)
+    }
+
+    @MainActor
+    func testSelectingLocalSTTStartsBackgroundModelPreparation() async {
+        let modelManager = StubLocalModelManager()
+        let prepared = expectation(description: "local STT model preparation started")
+        modelManager.onPrepare = {
+            prepared.fulfill()
+        }
+        let viewModel = OnboardingViewModel(
+            settingsStore: store,
+            localModelManager: modelManager,
+            onComplete: {},
+        )
+        viewModel.currentStep = .stt
+
+        viewModel.selectSTTProvider(.localModel)
+
+        await fulfillment(of: [prepared], timeout: 1)
+        XCTAssertEqual(modelManager.preparedConfigurations.first?.model, .senseVoiceSmall)
+        XCTAssertEqual(store.localSTTModel, .senseVoiceSmall)
+        XCTAssertTrue(store.localSTTAutoSetup)
+    }
+
+    @MainActor
+    func testIncompleteLLMConfigurationShowsAlertAndStaysOnStep() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .llm
+        viewModel.llmProvider = .openAICompatible
+        viewModel.llmRemoteProvider = .openAI
+        viewModel.llmBaseURL = "https://api.openai.com/v1"
+        viewModel.llmModel = "gpt-4o-mini"
+        viewModel.llmAPIKey = ""
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .llm)
+        XCTAssertTrue(viewModel.showIncompleteLLMConfigurationAlert)
+    }
+
+    @MainActor
+    func testSkippingIncompleteLLMConfigurationContinuesToPermissions() {
+        let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
+        viewModel.currentStep = .llm
+        viewModel.llmProvider = .openAICompatible
+        viewModel.llmRemoteProvider = .openAI
+        viewModel.llmBaseURL = "https://api.openai.com/v1"
+        viewModel.llmModel = "gpt-4o-mini"
+        viewModel.llmAPIKey = ""
+
+        viewModel.advance()
+        viewModel.skipIncompleteLLMConfiguration()
+
+        XCTAssertEqual(viewModel.currentStep, .permissions)
+        XCTAssertFalse(viewModel.showIncompleteLLMConfigurationAlert)
     }
 
     @MainActor
@@ -272,6 +378,9 @@ final class OnboardingViewModelTests: XCTestCase {
                 }
             }
             viewModel.advance()
+            if viewModel.showIncompleteLLMConfigurationAlert {
+                viewModel.skipIncompleteLLMConfiguration()
+            }
             guardCounter += 1
         }
         XCTAssertTrue(store.isOnboardingCompleted, "Onboarding failed to complete within bounded iterations")
@@ -429,5 +538,53 @@ private final class StubGlobeKeyPreferenceReader: GlobeKeyPreferenceReading {
 
     func currentUsage() -> GlobeKeyUsage? {
         usage
+    }
+}
+
+private final class StubLocalModelManager: LocalSTTModelManaging {
+    var onPrepare: (() -> Void)?
+
+    private let lock = NSLock()
+    private var _preparedConfigurations: [LocalSTTConfiguration] = []
+
+    var preparedConfigurations: [LocalSTTConfiguration] {
+        lock.withLock { _preparedConfigurations }
+    }
+
+    func prepareModel(
+        settingsStore: SettingsStore,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
+        try await prepareModel(configuration: LocalSTTConfiguration(settingsStore: settingsStore), onUpdate: onUpdate)
+    }
+
+    func prepareModel(
+        configuration: LocalSTTConfiguration,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+    ) async throws {
+        lock.withLock {
+            _preparedConfigurations.append(configuration)
+        }
+        onUpdate?(LocalSTTPreparationUpdate(
+            message: "Preparing",
+            progress: 0.5,
+            storagePath: storagePath(for: configuration),
+            source: "Test",
+        ))
+        onPrepare?()
+    }
+
+    func preparedModelInfo(settingsStore _: SettingsStore) -> LocalSTTPreparedModelInfo? {
+        nil
+    }
+
+    func isModelAvailable(_: LocalSTTModel) -> Bool {
+        false
+    }
+
+    func deleteModelFiles(_: LocalSTTModel) throws {}
+
+    func storagePath(for configuration: LocalSTTConfiguration) -> String {
+        "/tmp/\(configuration.model.rawValue)"
     }
 }
