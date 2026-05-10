@@ -308,7 +308,7 @@ extension AXTextInjector {
             return
         }
 
-        guard Self.shouldPerformStrictPasteVerification(
+        guard Self.shouldAttemptPasteVerification(
             replaceSelection: replaceSelection,
             strictFallbackEnabled: strictFallbackEnabled,
         ) else {
@@ -440,9 +440,11 @@ extension AXTextInjector {
             }
         }
 
-        if let reason = after.failureReason,
-           reason == "focused-element-not-editable" || reason == "accessibility-not-trusted"
-        {
+        if let reason = after.failureReason, reason == "accessibility-not-trusted" {
+            return .failure(reason)
+        }
+
+        if let reason = after.failureReason, reason == "focused-element-not-editable" {
             if !replaceSelection, before == nil {
                 return .indeterminate
             }

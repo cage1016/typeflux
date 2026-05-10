@@ -47,6 +47,23 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertTrue(textInjector.insertedTexts.isEmpty)
     }
 
+    func testApplyTextPresentsCopyDialogWhenInsertThrows() {
+        let textInjector = MockProcessingTextInjector(
+            insertError: NSError(
+                domain: "AXTextInjector",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Paste insertion could not be verified"],
+            ),
+        )
+        let controller = makeWorkflowController(textInjector: textInjector)
+
+        let outcome = controller.applyText("Manual copy fallback", replace: false)
+
+        XCTAssertEqual(outcome, .presentedInDialog)
+        XCTAssertEqual(controller.lastDialogResultText, "Manual copy fallback")
+        XCTAssertTrue(textInjector.insertedTexts.isEmpty)
+    }
+
     func testHandleDetachedAgentLaunchKeepsProcessingStatusVisible() {
         let controller = makeWorkflowController()
         controller.activeProcessingRecordID = UUID()
@@ -997,13 +1014,19 @@ private final class MockProcessingTextInjector: TextInjector {
     private(set) var replacedTexts: [String] = []
     private let selectionSnapshot: TextSelectionSnapshot
     private let inputSnapshot: CurrentInputTextSnapshot
+    private let insertError: Error?
+    private let replaceError: Error?
 
     init(
         selectionSnapshot: TextSelectionSnapshot = TextSelectionSnapshot(),
         inputSnapshot: CurrentInputTextSnapshot = CurrentInputTextSnapshot(),
+        insertError: Error? = nil,
+        replaceError: Error? = nil,
     ) {
         self.selectionSnapshot = selectionSnapshot
         self.inputSnapshot = inputSnapshot
+        self.insertError = insertError
+        self.replaceError = replaceError
     }
 
     func getSelectionSnapshot() async -> TextSelectionSnapshot {
@@ -1019,10 +1042,16 @@ private final class MockProcessingTextInjector: TextInjector {
     }
 
     func insert(text: String) throws {
+        if let insertError {
+            throw insertError
+        }
         insertedTexts.append(text)
     }
 
     func replaceSelection(text: String) throws {
+        if let replaceError {
+            throw replaceError
+        }
         replacedTexts.append(text)
     }
 }
