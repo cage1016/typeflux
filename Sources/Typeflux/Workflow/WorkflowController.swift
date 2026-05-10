@@ -89,6 +89,9 @@ final class WorkflowController {
     let agentClarificationWindowController: AgentClarificationWindowController
     let soundEffectPlayer: SoundEffectPlayer
     let liveTranscriptionPreviewer: (any LiveTranscriptionPreviewing)?
+    let localModelManager: (any LocalSTTModelManaging)?
+    let notificationService: LocalNotificationSending
+    let localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting
     let sleep: @Sendable (Duration) async -> Void
 
     var currentSelectedText: String?
@@ -121,6 +124,10 @@ final class WorkflowController {
     var localModelPreheatTask: Task<Void, Never>?
     var lastLocalModelPreheatConfiguration: LocalSTTConfiguration?
     var localModelPreheatObserver: NSObjectProtocol?
+    var localModelPreparationTask: Task<Void, Never>?
+    var localModelPreparationConfiguration: LocalSTTConfiguration?
+    var localModelDownloadAlertTask: Task<Void, Never>?
+    var suppressNextActivationTapAfterLocalModelDownloadAlert = false
     var isPersonaPickerPresented = false
     var personaPickerItems: [PersonaPickerEntry] = []
     var personaPickerSelectedIndex = 0
@@ -166,6 +173,10 @@ final class WorkflowController {
         agentClarificationWindowController: AgentClarificationWindowController,
         soundEffectPlayer: SoundEffectPlayer,
         liveTranscriptionPreviewer: (any LiveTranscriptionPreviewing)? = nil,
+        localModelManager: (any LocalSTTModelManaging)? = nil,
+        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
+        localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting =
+            SystemLocalModelDownloadAlertPresenter(),
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
         },
@@ -188,6 +199,9 @@ final class WorkflowController {
         self.agentClarificationWindowController = agentClarificationWindowController
         self.soundEffectPlayer = soundEffectPlayer
         self.liveTranscriptionPreviewer = liveTranscriptionPreviewer
+        self.localModelManager = localModelManager
+        self.notificationService = notificationService
+        self.localModelDownloadAlertPresenter = localModelDownloadAlertPresenter
         self.sleep = sleep
         self.overlayController.setRecordingActionHandlers(
             onCancel: { [weak self] in
@@ -328,6 +342,12 @@ final class WorkflowController {
         localModelPreheatTask?.cancel()
         localModelPreheatTask = nil
         lastLocalModelPreheatConfiguration = nil
+        localModelPreparationTask?.cancel()
+        localModelPreparationTask = nil
+        localModelPreparationConfiguration = nil
+        localModelDownloadAlertTask?.cancel()
+        localModelDownloadAlertTask = nil
+        suppressNextActivationTapAfterLocalModelDownloadAlert = false
         if let obs = localModelPreheatObserver {
             NotificationCenter.default.removeObserver(obs)
             localModelPreheatObserver = nil
@@ -455,6 +475,11 @@ final class WorkflowController {
     }
 
     func handleActivationTap() {
+        if suppressNextActivationTapAfterLocalModelDownloadAlert {
+            suppressNextActivationTapAfterLocalModelDownloadAlert = false
+            RecordingStartupLatencyTrace.shared.mark("workflow.activation_tap_suppressed.local_model_download")
+            return
+        }
         if let suppressActivationTapUntil, Date() < suppressActivationTapUntil {
             self.suppressActivationTapUntil = nil
             RecordingStartupLatencyTrace.shared.mark("workflow.activation_tap_suppressed")
@@ -498,6 +523,13 @@ final class WorkflowController {
             return
         }
 
+        if showSelectedLocalModelDownloadAlertIfNeeded() {
+            if !startLocked {
+                suppressNextActivationTapAfterLocalModelDownloadAlert = true
+            }
+            return
+        }
+
         if !PrivacyGuard.isRunningInAppBundle {
             Task { @MainActor in
                 let msg = L("workflow.devApp.requiredMessage")
@@ -530,6 +562,84 @@ final class WorkflowController {
         pendingRecordingStartID = startID
         Task { [weak self] in
             await self?.beginRecording(intent: intent, startLocked: startLocked, startID: startID)
+        }
+    }
+
+    func showSelectedLocalModelDownloadAlertIfNeeded() -> Bool {
+        guard settingsStore.sttProvider == .localModel else { return false }
+
+        let selectedModel = settingsStore.localSTTModel
+        if case let .downloading(model, progress) = LocalModelDownloadProgressCenter.shared.status,
+           model == selectedModel
+        {
+            showLocalModelDownloadAlert(model: model, progress: progress)
+            return true
+        }
+
+        guard let localModelManager, !localModelManager.isModelAvailable(selectedModel) else {
+            return false
+        }
+
+        let configuration = LocalSTTConfiguration(settingsStore: settingsStore)
+        startSelectedLocalModelDownloadIfNeeded(configuration: configuration)
+        showLocalModelDownloadAlert(model: selectedModel, progress: 0.02)
+        return true
+    }
+
+    private func showLocalModelDownloadAlert(model: LocalSTTModel, progress: Double) {
+        guard localModelDownloadAlertTask == nil else { return }
+        localModelDownloadAlertTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                self.localModelDownloadAlertTask = nil
+            }
+            self.localModelDownloadAlertPresenter.showDownloadingAlert(
+                model: model,
+                progress: progress,
+            )
+        }
+    }
+
+    private func startSelectedLocalModelDownloadIfNeeded(configuration: LocalSTTConfiguration) {
+        guard let localModelManager else { return }
+        if localModelPreparationConfiguration == configuration, localModelPreparationTask != nil {
+            return
+        }
+
+        localModelPreparationTask?.cancel()
+        localModelPreparationConfiguration = configuration
+        LocalModelDownloadProgressCenter.shared.reportDownloading(model: configuration.model, progress: 0.02)
+        localModelPreparationTask = Task { [weak self, localModelManager, notificationService, configuration] in
+            do {
+                try await localModelManager.prepareModel(configuration: configuration) { update in
+                    LocalModelDownloadProgressCenter.shared.reportDownloading(
+                        model: configuration.model,
+                        progress: update.progress,
+                    )
+                }
+                guard !Task.isCancelled else { return }
+                LocalModelDownloadProgressCenter.shared.clear()
+                await notificationService.sendLocalNotification(
+                    title: L("notification.localModelReady.title"),
+                    body: L("notification.localModelReady.body"),
+                    identifier: "ai.gulu.app.typeflux.local-model-ready",
+                )
+            } catch {
+                guard !Task.isCancelled else {
+                    LocalModelDownloadProgressCenter.shared.clear()
+                    return
+                }
+                NetworkDebugLogger.logError(context: "Workflow local STT model download failed", error: error)
+                LocalModelDownloadProgressCenter.shared.reportFailed(
+                    model: configuration.model,
+                    message: error.localizedDescription,
+                )
+            }
+            await MainActor.run { [weak self, configuration] in
+                guard let self, self.localModelPreparationConfiguration == configuration else { return }
+                self.localModelPreparationTask = nil
+                self.localModelPreparationConfiguration = nil
+            }
         }
     }
 

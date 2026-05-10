@@ -125,6 +125,7 @@
 "menu.downloadingUpdate" = "Downloading Update…";
 "menu.installingUpdate" = "Installing Update…";
 "menu.downloadingLocalModelNamed" = "Downloading %@… %d%%";
+"menu.localModelDownloadFailedNamed" = "%@ download failed";
 "menu.quit" = "Quit";
 "menu.status.ready" = "Ready";
 "menu.status.recording" = "Recording in progress…";
@@ -757,6 +758,12 @@
 "settings.models.localSTT.transferProgress" = "%@ downloaded (%@ of %@)";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "Local model is ready.";
+"workflow.localModelDownloadingAlert.title" = "Local speech model is downloading";
+"workflow.localModelDownloadingAlert.message" = "%@ is still downloading and cannot be used yet. Typeflux will send a system notification when it is ready.";
+"workflow.localModelDownloadingAlert.progress" = "Current progress: %d%%";
+"workflow.localModelDownloadingAlert.failedTitle" = "Local speech model download failed";
+"workflow.localModelDownloadingAlert.failedMessage" = "The download failed: %@. You can try again by pressing the shortcut when your network is available.";
+"workflow.localModelDownloadingAlert.failedProgress" = "Download failed";
 "cloud.autoSwitch.title" = "Typeflux Cloud is ready";
 "cloud.autoSwitch.body" = "Voice recognition and AI models are now powered by Typeflux Cloud. You can switch back to your own providers anytime in Settings.";
 "settings.models.redownload" = "Re-download";
@@ -814,8 +821,15 @@
 
 "onboarding.sttProvider.subtitle" = "Choose the engine that converts your voice to text";
 "onboarding.sttConfig.subtitle" = "Configure credentials and preferences";
+"onboarding.sttConfig.incomplete.message" = "Complete the selected speech model configuration before continuing.";
+"onboarding.sttConfig.incompleteAlert.title" = "Speech model not configured";
+"onboarding.sttConfig.incompleteAlert.message" = "Complete the selected speech model configuration before continuing to the next step.";
 "onboarding.llmProvider.subtitle" = "Choose the model that rewrites and refines your dictation";
 "onboarding.llmConfig.subtitle" = "Configure credentials and preferences";
+"onboarding.llmConfig.incompleteAlert.title" = "Language model not configured";
+"onboarding.llmConfig.incompleteAlert.message" = "Voice transcription can still work, but rewriting and polishing features that need a language model will be limited for now.";
+"onboarding.llmConfig.incompleteAlert.continueConfig" = "Continue Setup";
+"onboarding.llmConfig.incompleteAlert.skip" = "Skip";
 
 "onboarding.permissions.title" = "Grant permissions";
 "onboarding.permissions.subtitle" = "Typeflux needs a few system permissions to capture your voice and insert text into other apps.";
@@ -854,7 +868,7 @@
 "onboarding.action.back" = "Previous";
 "onboarding.action.continue" = "Next";
 "onboarding.action.skip" = "Skip";
-"onboarding.account.skip" = "Skip";
+"onboarding.account.skip" = "Skip, I'll configure my own models";
 "onboarding.action.getStarted" = "Get Started";
 
 // MARK: - Agent Framework

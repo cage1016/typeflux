@@ -66,6 +66,25 @@ struct OnboardingView: View {
         } message: {
             Text(shortcutReplacementAppliedAlertMessage)
         }
+        .alert(
+            L("onboarding.sttConfig.incompleteAlert.title"),
+            isPresented: $viewModel.showIncompleteSTTConfigurationAlert,
+        ) {
+            Button(L("common.ok"), role: .cancel) {}
+        } message: {
+            Text(L("onboarding.sttConfig.incompleteAlert.message"))
+        }
+        .alert(
+            L("onboarding.llmConfig.incompleteAlert.title"),
+            isPresented: $viewModel.showIncompleteLLMConfigurationAlert,
+        ) {
+            Button(L("onboarding.llmConfig.incompleteAlert.skip"), role: .cancel) {
+                viewModel.skipIncompleteLLMConfiguration()
+            }
+            Button(L("onboarding.llmConfig.incompleteAlert.continueConfig")) {}
+        } message: {
+            Text(L("onboarding.llmConfig.incompleteAlert.message"))
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             if viewModel.currentStep == .permissions {
                 viewModel.refreshPermissions()
@@ -587,7 +606,7 @@ struct OnboardingView: View {
                 let isSelected = viewModel.localSTTModel == model
 
                 Button {
-                    viewModel.localSTTModel = model
+                    viewModel.selectLocalSTTModel(model)
                 } label: {
                     HStack(spacing: 14) {
                         languageSelectionIndicator(isSelected: isSelected)
@@ -1920,7 +1939,10 @@ struct OnboardingView: View {
             Spacer()
 
             if viewModel.currentStep == .account {
-                footerTertiaryButton(title: L("onboarding.account.skip")) {
+                footerTertiaryButton(
+                    title: L("onboarding.account.skip"),
+                    foregroundColor: onboardingAccountSkipText,
+                ) {
                     viewModel.continueWithoutCloudAccount()
                 }
             } else if viewModel.isSkippable {
@@ -2002,12 +2024,16 @@ struct OnboardingView: View {
         .buttonStyle(StudioInteractiveButtonStyle())
     }
 
-    private func footerTertiaryButton(title: String, action: @escaping () -> Void) -> some View {
+    private func footerTertiaryButton(
+        title: String,
+        foregroundColor: Color? = nil,
+        action: @escaping () -> Void,
+    ) -> some View {
         Button(action: action) {
             Text(title.uppercased())
                 .font(.studioBody(11, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(onboardingSecondaryText)
+                .foregroundStyle(foregroundColor ?? onboardingSecondaryText)
                 .frame(height: 38)
                 .padding(.horizontal, 10)
         }
@@ -2160,6 +2186,10 @@ struct OnboardingView: View {
 
     private var onboardingTertiaryText: Color {
         StudioTheme.textTertiary.opacity(isDarkMode ? 0.94 : 0.98)
+    }
+
+    private var onboardingAccountSkipText: Color {
+        StudioTheme.textTertiary.opacity(isDarkMode ? 0.56 : 0.62)
     }
 
     private var onboardingCardSurface: Color {

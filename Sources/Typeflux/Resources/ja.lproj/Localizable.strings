@@ -125,6 +125,7 @@
 "menu.downloadingUpdate" = "アップデートをダウンロード中…";
 "menu.installingUpdate" = "アップデートをインストール中…";
 "menu.downloadingLocalModelNamed" = "%@をダウンロード中… %d%%";
+"menu.localModelDownloadFailedNamed" = "%@のダウンロードに失敗しました";
 "menu.quit" = "やめる";
 "menu.status.ready" = "準備完了";
 "menu.status.recording" = "録音中です…";
@@ -750,6 +751,12 @@
 "settings.models.localSTT.transferProgress" = "%@ ダウンロード済み（%@ / %@）";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "ローカルモデルの準備ができました。";
+"workflow.localModelDownloadingAlert.title" = "ローカル音声モデルをダウンロード中です";
+"workflow.localModelDownloadingAlert.message" = "%@ はまだダウンロード中のため、今は使用できません。準備が完了すると Typeflux がシステム通知でお知らせします。";
+"workflow.localModelDownloadingAlert.progress" = "現在の進捗：%d%%";
+"workflow.localModelDownloadingAlert.failedTitle" = "ローカル音声モデルのダウンロードに失敗しました";
+"workflow.localModelDownloadingAlert.failedMessage" = "ダウンロードに失敗しました：%@。ネットワークが利用できる状態で、もう一度ショートカットを押すと再試行できます。";
+"workflow.localModelDownloadingAlert.failedProgress" = "ダウンロードに失敗しました";
 "cloud.autoSwitch.title" = "Typeflux Cloud が有効になりました";
 "cloud.autoSwitch.body" = "音声認識と AI モデルが Typeflux Cloud に切り替わりました。「設定」からいつでも自分のモデルに戻せます。";
 "settings.models.redownload" = "再ダウンロード";
@@ -807,8 +814,15 @@
 
 "onboarding.sttProvider.subtitle" = "音声をテキストに変換するエンジンを選択してください";
 "onboarding.sttConfig.subtitle" = "資格情報と設定を構成する";
+"onboarding.sttConfig.incomplete.message" = "続行する前に、選択した音声モデルの設定を完了してください。";
+"onboarding.sttConfig.incompleteAlert.title" = "音声モデルの設定が未完了です";
+"onboarding.sttConfig.incompleteAlert.message" = "次のステップに進む前に、選択した音声モデルの設定を完了してください。";
 "onboarding.llmProvider.subtitle" = "ディクテーションを書き直して改良するモデルを選択してください";
 "onboarding.llmConfig.subtitle" = "資格情報と設定を構成する";
+"onboarding.llmConfig.incompleteAlert.title" = "言語モデルの設定が未完了です";
+"onboarding.llmConfig.incompleteAlert.message" = "音声文字起こしは引き続き利用できますが、言語モデルが必要な書き換えや推敲機能は一時的に制限されます。";
+"onboarding.llmConfig.incompleteAlert.continueConfig" = "設定を続ける";
+"onboarding.llmConfig.incompleteAlert.skip" = "スキップ";
 
 "onboarding.permissions.title" = "権限を付与する";
 "onboarding.permissions.subtitle" = "Typeflux では、音声をキャプチャして他のアプリにテキストを挿入するには、いくつかのシステム権限が必要です。";
@@ -847,7 +861,7 @@
 "onboarding.action.back" = "前へ";
 "onboarding.action.continue" = "次へ";
 "onboarding.action.skip" = "スキップ";
-"onboarding.account.skip" = "スキップ";
+"onboarding.account.skip" = "スキップして自分のモデルを設定";
 "onboarding.action.getStarted" = "始めましょう";
 
 // MARK: - Agent Framework

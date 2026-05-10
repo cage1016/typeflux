@@ -125,6 +125,7 @@
 "menu.downloadingUpdate" = "正在下载更新…";
 "menu.installingUpdate" = "正在安装更新…";
 "menu.downloadingLocalModelNamed" = "正在下载 %@… %d%%";
+"menu.localModelDownloadFailedNamed" = "%@ 下载失败";
 "menu.quit" = "退出";
 "menu.status.ready" = "已就绪";
 "menu.status.recording" = "录音中…";
@@ -757,6 +758,12 @@
 "settings.models.localSTT.transferProgress" = "已下载 %@（%@ / %@）";
 "notification.localModelReady.title" = "Typeflux";
 "notification.localModelReady.body" = "本地模型已就绪。";
+"workflow.localModelDownloadingAlert.title" = "本地语音模型正在下载";
+"workflow.localModelDownloadingAlert.message" = "%@ 还在下载中，暂时无法使用。下载完成后，Typeflux 会通过系统通知提醒你。";
+"workflow.localModelDownloadingAlert.progress" = "当前进度：%d%%";
+"workflow.localModelDownloadingAlert.failedTitle" = "本地语音模型下载失败";
+"workflow.localModelDownloadingAlert.failedMessage" = "下载失败：%@。网络恢复后，再次按快捷键即可重新尝试。";
+"workflow.localModelDownloadingAlert.failedProgress" = "下载失败";
 "cloud.autoSwitch.title" = "已启用 Typeflux Cloud";
 "cloud.autoSwitch.body" = "语音识别与 AI 模型已自动切换为 Typeflux Cloud 云端服务，可随时在「设置」中切换回您自己的模型。";
 "settings.models.redownload" = "重新下载";
@@ -814,8 +821,15 @@
 
 "onboarding.sttProvider.subtitle" = "选择将语音转换为文字的引擎";
 "onboarding.sttConfig.subtitle" = "配置凭据与偏好设置";
+"onboarding.sttConfig.incomplete.message" = "请先完成当前语音模型配置，再继续。";
+"onboarding.sttConfig.incompleteAlert.title" = "语音模型尚未配置完成";
+"onboarding.sttConfig.incompleteAlert.message" = "请先完成当前选择的语音模型配置，然后再继续下一步。";
 "onboarding.llmProvider.subtitle" = "选择用于润色和优化你语音内容的模型";
 "onboarding.llmConfig.subtitle" = "配置凭据与偏好设置";
+"onboarding.llmConfig.incompleteAlert.title" = "语言模型还未配置完成";
+"onboarding.llmConfig.incompleteAlert.message" = "语音转写可以继续使用，但润色、改写等需要语言模型的功能会暂时受限。";
+"onboarding.llmConfig.incompleteAlert.continueConfig" = "继续配置";
+"onboarding.llmConfig.incompleteAlert.skip" = "跳过";
 
 "onboarding.permissions.title" = "授予权限";
 "onboarding.permissions.subtitle" = "Typeflux 需要少量系统权限，用于录制语音并将文字输入到其他应用。";
@@ -854,7 +868,7 @@
 "onboarding.action.back" = "上一步";
 "onboarding.action.continue" = "下一步";
 "onboarding.action.skip" = "跳过";
-"onboarding.account.skip" = "跳过";
+"onboarding.account.skip" = "跳过，我要自己配置模型";
 "onboarding.action.getStarted" = "开始使用";
 
 // MARK: - Agent 框架
