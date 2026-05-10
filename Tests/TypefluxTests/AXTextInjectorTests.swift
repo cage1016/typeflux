@@ -544,24 +544,28 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertEqual(result, .failure("focused-process-changed"))
     }
 
-    func testEvaluatePasteVerificationFailsWhenReadableInputTextDoesNotChange() {
+    func testEvaluatePasteVerificationIsIndeterminateWhenReadableInputTextDoesNotChangeForInsert() {
         let before = CurrentInputTextSnapshot(
             processID: 42,
             processName: "Notes",
+            bundleIdentifier: "com.apple.Notes",
             role: "AXTextArea",
             text: "Hello",
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
+            textSource: "ax-value",
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
             processName: "Notes",
+            bundleIdentifier: "com.apple.Notes",
             role: "AXTextArea",
             text: "Hello",
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
+            textSource: "ax-value",
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -572,7 +576,112 @@ final class AXTextInjectorTests: XCTestCase {
             after: after,
         )
 
+        XCTAssertEqual(result, .indeterminate)
+    }
+
+    func testEvaluatePasteVerificationFailsWhenReadableInputTextDoesNotChangeForReplace() {
+        let before = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "Notes",
+            bundleIdentifier: "com.apple.Notes",
+            role: "AXTextArea",
+            text: "Hello",
+            isEditable: true,
+            isFocusedTarget: true,
+            failureReason: nil,
+            textSource: "ax-value",
+        )
+        let after = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "Notes",
+            bundleIdentifier: "com.apple.Notes",
+            role: "AXTextArea",
+            text: "Hello",
+            isEditable: true,
+            isFocusedTarget: true,
+            failureReason: nil,
+            textSource: "ax-value",
+        )
+
+        let result = AXTextInjector.evaluatePasteVerification(
+            insertedText: "world",
+            replaceSelection: true,
+            targetProcessID: 42,
+            before: before,
+            after: after,
+        )
+
         XCTAssertEqual(result, .failure("input-text-unchanged"))
+    }
+
+    func testEvaluatePasteVerificationIsIndeterminateWhenBrowserAXValueIsUnchangedForInsert() {
+        let before = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "Arc",
+            bundleIdentifier: "company.thebrowser.Browser",
+            role: "AXTextArea",
+            text: "\n",
+            isEditable: true,
+            isFocusedTarget: true,
+            failureReason: nil,
+            textSource: "ax-value",
+        )
+        let after = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "Arc",
+            bundleIdentifier: "company.thebrowser.Browser",
+            role: "AXTextArea",
+            text: "\n",
+            isEditable: true,
+            isFocusedTarget: true,
+            failureReason: nil,
+            textSource: "ax-value",
+        )
+
+        let result = AXTextInjector.evaluatePasteVerification(
+            insertedText: "这是语音输入",
+            replaceSelection: false,
+            targetProcessID: 42,
+            before: before,
+            after: after,
+        )
+
+        XCTAssertEqual(result, .indeterminate)
+    }
+
+    func testEvaluatePasteVerificationIsIndeterminateWhenUnknownBrowserLikeAXValueIsEmptyForInsert() {
+        let before = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "New Browser",
+            bundleIdentifier: "com.example.NewBrowser",
+            role: "AXTextArea",
+            text: "\n",
+            isEditable: true,
+            isFocusedTarget: true,
+            failureReason: nil,
+            textSource: "ax-value",
+        )
+        let after = CurrentInputTextSnapshot(
+            processID: 42,
+            processName: "New Browser",
+            bundleIdentifier: "com.example.NewBrowser",
+            role: "AXTextArea",
+            text: "\n",
+            isEditable: true,
+            isFocusedTarget: true,
+            failureReason: nil,
+            textSource: "ax-value",
+        )
+
+        let result = AXTextInjector.evaluatePasteVerification(
+            insertedText: "这是语音输入",
+            replaceSelection: false,
+            targetProcessID: 42,
+            before: before,
+            after: after,
+        )
+
+        XCTAssertEqual(result, .indeterminate)
     }
 
     func testEvaluatePasteVerificationIsIndeterminateWhenTextCannotBeReadBack() {

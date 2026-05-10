@@ -1544,17 +1544,21 @@ struct OnboardingView: View {
                     )
                 }
 
-                shortcutWideCard(
-                    title: L("settings.shortcuts.persona.title"),
-                    subtitle: L("onboarding.shortcuts.persona.hint"),
-                    binding: HotkeyBinding.defaultPersona,
-                )
+                HStack(alignment: .top, spacing: shortcutsSectionSpacing) {
+                    shortcutCard(
+                        title: L("settings.shortcuts.persona.title"),
+                        subtitle: L("onboarding.shortcuts.persona.hint"),
+                        binding: HotkeyBinding.defaultPersona,
+                        expanded: true,
+                    )
 
-                shortcutWideCard(
-                    title: L("settings.shortcuts.history.title"),
-                    subtitle: L("onboarding.shortcuts.history.hint"),
-                    binding: viewModel.historyHotkey,
-                )
+                    shortcutCard(
+                        title: L("settings.shortcuts.history.title"),
+                        subtitle: L("onboarding.shortcuts.history.hint"),
+                        binding: viewModel.historyHotkey,
+                        expanded: true,
+                    )
+                }
             }
 
             if viewModel.externalKeyboardShortcutReplacement == nil {
@@ -1595,35 +1599,6 @@ struct OnboardingView: View {
         }
         .padding(18)
         .frame(maxWidth: expanded ? .infinity : nil, minHeight: 96, alignment: .topLeading)
-        .background(onboardingCardFill)
-        .overlay(onboardingCardStroke)
-    }
-
-    private func shortcutWideCard(
-        title: String,
-        subtitle: String,
-        binding: HotkeyBinding,
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 16) {
-                Text(title)
-                    .font(.studioDisplay(16, weight: .bold))
-                    .foregroundStyle(onboardingPrimaryText)
-                    .lineLimit(1)
-
-                Spacer()
-
-                hotkeySequence(binding)
-                    .fixedSize()
-            }
-
-            Text(subtitle)
-                .font(.studioBody(12))
-                .foregroundStyle(onboardingSecondaryText)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(18)
         .background(onboardingCardFill)
         .overlay(onboardingCardStroke)
     }
