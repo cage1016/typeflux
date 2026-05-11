@@ -1,15 +1,19 @@
 import SwiftUI
+import AppKit
 
 struct AccountView: View {
     @ObservedObject var authState: AuthState
     let onLogout: () -> Void
     @ObservedObject private var localization = AppLocalization.shared
     @State private var passwordChangeFlow = PasswordChangeFlow()
+    @State private var isOpeningBilling = false
+    @State private var billingActionError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
             if let profile = authState.userProfile {
                 profileCard(profile: profile)
+                subscriptionCard
             } else if authState.isLoading {
                 loadingCard
             } else {
@@ -17,7 +21,11 @@ struct AccountView: View {
             }
         }
         .onAppear {
-            Task { await AuthState.shared.refreshTokenIfNeeded() }
+            Task { await authState.refreshTokenIfNeeded() }
+            authState.refreshSubscriptionIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            authState.refreshSubscriptionIfNeeded()
         }
         .sheet(
             item: Binding(
@@ -39,6 +47,110 @@ struct AccountView: View {
                     handlePasswordChangeRelogin()
                 }
             }
+        }
+    }
+
+    private var subscriptionCard: some View {
+        StudioCard {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
+                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                        Text(L("auth.account.subscription"))
+                            .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+
+                        Text(L(subscriptionPresentation.subtitleKey))
+                            .font(.studioBody(StudioTheme.Typography.body))
+                            .foregroundStyle(StudioTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer()
+
+                    if authState.isLoadingSubscription {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
+                    accountSummaryItem(
+                        label: L("auth.account.subscriptionPlan"),
+                        value: localized(subscriptionPresentation.plan),
+                        systemImage: "creditcard"
+                    )
+
+                    accountSummaryItem(
+                        label: L("auth.account.subscriptionStatus"),
+                        value: localized(subscriptionPresentation.status),
+                        systemImage: "checkmark.seal"
+                    )
+
+                    accountSummaryItem(
+                        label: L("auth.account.subscriptionPeriod"),
+                        value: localized(subscriptionPresentation.period),
+                        systemImage: "calendar.badge.clock"
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let error = billingActionError ?? authState.subscriptionError {
+                    Text(error)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: StudioTheme.Spacing.small) {
+                    Spacer()
+
+                    StudioButton(
+                        title: L("auth.account.refreshSubscription"),
+                        systemImage: "arrow.clockwise",
+                        variant: .secondary,
+                        isDisabled: authState.isLoadingSubscription || isOpeningBilling,
+                        isLoading: authState.isLoadingSubscription
+                    ) {
+                        Task { await authState.refreshSubscription() }
+                    }
+
+                    StudioButton(
+                        title: subscriptionPresentation.billingAction == .manageBilling
+                            ? L("auth.account.manageBilling")
+                            : L("auth.account.subscribe"),
+                        systemImage: "arrow.up.forward.app",
+                        variant: .primary,
+                        isDisabled: isOpeningBilling,
+                        isLoading: isOpeningBilling
+                    ) {
+                        openBillingFlow()
+                    }
+                }
+            }
+        }
+    }
+
+    private var subscriptionPresentation: AccountSubscriptionPresentation {
+        AccountSubscriptionPresentation.make(from: authState.subscription)
+    }
+
+    private func localized(_ value: AccountSubscriptionPresentation.TextValue) -> String {
+        switch value {
+        case .localized(let key):
+            L(key)
+        case .literal(let text):
+            text
+        }
+    }
+
+    private func localized(_ period: AccountSubscriptionPresentation.PeriodValue) -> String {
+        switch period {
+        case .unavailable:
+            L("auth.account.subscriptionPeriodUnavailable")
+        case .endsOn(let dateString):
+            String(format: L("auth.account.subscriptionEndsOn"), formattedDate(dateString))
+        case .renewsOn(let dateString):
+            String(format: L("auth.account.subscriptionRenewsOn"), formattedDate(dateString))
         }
     }
 
@@ -251,6 +363,28 @@ struct AccountView: View {
         authState.logout()
         passwordChangeFlow.dismiss()
         LoginWindowController.shared.show()
+    }
+
+    private func openBillingFlow() {
+        billingActionError = nil
+        isOpeningBilling = true
+
+        Task {
+            do {
+                let url = authState.subscription.hasSubscription
+                    ? try await authState.createBillingPortalSession()
+                    : try await authState.startCheckout()
+                await MainActor.run {
+                    NSWorkspace.shared.open(url)
+                    isOpeningBilling = false
+                }
+            } catch {
+                await MainActor.run {
+                    isOpeningBilling = false
+                    billingActionError = error.localizedDescription
+                }
+            }
+        }
     }
 }
 

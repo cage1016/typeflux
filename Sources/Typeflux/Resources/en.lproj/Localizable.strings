@@ -1040,7 +1040,7 @@
 "cloud.error.validation" = "The request was invalid. Please check the input and try again.";
 "cloud.error.rateLimited" = "Too many requests. Please wait a moment and try again.";
 "cloud.error.quotaExceeded" = "Your Typeflux Cloud usage quota has been exhausted.";
-"cloud.error.planRequired" = "Your current plan does not include this Typeflux Cloud feature.";
+"cloud.error.planRequired" = "Your current plan does not include this Typeflux Cloud feature. Open Account to subscribe or manage billing.";
 "cloud.error.server" = "Typeflux Cloud is temporarily unavailable. Please try again later.";
 
 "auth.account.provider" = "Login Method";
@@ -1061,6 +1061,27 @@
 "auth.account.relogin" = "Sign In Again";
 "auth.account.signedOutTitle" = "Not Signed In";
 "auth.account.signedOutSubtitle" = "Sign in to sync your account and manage your session.";
+"auth.account.subscription" = "Subscription";
+"auth.account.subscriptionPlan" = "Plan";
+"auth.account.subscriptionStatus" = "Status";
+"auth.account.subscriptionPeriod" = "Billing Period";
+"auth.account.subscriptionActiveHint" = "Your Typeflux Cloud subscription is active.";
+"auth.account.subscriptionInactiveHint" = "Your subscription is not currently entitled to Typeflux Cloud features.";
+"auth.account.subscriptionRequiredHint" = "Subscribe to unlock Typeflux Cloud speech recognition and model inference.";
+"auth.account.subscriptionNoPlan" = "No Plan";
+"auth.account.subscriptionDefaultPlan" = "Typeflux Cloud Monthly";
+"auth.account.subscriptionStatusNone" = "Not Subscribed";
+"auth.account.subscriptionStatusActive" = "Active";
+"auth.account.subscriptionStatusTrialing" = "Trial";
+"auth.account.subscriptionStatusPastDue" = "Past Due";
+"auth.account.subscriptionStatusCanceled" = "Canceled";
+"auth.account.subscriptionStatusUnpaid" = "Unpaid";
+"auth.account.subscriptionPeriodUnavailable" = "Not Available";
+"auth.account.subscriptionEndsOn" = "Ends %@";
+"auth.account.subscriptionRenewsOn" = "Renews %@";
+"auth.account.refreshSubscription" = "Refresh";
+"auth.account.subscribe" = "Subscribe";
+"auth.account.manageBilling" = "Manage Billing";
 
 "agent.clarification.windowTitle" = "Agent Clarification";
 "agent.clarification.assistantSectionTitle" = "Assistant";

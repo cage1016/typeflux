@@ -1029,7 +1029,7 @@
 "cloud.error.validation" = "リクエストが無効です。入力内容を確認してもう一度お試しください。";
 "cloud.error.rateLimited" = "リクエストが多すぎます。しばらく待ってからもう一度お試しください。";
 "cloud.error.quotaExceeded" = "Typeflux Cloud の利用枠を使い切りました。";
-"cloud.error.planRequired" = "現在のプランではこの Typeflux Cloud 機能を利用できません。";
+"cloud.error.planRequired" = "現在のプランではこの Typeflux Cloud 機能を利用できません。アカウント画面で購読または請求管理を行ってください。";
 "cloud.error.server" = "Typeflux Cloud は一時的に利用できません。後でもう一度お試しください。";
 
 "auth.account.provider" = "ログイン方法";
@@ -1050,6 +1050,27 @@
 "auth.account.relogin" = "再度サインイン";
 "auth.account.signedOutTitle" = "未サインイン";
 "auth.account.signedOutSubtitle" = "サインインすると、アカウント情報の確認と現在のセッション管理ができます。";
+"auth.account.subscription" = "サブスクリプション";
+"auth.account.subscriptionPlan" = "プラン";
+"auth.account.subscriptionStatus" = "ステータス";
+"auth.account.subscriptionPeriod" = "請求期間";
+"auth.account.subscriptionActiveHint" = "Typeflux Cloud のサブスクリプションは有効です。";
+"auth.account.subscriptionInactiveHint" = "現在のサブスクリプションでは Typeflux Cloud 機能を利用できません。";
+"auth.account.subscriptionRequiredHint" = "購読すると Typeflux Cloud の音声認識とモデル推論を利用できます。";
+"auth.account.subscriptionNoPlan" = "未購読";
+"auth.account.subscriptionDefaultPlan" = "Typeflux Cloud 月額";
+"auth.account.subscriptionStatusNone" = "未購読";
+"auth.account.subscriptionStatusActive" = "有効";
+"auth.account.subscriptionStatusTrialing" = "トライアル";
+"auth.account.subscriptionStatusPastDue" = "支払い遅延";
+"auth.account.subscriptionStatusCanceled" = "キャンセル済み";
+"auth.account.subscriptionStatusUnpaid" = "未払い";
+"auth.account.subscriptionPeriodUnavailable" = "利用不可";
+"auth.account.subscriptionEndsOn" = "%@ に終了";
+"auth.account.subscriptionRenewsOn" = "%@ に更新";
+"auth.account.refreshSubscription" = "更新";
+"auth.account.subscribe" = "購読";
+"auth.account.manageBilling" = "請求管理";
 
 "agent.clarification.windowTitle" = "アシスタントの確認";
 "agent.clarification.assistantSectionTitle" = "アシスタント";

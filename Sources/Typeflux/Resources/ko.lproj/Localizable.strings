@@ -1029,7 +1029,7 @@
 "cloud.error.validation" = "요청이 올바르지 않습니다. 입력을 확인한 뒤 다시 시도해 주세요.";
 "cloud.error.rateLimited" = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
 "cloud.error.quotaExceeded" = "Typeflux Cloud 사용 한도를 모두 사용했습니다.";
-"cloud.error.planRequired" = "현재 요금제에는 이 Typeflux Cloud 기능이 포함되어 있지 않습니다.";
+"cloud.error.planRequired" = "현재 요금제에는 이 Typeflux Cloud 기능이 포함되어 있지 않습니다. 계정 화면에서 구독하거나 결제를 관리해 주세요.";
 "cloud.error.server" = "Typeflux Cloud를 일시적으로 사용할 수 없습니다. 나중에 다시 시도해 주세요.";
 
 "auth.account.provider" = "로그인 방법";
@@ -1050,6 +1050,27 @@
 "auth.account.relogin" = "다시 로그인";
 "auth.account.signedOutTitle" = "로그인되지 않음";
 "auth.account.signedOutSubtitle" = "로그인하면 계정 정보를 확인하고 현재 세션을 관리할 수 있습니다.";
+"auth.account.subscription" = "구독";
+"auth.account.subscriptionPlan" = "요금제";
+"auth.account.subscriptionStatus" = "상태";
+"auth.account.subscriptionPeriod" = "결제 기간";
+"auth.account.subscriptionActiveHint" = "Typeflux Cloud 구독이 활성화되어 있습니다.";
+"auth.account.subscriptionInactiveHint" = "현재 구독으로는 Typeflux Cloud 기능을 사용할 수 없습니다.";
+"auth.account.subscriptionRequiredHint" = "구독하면 Typeflux Cloud 음성 인식과 모델 추론을 사용할 수 있습니다.";
+"auth.account.subscriptionNoPlan" = "구독 없음";
+"auth.account.subscriptionDefaultPlan" = "Typeflux Cloud 월간";
+"auth.account.subscriptionStatusNone" = "구독 없음";
+"auth.account.subscriptionStatusActive" = "활성";
+"auth.account.subscriptionStatusTrialing" = "체험";
+"auth.account.subscriptionStatusPastDue" = "연체";
+"auth.account.subscriptionStatusCanceled" = "취소됨";
+"auth.account.subscriptionStatusUnpaid" = "미결제";
+"auth.account.subscriptionPeriodUnavailable" = "사용 불가";
+"auth.account.subscriptionEndsOn" = "%@ 종료";
+"auth.account.subscriptionRenewsOn" = "%@ 갱신";
+"auth.account.refreshSubscription" = "새로고침";
+"auth.account.subscribe" = "구독";
+"auth.account.manageBilling" = "결제 관리";
 
 "agent.clarification.windowTitle" = "어시스턴트 확인 필요";
 "agent.clarification.assistantSectionTitle" = "어시스턴트";
