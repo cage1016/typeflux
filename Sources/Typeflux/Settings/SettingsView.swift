@@ -298,6 +298,7 @@ struct StudioView: View {
             NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification),
         ) { _ in
             viewModel.schedulePermissionRefresh()
+            authState.refreshSubscriptionIfNeeded()
         }
         .overlay(alignment: .bottom) {
             if let toast = viewModel.toastMessage {

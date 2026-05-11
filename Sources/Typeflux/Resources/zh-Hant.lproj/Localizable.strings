@@ -1036,7 +1036,7 @@
 "cloud.error.validation" = "請求無效，請檢查輸入後重試。";
 "cloud.error.rateLimited" = "請求過於頻繁，請稍後再試。";
 "cloud.error.quotaExceeded" = "Typeflux Cloud 使用額度已用完。";
-"cloud.error.planRequired" = "目前方案不包含此 Typeflux Cloud 功能。";
+"cloud.error.planRequired" = "目前方案不包含此 Typeflux Cloud 功能。請開啟帳號頁面訂閱或管理帳單。";
 "cloud.error.server" = "Typeflux Cloud 暫時無法使用，請稍後再試。";
 
 "auth.account.provider" = "登入方式";
@@ -1057,6 +1057,27 @@
 "auth.account.relogin" = "重新登入";
 "auth.account.signedOutTitle" = "尚未登入";
 "auth.account.signedOutSubtitle" = "登入後即可查看帳號資訊並管理目前工作階段。";
+"auth.account.subscription" = "訂閱";
+"auth.account.subscriptionPlan" = "方案";
+"auth.account.subscriptionStatus" = "狀態";
+"auth.account.subscriptionPeriod" = "計費週期";
+"auth.account.subscriptionActiveHint" = "您的 Typeflux Cloud 訂閱已啟用。";
+"auth.account.subscriptionInactiveHint" = "目前訂閱暫不能使用 Typeflux Cloud 功能。";
+"auth.account.subscriptionRequiredHint" = "訂閱後即可使用 Typeflux Cloud 語音辨識和模型推理。";
+"auth.account.subscriptionNoPlan" = "未訂閱";
+"auth.account.subscriptionDefaultPlan" = "Typeflux Cloud 月度方案";
+"auth.account.subscriptionStatusNone" = "未訂閱";
+"auth.account.subscriptionStatusActive" = "有效";
+"auth.account.subscriptionStatusTrialing" = "試用中";
+"auth.account.subscriptionStatusPastDue" = "逾期";
+"auth.account.subscriptionStatusCanceled" = "已取消";
+"auth.account.subscriptionStatusUnpaid" = "未付款";
+"auth.account.subscriptionPeriodUnavailable" = "不可用";
+"auth.account.subscriptionEndsOn" = "%@ 到期";
+"auth.account.subscriptionRenewsOn" = "%@ 續費";
+"auth.account.refreshSubscription" = "重新整理";
+"auth.account.subscribe" = "訂閱";
+"auth.account.manageBilling" = "管理帳單";
 
 "agent.clarification.windowTitle" = "助手需要確認";
 "agent.clarification.assistantSectionTitle" = "助手";

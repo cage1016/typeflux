@@ -26,18 +26,27 @@ final class AuthState: ObservableObject {
     private let saveStoredUserProfile: (UserProfile) -> Void
     private let clearStoredSession: () -> Void
     private let fetchProfile: (String) async throws -> UserProfile
+    private let fetchSubscription: (String) async throws -> BillingSubscriptionSnapshot
+    private let createCheckoutSession: (String, String) async throws -> BillingCheckoutSession
+    private let createPortalSession: (String) async throws -> BillingPortalSession
 
     @Published private(set) var isLoggedIn: Bool = false
     @Published private(set) var userProfile: UserProfile?
     @Published private(set) var isLoading: Bool = false
+    @Published private(set) var subscription: BillingSubscriptionSnapshot = .none
+    @Published private(set) var isLoadingSubscription: Bool = false
+    @Published private(set) var subscriptionError: String?
 
     /// Refresh the access token when it expires within this window (7 days).
     private static let refreshEarlyInterval: TimeInterval = 7 * 24 * 3600
 
     /// Background timer interval: check every hour.
     private static let timerInterval: TimeInterval = 3600
+    private static let checkoutPollingAttempts = 6
+    private static let checkoutPollingInterval: Duration = .seconds(3)
 
     private var refreshTimer: Timer?
+    private var checkoutPollingTask: Task<Void, Never>?
 
     var accessToken: String? {
         guard let stored = loadStoredToken(),
@@ -67,6 +76,15 @@ final class AuthState: ObservableObject {
         fetchProfile: @escaping (String) async throws -> UserProfile = { token in
             try await AuthAPIService.fetchProfile(token: token)
         },
+        fetchSubscription: @escaping (String) async throws -> BillingSubscriptionSnapshot = { token in
+            try await BillingAPIService.fetchSubscription(token: token)
+        },
+        createCheckoutSession: @escaping (String, String) async throws -> BillingCheckoutSession = { token, planCode in
+            try await BillingAPIService.createCheckoutSession(token: token, planCode: planCode)
+        },
+        createPortalSession: @escaping (String) async throws -> BillingPortalSession = { token in
+            try await BillingAPIService.createPortalSession(token: token)
+        },
     ) {
         self.loadStoredToken = loadStoredToken
         self.loadStoredUserProfile = loadStoredUserProfile
@@ -74,6 +92,9 @@ final class AuthState: ObservableObject {
         self.saveStoredUserProfile = saveStoredUserProfile
         self.clearStoredSession = clearStoredSession
         self.fetchProfile = fetchProfile
+        self.fetchSubscription = fetchSubscription
+        self.createCheckoutSession = createCheckoutSession
+        self.createPortalSession = createPortalSession
         restoreSession()
     }
 
@@ -92,9 +113,14 @@ final class AuthState: ObservableObject {
     // MARK: - Login
 
     func handleLoginSuccess(token: String, expiresAt: Int, refreshToken: String? = nil) async {
-        KeychainTokenStore.saveToken(token, expiresAt: expiresAt, refreshToken: refreshToken)
+        if let refreshToken {
+            KeychainTokenStore.saveToken(token, expiresAt: expiresAt, refreshToken: refreshToken)
+        } else {
+            saveStoredToken(token, expiresAt)
+        }
         isLoggedIn = true
         await refreshProfile()
+        await refreshSubscription()
         NotificationCenter.default.post(name: .authDidLogin, object: self)
     }
 
@@ -109,6 +135,10 @@ final class AuthState: ObservableObject {
         clearStoredSession()
         isLoggedIn = false
         userProfile = nil
+        subscription = .none
+        subscriptionError = nil
+        checkoutPollingTask?.cancel()
+        checkoutPollingTask = nil
         logger.info("User logged out")
     }
 
@@ -166,6 +196,7 @@ final class AuthState: ObservableObject {
             userProfile = profile
             saveStoredUserProfile(profile)
             logger.info("Profile refreshed for \(profile.email)")
+            await refreshSubscription()
             return .authenticated
         } catch let error as AuthError {
             if shouldInvalidateSession(for: error) {
@@ -178,6 +209,75 @@ final class AuthState: ObservableObject {
         } catch {
             logger.error("Failed to refresh profile: \(error.localizedDescription)")
             return .failed
+        }
+    }
+
+    // MARK: - Subscription
+
+    func refreshSubscriptionIfNeeded() {
+        guard isLoggedIn || accessToken != nil else { return }
+        Task { await refreshSubscription() }
+    }
+
+    @discardableResult
+    func refreshSubscription() async -> BillingSubscriptionSnapshot? {
+        guard let token = accessToken else {
+            subscription = .none
+            return nil
+        }
+
+        isLoadingSubscription = true
+        defer { isLoadingSubscription = false }
+
+        do {
+            let snapshot = try await fetchSubscription(token)
+            subscription = snapshot
+            subscriptionError = nil
+            return snapshot
+        } catch let error as AuthError {
+            if shouldInvalidateSession(for: error) {
+                logout()
+            } else {
+                subscriptionError = error.localizedDescription
+            }
+            return nil
+        } catch {
+            subscriptionError = error.localizedDescription
+            return nil
+        }
+    }
+
+    func startCheckout(planCode: String = BillingPlan.defaultPlanCode) async throws -> URL {
+        guard let token = accessToken else {
+            throw AuthError.unauthorized
+        }
+        let session = try await createCheckoutSession(token, planCode)
+        startCheckoutPolling()
+        return session.url
+    }
+
+    func createBillingPortalSession() async throws -> URL {
+        guard let token = accessToken else {
+            throw AuthError.unauthorized
+        }
+        let session = try await createPortalSession(token)
+        return session.url
+    }
+
+    private func startCheckoutPolling() {
+        checkoutPollingTask?.cancel()
+        checkoutPollingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for attempt in 0..<Self.checkoutPollingAttempts {
+                if attempt > 0 {
+                    try? await Task.sleep(for: Self.checkoutPollingInterval)
+                }
+                guard !Task.isCancelled else { return }
+                _ = await self.refreshSubscription()
+                if self.subscription.entitled {
+                    return
+                }
+            }
         }
     }
 
