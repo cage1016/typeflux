@@ -549,6 +549,8 @@ private struct StudioButtonChrome<Label: View>: View {
 }
 
 struct StudioShell<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let currentSection: StudioSection
     let onSelect: (StudioSection) -> Void
     let onOpenAbout: () -> Void
@@ -609,19 +611,7 @@ struct StudioShell<Content: View>: View {
                 )
                 .frame(width: StudioTheme.sidebarWidth)
                 .background(
-                    ZStack {
-                        Rectangle()
-                            .fill(.ultraThinMaterial)
-                        StudioTheme.sidebar
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.22),
-                                Color.clear,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing,
-                        )
-                    },
+                    sidebarBackground,
                 )
                 .overlay(alignment: .trailing) {
                     Rectangle()
@@ -646,11 +636,7 @@ struct StudioShell<Content: View>: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                     .background(
-                        ZStack {
-                            Rectangle()
-                                .fill(.ultraThinMaterial)
-                            StudioTheme.shellSurface
-                        },
+                        contentBackground,
                     )
                 }
                 .padding(.vertical, StudioTheme.Layout.contentCardInset)
@@ -661,36 +647,90 @@ struct StudioShell<Content: View>: View {
             .ignoresSafeArea(.container, edges: .top)
         }
     }
+
+    @ViewBuilder
+    private var sidebarBackground: some View {
+        if colorScheme == .dark {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.sidebar
+            }
+        } else {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.sidebar
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.22),
+                        Color.clear,
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing,
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var contentBackground: some View {
+        if colorScheme == .dark {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.shellSurface
+            }
+        } else {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                StudioTheme.shellSurface
+            }
+        }
+    }
 }
 
 struct StudioGlassBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let tintOpacity: Double
 
     var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
+        if colorScheme == .dark {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
 
-            StudioTheme.windowBackground
-                .opacity(tintOpacity)
+                StudioTheme.windowBackground
+                    .opacity(tintOpacity)
+            }
+        } else {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
 
-            LinearGradient(
-                colors: [
-                    StudioTheme.windowHighlight.opacity(0.92),
-                    Color.clear,
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing,
-            )
+                StudioTheme.windowBackground
+                    .opacity(tintOpacity)
 
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.08),
-                    Color.clear,
-                ],
-                startPoint: .bottomLeading,
-                endPoint: .topTrailing,
-            )
+                LinearGradient(
+                    colors: [
+                        StudioTheme.windowHighlight.opacity(0.92),
+                        Color.clear,
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing,
+                )
+
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.08),
+                        Color.clear,
+                    ],
+                    startPoint: .bottomLeading,
+                    endPoint: .topTrailing,
+                )
+            }
         }
     }
 }
@@ -1050,8 +1090,7 @@ struct StudioCard<Content: View>: View {
             if texture == .softWaves {
                 softWaveTexture
             } else if colorScheme == .dark {
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(Color.white.opacity(0.015))
+                Color.clear
             } else {
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .fill(
@@ -1083,74 +1122,80 @@ struct StudioCard<Content: View>: View {
     }
 
     private var softWaveTexture: some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let height = proxy.size.height
-            let baseOpacity = colorScheme == .dark ? 0.035 : 0.18
-            let accentOpacity = colorScheme == .dark ? 0.035 : (isHighlighted ? 0.18 : 0.08)
-            let highlightOpacity = colorScheme == .dark ? 0.025 : 0.18
+        Group {
+            if colorScheme == .dark {
+                Color.clear
+            } else {
+                GeometryReader { proxy in
+                    let width = proxy.size.width
+                    let height = proxy.size.height
+                    let baseOpacity = 0.18
+                    let accentOpacity = isHighlighted ? 0.18 : 0.08
+                    let highlightOpacity = 0.18
 
-            ZStack {
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(baseOpacity),
-                                Color.clear,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing,
-                        ),
-                    )
+                    ZStack {
+                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(baseOpacity),
+                                        Color.clear,
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing,
+                                ),
+                            )
 
-                Ellipse()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.clear,
-                                StudioTheme.accent.opacity(accentOpacity),
-                                Color.white.opacity(highlightOpacity),
-                                Color.clear,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing,
-                        ),
-                    )
-                    .frame(width: width * 1.12, height: height * 0.56)
-                    .rotationEffect(.degrees(-17))
-                    .offset(x: width * 0.32, y: -height * 0.26)
-                    .blur(radius: 9)
+                        Ellipse()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.clear,
+                                        StudioTheme.accent.opacity(accentOpacity),
+                                        Color.white.opacity(highlightOpacity),
+                                        Color.clear,
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing,
+                                ),
+                            )
+                            .frame(width: width * 1.12, height: height * 0.56)
+                            .rotationEffect(.degrees(-17))
+                            .offset(x: width * 0.32, y: -height * 0.26)
+                            .blur(radius: 9)
 
-                Ellipse()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.clear,
-                                Color.white.opacity(highlightOpacity * 0.72),
-                                StudioTheme.accentSoft.opacity(accentOpacity * 0.52),
-                                Color.clear,
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing,
-                        ),
-                    )
-                    .frame(width: width * 1.08, height: height * 0.42)
-                    .rotationEffect(.degrees(-17))
-                    .offset(x: width * 0.18, y: height * 0.02)
-                    .blur(radius: 12)
+                        Ellipse()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.clear,
+                                        Color.white.opacity(highlightOpacity * 0.72),
+                                        StudioTheme.accentSoft.opacity(accentOpacity * 0.52),
+                                        Color.clear,
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing,
+                                ),
+                            )
+                            .frame(width: width * 1.08, height: height * 0.42)
+                            .rotationEffect(.degrees(-17))
+                            .offset(x: width * 0.18, y: height * 0.02)
+                            .blur(radius: 12)
 
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.clear,
-                                isHighlighted ? StudioTheme.accentSoft.opacity(accentOpacity * 0.58) : Color.clear,
-                                Color.clear,
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing,
-                        ),
-                    )
+                        RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.clear,
+                                        isHighlighted ? StudioTheme.accentSoft.opacity(accentOpacity * 0.58) : Color.clear,
+                                        Color.clear,
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing,
+                                ),
+                            )
+                    }
+                }
             }
         }
         .allowsHitTesting(false)
