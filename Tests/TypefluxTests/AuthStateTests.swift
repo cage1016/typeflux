@@ -184,6 +184,79 @@ final class AuthStateTests: XCTestCase {
         XCTAssertEqual(state.subscription, .none)
     }
 
+    func testRefreshUsageUsesCurrentSubscriptionPeriod() async {
+        var storedToken: (token: String, expiresAt: Int)? = validStoredToken()
+        var usageFetchCount = 0
+        let stats = CloudUsageStats(
+            asrCount: 2,
+            asrAudioDurationMs: 60000,
+            asrOutputChars: 300,
+            chatCount: 1,
+            chatOutputChars: 100,
+            chatInputTokens: 200,
+            chatOutputTokens: 50,
+            chatTotalTokens: 250
+        )
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { _, _ in },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { _ in self.makeProfile(email: "usage@test.com") },
+            fetchSubscription: { _ in
+                BillingSubscriptionSnapshot(
+                    planCode: BillingPlan.defaultPlanCode,
+                    status: "active",
+                    currentPeriodStart: "2026-05-01T00:00:00Z",
+                    currentPeriodEnd: "2026-06-01T00:00:00Z",
+                    cancelAtPeriodEnd: false,
+                    entitled: true
+                )
+            },
+            fetchCurrentPeriodUsageStats: { _ in
+                usageFetchCount += 1
+                return CloudUsageCurrentPeriodStats(
+                    periodStart: "2026-05-01T00:00:00Z",
+                    periodEnd: "2026-06-01T00:00:00Z",
+                    stats: stats
+                )
+            },
+        )
+
+        await state.refreshSubscription()
+        await state.refreshUsage()
+
+        XCTAssertEqual(usageFetchCount, 1)
+        XCTAssertEqual(state.usageStats, stats)
+        XCTAssertEqual(state.usagePeriodStart, "2026-05-01T00:00:00Z")
+        XCTAssertEqual(state.usagePeriodEnd, "2026-06-01T00:00:00Z")
+    }
+
+    func testRefreshUsageSurfacesServerPeriodError() async {
+        var storedToken: (token: String, expiresAt: Int)? = validStoredToken()
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { _, _ in },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { _ in self.makeProfile(email: "usage@test.com") },
+            fetchSubscription: { _ in .none },
+            fetchCurrentPeriodUsageStats: { _ in
+                throw AuthError.serverError(code: "USAGE_PERIOD_UNAVAILABLE", message: "current billing period is unavailable")
+            },
+        )
+
+        await state.refreshSubscription()
+        await state.refreshUsage()
+
+        XCTAssertEqual(state.usageStats, .empty)
+        XCTAssertNil(state.usagePeriodStart)
+        XCTAssertNil(state.usagePeriodEnd)
+        XCTAssertNil(state.usageError)
+    }
+
     private func makeProfile(email: String) -> UserProfile {
         UserProfile(
             id: UUID().uuidString,

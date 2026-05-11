@@ -27,6 +27,7 @@ final class AuthState: ObservableObject {
     private let clearStoredSession: () -> Void
     private let fetchProfile: (String) async throws -> UserProfile
     private let fetchSubscription: (String) async throws -> BillingSubscriptionSnapshot
+    private let fetchCurrentPeriodUsageStats: (String) async throws -> CloudUsageCurrentPeriodStats
     private let createCheckoutSession: (String, String) async throws -> BillingCheckoutSession
     private let createPortalSession: (String) async throws -> BillingPortalSession
 
@@ -36,6 +37,11 @@ final class AuthState: ObservableObject {
     @Published private(set) var subscription: BillingSubscriptionSnapshot = .none
     @Published private(set) var isLoadingSubscription: Bool = false
     @Published private(set) var subscriptionError: String?
+    @Published private(set) var usageStats: CloudUsageStats = .empty
+    @Published private(set) var usagePeriodStart: String?
+    @Published private(set) var usagePeriodEnd: String?
+    @Published private(set) var isLoadingUsage: Bool = false
+    @Published private(set) var usageError: String?
 
     /// Refresh the access token when it expires within this window (7 days).
     private static let refreshEarlyInterval: TimeInterval = 7 * 24 * 3600
@@ -79,6 +85,9 @@ final class AuthState: ObservableObject {
         fetchSubscription: @escaping (String) async throws -> BillingSubscriptionSnapshot = { token in
             try await BillingAPIService.fetchSubscription(token: token)
         },
+        fetchCurrentPeriodUsageStats: @escaping (String) async throws -> CloudUsageCurrentPeriodStats = { token in
+            try await CloudUsageAPIService.fetchCurrentPeriodStats(token: token)
+        },
         createCheckoutSession: @escaping (String, String) async throws -> BillingCheckoutSession = { token, planCode in
             try await BillingAPIService.createCheckoutSession(token: token, planCode: planCode)
         },
@@ -93,6 +102,7 @@ final class AuthState: ObservableObject {
         self.clearStoredSession = clearStoredSession
         self.fetchProfile = fetchProfile
         self.fetchSubscription = fetchSubscription
+        self.fetchCurrentPeriodUsageStats = fetchCurrentPeriodUsageStats
         self.createCheckoutSession = createCheckoutSession
         self.createPortalSession = createPortalSession
         restoreSession()
@@ -137,6 +147,10 @@ final class AuthState: ObservableObject {
         userProfile = nil
         subscription = .none
         subscriptionError = nil
+        usageStats = .empty
+        usagePeriodStart = nil
+        usagePeriodEnd = nil
+        usageError = nil
         checkoutPollingTask?.cancel()
         checkoutPollingTask = nil
         logger.info("User logged out")
@@ -247,6 +261,41 @@ final class AuthState: ObservableObject {
         }
     }
 
+    @discardableResult
+    func refreshUsage() async -> CloudUsageStats? {
+        guard let token = accessToken else {
+            usageStats = .empty
+            return nil
+        }
+
+        isLoadingUsage = true
+        defer { isLoadingUsage = false }
+
+        do {
+            let snapshot = try await fetchCurrentPeriodUsageStats(token)
+            usageStats = snapshot.stats
+            usagePeriodStart = snapshot.periodStart
+            usagePeriodEnd = snapshot.periodEnd
+            usageError = nil
+            return snapshot.stats
+        } catch let error as AuthError {
+            if shouldInvalidateSession(for: error) {
+                logout()
+            } else if error.authErrorCode == "USAGE_PERIOD_UNAVAILABLE" {
+                usageStats = .empty
+                usagePeriodStart = nil
+                usagePeriodEnd = nil
+                usageError = nil
+            } else {
+                usageError = error.localizedDescription
+            }
+            return nil
+        } catch {
+            usageError = error.localizedDescription
+            return nil
+        }
+    }
+
     func startCheckout(planCode: String = BillingPlan.defaultPlanCode) async throws -> URL {
         guard let token = accessToken else {
             throw AuthError.unauthorized
@@ -306,4 +355,5 @@ final class AuthState: ObservableObject {
             false
         }
     }
+
 }

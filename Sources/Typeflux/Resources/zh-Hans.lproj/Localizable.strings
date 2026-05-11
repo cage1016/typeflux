@@ -1082,6 +1082,19 @@
 "auth.account.refreshSubscription" = "刷新";
 "auth.account.subscribe" = "订阅";
 "auth.account.manageBilling" = "管理账单";
+"auth.account.usage" = "用量";
+"auth.account.usagePeriodHint" = "当前计费周期：%@ 至 %@。";
+"auth.account.usageCycleUnavailable" = "当前计费周期暂不可用。";
+"auth.account.usageAudio" = "音频";
+"auth.account.usageTokens" = "Token";
+"auth.account.usageRequests" = "请求";
+"auth.account.usageTranscripts" = "转写字符";
+"auth.account.usageAnswers" = "回复字符";
+"auth.account.refreshUsage" = "刷新用量";
+"auth.account.usageSeconds" = "%.0f 秒";
+"auth.account.usageMinutes" = "%.1f 分钟";
+"auth.account.usageHours" = "%.1f 小时";
+"auth.account.usageDays" = "%.1f 天";
 
 "agent.clarification.windowTitle" = "助手需要确认";
 "agent.clarification.assistantSectionTitle" = "助手";

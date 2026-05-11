@@ -16,6 +16,7 @@ final class BillingAPIServiceTests: XCTestCase {
               "data": {
                 "plan_code": "typeflux_cloud_monthly",
                 "status": "active",
+                "current_period_start": "2026-05-01T00:00:00Z",
                 "current_period_end": "2026-06-01T00:00:00Z",
                 "cancel_at_period_end": false,
                 "entitled": true
@@ -30,6 +31,7 @@ final class BillingAPIServiceTests: XCTestCase {
 
         XCTAssertEqual(snapshot.planCode, "typeflux_cloud_monthly")
         XCTAssertEqual(snapshot.status, "active")
+        XCTAssertEqual(snapshot.currentPeriodStart, "2026-05-01T00:00:00Z")
         XCTAssertTrue(snapshot.entitled)
         XCTAssertTrue(snapshot.hasSubscription)
     }

@@ -1082,6 +1082,19 @@
 "auth.account.refreshSubscription" = "Refresh";
 "auth.account.subscribe" = "Subscribe";
 "auth.account.manageBilling" = "Manage Billing";
+"auth.account.usage" = "Usage";
+"auth.account.usagePeriodHint" = "Current billing period: %@ to %@.";
+"auth.account.usageCycleUnavailable" = "Current billing period is not available yet.";
+"auth.account.usageAudio" = "Audio";
+"auth.account.usageTokens" = "Tokens";
+"auth.account.usageRequests" = "Requests";
+"auth.account.usageTranscripts" = "Transcript Chars";
+"auth.account.usageAnswers" = "Answer Chars";
+"auth.account.refreshUsage" = "Refresh Usage";
+"auth.account.usageSeconds" = "%.0f sec";
+"auth.account.usageMinutes" = "%.1f min";
+"auth.account.usageHours" = "%.1f hr";
+"auth.account.usageDays" = "%.1f days";
 
 "agent.clarification.windowTitle" = "Agent Clarification";
 "agent.clarification.assistantSectionTitle" = "Assistant";

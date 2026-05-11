@@ -1078,6 +1078,19 @@
 "auth.account.refreshSubscription" = "重新整理";
 "auth.account.subscribe" = "訂閱";
 "auth.account.manageBilling" = "管理帳單";
+"auth.account.usage" = "用量";
+"auth.account.usagePeriodHint" = "目前計費週期：%@ 至 %@。";
+"auth.account.usageCycleUnavailable" = "目前計費週期暫不可用。";
+"auth.account.usageAudio" = "音訊";
+"auth.account.usageTokens" = "Token";
+"auth.account.usageRequests" = "請求";
+"auth.account.usageTranscripts" = "轉寫字元";
+"auth.account.usageAnswers" = "回覆字元";
+"auth.account.refreshUsage" = "重新整理用量";
+"auth.account.usageSeconds" = "%.0f 秒";
+"auth.account.usageMinutes" = "%.1f 分鐘";
+"auth.account.usageHours" = "%.1f 小時";
+"auth.account.usageDays" = "%.1f 天";
 
 "agent.clarification.windowTitle" = "助手需要確認";
 "agent.clarification.assistantSectionTitle" = "助手";

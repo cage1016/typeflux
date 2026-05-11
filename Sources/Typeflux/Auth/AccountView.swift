@@ -14,6 +14,7 @@ struct AccountView: View {
             if let profile = authState.userProfile {
                 profileCard(profile: profile)
                 subscriptionCard
+                usageCard
             } else if authState.isLoading {
                 loadingCard
             } else {
@@ -21,11 +22,10 @@ struct AccountView: View {
             }
         }
         .onAppear {
-            Task { await authState.refreshTokenIfNeeded() }
-            authState.refreshSubscriptionIfNeeded()
+            refreshAccountOverview()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            authState.refreshSubscriptionIfNeeded()
+            refreshAccountOverview()
         }
         .sheet(
             item: Binding(
@@ -53,25 +53,45 @@ struct AccountView: View {
     private var subscriptionCard: some View {
         StudioCard {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
-                HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
-                    VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                    HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
                         Text(L("auth.account.subscription"))
                             .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
                             .foregroundStyle(StudioTheme.textPrimary)
 
-                        Text(L(subscriptionPresentation.subtitleKey))
-                            .font(.studioBody(StudioTheme.Typography.body))
-                            .foregroundStyle(StudioTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+
+                        HStack(spacing: StudioTheme.Spacing.small) {
+                            StudioButton(
+                                title: L("auth.account.refreshSubscription"),
+                                systemImage: "arrow.clockwise",
+                                variant: .secondary,
+                                isDisabled: authState.isLoadingSubscription || isOpeningBilling,
+                                isLoading: authState.isLoadingSubscription
+                            ) {
+                                Task { await authState.refreshSubscription() }
+                            }
+
+                            StudioButton(
+                                title: subscriptionPresentation.billingAction == .manageBilling
+                                    ? L("auth.account.manageBilling")
+                                    : L("auth.account.subscribe"),
+                                systemImage: "arrow.up.forward.app",
+                                variant: .primary,
+                                isDisabled: isOpeningBilling,
+                                isLoading: isOpeningBilling
+                            ) {
+                                openBillingFlow()
+                            }
+                        }
                     }
 
-                    Spacer()
-
-                    if authState.isLoadingSubscription {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
+                    Text(L(subscriptionPresentation.subtitleKey))
+                        .font(.studioBody(StudioTheme.Typography.body))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
                     accountSummaryItem(
@@ -100,38 +120,87 @@ struct AccountView: View {
                         .foregroundStyle(StudioTheme.danger)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-
-                HStack(spacing: StudioTheme.Spacing.small) {
-                    Spacer()
-
-                    StudioButton(
-                        title: L("auth.account.refreshSubscription"),
-                        systemImage: "arrow.clockwise",
-                        variant: .secondary,
-                        isDisabled: authState.isLoadingSubscription || isOpeningBilling,
-                        isLoading: authState.isLoadingSubscription
-                    ) {
-                        Task { await authState.refreshSubscription() }
-                    }
-
-                    StudioButton(
-                        title: subscriptionPresentation.billingAction == .manageBilling
-                            ? L("auth.account.manageBilling")
-                            : L("auth.account.subscribe"),
-                        systemImage: "arrow.up.forward.app",
-                        variant: .primary,
-                        isDisabled: isOpeningBilling,
-                        isLoading: isOpeningBilling
-                    ) {
-                        openBillingFlow()
-                    }
-                }
             }
         }
     }
 
     private var subscriptionPresentation: AccountSubscriptionPresentation {
         AccountSubscriptionPresentation.make(from: authState.subscription)
+    }
+
+    private var usageCard: some View {
+        StudioCard {
+            VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
+                    HStack(alignment: .center, spacing: StudioTheme.Spacing.medium) {
+                        Text(L("auth.account.usage"))
+                            .font(.studioDisplay(StudioTheme.Typography.sectionTitle, weight: .bold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+
+                        Spacer()
+
+                        StudioButton(
+                            title: L("auth.account.refreshUsage"),
+                            systemImage: "arrow.clockwise",
+                            variant: .secondary,
+                            isDisabled: authState.isLoadingUsage,
+                            isLoading: authState.isLoadingUsage
+                        ) {
+                            Task { await authState.refreshUsage() }
+                        }
+                    }
+
+                    Text(usageRangeDescription)
+                        .font(.studioBody(StudioTheme.Typography.body))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
+                    accountSummaryItem(
+                        label: L("auth.account.usageAudio"),
+                        value: formattedAudioDuration(authState.usageStats.asrAudioDurationMs),
+                        systemImage: "waveform"
+                    )
+
+                    accountSummaryItem(
+                        label: L("auth.account.usageTokens"),
+                        value: formattedCount(authState.usageStats.chatTotalTokens),
+                        systemImage: "text.bubble"
+                    )
+
+                    accountSummaryItem(
+                        label: L("auth.account.usageRequests"),
+                        value: formattedCount(authState.usageStats.totalRequests),
+                        systemImage: "bolt.horizontal"
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
+                    accountSummaryItem(
+                        label: L("auth.account.usageTranscripts"),
+                        value: formattedCount(authState.usageStats.asrOutputChars),
+                        systemImage: "character.cursor.ibeam"
+                    )
+
+                    accountSummaryItem(
+                        label: L("auth.account.usageAnswers"),
+                        value: formattedCount(authState.usageStats.chatOutputChars),
+                        systemImage: "quote.bubble"
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let error = authState.usageError {
+                    Text(error)
+                        .font(.studioBody(StudioTheme.Typography.caption))
+                        .foregroundStyle(StudioTheme.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
     }
 
     private func localized(_ value: AccountSubscriptionPresentation.TextValue) -> String {
@@ -299,6 +368,8 @@ struct AccountView: View {
             Text(value)
                 .font(.studioBody(StudioTheme.Typography.bodyLarge, weight: .semibold))
                 .foregroundStyle(StudioTheme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(StudioTheme.Spacing.medium)
@@ -348,6 +419,34 @@ struct AccountView: View {
             return display.string(from: date)
         }
         return dateString
+    }
+
+    private var usageRangeDescription: String {
+        guard let start = authState.usagePeriodStart,
+              let end = authState.usagePeriodEnd else {
+            return L("auth.account.usageCycleUnavailable")
+        }
+        return String(
+            format: L("auth.account.usagePeriodHint"),
+            formattedDate(start),
+            formattedDate(end)
+        )
+    }
+
+    private func formattedAudioDuration(_ milliseconds: Int64) -> String {
+        AccountUsageDisplayFormatter.audioDuration(milliseconds)
+    }
+
+    private func formattedCount(_ value: Int64) -> String {
+        AccountUsageDisplayFormatter.count(value)
+    }
+
+    private func refreshAccountOverview() {
+        Task {
+            await authState.refreshTokenIfNeeded()
+            await authState.refreshSubscription()
+            await authState.refreshUsage()
+        }
     }
 
     private func handlePrimaryAction() {
