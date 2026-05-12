@@ -164,6 +164,38 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertEqual(personaPrompt, customPersona.prompt)
     }
 
+    func testActivePersonaUsesFocusedAppBindingPersonaID() {
+        let appPersona = PersonaProfile(name: "Chat Reply", prompt: "Keep it warm and casual.")
+        let controller = makeWorkflowController(configureSettings: { settingsStore in
+            let globalPersona = settingsStore.personas[0]
+            settingsStore.personas = settingsStore.personas + [appPersona]
+            settingsStore.applyPersonaSelection(globalPersona.id)
+            settingsStore.savePersonaAppBinding(
+                appIdentifier: "com.tinyspeck.slackmacgap",
+                personaID: appPersona.id,
+            )
+        })
+        let selectionSnapshot = TextSelectionSnapshot(
+            processID: 1,
+            processName: "Slack",
+            bundleIdentifier: "com.tinyspeck.slackmacgap",
+            selectedRange: nil,
+            selectedText: nil,
+            source: "accessibility",
+            isEditable: true,
+            role: "AXTextArea",
+            windowTitle: "DM",
+            isFocusedTarget: true,
+        )
+
+        let persona = controller.activePersona(
+            selectionSnapshot: selectionSnapshot,
+            inputContext: nil,
+        )
+
+        XCTAssertEqual(persona?.id, appPersona.id)
+    }
+
     func testActivePersonaPromptUsesNoPersonaAppBindingOverDefaultPersona() {
         let controller = makeWorkflowController(configureSettings: { settingsStore in
             let defaultPersona = settingsStore.personas[0]

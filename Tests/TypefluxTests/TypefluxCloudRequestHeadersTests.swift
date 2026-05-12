@@ -59,6 +59,26 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         XCTAssertNil(headers["User-Agent"])
         XCTAssertNil(headers[TypefluxCloudRequestHeaders.clientIDField])
     }
+
+    func testApplyPersonaIDAddsPersonaHeader() {
+        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
+        var request = URLRequest(url: URL(string: "https://cloud.typeflux.dev/api/v1/asr/ws/default")!)
+
+        TypefluxCloudRequestHeaders.applyPersonaID(personaID, to: &request)
+
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField),
+            personaID.uuidString,
+        )
+    }
+
+    func testApplyPersonaIDSkipsNilPersonaID() {
+        var request = URLRequest(url: URL(string: "https://cloud.typeflux.dev/api/v1/asr/ws/default")!)
+
+        TypefluxCloudRequestHeaders.applyPersonaID(nil, to: &request)
+
+        XCTAssertNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField))
+    }
 }
 
 private extension TypefluxCloudClientInfoProvider {

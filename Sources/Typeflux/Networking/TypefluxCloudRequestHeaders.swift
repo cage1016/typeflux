@@ -120,6 +120,7 @@ enum TypefluxCloudRequestHeaders {
     static let clientOSField = "x-client-os"
     static let clientOSVersionField = "x-client-os-version"
     static let clientArchitectureField = "x-client-architecture"
+    static let personaIDField = "x-persona-id"
 
     static func applyScenario(_ scenario: TypefluxCloudScenario, to request: inout URLRequest) {
         request.setValue(scenario.rawValue, forHTTPHeaderField: scenarioField)
@@ -140,6 +141,11 @@ enum TypefluxCloudRequestHeaders {
         request.setValue(info.osName, forHTTPHeaderField: clientOSField)
         request.setValue(info.osVersion, forHTTPHeaderField: clientOSVersionField)
         request.setValue(info.architecture, forHTTPHeaderField: clientArchitectureField)
+    }
+
+    static func applyPersonaID(_ personaID: UUID?, to request: inout URLRequest) {
+        guard let personaID else { return }
+        request.setValue(personaID.uuidString, forHTTPHeaderField: personaIDField)
     }
 
     static func applyCloudHeaders(
