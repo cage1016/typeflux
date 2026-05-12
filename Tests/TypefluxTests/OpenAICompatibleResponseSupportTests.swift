@@ -134,6 +134,19 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         XCTAssertTrue(OpenAICompatibleResponseSupport.shouldRetryWithoutCustomThinkingTuning(error: error))
     }
 
+    func testDetectsUnsupportedThinkingParameterStreamErrorEvents() throws {
+        let data = try jsonData([
+            "error": [
+                "message": "unknown parameter: thinking",
+                "status": 400,
+            ],
+        ])
+
+        let error = try XCTUnwrap(OpenAICompatibleResponseSupport.streamError(from: data))
+
+        XCTAssertTrue(OpenAICompatibleResponseSupport.shouldRetryWithoutCustomThinkingTuning(error: error))
+    }
+
     func testDoesNotRetryForUnrelatedCustomErrors() {
         let error = NSError(
             domain: "LLM",

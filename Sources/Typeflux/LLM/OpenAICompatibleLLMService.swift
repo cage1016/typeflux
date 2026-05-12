@@ -305,7 +305,7 @@ final class OpenAICompatibleLLMService: LLMService {
 }
 
 enum RemoteLLMClient {
-    static var customThinkingTuningStore = LLMThinkingTuningAdaptationStore()
+    static let customThinkingTuningStore = LLMThinkingTuningAdaptationStore()
 
     static func streamRewrite(
         provider: LLMRemoteProvider,
@@ -487,51 +487,71 @@ enum RemoteLLMClient {
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
         NetworkDebugLogger.logRequest(urlRequest)
 
-        var final = ""
-        var thinkingFilter = OpenAICompatibleResponseSupport.StreamingThinkingFilter()
-        var usedCandidate = tuningCandidate
-        var observedReasoning = false
+        var currentRequest = urlRequest
+        var currentCandidate = tuningCandidate
 
-        do {
-            let stream = try await sseLinesWithCustomThinkingAdaptation(
-                urlRequest,
-                baseBody: baseBody,
-                provider: provider,
-                baseURL: baseURL,
-                candidate: tuningCandidate,
-            )
-            usedCandidate = stream.candidate
-            for try await line in stream.lines {
-                if line == "[DONE]" { break }
+        while true {
+            var final = ""
+            var thinkingFilter = OpenAICompatibleResponseSupport.StreamingThinkingFilter()
+            var usedCandidate = currentCandidate
+            var observedReasoning = false
 
-                guard let data = line.data(using: .utf8) else { continue }
-                let content = OpenAICompatibleResponseSupport.extractTextDelta(from: data)
-                if let content, !content.isEmpty {
-                    if let filtered = thinkingFilter.process(content) {
-                        final += filtered
-                        continuation.yield(filtered)
+            do {
+                let stream = try await sseLinesWithCustomThinkingAdaptation(
+                    currentRequest,
+                    baseBody: baseBody,
+                    provider: provider,
+                    baseURL: baseURL,
+                    candidate: currentCandidate,
+                )
+                usedCandidate = stream.candidate
+                for try await line in stream.lines {
+                    if line == "[DONE]" { break }
+
+                    guard let data = line.data(using: .utf8) else { continue }
+                    if let streamError = OpenAICompatibleResponseSupport.streamError(from: data) {
+                        throw streamError
                     }
-                } else if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
-                    observedReasoning = true
-                    continue
+                    let content = OpenAICompatibleResponseSupport.extractTextDelta(from: data)
+                    if let content, !content.isEmpty {
+                        if let filtered = thinkingFilter.process(content) {
+                            final += filtered
+                            continuation.yield(filtered)
+                        }
+                    } else if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
+                        observedReasoning = true
+                        continue
+                    }
                 }
+                if let remaining = thinkingFilter.flush() {
+                    final += remaining
+                    continuation.yield(remaining)
+                }
+                recordCustomThinkingTuningSuccess(
+                    provider: provider,
+                    baseURL: baseURL,
+                    candidate: usedCandidate,
+                    containsThinking: observedReasoning || thinkingFilter.observedThinking,
+                )
+                return final
+            } catch {
+                NetworkDebugLogger.logError(context: "LLM stream failed", error: error)
+                guard final.isEmpty,
+                      let next = try nextCustomThinkingRetry(
+                          after: error,
+                          provider: provider,
+                          baseURL: baseURL,
+                          failedCandidate: usedCandidate,
+                          originalRequest: urlRequest,
+                          baseBody: baseBody,
+                      )
+                else {
+                    throw error
+                }
+                currentRequest = next.request
+                currentCandidate = next.candidate
             }
-            if let remaining = thinkingFilter.flush() {
-                final += remaining
-                continuation.yield(remaining)
-            }
-            recordCustomThinkingTuningSuccess(
-                provider: provider,
-                baseURL: baseURL,
-                candidate: usedCandidate,
-                containsThinking: observedReasoning || thinkingFilter.observedThinking,
-            )
-        } catch {
-            NetworkDebugLogger.logError(context: "LLM stream failed", error: error)
-            throw error
         }
-
-        return final
     }
 
     private static func previewOpenAICompatible(
@@ -570,36 +590,64 @@ enum RemoteLLMClient {
         )
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        var collected = ""
-        var thinkingFilter = OpenAICompatibleResponseSupport.StreamingThinkingFilter()
-        var observedReasoning = false
-        let stream = try await sseLinesWithCustomThinkingAdaptation(
-            urlRequest,
-            baseBody: baseBody,
-            provider: provider,
-            baseURL: baseURL,
-            candidate: tuningCandidate,
-        )
-        for try await chunk in stream.lines {
-            if chunk == "[DONE]" { break }
-            guard let data = chunk.data(using: .utf8) else { continue }
-            if let content = OpenAICompatibleResponseSupport.extractTextDelta(from: data), !content.isEmpty {
-                let filtered = thinkingFilter.process(content) ?? ""
-                collected += filtered
-                if collected.count >= 60 {
-                    break
+        var currentRequest = urlRequest
+        var currentCandidate = tuningCandidate
+
+        while true {
+            var collected = ""
+            var thinkingFilter = OpenAICompatibleResponseSupport.StreamingThinkingFilter()
+            var observedReasoning = false
+            var usedCandidate = currentCandidate
+
+            do {
+                let stream = try await sseLinesWithCustomThinkingAdaptation(
+                    currentRequest,
+                    baseBody: baseBody,
+                    provider: provider,
+                    baseURL: baseURL,
+                    candidate: currentCandidate,
+                )
+                usedCandidate = stream.candidate
+                for try await chunk in stream.lines {
+                    if chunk == "[DONE]" { break }
+                    guard let data = chunk.data(using: .utf8) else { continue }
+                    if let streamError = OpenAICompatibleResponseSupport.streamError(from: data) {
+                        throw streamError
+                    }
+                    if let content = OpenAICompatibleResponseSupport.extractTextDelta(from: data), !content.isEmpty {
+                        let filtered = thinkingFilter.process(content) ?? ""
+                        collected += filtered
+                        if collected.count >= 60 {
+                            break
+                        }
+                    } else if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
+                        observedReasoning = true
+                    }
                 }
-            } else if OpenAICompatibleResponseSupport.containsReasoningDelta(data) {
-                observedReasoning = true
+                recordCustomThinkingTuningSuccess(
+                    provider: provider,
+                    baseURL: baseURL,
+                    candidate: usedCandidate,
+                    containsThinking: observedReasoning || thinkingFilter.observedThinking,
+                )
+                return collected
+            } catch {
+                guard collected.isEmpty,
+                      let next = try nextCustomThinkingRetry(
+                          after: error,
+                          provider: provider,
+                          baseURL: baseURL,
+                          failedCandidate: usedCandidate,
+                          originalRequest: urlRequest,
+                          baseBody: baseBody,
+                      )
+                else {
+                    throw error
+                }
+                currentRequest = next.request
+                currentCandidate = next.candidate
             }
         }
-        recordCustomThinkingTuningSuccess(
-            provider: provider,
-            baseURL: baseURL,
-            candidate: stream.candidate,
-            containsThinking: observedReasoning || thinkingFilter.observedThinking,
-        )
-        return collected
     }
 
     private static func requestOpenAICompatible(

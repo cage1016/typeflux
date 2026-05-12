@@ -93,7 +93,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             baseURL: baseURL,
             candidate: tuningCandidate,
         )
-        let rawText = Self.rawOpenAIText(from: result.data)
+        let rawText = LLMAgentResponseSupport.extractOpenAICompatibleText(from: result.data) ?? ""
         let containsThinking = OpenAICompatibleResponseSupport.containsLeadingThinkingTags(rawText)
         let turnResult = parseOpenAITurnResult(from: result.data)
         if !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -105,17 +105,6 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             )
         }
         return turnResult
-    }
-
-    private static func rawOpenAIText(from data: Data) -> String {
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choice = (object["choices"] as? [[String: Any]])?.first,
-              let message = choice["message"] as? [String: Any],
-              let text = message["content"] as? String
-        else {
-            return ""
-        }
-        return text
     }
 
     func buildOpenAIBody(
@@ -163,7 +152,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             return AgentTurnResult(turn: .text(""), tokenUsage: nil)
         }
 
-        let rawText = message["content"] as? String ?? ""
+        let rawText = OpenAICompatibleResponseSupport.extractTextDelta(from: data) ?? ""
         let text = OpenAICompatibleResponseSupport.stripLeadingThinkingTags(rawText)
         let toolCallsRaw = message["tool_calls"] as? [[String: Any]] ?? []
 

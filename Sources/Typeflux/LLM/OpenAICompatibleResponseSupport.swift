@@ -209,6 +209,27 @@ enum OpenAICompatibleResponseSupport {
         return false
     }
 
+    static func streamError(from data: Data) -> Error? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = object["error"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        let message = (error["message"] as? String)
+            ?? (error["code"] as? String)
+            ?? "Unknown stream error"
+        let status = (error["status"] as? Int)
+            ?? (error["status_code"] as? Int)
+            ?? (error["code"] as? Int)
+            ?? 400
+        return NSError(
+            domain: "SSE",
+            code: status,
+            userInfo: [NSLocalizedDescriptionKey: "HTTP \(status): \(message)"],
+        )
+    }
+
     static func shouldDisableThinking(
         baseURL: URL,
         model: String,

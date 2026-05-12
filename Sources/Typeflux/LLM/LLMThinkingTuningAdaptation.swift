@@ -138,12 +138,13 @@ struct LLMThinkingTuningAdaptationState: Codable, Equatable {
     }
 }
 
-final class LLMThinkingTuningAdaptationStore {
+final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
     static let cooldownInterval: TimeInterval = 24 * 60 * 60
 
     private let defaults: UserDefaults
     private let now: () -> Date
     private let defaultsKey = "llm.custom.thinkingTuning.adaptationStates"
+    private let lock = NSLock()
 
     init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init) {
         self.defaults = defaults
@@ -151,6 +152,95 @@ final class LLMThinkingTuningAdaptationStore {
     }
 
     func candidate(for baseURL: URL) -> LLMThinkingTuningCandidate? {
+        locked {
+            candidateLocked(for: baseURL)
+        }
+    }
+
+    func applyCandidate(
+        to body: inout [String: Any],
+        for baseURL: URL,
+    ) -> LLMThinkingTuningCandidate? {
+        guard let candidate = candidate(for: baseURL) else { return nil }
+        for (key, value) in candidate.parameters {
+            body[key] = value
+        }
+        return candidate
+    }
+
+    func recordUnsupportedParameter(baseURL: URL, candidate: LLMThinkingTuningCandidate?) {
+        guard let candidate else { return }
+        locked {
+            recordFailureLocked(baseURL: baseURL, candidate: candidate, reason: .unsupportedParameter)
+        }
+    }
+
+    func recordSuccess(
+        baseURL: URL,
+        candidate: LLMThinkingTuningCandidate?,
+        containsThinking: Bool,
+    ) {
+        guard let candidate else { return }
+        locked {
+            if containsThinking {
+                let state = stateLocked(for: baseURL)
+                let reason: LLMThinkingTuningFailureReason = if state.mode == .locked,
+                                                                state.lockedCandidateID == candidate.id
+                {
+                    .regressed
+                } else {
+                    .ineffective
+                }
+                recordFailureLocked(baseURL: baseURL, candidate: candidate, reason: reason)
+                return
+            }
+
+            let key = Self.normalizedBaseURLKey(baseURL)
+            var states = loadStates()
+            let failures = states[key]?.failures ?? []
+            states[key] = .locked(candidateID: candidate.id, lockedAt: now(), failures: failures)
+            saveStates(states)
+        }
+    }
+
+    func state(for baseURL: URL) -> LLMThinkingTuningAdaptationState {
+        locked {
+            stateLocked(for: baseURL)
+        }
+    }
+
+    func reset(baseURL: URL) {
+        let key = Self.normalizedBaseURLKey(baseURL)
+        locked {
+            var states = loadStates()
+            states.removeValue(forKey: key)
+            saveStates(states)
+        }
+    }
+
+    func resetAll() {
+        locked {
+            defaults.removeObject(forKey: defaultsKey)
+        }
+    }
+
+    static func normalizedBaseURLKey(_ url: URL) -> String {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+        components.scheme = components.scheme?.lowercased()
+        components.host = components.host?.lowercased()
+        components.query = nil
+        components.fragment = nil
+
+        var value = components.string ?? url.absoluteString
+        while value.hasSuffix("/") {
+            value.removeLast()
+        }
+        return value
+    }
+
+    private func candidateLocked(for baseURL: URL) -> LLMThinkingTuningCandidate? {
         let key = Self.normalizedBaseURLKey(baseURL)
         var states = loadStates()
         let state = states[key] ?? .probing()
@@ -181,73 +271,11 @@ final class LLMThinkingTuningAdaptationStore {
         }
     }
 
-    func applyCandidate(
-        to body: inout [String: Any],
-        for baseURL: URL,
-    ) -> LLMThinkingTuningCandidate? {
-        guard let candidate = candidate(for: baseURL) else { return nil }
-        for (key, value) in candidate.parameters {
-            body[key] = value
-        }
-        return candidate
-    }
-
-    func recordUnsupportedParameter(baseURL: URL, candidate: LLMThinkingTuningCandidate?) {
-        guard let candidate else { return }
-        recordFailure(baseURL: baseURL, candidate: candidate, reason: .unsupportedParameter)
-    }
-
-    func recordSuccess(
-        baseURL: URL,
-        candidate: LLMThinkingTuningCandidate?,
-        containsThinking: Bool,
-    ) {
-        guard let candidate else { return }
-        if containsThinking {
-            let state = state(for: baseURL)
-            let reason: LLMThinkingTuningFailureReason = if state.mode == .locked,
-                                                            state.lockedCandidateID == candidate.id
-            {
-                .regressed
-            } else {
-                .ineffective
-            }
-            recordFailure(baseURL: baseURL, candidate: candidate, reason: reason)
-            return
-        }
-
-        let key = Self.normalizedBaseURLKey(baseURL)
-        var states = loadStates()
-        let failures = states[key]?.failures ?? []
-        states[key] = .locked(candidateID: candidate.id, lockedAt: now(), failures: failures)
-        saveStates(states)
-    }
-
-    func state(for baseURL: URL) -> LLMThinkingTuningAdaptationState {
+    private func stateLocked(for baseURL: URL) -> LLMThinkingTuningAdaptationState {
         loadStates()[Self.normalizedBaseURLKey(baseURL)] ?? .probing()
     }
 
-    func resetAll() {
-        defaults.removeObject(forKey: defaultsKey)
-    }
-
-    static func normalizedBaseURLKey(_ url: URL) -> String {
-        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            return url.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        }
-        components.scheme = components.scheme?.lowercased()
-        components.host = components.host?.lowercased()
-        components.query = nil
-        components.fragment = nil
-
-        var value = components.string ?? url.absoluteString
-        while value.hasSuffix("/") {
-            value.removeLast()
-        }
-        return value
-    }
-
-    private func recordFailure(
+    private func recordFailureLocked(
         baseURL: URL,
         candidate: LLMThinkingTuningCandidate,
         reason: LLMThinkingTuningFailureReason,
@@ -288,7 +316,17 @@ final class LLMThinkingTuningAdaptationStore {
     }
 
     private func saveStates(_ states: [String: LLMThinkingTuningAdaptationState]) {
+        guard !states.isEmpty else {
+            defaults.removeObject(forKey: defaultsKey)
+            return
+        }
         guard let data = try? JSONEncoder().encode(states) else { return }
         defaults.set(data, forKey: defaultsKey)
+    }
+
+    private func locked<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
     }
 }

@@ -97,6 +97,26 @@ final class LLMThinkingTuningAdaptationTests: XCTestCase {
         XCTAssertEqual(store.state(for: baseURL).mode, .probing)
     }
 
+    func testSettingsStoreClearsOnlyPreviousAndNextCustomBaseURLStates() throws {
+        let settings = SettingsStore(defaults: defaults)
+        settings.llmRemoteProvider = .custom
+        let nextBaseURL = try XCTUnwrap(URL(string: "https://other.example.com/v1"))
+        let unrelatedBaseURL = try XCTUnwrap(URL(string: "https://unrelated.example.com/v1"))
+
+        settings.setLLMBaseURL(baseURL.absoluteString, for: .custom)
+        for url in [baseURL, nextBaseURL, unrelatedBaseURL] {
+            let candidate = try XCTUnwrap(store.candidate(for: url))
+            store.recordSuccess(baseURL: url, candidate: candidate, containsThinking: false)
+            XCTAssertEqual(store.state(for: url).mode, .locked)
+        }
+
+        settings.setLLMBaseURL(nextBaseURL.absoluteString, for: .custom)
+
+        XCTAssertEqual(store.state(for: baseURL).mode, .probing)
+        XCTAssertEqual(store.state(for: nextBaseURL).mode, .probing)
+        XCTAssertEqual(store.state(for: unrelatedBaseURL).mode, .locked)
+    }
+
     private var baseURL: URL {
         URL(string: "https://llm.example.com/v1")!
     }
