@@ -19,6 +19,22 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertNotNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientIDField))
     }
 
+    func testWebSocketRequestIncludesPersonaIDHeaderWhenProvided() throws {
+        let personaID = SettingsStore.defaultPersonaID
+
+        let request = try TypefluxOfficialASRRequestFactory.makeWebSocketRequest(
+            apiBaseURL: "https://cloud.typeflux.dev",
+            token: "token-123",
+            scenario: .voiceInput,
+            personaID: personaID,
+        )
+
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField),
+            personaID.uuidString,
+        )
+    }
+
     func testReceiveFailureIsUnexpectedBeforeCompletionWithoutFinalSegments() {
         XCTAssertTrue(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(

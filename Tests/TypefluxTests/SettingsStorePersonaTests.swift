@@ -17,6 +17,21 @@ final class SettingsStorePersonaTests: XCTestCase {
         XCTAssertTrue(translatorPersona.prompt.contains("always produce the final output in natural English"))
     }
 
+    func testBuiltInPersonasUseStableCloudIdentifiers() throws {
+        let suiteName = "SettingsStorePersonaTests.stableIDs.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = SettingsStore(defaults: defaults)
+
+        let typefluxPersona = try XCTUnwrap(store.personas.first(where: { $0.name == "Typeflux" }))
+        let translatorPersona = try XCTUnwrap(store.personas.first(where: { $0.name == "English Translator" }))
+
+        XCTAssertEqual(typefluxPersona.id, UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001"))
+        XCTAssertEqual(translatorPersona.id, UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA002"))
+        XCTAssertTrue(typefluxPersona.isSystem)
+        XCTAssertTrue(translatorPersona.isSystem)
+    }
+
     func testResolvedTypefluxPersonaUsesAppLanguagePrompt() throws {
         let suiteName = "SettingsStorePersonaTests.localizedTypeflux.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

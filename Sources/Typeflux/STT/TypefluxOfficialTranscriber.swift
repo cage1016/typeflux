@@ -13,6 +13,15 @@ struct ASRLLMConfig: Encodable {
     /// User prompt template containing "{{transcript}}" as a placeholder for the
     /// final transcription text. The server substitutes it before calling the LLM.
     let userPromptTemplate: String
+    /// Stable identifier for the persona used to build the prompts. This is sent
+    /// as a request header only, not as part of the WebSocket start payload.
+    let personaID: UUID?
+
+    init(systemPrompt: String, userPromptTemplate: String, personaID: UUID? = nil) {
+        self.systemPrompt = systemPrompt
+        self.userPromptTemplate = userPromptTemplate
+        self.personaID = personaID
+    }
 
     enum CodingKeys: String, CodingKey {
         case systemPrompt = "system_prompt"
@@ -563,6 +572,7 @@ enum TypefluxOfficialASRRequestFactory {
         token: String,
         scenario: TypefluxCloudScenario,
         provider: String = "default",
+        personaID: UUID? = nil,
     ) throws -> URLRequest {
         let wsScheme = apiBaseURL.hasPrefix("https") ? "wss" : "ws"
         let host = apiBaseURL
@@ -577,6 +587,7 @@ enum TypefluxOfficialASRRequestFactory {
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         TypefluxCloudRequestHeaders.applyCloudHeaders(scenario: scenario, to: &request)
+        TypefluxCloudRequestHeaders.applyPersonaID(personaID, to: &request)
         return request
     }
 }
@@ -598,6 +609,7 @@ private actor TypefluxOfficialASRSession {
             token: token,
             scenario: scenario,
             provider: provider,
+            personaID: nil,
             onASRUpdate: onUpdate,
             llmConfig: nil,
             onLLMStart: nil,
@@ -623,6 +635,7 @@ private actor TypefluxOfficialASRSession {
             token: token,
             scenario: scenario,
             provider: "default",
+            personaID: llmConfig.personaID,
             onASRUpdate: onASRUpdate,
             llmConfig: llmConfig,
             onLLMStart: onLLMStart,
@@ -636,6 +649,7 @@ private actor TypefluxOfficialASRSession {
     private let token: String
     private let scenario: TypefluxCloudScenario
     private let provider: String
+    private let personaID: UUID?
     private let onASRUpdate: @Sendable (TranscriptionSnapshot) async -> Void
     private let llmConfig: ASRLLMConfig?
     private let onLLMStart: (@Sendable () async -> Void)?
@@ -654,6 +668,7 @@ private actor TypefluxOfficialASRSession {
         token: String,
         scenario: TypefluxCloudScenario,
         provider: String,
+        personaID: UUID?,
         onASRUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
         llmConfig: ASRLLMConfig?,
         onLLMStart: (@Sendable () async -> Void)?,
@@ -664,6 +679,7 @@ private actor TypefluxOfficialASRSession {
         self.token = token
         self.scenario = scenario
         self.provider = provider
+        self.personaID = personaID
         self.onASRUpdate = onASRUpdate
         self.llmConfig = llmConfig
         self.onLLMStart = onLLMStart
@@ -676,6 +692,7 @@ private actor TypefluxOfficialASRSession {
             token: token,
             scenario: scenario,
             provider: provider,
+            personaID: personaID,
         )
         let session = URLSession(configuration: .default)
         let socketTask = session.webSocketTask(with: request)
