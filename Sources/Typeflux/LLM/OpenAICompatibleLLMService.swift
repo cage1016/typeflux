@@ -754,6 +754,9 @@ enum RemoteLLMClient {
             throw NSError(domain: "LLM", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid response."])
         }
         guard (200 ..< 300).contains(http.statusCode) else {
+            if let billingError = TypefluxCloudBillingError.fromHTTPStatus(http.statusCode, bodyData: data) {
+                throw billingError
+            }
             let message = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw NSError(domain: "LLM", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(message)"])
         }
@@ -775,6 +778,9 @@ enum SSEClient {
                 errorBodyData.append(byte)
             }
             NetworkDebugLogger.logResponse(http, data: errorBodyData)
+            if let billingError = TypefluxCloudBillingError.fromHTTPStatus(http.statusCode, bodyData: errorBodyData) {
+                throw billingError
+            }
             let errorBody = String(data: errorBodyData, encoding: .utf8) ?? "Unknown error"
             throw NSError(domain: "SSE", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(errorBody)"])
         }

@@ -724,6 +724,15 @@ private actor TypefluxOfficialASRSession {
         await receiveTask.value
 
         if let error = sessionError {
+            let transcript = assembleTranscript()
+            if llmConfig != nil,
+               !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               TypefluxCloudBillingError.fromError(error) != nil {
+                throw TypefluxCloudIntegratedRewriteError(
+                    transcript: transcript,
+                    underlyingError: error,
+                )
+            }
             throw error
         }
 
@@ -809,7 +818,8 @@ private actor TypefluxOfficialASRSession {
         case "error":
             let errorText = json["error"] as? String ?? "Unknown error"
             logger.error("ASR server error: \(errorText)")
-            sessionError = TypefluxOfficialASRError.serverError(errorText)
+            sessionError = TypefluxCloudBillingError.fromMessage(errorText)
+                ?? TypefluxOfficialASRError.serverError(errorText)
             completed = true
 
         default:
@@ -970,7 +980,8 @@ private actor TypefluxOfficialRealtimePCMStream: PCM16RealtimeTranscriptionSessi
         case "error":
             let errorText = json["error"] as? String ?? "Unknown error"
             logger.error("ASR server error: \(errorText)")
-            sessionError = TypefluxOfficialASRError.serverError(errorText)
+            sessionError = TypefluxCloudBillingError.fromMessage(errorText)
+                ?? TypefluxOfficialASRError.serverError(errorText)
             completed = true
         default:
             break

@@ -42,6 +42,8 @@ final class OverlayControllerTests: XCTestCase {
                 OverlayFailureAction(
                     title: "Retry",
                     isRetry: true,
+                    style: .text,
+                    trailingSystemImage: "gearshape",
                     handler: {},
                 ),
             ],
@@ -50,5 +52,7 @@ final class OverlayControllerTests: XCTestCase {
 
         XCTAssertEqual(wrapped[0].title, "Retry")
         XCTAssertTrue(wrapped[0].isRetry)
+        XCTAssertEqual(wrapped[0].style, .text)
+        XCTAssertEqual(wrapped[0].trailingSystemImage, "gearshape")
     }
 }

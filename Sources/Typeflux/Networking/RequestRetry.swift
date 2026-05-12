@@ -25,6 +25,10 @@ enum RequestRetry {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                if TypefluxCloudBillingError.fromError(error) != nil {
+                    throw error
+                }
+
                 guard attempt < retryDelays.count else {
                     NetworkDebugLogger.logError(
                         context: "\(operationName) failed after \(attempt + 1) attempts",

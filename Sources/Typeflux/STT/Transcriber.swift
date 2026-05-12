@@ -487,6 +487,12 @@ final class STTRouter {
             )
         } catch {
             NetworkDebugLogger.logError(context: "Typeflux Official integrated STT+LLM failed", error: error)
+            if let integratedError = error as? TypefluxCloudIntegratedRewriteError {
+                NetworkDebugLogger.logMessage(
+                    "Integrated Typeflux Cloud LLM failed after ASR completed; using transcript fallback",
+                )
+                return (transcript: integratedError.transcript, rewritten: nil)
+            }
             if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onASRUpdate) {
                 NetworkDebugLogger.logMessage("Auto local model succeeded after integrated Typeflux Official failure")
                 return (transcript: localResult, rewritten: nil)

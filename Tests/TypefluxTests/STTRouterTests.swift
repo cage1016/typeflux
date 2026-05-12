@@ -84,6 +84,40 @@ private final class MockScenarioAwareTranscriber: TypefluxCloudScenarioAwareTran
     }
 }
 
+private final class MockIntegratedTypefluxTranscriber: TypefluxCloudLLMIntegratedTranscriber {
+    var resultToReturn: (transcript: String, rewritten: String?) = ("transcribed", "rewritten")
+    var errorToThrow: Error?
+    var integratedCallCount = 0
+
+    func transcribe(audioFile _: AudioFile, scenario _: TypefluxCloudScenario) async throws -> String {
+        resultToReturn.transcript
+    }
+
+    func transcribeStream(
+        audioFile _: AudioFile,
+        scenario _: TypefluxCloudScenario,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+    ) async throws -> String {
+        await onUpdate(TranscriptionSnapshot(text: resultToReturn.transcript, isFinal: true))
+        return resultToReturn.transcript
+    }
+
+    func transcribeStreamWithLLMRewrite(
+        audioFile _: AudioFile,
+        llmConfig _: ASRLLMConfig,
+        scenario _: TypefluxCloudScenario,
+        onASRUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onLLMStart _: @escaping @Sendable () async -> Void,
+        onLLMChunk _: @escaping @Sendable (String) async -> Void,
+    ) async throws -> (transcript: String, rewritten: String?) {
+        integratedCallCount += 1
+        if let errorToThrow {
+            throw errorToThrow
+        }
+        return resultToReturn
+    }
+}
+
 final class STTRouterTests: XCTestCase {
     private var defaults: UserDefaults!
     private var settings: SettingsStore!
@@ -139,6 +173,7 @@ final class STTRouterTests: XCTestCase {
     private func makeRouter(
         localModelOverride: Transcriber? = nil,
         doubaoRealtimeOverride: Transcriber? = nil,
+        typefluxOfficialOverride: Transcriber? = nil,
         isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = { false },
     ) -> STTRouter {
         STTRouter(
@@ -152,7 +187,7 @@ final class STTRouterTests: XCTestCase {
             doubaoRealtime: doubaoRealtimeOverride ?? doubaoRealtime,
             googleCloud: googleCloud,
             groq: groq,
-            typefluxOfficial: typefluxOfficial,
+            typefluxOfficial: typefluxOfficialOverride ?? typefluxOfficial,
             isTypefluxCloudLoggedIn: isTypefluxCloudLoggedIn,
         )
     }
@@ -438,5 +473,30 @@ final class STTRouterTests: XCTestCase {
         XCTAssertEqual(result, "transcribed")
         XCTAssertEqual(scenarioAware.lastScenario, .askAnything)
         XCTAssertEqual(scenarioAware.transcribeCallCount, 1)
+    }
+
+    func testIntegratedBillingFailureAfterASRReturnsTranscriptFallback() async throws {
+        settings.sttProvider = .typefluxOfficial
+        settings.useAppleSpeechFallback = true
+        let integrated = MockIntegratedTypefluxTranscriber()
+        integrated.errorToThrow = TypefluxCloudIntegratedRewriteError(
+            transcript: "already transcribed",
+            underlyingError: TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nil),
+        )
+        let router = makeRouter(typefluxOfficialOverride: integrated)
+
+        let result = try await router.transcribeStreamWithLLMRewrite(
+            audioFile: dummyAudioFile(),
+            llmConfig: ASRLLMConfig(systemPrompt: "sys", userPromptTemplate: "{{transcript}}"),
+            scenario: .voiceInput,
+            onASRUpdate: { _ in },
+            onLLMStart: {},
+            onLLMChunk: { _ in },
+        )
+
+        XCTAssertEqual(result.transcript, "already transcribed")
+        XCTAssertNil(result.rewritten)
+        XCTAssertEqual(integrated.integratedCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
     }
 }

@@ -37,7 +37,14 @@ enum TypefluxCloudServerErrorMessage {
              "INSUFFICIENT_CREDITS",
              "CREDIT_EXHAUSTED":
             return "cloud.error.quotaExceeded"
-        case "PLAN_REQUIRED", "SUBSCRIPTION_REQUIRED":
+        case "PLAN_REQUIRED",
+             "SUBSCRIPTION_REQUIRED",
+             "PAYMENT_REQUIRED",
+             "BILLING_PAST_DUE",
+             "INVOICE_PAST_DUE",
+             "INVOICE_UNPAID",
+             "SUBSCRIPTION_PAST_DUE",
+             "SUBSCRIPTION_UNPAID":
             return "cloud.error.planRequired"
         case "SERVER_ERROR", "INTERNAL", "INTERNAL_SERVER_ERROR":
             return "cloud.error.server"

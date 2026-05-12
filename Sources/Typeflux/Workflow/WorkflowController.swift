@@ -1256,6 +1256,49 @@ final class WorkflowController {
             )
         }
     }
+
+    func presentCloudBillingError(_ error: TypefluxCloudBillingError) async {
+        await MainActor.run {
+            self.shouldPreserveLLMConfigurationNotice = true
+            self.soundEffectPlayer.play(.tip)
+
+            let actions: [OverlayFailureAction] = [
+                OverlayFailureAction(
+                    title: L("cloud.billing.action.subscribe"),
+                    isRetry: false,
+                    trailingSystemImage: "arrow.up.right",
+                    handler: { [weak self] in
+                        guard let self else { return }
+                        SettingsWindowController.shared.show(
+                            settingsStore: self.settingsStore,
+                            historyStore: self.historyStore,
+                            initialSection: .account,
+                        )
+                    },
+                ),
+                OverlayFailureAction(
+                    title: L("cloud.billing.action.switchModel"),
+                    isRetry: false,
+                    style: .text,
+                    handler: { [weak self] in
+                        guard let self else { return }
+                        SettingsWindowController.shared.show(
+                            settingsStore: self.settingsStore,
+                            historyStore: self.historyStore,
+                            initialSection: .models,
+                        )
+                    },
+                ),
+            ]
+
+            self.overlayController.showFailureWithActions(
+                title: error.title,
+                message: error.localizedDescription,
+                tone: .billing,
+                actions: actions,
+            )
+        }
+    }
 }
 
 // swiftlint:enable file_length function_body_length line_length type_body_length

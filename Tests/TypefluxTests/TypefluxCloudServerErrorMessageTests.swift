@@ -28,6 +28,24 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
         )
     }
 
+    func testBillingErrorParsesSubscriptionRequiredHTTPBody() {
+        let body = Data(#"{"code":"SUBSCRIPTION_REQUIRED","message":"active subscription required"}"#.utf8)
+        let error = TypefluxCloudBillingError.fromHTTPStatus(402, bodyData: body)
+
+        XCTAssertEqual(error?.reason, .subscriptionRequired)
+    }
+
+    func testBillingErrorParsesQuotaAndPaymentCodes() {
+        XCTAssertEqual(
+            TypefluxCloudBillingError.fromServerCode("INSUFFICIENT_CREDITS", message: nil)?.reason,
+            .quotaExceeded
+        )
+        XCTAssertEqual(
+            TypefluxCloudBillingError.fromServerCode("PAYMENT_REQUIRED", message: nil)?.reason,
+            .subscriptionRequired
+        )
+    }
+
     func testUnknownCodeUsesTrimmedServerMessageThenFallback() {
         XCTAssertEqual(
             TypefluxCloudServerErrorMessage.userMessage(

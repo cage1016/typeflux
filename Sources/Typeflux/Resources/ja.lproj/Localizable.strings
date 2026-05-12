@@ -1031,6 +1031,13 @@
 "cloud.error.quotaExceeded" = "Typeflux Cloud の利用枠を使い切りました。";
 "cloud.error.planRequired" = "現在のプランではこの Typeflux Cloud 機能を利用できません。アカウント画面で購読または請求管理を行ってください。";
 "cloud.error.server" = "Typeflux Cloud は一時的に利用できません。後でもう一度お試しください。";
+"cloud.billing.subscriptionRequired.title" = "Typeflux Cloud の購読が必要です";
+"cloud.billing.subscriptionRequired.body" = "このクラウド機能は現在のプランに含まれていません。購読すると Typeflux Cloud を引き続き利用できます。";
+"cloud.billing.quotaExceeded.title" = "Typeflux Cloud の利用枠が不足しています";
+"cloud.billing.quotaExceeded.body" = "クラウドの利用枠またはクレジットが現在利用できません。アカウント画面で購読または請求を確認してください。";
+"cloud.billing.action.openAccount" = "アカウントを開く";
+"cloud.billing.action.subscribe" = "購読する";
+"cloud.billing.action.switchModel" = "別のモデルに切り替え";
 
 "auth.account.provider" = "ログイン方法";
 "auth.account.memberSince" = "登録日";

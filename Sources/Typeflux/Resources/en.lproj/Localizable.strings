@@ -1042,6 +1042,13 @@
 "cloud.error.quotaExceeded" = "Your Typeflux Cloud usage quota has been exhausted.";
 "cloud.error.planRequired" = "Your current plan does not include this Typeflux Cloud feature. Open Account to subscribe or manage billing.";
 "cloud.error.server" = "Typeflux Cloud is temporarily unavailable. Please try again later.";
+"cloud.billing.subscriptionRequired.title" = "Typeflux Cloud needs a subscription";
+"cloud.billing.subscriptionRequired.body" = "This Cloud feature is not included in your current plan. Subscribe to keep using Typeflux Cloud.";
+"cloud.billing.quotaExceeded.title" = "Typeflux Cloud quota used up";
+"cloud.billing.quotaExceeded.body" = "Your Cloud quota or credits are currently unavailable. Open Account to review your subscription or billing.";
+"cloud.billing.action.openAccount" = "Open Account";
+"cloud.billing.action.subscribe" = "Subscribe";
+"cloud.billing.action.switchModel" = "Switch Model";
 
 "auth.account.provider" = "Login Method";
 "auth.account.memberSince" = "Member Since";

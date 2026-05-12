@@ -856,6 +856,18 @@ extension WorkflowController {
             logPipelineEvent("pipeline-failed", for: record)
             UsageStatsStore.shared.recordSession(record: record)
             enforceHistoryRetentionPolicy()
+            if let billingError = TypefluxCloudBillingError.fromError(error) {
+                let shouldPresentBilling = await MainActor.run {
+                    guard self.processingSessionID == sessionID else { return false }
+                    self.lastRetryableFailureRecord = nil
+                    self.appState.setStatus(.failed(message: billingError.title))
+                    return true
+                }
+                if shouldPresentBilling {
+                    await presentCloudBillingError(billingError)
+                }
+                return
+            }
             let retryableFailureRecord = record.audioFilePath == nil ? nil : record
 
             await MainActor.run {
@@ -1412,6 +1424,7 @@ extension WorkflowController {
         saveHistoryRecord(record)
 
         let rewriteOutput: String
+        var billingFallbackError: TypefluxCloudBillingError?
         if let merged = mergedLLMResult {
             // Rewrite already completed as part of the merged ASR+LLM WebSocket session.
             // The overlay was updated with streaming chunks during transcription, so we
@@ -1480,6 +1493,15 @@ extension WorkflowController {
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
                 record.personaResultText = transcribedText
+            } catch let error where TypefluxCloudBillingError.fromError(error) != nil {
+                let billingError = TypefluxCloudBillingError.fromError(error)
+                ErrorLogStore.shared.log(
+                    "Typeflux Cloud billing requirement during persona rewrite, using transcript as fallback",
+                )
+                pipelineTiming.llmProcessingCompletedAt = Date()
+                rewriteOutput = transcribedText
+                record.personaResultText = transcribedText
+                billingFallbackError = billingError
             } catch {
                 // All other failures (network error, API error, etc.) are surfaced to the
                 // user as a retryable failure so they are never silently swallowed.
@@ -1500,6 +1522,10 @@ extension WorkflowController {
         record.pipelineTiming = pipelineTiming
         record.applyStatus = .succeeded
         record.applyMessage = outcome.message
+
+        if let billingFallbackError {
+            await presentCloudBillingError(billingFallbackError)
+        }
     }
 
     private func processDictationFlow(

@@ -204,9 +204,10 @@ private func overlayPickerSystemKeyCallback(
 }
 
 struct OverlayFailureAction {
-    enum Style {
+    enum Style: Equatable {
         case primary
         case secondary
+        case text
     }
 
     let title: String
@@ -228,6 +229,11 @@ struct OverlayFailureAction {
         self.trailingSystemImage = trailingSystemImage
         self.handler = handler
     }
+}
+
+enum OverlayFailureTone {
+    case error
+    case billing
 }
 
 final class OverlayController {
@@ -521,6 +527,7 @@ final class OverlayController {
         model.presentation = .failure
         model.statusText = L("overlay.failure.title")
         model.detailText = message
+        model.failureTone = .error
         model.failureActions = []
         refreshWindow()
     }
@@ -536,6 +543,7 @@ final class OverlayController {
         model.presentation = .failure
         model.statusText = L("overlay.failure.title")
         model.detailText = message
+        model.failureTone = .error
         model.failureActions = wrapFailureActions([
             OverlayFailureAction(
                 title: L("common.retry"),
@@ -557,6 +565,7 @@ final class OverlayController {
         model.presentation = .failure
         model.statusText = L("overlay.timeout.title")
         model.detailText = L("overlay.timeout.message")
+        model.failureTone = .error
         model.failureActions = wrapFailureActions([
             OverlayFailureAction(
                 title: L("common.retry"),
@@ -567,17 +576,30 @@ final class OverlayController {
         refreshWindow()
     }
 
-    func showFailureWithActions(message: String, actions: [OverlayFailureAction]) {
+    func showFailureWithActions(
+        title: String = L("overlay.failure.title"),
+        message: String,
+        tone: OverlayFailureTone = .error,
+        actions: [OverlayFailureAction],
+    ) {
         if !Thread.isMainThread {
-            DispatchQueue.main.async { [weak self] in self?.showFailureWithActions(message: message, actions: actions) }
+            DispatchQueue.main.async { [weak self] in
+                self?.showFailureWithActions(
+                    title: title,
+                    message: message,
+                    tone: tone,
+                    actions: actions,
+                )
+            }
             return
         }
         cancelPendingPresentationTransition()
         dismissWorkItem?.cancel()
         ensureWindow()
         model.presentation = .failure
-        model.statusText = L("overlay.failure.title")
+        model.statusText = title
         model.detailText = message
+        model.failureTone = tone
         model.failureActions = wrapFailureActions(actions)
         refreshWindow()
     }
@@ -590,6 +612,8 @@ final class OverlayController {
             OverlayFailureAction(
                 title: action.title,
                 isRetry: action.isRetry,
+                style: action.style,
+                trailingSystemImage: action.trailingSystemImage,
                 handler: {
                     beforeAction()
                     action.handler()
@@ -948,10 +972,12 @@ final class OverlayController {
                 interactive: true,
             )
         case .failure:
-            let actionCount = model.failureActions.count
-            let failureHeight: CGFloat = actionCount == 0 ? 216 : 216 + CGFloat(actionCount) * 40
+            let actionHeight = model.failureActions.reduce(CGFloat(0)) { height, action in
+                height + (action.style == .text ? 28 : 44)
+            }
+            let failureHeight: CGFloat = model.failureActions.isEmpty ? 208 : 212 + actionHeight
             return OverlayMetrics(
-                size: NSSize(width: 352, height: failureHeight), anchor: .bottom, offset: 80,
+                size: NSSize(width: 372, height: failureHeight), anchor: .bottom, offset: 80,
                 interactive: true,
             )
         case .personaPicker:
@@ -1286,6 +1312,7 @@ final class OverlayViewModel: ObservableObject {
     @Published var personaPickerIcon: OverlayController.PersonaPickerIcon = .none
     @Published var pickerStyle: OverlayController.PickerStyle = .persona
     @Published var failureActions: [OverlayFailureAction] = []
+    @Published var failureTone: OverlayFailureTone = .error
     var onDismissRequested: (() -> Void)?
     var onCancelRequested: (() -> Void)?
     var onConfirmRequested: (() -> Void)?
@@ -1539,39 +1566,29 @@ private struct OverlayView: View {
     }
 
     private var failureCard: some View {
-        OverlayCard(width: 352, hostedInWindowChrome: true, shadowed: false) {
-            VStack(alignment: .leading, spacing: 12) {
+        OverlayCard(width: 372, hostedInWindowChrome: true, shadowed: false) {
+            VStack(alignment: .leading, spacing: 14) {
                 cardHeader(
-                    icon: "exclamationmark.circle",
-                    accent: Color(red: 1.0, green: 0.42, blue: 0.08), title: model.statusText,
+                    icon: failureIcon,
+                    accent: failureAccent,
+                    title: model.statusText,
                     dismissible: true,
                 )
 
                 ScrollView(showsIndicators: false) {
                     Text(model.detailText)
-                        .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.72))
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(Color.white.opacity(0.78))
+                        .lineSpacing(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
                 }
-                .frame(maxHeight: model.failureActions.isEmpty ? 92 : 124)
+                .frame(maxHeight: model.failureActions.isEmpty ? 96 : 132)
 
                 ForEach(Array(model.failureActions.enumerated()), id: \.offset) { index, action in
                     Button(action: { model.requestFailureAction(at: index) }) {
-                        HStack(spacing: 6) {
-                            Text(action.title)
-                                .font(.system(size: 13, weight: .semibold))
-
-                            if let trailingSystemImage = action.trailingSystemImage {
-                                Image(systemName: trailingSystemImage)
-                                    .font(.system(size: 11, weight: .semibold))
-                            }
-                        }
-                        .foregroundStyle(action.style == .primary ? Color.white : Color.white.opacity(0.68))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, action.style == .primary ? 7 : 5)
-                        .background(failureActionBackground(for: action.style))
+                        failureActionLabel(action)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1580,19 +1597,73 @@ private struct OverlayView: View {
     }
 
     @ViewBuilder
+    private func failureActionLabel(_ action: OverlayFailureAction) -> some View {
+        if action.style == .text {
+            HStack(spacing: 5) {
+                Text(action.title)
+                    .font(.system(size: 12.5, weight: .medium))
+
+                if let trailingSystemImage = action.trailingSystemImage {
+                    Image(systemName: trailingSystemImage)
+                        .font(.system(size: 10.5, weight: .medium))
+                }
+            }
+            .foregroundStyle(Color.white.opacity(0.58))
+            .frame(maxWidth: .infinity)
+            .padding(.top, 2)
+            .padding(.bottom, 1)
+            .contentShape(Rectangle())
+        } else {
+            HStack(spacing: 6) {
+                Text(action.title)
+                    .font(.system(size: 13, weight: .semibold))
+
+                if let trailingSystemImage = action.trailingSystemImage {
+                    Image(systemName: trailingSystemImage)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+            }
+            .foregroundStyle(action.style == .primary ? Color.white : Color.white.opacity(0.68))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, action.style == .primary ? 8 : 6)
+            .background(failureActionBackground(for: action.style))
+        }
+    }
+
+    private var failureIcon: String {
+        switch model.failureTone {
+        case .error:
+            "exclamationmark.circle"
+        case .billing:
+            "creditcard.circle"
+        }
+    }
+
+    private var failureAccent: Color {
+        switch model.failureTone {
+        case .error:
+            Color(red: 1.0, green: 0.56, blue: 0.28)
+        case .billing:
+            Color(red: 0.34, green: 0.70, blue: 1.0)
+        }
+    }
+
+    @ViewBuilder
     private func failureActionBackground(for style: OverlayFailureAction.Style) -> some View {
         switch style {
         case .primary:
             RoundedRectangle(cornerRadius: 8).fill(
-                Color(red: 1.0, green: 0.42, blue: 0.08).opacity(0.55),
+                failureAccent.opacity(model.failureTone == .billing ? 0.62 : 0.48),
             )
         case .secondary:
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(0.045))
+                .fill(Color.white.opacity(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 0.8),
+                        .stroke(Color.white.opacity(0.09), lineWidth: 0.8),
                 )
+        case .text:
+            Color.clear
         }
     }
 

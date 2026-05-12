@@ -269,6 +269,25 @@ extension WorkflowController {
                 UsageStatsStore.shared.recordSession(record: record)
                 enforceHistoryRetentionPolicy()
 
+                if let billingError = TypefluxCloudBillingError.fromError(error) {
+                    let shouldPresentBilling = await MainActor.run {
+                        defer {
+                            self.processingTask = nil
+                            self.activeProcessingRecordID = nil
+                        }
+                        if self.processingSessionID == sessionID {
+                            self.appState.setStatus(.failed(message: billingError.title))
+                            return true
+                        }
+                        return false
+                    }
+                    if shouldPresentBilling {
+                        await self.presentCloudBillingError(billingError)
+                    }
+                    cancelProcessingTimeout()
+                    return
+                }
+
                 await MainActor.run {
                     if self.processingSessionID == sessionID {
                         self.soundEffectPlayer.play(.error)
