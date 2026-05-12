@@ -442,9 +442,12 @@ extension WorkflowController {
                 ? askContextText(from: selectionSnapshot, inputContext: inputContext)
                 : nil
             currentSelectedText = selectedText
-            let personaPrompt = recordingIntent == .askSelection
+            let activePersonaProfile = recordingIntent == .askSelection
                 ? nil
-                : activePersonaPrompt(selectionSnapshot: selectionSnapshot, inputContext: inputContext)
+                : activePersona(selectionSnapshot: selectionSnapshot, inputContext: inputContext)
+            let personaPrompt = activePersonaProfile.map {
+                settingsStore.resolvedPersonaPrompt(for: $0)
+            }
 
             NetworkDebugLogger.logMessage(selectionSnapshotLog(selectionSnapshot))
             if WorkflowOverlayPresentationPolicy.shouldShowProcessingAfterRecording() {
@@ -498,6 +501,7 @@ extension WorkflowController {
                     askContextText: askContextText,
                     inputContext: inputContext,
                     personaPrompt: personaPrompt,
+                    personaID: activePersonaProfile?.id,
                     recordingIntent: recordingIntent,
                     sessionID: sessionID,
                     recordingPreviewText: recordingPreviewText,
@@ -615,6 +619,7 @@ extension WorkflowController {
         askContextText: String?,
         inputContext: InputContextSnapshot?,
         personaPrompt: String?,
+        personaID: UUID? = nil,
         recordingIntent: RecordingIntent,
         sessionID: UUID,
         forceResultDialogOnSuccess: Bool = false,
@@ -680,6 +685,7 @@ extension WorkflowController {
                 let mergedResult = try await performMergedCloudTranscription(
                     audioFile: audioFile,
                     personaPrompt: resolvedPersonaPrompt,
+                    personaID: personaID,
                     selectionSnapshot: selectionSnapshot,
                     cloudScenario: cloudScenario,
                     sessionID: sessionID,
@@ -1319,6 +1325,7 @@ extension WorkflowController {
     /// placeholder for the actual transcript text.
     private func buildASRLLMConfig(
         personaPrompt: String,
+        personaID: UUID?,
         selectionSnapshot: TextSelectionSnapshot,
     ) -> ASRLLMConfig {
         let placeholderRequest = LLMRewriteRequest(
@@ -1346,6 +1353,7 @@ extension WorkflowController {
         return ASRLLMConfig(
             systemPrompt: effectiveSystemPrompt,
             userPromptTemplate: prompts.user,
+            personaID: personaID,
         )
     }
 
@@ -1355,11 +1363,16 @@ extension WorkflowController {
     private func performMergedCloudTranscription(
         audioFile: AudioFile,
         personaPrompt: String,
+        personaID: UUID?,
         selectionSnapshot: TextSelectionSnapshot,
         cloudScenario: TypefluxCloudScenario,
         sessionID: UUID,
     ) async throws -> (transcript: String, rewritten: String?) {
-        let llmConfig = buildASRLLMConfig(personaPrompt: personaPrompt, selectionSnapshot: selectionSnapshot)
+        let llmConfig = buildASRLLMConfig(
+            personaPrompt: personaPrompt,
+            personaID: personaID,
+            selectionSnapshot: selectionSnapshot,
+        )
         let llmBuffer = LLMStreamBuffer()
         let suppressStreamingPreview = shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider
 
@@ -1718,7 +1731,17 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         inputContext: InputContextSnapshot?,
     ) -> String? {
-        settingsStore.effectivePersonaPrompt(
+        guard let persona = activePersona(selectionSnapshot: selectionSnapshot, inputContext: inputContext) else {
+            return nil
+        }
+        return settingsStore.resolvedPersonaPrompt(for: persona)
+    }
+
+    func activePersona(
+        selectionSnapshot: TextSelectionSnapshot,
+        inputContext: InputContextSnapshot?,
+    ) -> PersonaProfile? {
+        settingsStore.effectivePersona(
             appName: inputContext?.appName ?? selectionSnapshot.processName,
             bundleIdentifier: inputContext?.bundleIdentifier ?? selectionSnapshot.bundleIdentifier,
         )
