@@ -45,9 +45,8 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         let llmConfig = settingsStore.textLLMConfiguration()
         let appLanguage = settingsStore.appLanguage
         let effectiveSystemPrompt: String = {
-            var prompt = PromptCatalog.appendUserEnvironmentContext(
+            var prompt = PromptCatalog.appendLanguageResolutionPolicy(
                 to: request.systemPrompt,
-                appLanguage: appLanguage,
             )
             if let appContext = request.appSystemContext {
                 let extra = PromptCatalog.appSpecificSystemContext(appContext)
@@ -57,6 +56,10 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             }
             return prompt
         }()
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: request.userPrompt,
+            appLanguage: appLanguage,
+        )
 
         return try await RequestRetry.perform(operationName: "LLM agent tool call") { [weak self] in
             guard let self else { throw CancellationError() }
@@ -74,7 +77,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
                     additionalHeaders: additionalHeaders,
                     request: LLMAgentRequest(
                         systemPrompt: effectiveSystemPrompt,
-                        userPrompt: request.userPrompt,
+                        userPrompt: effectiveUserPrompt,
                         tools: request.tools,
                         forcedToolName: request.forcedToolName,
                     ),
@@ -94,9 +97,8 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
         let llmConfig = settingsStore.textLLMConfiguration()
         let appLanguage = settingsStore.appLanguage
         let effectiveSystemPrompt: String = {
-            var prompt = PromptCatalog.appendUserEnvironmentContext(
+            var prompt = PromptCatalog.appendLanguageResolutionPolicy(
                 to: request.systemPrompt,
-                appLanguage: appLanguage,
             )
             if let appContext = request.appSystemContext {
                 let extra = PromptCatalog.appSpecificSystemContext(appContext)
@@ -106,6 +108,10 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
             }
             return prompt
         }()
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: request.userPrompt,
+            appLanguage: appLanguage,
+        )
 
         return try await RequestRetry.perform(operationName: "LLM phase 1 router call") { [weak self] in
             guard let self else { throw CancellationError() }
@@ -123,7 +129,7 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
                     additionalHeaders: additionalHeaders,
                     request: LLMAgentRequest(
                         systemPrompt: effectiveSystemPrompt,
-                        userPrompt: request.userPrompt,
+                        userPrompt: effectiveUserPrompt,
                         tools: request.tools,
                         forcedToolName: request.forcedToolName,
                     ),

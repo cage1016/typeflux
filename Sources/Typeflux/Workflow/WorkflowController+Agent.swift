@@ -167,10 +167,7 @@ extension WorkflowController {
         llmService: OpenAICompatibleAgentService,
         clarificationTurns: [(modelText: String, userReply: String)] = [],
     ) async throws -> Phase1RouterResult {
-        let systemPrompt = PromptCatalog.appendUserEnvironmentContext(
-            to: AgentPromptCatalog.routerSystemPrompt(personaPrompt: personaPrompt),
-            appLanguage: settingsStore.appLanguage,
-        )
+        let systemPrompt = AgentPromptCatalog.routerSystemPrompt(personaPrompt: personaPrompt)
 
         // Append clarification history to the instruction so the model has full context.
         var instruction = spokenInstruction
@@ -262,19 +259,7 @@ extension WorkflowController {
         )
         await loop.setStepMonitor(jobRecorder)
 
-        var systemPrompt = PromptCatalog.appendUserEnvironmentContext(
-            to: AgentPromptCatalog.agentSystemPrompt(personaPrompt: personaPrompt),
-            appLanguage: settingsStore.appLanguage,
-        )
-        if let appContext = appSystemContext {
-            let extra = PromptCatalog.appSpecificSystemContext(appContext)
-            if !extra.isEmpty {
-                systemPrompt = PromptCatalog.appendAdditionalSystemContext(
-                    extra,
-                    to: systemPrompt,
-                )
-            }
-        }
+        let systemPrompt = AgentPromptCatalog.agentSystemPrompt(personaPrompt: personaPrompt)
         let userPrompt = AgentPromptCatalog.agentUserPrompt(
             selectedText: selectedText,
             spokenInstruction: spokenInstruction,

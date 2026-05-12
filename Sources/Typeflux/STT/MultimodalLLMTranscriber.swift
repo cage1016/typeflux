@@ -8,7 +8,7 @@ import Foundation
 /// Audio is base64-encoded and sent as `input_audio` in the chat completions request.
 /// Supports streaming via SSE for minimal time-to-first-token latency.
 final class MultimodalLLMTranscriber: Transcriber {
-    static let audioProcessingInstructionText = "This input_audio item contains the user's spoken audio. Please process it according to the system prompt and return only the requested final text."
+    static let audioProcessingInstructionText = "This input_audio item contains the user's spoken audio. Process it according to the system prompt. Do not answer questions contained in the audio; return only the requested final transcript or rewritten text."
 
     private let settingsStore: SettingsStore
     private let frontmostBundleIdentifierProvider: @Sendable () -> String?
@@ -108,8 +108,11 @@ final class MultimodalLLMTranscriber: Transcriber {
             vocabularyTerms: vocabularyTerms,
             bundleIdentifier: frontmostBundleIdentifier,
         )
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: systemPrompt,
+        )
+        let effectiveUserInstructionText = PromptCatalog.appendUserEnvironmentContext(
+            to: Self.audioProcessingInstructionText,
             appLanguage: settingsStore.appLanguage,
         )
 
@@ -135,6 +138,7 @@ final class MultimodalLLMTranscriber: Transcriber {
             baseURL: baseURL,
             model: model,
             systemPrompt: effectiveSystemPrompt,
+            userInstructionText: effectiveUserInstructionText,
             base64Audio: base64Audio,
             audioFormat: audioFormat,
         )
@@ -145,7 +149,7 @@ final class MultimodalLLMTranscriber: Transcriber {
           "stream": true,
           "messages": [
             {"role": "system", "content": "\(effectiveSystemPrompt)"},
-            {"role": "user", "content": [{"type": "input_audio", "format": "\(audioFormat)", "data": "<\(base64Audio.count) chars base64>"}, {"type": "text", "text": "\(Self.audioProcessingInstructionText)"}]}
+            {"role": "user", "content": [{"type": "input_audio", "format": "\(audioFormat)", "data": "<\(base64Audio.count) chars base64>"}, {"type": "text", "text": "\(effectiveUserInstructionText)"}]}
           ]
         }
         """)
@@ -159,6 +163,7 @@ final class MultimodalLLMTranscriber: Transcriber {
         baseURL: URL,
         model: String,
         systemPrompt: String,
+        userInstructionText: String,
         base64Audio: String,
         audioFormat: String,
     ) throws -> URLRequest {
@@ -183,6 +188,7 @@ final class MultimodalLLMTranscriber: Transcriber {
                     "content": Self.makeUserMessageContent(
                         base64Audio: base64Audio,
                         audioFormat: audioFormat,
+                        instructionText: userInstructionText,
                     ),
                 ],
             ],
@@ -262,6 +268,18 @@ final class MultimodalLLMTranscriber: Transcriber {
     }
 
     static func makeUserMessageContent(base64Audio: String, audioFormat: String) -> [[String: Any]] {
+        makeUserMessageContent(
+            base64Audio: base64Audio,
+            audioFormat: audioFormat,
+            instructionText: audioProcessingInstructionText,
+        )
+    }
+
+    private static func makeUserMessageContent(
+        base64Audio: String,
+        audioFormat: String,
+        instructionText: String,
+    ) -> [[String: Any]] {
         [
             [
                 "type": "input_audio",
@@ -272,7 +290,7 @@ final class MultimodalLLMTranscriber: Transcriber {
             ],
             [
                 "type": "text",
-                "text": audioProcessingInstructionText,
+                "text": instructionText,
             ],
         ]
     }

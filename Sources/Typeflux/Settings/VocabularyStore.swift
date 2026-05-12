@@ -98,7 +98,7 @@ enum VocabularyStore {
     /// Maximum number of terms returned to speech recognition as hints. Beyond this
     /// point most ASR backends either truncate silently or waste prompt budget, so
     /// we cap the list and let ranking decide who stays.
-    static let activeTermLimit = 100
+    static let activeTermLimit = 500
 
     static func load() -> [VocabularyEntry] {
         guard let data = UserDefaults.standard.data(forKey: key) else {
