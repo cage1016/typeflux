@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import os
 
 extension Notification.Name {
@@ -9,31 +10,61 @@ extension Notification.Name {
     )
 }
 
-/// Switches STT and LLM selections to the Typeflux Cloud providers after a
-/// successful explicit login, and notifies the user about the change.
+@MainActor
+protocol CloudModelDefaultsPrompting: AnyObject {
+    func confirmSwitchToCloudDefaults() -> Bool
+    func showCloudDefaultsApplied()
+}
+
+@MainActor
+final class CloudModelDefaultsAlertPresenter: CloudModelDefaultsPrompting {
+    func confirmSwitchToCloudDefaults() -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = L("cloud.subscriptionSwitch.title")
+        alert.informativeText = L("cloud.subscriptionSwitch.body")
+        alert.addButton(withTitle: L("cloud.subscriptionSwitch.confirm"))
+        alert.addButton(withTitle: L("cloud.subscriptionSwitch.keepCurrent"))
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    func showCloudDefaultsApplied() {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = L("cloud.subscriptionSwitch.successTitle")
+        alert.informativeText = L("cloud.subscriptionSwitch.successBody")
+        alert.addButton(withTitle: L("common.ok"))
+        NSApp.activate(ignoringOtherApps: true)
+        _ = alert.runModal()
+    }
+}
+
+/// Offers to switch STT and LLM selections to the Typeflux Cloud providers
+/// after checkout confirms an active Cloud subscription.
 ///
-/// Listens for `.authDidLogin` (posted by ``AuthState/handleLoginSuccess(token:expiresAt:refreshToken:)``)
-/// and is intentionally silent when both providers already point at Cloud so
-/// users who routinely sign back in are not pestered.
+/// Listens for `.authCheckoutSubscriptionDidBecomeEntitled` and is
+/// intentionally silent when both providers already point at Cloud.
 @MainActor
 final class CloudLoginSyncCoordinator {
-    static let notificationIdentifier = "ai.gulu.app.typeflux.cloud-auto-switch"
-
     private let settingsStore: SettingsStore
-    private let notifications: LocalNotificationSending
+    private let promptPresenter: CloudModelDefaultsPrompting
     private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "CloudLoginSyncCoordinator")
     private var observer: NSObjectProtocol?
 
-    init(settingsStore: SettingsStore, notifications: LocalNotificationSending) {
+    init(
+        settingsStore: SettingsStore,
+        promptPresenter: CloudModelDefaultsPrompting? = nil,
+    ) {
         self.settingsStore = settingsStore
-        self.notifications = notifications
+        self.promptPresenter = promptPresenter ?? CloudModelDefaultsAlertPresenter()
         observer = NotificationCenter.default.addObserver(
-            forName: .authDidLogin,
+            forName: .authCheckoutSubscriptionDidBecomeEntitled,
             object: nil,
             queue: .main,
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.applyCloudDefaults()
+                self?.offerCloudDefaultsIfNeeded()
             }
         }
     }
@@ -44,33 +75,32 @@ final class CloudLoginSyncCoordinator {
         }
     }
 
-    /// Exposed for tests; in production triggered only via `.authDidLogin`.
-    func applyCloudDefaults() {
+    /// Exposed for tests; in production triggered only after checkout confirms
+    /// a newly entitled subscription.
+    func offerCloudDefaultsIfNeeded() {
         let alreadySTTCloud = settingsStore.sttProvider == .typefluxOfficial
         let alreadyLLMCloud = settingsStore.llmProvider == .openAICompatible
             && settingsStore.llmRemoteProvider == .typefluxCloud
 
         guard !(alreadySTTCloud && alreadyLLMCloud) else {
-            logger.debug("Cloud providers already selected; skipping auto-switch notification")
+            logger.debug("Cloud providers already selected; skipping cloud defaults prompt")
             return
         }
 
+        guard promptPresenter.confirmSwitchToCloudDefaults() else {
+            logger.debug("User kept existing model providers after subscription")
+            return
+        }
+
+        applyCloudDefaults()
+        promptPresenter.showCloudDefaultsApplied()
+    }
+
+    private func applyCloudDefaults() {
         settingsStore.sttProvider = .typefluxOfficial
         settingsStore.llmProvider = .openAICompatible
         settingsStore.llmRemoteProvider = .typefluxCloud
         settingsStore.applyDefaultPersonaIfLLMConfigured()
         NotificationCenter.default.post(name: .cloudAccountModelDefaultsDidApply, object: settingsStore)
-
-        let title = L("cloud.autoSwitch.title")
-        let body = L("cloud.autoSwitch.body")
-        let identifier = Self.notificationIdentifier
-        let sender = notifications
-        Task {
-            await sender.sendLocalNotification(
-                title: title,
-                body: body,
-                identifier: identifier,
-            )
-        }
     }
 }

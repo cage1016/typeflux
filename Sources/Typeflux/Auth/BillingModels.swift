@@ -2,19 +2,27 @@ import Foundation
 
 struct BillingSubscriptionSnapshot: Decodable, Equatable {
     let planCode: String?
+    let planName: String?
     let status: String?
     let currentPeriodStart: String?
     let currentPeriodEnd: String?
     let cancelAtPeriodEnd: Bool
     let entitled: Bool
+    let active: Bool
+    let paid: Bool
+    let periodSource: String?
 
     enum CodingKeys: String, CodingKey {
+        case active
+        case paid
         case planCode = "plan_code"
+        case planName = "plan_name"
         case status
         case currentPeriodStart = "current_period_start"
         case currentPeriodEnd = "current_period_end"
         case cancelAtPeriodEnd = "cancel_at_period_end"
         case entitled
+        case periodSource = "period_source"
         case subscription
         case entitlement
     }
@@ -29,14 +37,22 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
         currentPeriodStart: String?,
         currentPeriodEnd: String?,
         cancelAtPeriodEnd: Bool,
-        entitled: Bool
+        entitled: Bool,
+        planName: String? = nil,
+        active: Bool? = nil,
+        paid: Bool? = nil,
+        periodSource: String? = nil
     ) {
         self.planCode = planCode
+        self.planName = planName
         self.status = status
         self.currentPeriodStart = currentPeriodStart
         self.currentPeriodEnd = currentPeriodEnd
         self.cancelAtPeriodEnd = cancelAtPeriodEnd
         self.entitled = entitled
+        self.active = active ?? entitled
+        self.paid = paid ?? Self.defaultPaid(planCode: planCode, status: status)
+        self.periodSource = periodSource
     }
 
     init(from decoder: Decoder) throws {
@@ -44,18 +60,29 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
         let source = (try? root.nestedContainer(keyedBy: CodingKeys.self, forKey: .subscription)) ?? root
         let entitlement = try? root.nestedContainer(keyedBy: EntitlementCodingKeys.self, forKey: .entitlement)
 
+        let planCode = try source.decodeIfPresent(String.self, forKey: .planCode)
         let status = try source.decodeIfPresent(String.self, forKey: .status)
+        let active = try source.decodeIfPresent(Bool.self, forKey: .active)
         let entitled = try entitlement?.decodeIfPresent(Bool.self, forKey: .entitled)
+            ?? source.decodeIfPresent(Bool.self, forKey: .entitled)
             ?? root.decodeIfPresent(Bool.self, forKey: .entitled)
-            ?? Self.defaultEntitlement(for: status, periodEnd: try source.decodeIfPresent(String.self, forKey: .currentPeriodEnd))
+            ?? active
+            ?? Self.defaultEntitlement(
+                for: status,
+                periodEnd: try source.decodeIfPresent(String.self, forKey: .currentPeriodEnd)
+            )
 
         self.init(
-            planCode: try source.decodeIfPresent(String.self, forKey: .planCode),
+            planCode: planCode,
             status: status,
             currentPeriodStart: try source.decodeIfPresent(String.self, forKey: .currentPeriodStart),
             currentPeriodEnd: try source.decodeIfPresent(String.self, forKey: .currentPeriodEnd),
             cancelAtPeriodEnd: try source.decodeIfPresent(Bool.self, forKey: .cancelAtPeriodEnd) ?? false,
-            entitled: entitled
+            entitled: entitled,
+            planName: try source.decodeIfPresent(String.self, forKey: .planName),
+            active: active,
+            paid: try source.decodeIfPresent(Bool.self, forKey: .paid),
+            periodSource: try source.decodeIfPresent(String.self, forKey: .periodSource)
         )
     }
 
@@ -66,6 +93,17 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
         return true
     }
 
+    var hasPaidSubscription: Bool {
+        paid && hasSubscription && !isFreePlan
+    }
+
+    var isFreePlan: Bool {
+        let normalizedPlan = planCode?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedStatus = status?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedSource = periodSource?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return !paid && (normalizedPlan == "free" || normalizedStatus == "free" || normalizedSource == "free")
+    }
+
     static var none: BillingSubscriptionSnapshot {
         BillingSubscriptionSnapshot(
             planCode: nil,
@@ -73,18 +111,31 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
             currentPeriodStart: nil,
             currentPeriodEnd: nil,
             cancelAtPeriodEnd: false,
-            entitled: false
+            entitled: false,
+            active: false,
+            paid: false
         )
     }
 
     private static func defaultEntitlement(for status: String?, periodEnd: String?) -> Bool {
         guard let status else { return false }
         let normalized = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard normalized == "active" || normalized == "trialing" else { return false }
+        guard normalized == "active" || normalized == "trialing" || normalized == "free" else {
+            return false
+        }
         guard let periodEnd, let endDate = ISO8601DateFormatter.typefluxBillingDate(from: periodEnd) else {
             return true
         }
         return endDate > Date()
+    }
+
+    private static func defaultPaid(planCode: String?, status: String?) -> Bool {
+        guard let status, !status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        let normalizedPlan = planCode?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedStatus = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalizedPlan != "free" && normalizedStatus != "free"
     }
 }
 
@@ -111,7 +162,7 @@ struct BillingCheckoutSessionRequest: Encodable {
 }
 
 enum BillingPlan {
-    static let defaultPlanCode = "typeflux_cloud_monthly"
+    static let defaultPlanCode = "pro"
 }
 
 struct AccountSubscriptionPresentation: Equatable {
@@ -129,11 +180,13 @@ struct AccountSubscriptionPresentation: Equatable {
         case unavailable
         case renewsOn(String)
         case endsOn(String)
+        case cycle(start: String?, end: String)
     }
 
     let subtitleKey: String
     let plan: TextValue
     let status: TextValue
+    let periodLabelKey: String
     let period: PeriodValue
     let billingAction: BillingAction
 
@@ -142,12 +195,16 @@ struct AccountSubscriptionPresentation: Equatable {
             subtitleKey: subtitleKey(for: snapshot),
             plan: planValue(for: snapshot),
             status: statusValue(for: snapshot),
+            periodLabelKey: periodLabelKey(for: snapshot),
             period: periodValue(for: snapshot),
-            billingAction: snapshot.hasSubscription ? .manageBilling : .subscribe
+            billingAction: snapshot.hasPaidSubscription ? .manageBilling : .subscribe
         )
     }
 
     private static func subtitleKey(for snapshot: BillingSubscriptionSnapshot) -> String {
+        if snapshot.isFreePlan {
+            return "auth.account.subscriptionFreeHint"
+        }
         if snapshot.entitled {
             return "auth.account.subscriptionActiveHint"
         }
@@ -157,12 +214,22 @@ struct AccountSubscriptionPresentation: Equatable {
         return "auth.account.subscriptionRequiredHint"
     }
 
+    private static func periodLabelKey(for snapshot: BillingSubscriptionSnapshot) -> String {
+        snapshot.isFreePlan ? "auth.account.subscriptionBillingCycle" : "auth.account.subscriptionPeriod"
+    }
+
     private static func planValue(for snapshot: BillingSubscriptionSnapshot) -> TextValue {
         guard let planCode = snapshot.planCode, !planCode.isEmpty else {
             return .localized("auth.account.subscriptionNoPlan")
         }
+        if planCode == "free" {
+            return .localized("auth.account.subscriptionFreePlan")
+        }
         if planCode == BillingPlan.defaultPlanCode {
             return .localized("auth.account.subscriptionDefaultPlan")
+        }
+        if let planName = snapshot.planName, !planName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .literal(planName)
         }
         return .literal(planCode.replacingOccurrences(of: "_", with: " ").capitalized)
     }
@@ -173,6 +240,8 @@ struct AccountSubscriptionPresentation: Equatable {
         }
         let normalized = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         switch normalized {
+        case "free":
+            return .localized("auth.account.subscriptionStatusAvailable")
         case "active":
             return .localized("auth.account.subscriptionStatusActive")
         case "trialing":
@@ -191,6 +260,9 @@ struct AccountSubscriptionPresentation: Equatable {
     private static func periodValue(for snapshot: BillingSubscriptionSnapshot) -> PeriodValue {
         guard let periodEnd = snapshot.currentPeriodEnd else {
             return .unavailable
+        }
+        if snapshot.isFreePlan {
+            return .cycle(start: snapshot.currentPeriodStart, end: periodEnd)
         }
         if snapshot.cancelAtPeriodEnd {
             return .endsOn(periodEnd)

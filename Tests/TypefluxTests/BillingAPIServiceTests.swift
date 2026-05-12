@@ -78,13 +78,49 @@ final class BillingAPIServiceTests: XCTestCase {
         XCTAssertTrue(snapshot.entitled)
     }
 
+    func testFetchSubscriptionDecodesFreePlanAsActiveButNotPaid() async throws {
+        let session = BillingStubSession()
+        await session.setHandler { request in
+            let body = """
+            {
+              "code": "OK",
+              "data": {
+                "active": true,
+                "paid": false,
+                "status": "free",
+                "plan_code": "free",
+                "plan_name": "Free",
+                "current_period_start": "2026-05-12T00:00:00Z",
+                "current_period_end": "2026-06-12T00:00:00Z",
+                "cancel_at_period_end": false,
+                "period_source": "free"
+              }
+            }
+            """
+            return (Data(body.utf8), Self.httpResponse(url: request.url!, status: 200))
+        }
+        let service = makeService(session: session)
+
+        let snapshot = try await service.fetchSubscription(token: "token-1")
+
+        XCTAssertEqual(snapshot.planCode, "free")
+        XCTAssertEqual(snapshot.planName, "Free")
+        XCTAssertEqual(snapshot.status, "free")
+        XCTAssertTrue(snapshot.active)
+        XCTAssertTrue(snapshot.entitled)
+        XCTAssertFalse(snapshot.paid)
+        XCTAssertTrue(snapshot.hasSubscription)
+        XCTAssertFalse(snapshot.hasPaidSubscription)
+        XCTAssertTrue(snapshot.isFreePlan)
+    }
+
     func testCreateCheckoutSessionPostsPlanCodeAndDecodesURL() async throws {
         let session = BillingStubSession()
         await session.setHandler { request in
             XCTAssertEqual(request.url?.absoluteString, "https://api.example/api/v1/billing/checkout-session")
             XCTAssertEqual(request.httpMethod, "POST")
             let json = try XCTUnwrap(JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any])
-            XCTAssertEqual(json["plan_code"] as? String, "typeflux_cloud_monthly")
+            XCTAssertEqual(json["plan_code"] as? String, "pro")
             let body = """
             {"code": "OK", "data": {"session_id": "cs_test_1", "url": "https://checkout.stripe.com/cs_test_1"}}
             """

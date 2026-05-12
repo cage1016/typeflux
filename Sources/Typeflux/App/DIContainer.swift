@@ -60,10 +60,7 @@ final class DIContainer {
             ollama: OllamaAgentService(),
         )
         notificationService = SystemLocalNotificationService.shared
-        cloudLoginSyncCoordinator = CloudLoginSyncCoordinator(
-            settingsStore: settingsStore,
-            notifications: notificationService,
-        )
+        cloudLoginSyncCoordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore)
         localModelManager = LocalModelManager()
         bundledModelAutoSetup = BundledModelAutoSetup(linker: localModelManager)
         autoModelDownloadService = AutoModelDownloadService(

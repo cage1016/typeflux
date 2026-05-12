@@ -155,6 +155,51 @@ final class AuthStateTests: XCTestCase {
         XCTAssertEqual(state.subscription, activeSubscription)
     }
 
+    func testStartCheckoutPostsEntitlementNotificationWhenSubscriptionBecomesActive() async throws {
+        var storedToken: (token: String, expiresAt: Int)?
+        var checkoutStarted = false
+        let activeSubscription = BillingSubscriptionSnapshot(
+            planCode: BillingPlan.defaultPlanCode,
+            status: "active",
+            currentPeriodStart: nil,
+            currentPeriodEnd: "2026-06-01T00:00:00Z",
+            cancelAtPeriodEnd: false,
+            entitled: true
+        )
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { _ in self.makeProfile(email: "checkout-entitled@test.com") },
+            fetchSubscription: { _ in checkoutStarted ? activeSubscription : .none },
+            createCheckoutSession: { _, _ in
+                checkoutStarted = true
+                return BillingCheckoutSession(
+                    sessionID: "cs_test_1",
+                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!
+                )
+            },
+        )
+        await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
+        XCTAssertFalse(state.subscription.entitled)
+
+        let expectation = expectation(description: "checkout subscription entitlement notification")
+        let observer = NotificationCenter.default.addObserver(
+            forName: .authCheckoutSubscriptionDidBecomeEntitled,
+            object: state,
+            queue: .main,
+        ) { _ in
+            expectation.fulfill()
+        }
+
+        _ = try await state.startCheckout()
+
+        await fulfillment(of: [expectation], timeout: 1)
+        NotificationCenter.default.removeObserver(observer)
+    }
+
     func testLogoutClearsSubscription() async {
         var storedToken: (token: String, expiresAt: Int)? = validStoredToken()
         let state = AuthState(

@@ -3,29 +3,25 @@ import XCTest
 
 @MainActor
 final class CloudLoginSyncCoordinatorTests: XCTestCase {
-    func testAppliesCloudDefaultsAndNotifiesWhenBothProvidersDiffer() async throws {
+    func testPromptsAndAppliesCloudDefaultsAfterCheckoutSubscriptionEntitlement() async throws {
         let settingsStore = makeSettingsStore()
         settingsStore.sttProvider = .whisperAPI
         settingsStore.llmProvider = .ollama
         settingsStore.llmRemoteProvider = .openAI
 
-        let notifications = RecordingLocalNotificationService()
-        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, notifications: notifications)
+        let prompt = RecordingCloudModelDefaultsPrompt(shouldConfirm: true)
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, promptPresenter: prompt)
 
-        NotificationCenter.default.post(name: .authDidLogin, object: nil)
+        NotificationCenter.default.post(name: .authCheckoutSubscriptionDidBecomeEntitled, object: nil)
 
-        try await waitForNotificationCount(1, in: notifications)
+        try await waitForPromptCount(1, in: prompt)
 
         XCTAssertEqual(settingsStore.sttProvider, .typefluxOfficial)
         XCTAssertEqual(settingsStore.llmProvider, .openAICompatible)
         XCTAssertEqual(settingsStore.llmRemoteProvider, .typefluxCloud)
         XCTAssertEqual(settingsStore.activePersonaID, SettingsStore.defaultPersonaID.uuidString)
-
-        let first = await notifications.firstNotification()
-        let notification = try XCTUnwrap(first)
-        XCTAssertEqual(notification.title, L("cloud.autoSwitch.title"))
-        XCTAssertEqual(notification.body, L("cloud.autoSwitch.body"))
-        XCTAssertEqual(notification.identifier, CloudLoginSyncCoordinator.notificationIdentifier)
+        XCTAssertEqual(prompt.confirmCallCount, 1)
+        XCTAssertEqual(prompt.successCallCount, 1)
         withExtendedLifetime(coordinator) {}
     }
 
@@ -34,8 +30,8 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         settingsStore.sttProvider = .localModel
         settingsStore.llmProvider = .ollama
 
-        let notifications = RecordingLocalNotificationService()
-        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, notifications: notifications)
+        let prompt = RecordingCloudModelDefaultsPrompt(shouldConfirm: true)
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, promptPresenter: prompt)
         let expectation = expectation(description: "cloud defaults notification")
         let observer = NotificationCenter.default.addObserver(
             forName: .cloudAccountModelDefaultsDidApply,
@@ -45,10 +41,29 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
             expectation.fulfill()
         }
 
-        coordinator.applyCloudDefaults()
+        coordinator.offerCloudDefaultsIfNeeded()
 
         await fulfillment(of: [expectation], timeout: 1)
         NotificationCenter.default.removeObserver(observer)
+        withExtendedLifetime(coordinator) {}
+    }
+
+    func testKeepsCurrentProvidersWhenPromptDeclined() async throws {
+        let settingsStore = makeSettingsStore()
+        settingsStore.sttProvider = .whisperAPI
+        settingsStore.llmProvider = .openAICompatible
+        settingsStore.llmRemoteProvider = .openAI
+
+        let prompt = RecordingCloudModelDefaultsPrompt(shouldConfirm: false)
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, promptPresenter: prompt)
+
+        NotificationCenter.default.post(name: .authCheckoutSubscriptionDidBecomeEntitled, object: nil)
+
+        try await waitForPromptCount(1, in: prompt)
+        XCTAssertEqual(settingsStore.sttProvider, .whisperAPI)
+        XCTAssertEqual(settingsStore.llmProvider, .openAICompatible)
+        XCTAssertEqual(settingsStore.llmRemoteProvider, .openAI)
+        XCTAssertEqual(prompt.successCallCount, 0)
         withExtendedLifetime(coordinator) {}
     }
 
@@ -59,12 +74,12 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         settingsStore.llmProvider = .openAICompatible
         settingsStore.llmRemoteProvider = .openAI
 
-        let notifications = RecordingLocalNotificationService()
-        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, notifications: notifications)
+        let prompt = RecordingCloudModelDefaultsPrompt(shouldConfirm: true)
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, promptPresenter: prompt)
 
-        NotificationCenter.default.post(name: .authDidLogin, object: nil)
+        NotificationCenter.default.post(name: .authCheckoutSubscriptionDidBecomeEntitled, object: nil)
 
-        try await waitForNotificationCount(1, in: notifications)
+        try await waitForPromptCount(1, in: prompt)
         XCTAssertEqual(settingsStore.llmRemoteProvider, .typefluxCloud)
         withExtendedLifetime(coordinator) {}
     }
@@ -75,15 +90,15 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         settingsStore.llmProvider = .openAICompatible
         settingsStore.llmRemoteProvider = .typefluxCloud
 
-        let notifications = RecordingLocalNotificationService()
-        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, notifications: notifications)
+        let prompt = RecordingCloudModelDefaultsPrompt(shouldConfirm: true)
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, promptPresenter: prompt)
 
-        NotificationCenter.default.post(name: .authDidLogin, object: nil)
+        NotificationCenter.default.post(name: .authCheckoutSubscriptionDidBecomeEntitled, object: nil)
 
         try await Task.sleep(nanoseconds: 150_000_000)
 
-        let count = await notifications.notificationCount()
-        XCTAssertEqual(count, 0)
+        XCTAssertEqual(prompt.confirmCallCount, 0)
+        XCTAssertEqual(prompt.successCallCount, 0)
         XCTAssertEqual(settingsStore.sttProvider, .typefluxOfficial)
         XCTAssertEqual(settingsStore.llmProvider, .openAICompatible)
         XCTAssertEqual(settingsStore.llmRemoteProvider, .typefluxCloud)
@@ -96,8 +111,8 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         settingsStore.llmProvider = .ollama
         settingsStore.llmRemoteProvider = .openAI
 
-        let notifications = RecordingLocalNotificationService()
-        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, notifications: notifications)
+        let prompt = RecordingCloudModelDefaultsPrompt(shouldConfirm: true)
+        let coordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore, promptPresenter: prompt)
 
         NotificationCenter.default.post(
             name: Notification.Name("SomeOtherNotification"),
@@ -106,8 +121,8 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
 
         try await Task.sleep(nanoseconds: 150_000_000)
 
-        let count = await notifications.notificationCount()
-        XCTAssertEqual(count, 0)
+        XCTAssertEqual(prompt.confirmCallCount, 0)
+        XCTAssertEqual(prompt.successCallCount, 0)
         XCTAssertEqual(settingsStore.sttProvider, .whisperAPI)
         XCTAssertEqual(settingsStore.llmProvider, .ollama)
         XCTAssertEqual(settingsStore.llmRemoteProvider, .openAI)
@@ -121,38 +136,36 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         return SettingsStore(defaults: defaults)
     }
 
-    private func waitForNotificationCount(
+    private func waitForPromptCount(
         _ expectedCount: Int,
-        in service: RecordingLocalNotificationService,
+        in prompt: RecordingCloudModelDefaultsPrompt,
     ) async throws {
         for _ in 0 ..< 50 {
-            if await service.notificationCount() == expectedCount {
+            if prompt.confirmCallCount == expectedCount {
                 return
             }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        XCTFail("Timed out waiting for \(expectedCount) local notification(s)")
+        XCTFail("Timed out waiting for \(expectedCount) cloud default prompt(s)")
     }
 }
 
-private actor RecordingLocalNotificationService: LocalNotificationSending {
-    struct NotificationRecord {
-        let title: String
-        let body: String
-        let identifier: String
+@MainActor
+private final class RecordingCloudModelDefaultsPrompt: CloudModelDefaultsPrompting {
+    private let shouldConfirm: Bool
+    private(set) var confirmCallCount = 0
+    private(set) var successCallCount = 0
+
+    init(shouldConfirm: Bool) {
+        self.shouldConfirm = shouldConfirm
     }
 
-    private(set) var notifications: [NotificationRecord] = []
-
-    func sendLocalNotification(title: String, body: String, identifier: String) async {
-        notifications.append(NotificationRecord(title: title, body: body, identifier: identifier))
+    func confirmSwitchToCloudDefaults() -> Bool {
+        confirmCallCount += 1
+        return shouldConfirm
     }
 
-    func notificationCount() -> Int {
-        notifications.count
-    }
-
-    func firstNotification() -> NotificationRecord? {
-        notifications.first
+    func showCloudDefaultsApplied() {
+        successCallCount += 1
     }
 }

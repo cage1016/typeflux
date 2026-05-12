@@ -9,6 +9,7 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.subtitleKey, "auth.account.subscriptionRequiredHint")
         XCTAssertEqual(presentation.plan, .localized("auth.account.subscriptionNoPlan"))
         XCTAssertEqual(presentation.status, .localized("auth.account.subscriptionStatusNone"))
+        XCTAssertEqual(presentation.periodLabelKey, "auth.account.subscriptionPeriod")
         XCTAssertEqual(presentation.period, .unavailable)
     }
 
@@ -28,7 +29,35 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.subtitleKey, "auth.account.subscriptionActiveHint")
         XCTAssertEqual(presentation.plan, .localized("auth.account.subscriptionDefaultPlan"))
         XCTAssertEqual(presentation.status, .localized("auth.account.subscriptionStatusActive"))
+        XCTAssertEqual(presentation.periodLabelKey, "auth.account.subscriptionPeriod")
         XCTAssertEqual(presentation.period, .renewsOn("2026-06-01T00:00:00Z"))
+    }
+
+    func testFreePlanIsActiveButSelectsSubscribeAction() {
+        let snapshot = BillingSubscriptionSnapshot(
+            planCode: "free",
+            status: "free",
+            currentPeriodStart: "2026-05-12T00:00:00Z",
+            currentPeriodEnd: "2026-06-12T00:00:00Z",
+            cancelAtPeriodEnd: false,
+            entitled: true,
+            planName: "Free",
+            active: true,
+            paid: false,
+            periodSource: "free"
+        )
+
+        let presentation = AccountSubscriptionPresentation.make(from: snapshot)
+
+        XCTAssertEqual(presentation.billingAction, .subscribe)
+        XCTAssertEqual(presentation.subtitleKey, "auth.account.subscriptionFreeHint")
+        XCTAssertEqual(presentation.plan, .localized("auth.account.subscriptionFreePlan"))
+        XCTAssertEqual(presentation.status, .localized("auth.account.subscriptionStatusAvailable"))
+        XCTAssertEqual(presentation.periodLabelKey, "auth.account.subscriptionBillingCycle")
+        XCTAssertEqual(
+            presentation.period,
+            .cycle(start: "2026-05-12T00:00:00Z", end: "2026-06-12T00:00:00Z")
+        )
     }
 
     func testCancelAtPeriodEndUsesEndsOnPeriodCopy() {

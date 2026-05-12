@@ -8,6 +8,8 @@ struct AccountView: View {
     @State private var passwordChangeFlow = PasswordChangeFlow()
     @State private var isOpeningBilling = false
     @State private var billingActionError: String?
+    @State private var isHoveringSubscriptionCard = false
+    @State private var isHoveringUsageCard = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
@@ -62,10 +64,9 @@ struct AccountView: View {
                         Spacer()
 
                         HStack(spacing: StudioTheme.Spacing.small) {
-                            StudioButton(
-                                title: L("auth.account.refreshSubscription"),
-                                systemImage: "arrow.clockwise",
-                                variant: .secondary,
+                            AccountRefreshIconButton(
+                                helpText: L("auth.account.refreshSubscription"),
+                                isVisible: isHoveringSubscriptionCard,
                                 isDisabled: authState.isLoadingSubscription || isOpeningBilling,
                                 isLoading: authState.isLoadingSubscription
                             ) {
@@ -107,7 +108,7 @@ struct AccountView: View {
                     )
 
                     accountSummaryItem(
-                        label: L("auth.account.subscriptionPeriod"),
+                        label: L(subscriptionPresentation.periodLabelKey),
                         value: localized(subscriptionPresentation.period),
                         systemImage: "calendar.badge.clock"
                     )
@@ -122,6 +123,7 @@ struct AccountView: View {
                 }
             }
         }
+        .onHover { isHoveringSubscriptionCard = $0 }
     }
 
     private var subscriptionPresentation: AccountSubscriptionPresentation {
@@ -139,10 +141,9 @@ struct AccountView: View {
 
                         Spacer()
 
-                        StudioButton(
-                            title: L("auth.account.refreshUsage"),
-                            systemImage: "arrow.clockwise",
-                            variant: .secondary,
+                        AccountRefreshIconButton(
+                            helpText: L("auth.account.refreshUsage"),
+                            isVisible: isHoveringUsageCard,
                             isDisabled: authState.isLoadingUsage,
                             isLoading: authState.isLoadingUsage
                         ) {
@@ -201,6 +202,7 @@ struct AccountView: View {
                 }
             }
         }
+        .onHover { isHoveringUsageCard = $0 }
     }
 
     private func localized(_ value: AccountSubscriptionPresentation.TextValue) -> String {
@@ -220,6 +222,16 @@ struct AccountView: View {
             String(format: L("auth.account.subscriptionEndsOn"), formattedDate(dateString))
         case .renewsOn(let dateString):
             String(format: L("auth.account.subscriptionRenewsOn"), formattedDate(dateString))
+        case .cycle(let startString, let endString):
+            if let startString {
+                String(
+                    format: L("auth.account.subscriptionPeriodRange"),
+                    formattedDate(startString),
+                    formattedDate(endString)
+                )
+            } else {
+                String(format: L("auth.account.subscriptionPeriodUntil"), formattedDate(endString))
+            }
         }
     }
 
@@ -249,19 +261,6 @@ struct AccountView: View {
                     }
 
                     Spacer()
-
-                    if authState.isLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        StudioButton(
-                            title: L("auth.account.logout"),
-                            systemImage: "rectangle.portrait.and.arrow.forward",
-                            variant: .secondary
-                        ) {
-                            handlePrimaryAction()
-                        }
-                    }
                 }
 
                 HStack(alignment: .top, spacing: StudioTheme.Spacing.medium) {
@@ -470,7 +469,7 @@ struct AccountView: View {
 
         Task {
             do {
-                let url = authState.subscription.hasSubscription
+                let url = subscriptionPresentation.billingAction == .manageBilling
                     ? try await authState.createBillingPortalSession()
                     : try await authState.startCheckout()
                 await MainActor.run {
@@ -629,6 +628,42 @@ private struct ChangePasswordSheet: View {
         let hasLowercase = candidate.rangeOfCharacter(from: .lowercaseLetters) != nil
         let hasDigit = candidate.rangeOfCharacter(from: .decimalDigits) != nil
         return hasUppercase && hasLowercase && hasDigit ? nil : L("auth.error.passwordTooWeak")
+    }
+}
+
+private struct AccountRefreshIconButton: View {
+    let helpText: String
+    var isVisible = true
+    var isDisabled = false
+    var isLoading = false
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(StudioTheme.textSecondary)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: StudioTheme.Typography.iconRegular, weight: .semibold))
+                }
+            }
+            .frame(width: 32, height: 32)
+            .foregroundStyle(isHovering ? StudioTheme.textPrimary : StudioTheme.textSecondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled || isLoading)
+        .allowsHitTesting(isVisible)
+        .opacity(isVisible ? (isDisabled && !isLoading ? 0.45 : 1) : 0)
+        .animation(.easeOut(duration: 0.14), value: isVisible)
+        .onHover { isHovering = $0 }
+        .help(helpText)
+        .accessibilityLabel(helpText)
     }
 }
 

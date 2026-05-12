@@ -6,6 +6,12 @@ extension Notification.Name {
     /// (email/password, Google/Apple/GitHub OAuth). Not fired on silent
     /// token refresh or session restore at app launch.
     static let authDidLogin = Notification.Name("AuthState.authDidLogin")
+
+    /// Posted on the main actor when a checkout-started subscription refresh
+    /// observes that the account has become entitled to Typeflux Cloud.
+    static let authCheckoutSubscriptionDidBecomeEntitled = Notification.Name(
+        "AuthState.authCheckoutSubscriptionDidBecomeEntitled",
+    )
 }
 
 /// Observable auth state manager, shared across the app.
@@ -48,11 +54,12 @@ final class AuthState: ObservableObject {
 
     /// Background timer interval: check every hour.
     private static let timerInterval: TimeInterval = 3600
-    private static let checkoutPollingAttempts = 6
+    private static let checkoutPollingAttempts = 120
     private static let checkoutPollingInterval: Duration = .seconds(3)
 
     private var refreshTimer: Timer?
     private var checkoutPollingTask: Task<Void, Never>?
+    private var pendingCheckoutSubscriptionEntitlement = false
 
     var accessToken: String? {
         guard let stored = loadStoredToken(),
@@ -151,6 +158,7 @@ final class AuthState: ObservableObject {
         usagePeriodStart = nil
         usagePeriodEnd = nil
         usageError = nil
+        pendingCheckoutSubscriptionEntitlement = false
         checkoutPollingTask?.cancel()
         checkoutPollingTask = nil
         logger.info("User logged out")
@@ -244,9 +252,14 @@ final class AuthState: ObservableObject {
         defer { isLoadingSubscription = false }
 
         do {
+            let wasEntitled = subscription.entitled
             let snapshot = try await fetchSubscription(token)
             subscription = snapshot
             subscriptionError = nil
+            if pendingCheckoutSubscriptionEntitlement, !wasEntitled, snapshot.entitled {
+                pendingCheckoutSubscriptionEntitlement = false
+                NotificationCenter.default.post(name: .authCheckoutSubscriptionDidBecomeEntitled, object: self)
+            }
             return snapshot
         } catch let error as AuthError {
             if shouldInvalidateSession(for: error) {
@@ -301,6 +314,9 @@ final class AuthState: ObservableObject {
             throw AuthError.unauthorized
         }
         let session = try await createCheckoutSession(token, planCode)
+        if !subscription.entitled {
+            pendingCheckoutSubscriptionEntitlement = true
+        }
         startCheckoutPolling()
         return session.url
     }
@@ -327,6 +343,7 @@ final class AuthState: ObservableObject {
                     return
                 }
             }
+            self.pendingCheckoutSubscriptionEntitlement = false
         }
     }
 
