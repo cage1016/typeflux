@@ -450,10 +450,10 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         XCTAssertEqual(active.prefix(3).map { $0 }, ["Middle", "Newest", "Oldest"])
     }
 
-    func testActiveTermsCapsAt100Entries() {
+    func testActiveTermsCapsAt500Entries() {
         var seeded: [VocabularyEntry] = []
         let baseDate = Date(timeIntervalSince1970: 100_000)
-        for i in 0 ..< 150 {
+        for i in 0 ..< 550 {
             seeded.append(
                 VocabularyEntry(
                     term: "Term\(String(format: "%03d", i))",
@@ -466,10 +466,11 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         VocabularyStore.save(seeded)
 
         let active = VocabularyStore.activeTerms()
-        XCTAssertEqual(active.count, 100)
-        // Latest createdAt wins the tiebreak → Term149 is first.
-        XCTAssertEqual(active.first, "Term149")
-        // Term049 is the 100th most-recent; Term048 should have been dropped.
+        XCTAssertEqual(VocabularyStore.activeTermLimit, 500)
+        XCTAssertEqual(active.count, 500)
+        // Latest createdAt wins the tiebreak → Term549 is first.
+        XCTAssertEqual(active.first, "Term549")
+        // Term050 is the 500th most-recent; Term049 should have been dropped.
         XCTAssertTrue(active.contains("Term050"))
         XCTAssertFalse(active.contains("Term049"))
     }

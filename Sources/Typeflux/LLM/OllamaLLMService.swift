@@ -28,23 +28,29 @@ final class OllamaLLMService: LLMService {
 
     func complete(systemPrompt: String, userPrompt: String) async throws -> String {
         try await modelManager.ensureModelReady(settingsStore: settingsStore)
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: systemPrompt,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: userPrompt,
             appLanguage: settingsStore.appLanguage,
         )
         return try await RequestRetry.perform(operationName: "Ollama completion request") { [self] in
-            try await completeInternal(systemPrompt: effectiveSystemPrompt, userPrompt: userPrompt, schema: nil)
+            try await completeInternal(systemPrompt: effectiveSystemPrompt, userPrompt: effectiveUserPrompt, schema: nil)
         }
     }
 
     func completeJSON(systemPrompt: String, userPrompt: String, schema: LLMJSONSchema) async throws -> String {
         try await modelManager.ensureModelReady(settingsStore: settingsStore)
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: systemPrompt,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: userPrompt,
             appLanguage: settingsStore.appLanguage,
         )
         return try await RequestRetry.perform(operationName: "Ollama JSON completion request") { [self] in
-            try await completeInternal(systemPrompt: effectiveSystemPrompt, userPrompt: userPrompt, schema: schema)
+            try await completeInternal(systemPrompt: effectiveSystemPrompt, userPrompt: effectiveUserPrompt, schema: schema)
         }
     }
 
@@ -122,8 +128,11 @@ final class OllamaLLMService: LLMService {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let prompts = PromptCatalog.rewritePrompts(for: request)
-        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: prompts.system,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: prompts.user,
             appLanguage: settingsStore.appLanguage,
         )
         if let appContext = request.appSystemContext {
@@ -138,13 +147,13 @@ final class OllamaLLMService: LLMService {
         NetworkDebugLogger.logMessage(
             PromptCatalog.rewritePromptDebugDescription(
                 system: effectiveSystemPrompt,
-                user: prompts.user,
+                user: effectiveUserPrompt,
             ),
         )
         let body = Self.makeChatRequestBody(
             model: settingsStore.ollamaModel,
             systemPrompt: effectiveSystemPrompt,
-            userPrompt: prompts.user,
+            userPrompt: effectiveUserPrompt,
             stream: true,
             temperature: 0.4,
         )

@@ -186,8 +186,11 @@ final class OpenAICompatibleLLMService: LLMService {
     func complete(systemPrompt: String, userPrompt: String) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
         let appLanguage = settingsStore.appLanguage
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: systemPrompt,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: userPrompt,
             appLanguage: appLanguage,
         )
         return try await RequestRetry.perform(operationName: "LLM completion request") { [weak self] in
@@ -204,7 +207,7 @@ final class OpenAICompatibleLLMService: LLMService {
                     apiKey: call.connection.apiKey,
                     additionalHeaders: additionalHeaders,
                     systemPrompt: effectiveSystemPrompt,
-                    userPrompt: userPrompt,
+                    userPrompt: effectiveUserPrompt,
                     schema: nil,
                 )
             }
@@ -214,8 +217,11 @@ final class OpenAICompatibleLLMService: LLMService {
     func completeJSON(systemPrompt: String, userPrompt: String, schema: LLMJSONSchema) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
         let appLanguage = settingsStore.appLanguage
-        let effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: systemPrompt,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: userPrompt,
             appLanguage: appLanguage,
         )
         return try await RequestRetry.perform(operationName: "LLM JSON completion request") { [weak self] in
@@ -230,7 +236,7 @@ final class OpenAICompatibleLLMService: LLMService {
                     apiKey: call.connection.apiKey,
                     additionalHeaders: additionalHeaders,
                     systemPrompt: effectiveSystemPrompt,
-                    userPrompt: userPrompt,
+                    userPrompt: effectiveUserPrompt,
                     schema: schema,
                 )
             }
@@ -266,8 +272,11 @@ final class OpenAICompatibleLLMService: LLMService {
         let additionalHeaders = headers(for: call.connection, scenario: .textRewrite, personaID: rewriteRequest.personaID)
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
-        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: prompts.system,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: prompts.user,
             appLanguage: settingsStore.appLanguage,
         )
         if let appContext = rewriteRequest.appSystemContext {
@@ -282,7 +291,7 @@ final class OpenAICompatibleLLMService: LLMService {
         NetworkDebugLogger.logMessage(
             PromptCatalog.rewritePromptDebugDescription(
                 system: effectiveSystemPrompt,
-                user: prompts.user,
+                user: effectiveUserPrompt,
             ),
         )
 
@@ -294,7 +303,7 @@ final class OpenAICompatibleLLMService: LLMService {
                 apiKey: call.connection.apiKey,
                 additionalHeaders: additionalHeaders,
                 systemPrompt: effectiveSystemPrompt,
-                userPrompt: prompts.user,
+                userPrompt: effectiveUserPrompt,
                 continuation: continuation,
             )
         }

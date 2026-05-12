@@ -1339,8 +1339,11 @@ extension WorkflowController {
             vocabularyTerms: VocabularyStore.activeTerms(),
         )
         let prompts = PromptCatalog.rewritePrompts(for: placeholderRequest)
-        var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(
+        var effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
             to: prompts.system,
+        )
+        let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
+            to: prompts.user,
             appLanguage: settingsStore.appLanguage,
         )
         if let appContext = placeholderRequest.appSystemContext {
@@ -1354,7 +1357,7 @@ extension WorkflowController {
         }
         return ASRLLMConfig(
             systemPrompt: effectiveSystemPrompt,
-            userPromptTemplate: prompts.user,
+            userPromptTemplate: effectiveUserPrompt,
             personaID: personaID,
         )
     }
