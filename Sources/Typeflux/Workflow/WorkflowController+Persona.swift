@@ -203,6 +203,7 @@ extension WorkflowController {
                         sourceText: context.selectedText,
                         spokenInstruction: nil,
                         personaPrompt: personaPrompt,
+                        personaID: persona.id,
                         appSystemContext: AppSystemContext(snapshot: context.snapshot),
                     ),
                     sessionID: sessionID,
