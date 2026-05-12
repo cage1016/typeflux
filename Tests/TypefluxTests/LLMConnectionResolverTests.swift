@@ -225,6 +225,23 @@ extension LLMConnectionResolverTests {
         XCTAssertEqual(headers[TypefluxCloudRequestHeaders.scenarioField], TypefluxCloudScenario.askAnything.rawValue)
     }
 
+    func testTypefluxCloudHeadersIncludePersonaIDWhenProvided() {
+        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
+        let connection = ResolvedLLMConnection(
+            provider: .typefluxCloud,
+            baseURL: URL(string: "https://api.typeflux.dev/api/v1")!,
+            model: "default",
+            apiKey: "token",
+            additionalHeaders: ["x-request-id": "req-1"],
+        )
+
+        let headers = connection.headers(for: .textRewrite, personaID: personaID)
+
+        XCTAssertEqual(headers["x-request-id"], "req-1")
+        XCTAssertEqual(headers[TypefluxCloudRequestHeaders.scenarioField], TypefluxCloudScenario.textRewrite.rawValue)
+        XCTAssertEqual(headers[TypefluxCloudRequestHeaders.personaIDField], personaID.uuidString)
+    }
+
     func testNonTypefluxCloudHeadersDoNotInjectScenario() {
         let connection = ResolvedLLMConnection(
             provider: .openAI,
@@ -238,6 +255,7 @@ extension LLMConnectionResolverTests {
 
         XCTAssertEqual(headers["x-request-id"], "req-1")
         XCTAssertNil(headers[TypefluxCloudRequestHeaders.scenarioField])
+        XCTAssertNil(headers[TypefluxCloudRequestHeaders.personaIDField])
     }
 
     // MARK: - Free model whitespace handling

@@ -33,6 +33,7 @@ struct LLMRewriteRequest {
     let sourceText: String
     let spokenInstruction: String?
     let personaPrompt: String?
+    let personaID: UUID?
     let appSystemContext: AppSystemContext?
     let inputContext: InputContextSnapshot?
     let vocabularyTerms: [String]
@@ -42,6 +43,7 @@ struct LLMRewriteRequest {
         sourceText: String,
         spokenInstruction: String?,
         personaPrompt: String?,
+        personaID: UUID? = nil,
         appSystemContext: AppSystemContext? = nil,
         inputContext: InputContextSnapshot? = nil,
         vocabularyTerms: [String] = [],
@@ -50,6 +52,7 @@ struct LLMRewriteRequest {
         self.sourceText = sourceText
         self.spokenInstruction = spokenInstruction
         self.personaPrompt = personaPrompt
+        self.personaID = personaID
         self.appSystemContext = appSystemContext
         self.inputContext = inputContext
         self.vocabularyTerms = vocabularyTerms

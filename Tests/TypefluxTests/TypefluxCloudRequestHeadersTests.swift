@@ -79,6 +79,26 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
 
         XCTAssertNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField))
     }
+
+    func testApplyingPersonaIDMergesOnlyForTypefluxCloud() {
+        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
+
+        let cloudHeaders = TypefluxCloudRequestHeaders.applyingPersonaID(
+            personaID,
+            to: ["x-request-id": "req-1"],
+            provider: .typefluxCloud,
+        )
+        let openAIHeaders = TypefluxCloudRequestHeaders.applyingPersonaID(
+            personaID,
+            to: ["x-request-id": "req-1"],
+            provider: .openAI,
+        )
+
+        XCTAssertEqual(cloudHeaders["x-request-id"], "req-1")
+        XCTAssertEqual(cloudHeaders[TypefluxCloudRequestHeaders.personaIDField], personaID.uuidString)
+        XCTAssertEqual(openAIHeaders["x-request-id"], "req-1")
+        XCTAssertNil(openAIHeaders[TypefluxCloudRequestHeaders.personaIDField])
+    }
 }
 
 private extension TypefluxCloudClientInfoProvider {
