@@ -14,6 +14,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             switch connection.provider.apiStyle {
             case .openAICompatible:
                 try await self.multiTurnOpenAI(
+                    provider: connection.provider,
                     baseURL: connection.baseURL,
                     model: connection.model,
                     apiKey: connection.apiKey,
@@ -49,6 +50,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
     // MARK: - OpenAI Compatible
 
     private func multiTurnOpenAI(
+        provider: LLMRemoteProvider,
         baseURL: URL,
         model: String,
         apiKey: String,
@@ -70,11 +72,39 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
         }
 
         var body = buildOpenAIBody(model: model, messages: messages, tools: tools, config: config)
-        OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
+        OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &body,
+            baseURL: baseURL,
+            model: model,
+            provider: provider,
+        )
+        let baseBody = body
+        let tuningCandidate = RemoteLLMClient.applyCustomThinkingTuning(
+            body: &body,
+            provider: provider,
+            baseURL: baseURL,
+        )
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let data = try await RemoteLLMClient.performJSONRequest(request)
-        return parseOpenAITurnResult(from: data)
+        let result = try await RemoteLLMClient.performJSONRequestWithCustomThinkingAdaptation(
+            request,
+            baseBody: baseBody,
+            provider: provider,
+            baseURL: baseURL,
+            candidate: tuningCandidate,
+        )
+        let rawText = LLMAgentResponseSupport.extractOpenAICompatibleText(from: result.data) ?? ""
+        let containsThinking = OpenAICompatibleResponseSupport.containsLeadingThinkingTags(rawText)
+        let turnResult = parseOpenAITurnResult(from: result.data)
+        if !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            RemoteLLMClient.recordCustomThinkingTuningSuccess(
+                provider: provider,
+                baseURL: baseURL,
+                candidate: result.candidate,
+                containsThinking: containsThinking,
+            )
+        }
+        return turnResult
     }
 
     func buildOpenAIBody(
@@ -122,7 +152,7 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             return AgentTurnResult(turn: .text(""), tokenUsage: nil)
         }
 
-        let rawText = message["content"] as? String ?? ""
+        let rawText = OpenAICompatibleResponseSupport.extractTextDelta(from: data) ?? ""
         let text = OpenAICompatibleResponseSupport.stripLeadingThinkingTags(rawText)
         let toolCallsRaw = message["tool_calls"] as? [[String: Any]] ?? []
 

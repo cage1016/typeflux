@@ -35,6 +35,7 @@ enum OpenAICompatibleResponseSupport {
 
         private var state: State = .initial
         private var buffer = ""
+        private(set) var observedThinking = false
 
         /// Feed the next streaming chunk. Returns the string to emit, or nil if suppressed.
         mutating func process(_ chunk: String) -> String? {
@@ -49,6 +50,7 @@ enum OpenAICompatibleResponseSupport {
 
                 let lower = trimmed.lowercased()
                 if lower.hasPrefix("<thinking>") || lower.hasPrefix("<think>") {
+                    observedThinking = true
                     state = .inThinkBlock
                     return drainThinkBlock()
                 } else {
@@ -88,8 +90,14 @@ enum OpenAICompatibleResponseSupport {
 
     // MARK: - Provider Tuning
 
-    static func applyProviderTuning(body: inout [String: Any], baseURL: URL, model: String) {
-        guard shouldDisableThinking(baseURL: baseURL, model: model) else { return }
+    static func applyProviderTuning(
+        body: inout [String: Any],
+        baseURL: URL,
+        model: String,
+        provider: LLMRemoteProvider? = nil,
+    ) {
+        guard provider != .custom else { return }
+        guard shouldDisableThinking(baseURL: baseURL, model: model, provider: provider) else { return }
         if shouldSendThinkingToggle(baseURL: baseURL, model: model) {
             body["thinking"] = ["type": "disabled"]
         }
@@ -120,6 +128,39 @@ enum OpenAICompatibleResponseSupport {
 
     static func applyAnthropicTuning(body: inout [String: Any]) {
         body["thinking"] = ["type": "disabled"]
+    }
+
+    static func removeCustomThinkingTuning(body: inout [String: Any]) {
+        for key in ["thinking", "enable_thinking", "reasoning", "include_reasoning"] {
+            body.removeValue(forKey: key)
+        }
+    }
+
+    static func shouldRetryWithoutCustomThinkingTuning(error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == "LLM" || nsError.domain == "SSE" else { return false }
+        guard nsError.code == 400 || nsError.code == 422 else { return false }
+
+        let message = nsError.localizedDescription.lowercased()
+        let tuningKeys = ["thinking", "enable_thinking", "reasoning", "include_reasoning"]
+        let unsupportedParameterMarkers = [
+            "unknown parameter",
+            "unrecognized",
+            "unsupported parameter",
+            "invalid parameter",
+            "extra_forbidden",
+            "extra inputs are not permitted",
+            "not permitted",
+            "unexpected",
+        ]
+
+        return tuningKeys.contains(where: { message.contains($0) })
+            && unsupportedParameterMarkers.contains(where: { message.contains($0) })
+    }
+
+    static func containsLeadingThinkingTags(_ text: String) -> Bool {
+        let lower = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return lower.hasPrefix("<thinking>") || lower.hasPrefix("<think>")
     }
 
     static func extractTextDelta(from data: Data) -> String? {
@@ -168,7 +209,33 @@ enum OpenAICompatibleResponseSupport {
         return false
     }
 
-    static func shouldDisableThinking(baseURL: URL, model: String) -> Bool {
+    static func streamError(from data: Data) -> Error? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = object["error"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        let message = (error["message"] as? String)
+            ?? (error["code"] as? String)
+            ?? "Unknown stream error"
+        let status = (error["status"] as? Int)
+            ?? (error["status_code"] as? Int)
+            ?? (error["code"] as? Int)
+            ?? 400
+        return NSError(
+            domain: "SSE",
+            code: status,
+            userInfo: [NSLocalizedDescriptionKey: "HTTP \(status): \(message)"],
+        )
+    }
+
+    static func shouldDisableThinking(
+        baseURL: URL,
+        model: String,
+        provider: LLMRemoteProvider? = nil,
+    ) -> Bool {
+        if provider == .custom { return false }
         let host = baseURL.host?.lowercased() ?? ""
         let normalizedModel = model.lowercased()
         let disabledHosts = [

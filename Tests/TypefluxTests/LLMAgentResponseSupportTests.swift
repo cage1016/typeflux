@@ -98,6 +98,26 @@ final class LLMAgentResponseSupportTests: XCTestCase {
         )
     }
 
+    func testExtractOpenAICompatibleTextReadsStructuredContent() throws {
+        let data = try jsonData([
+            "choices": [
+                [
+                    "message": [
+                        "content": [
+                            ["type": "text", "text": "<think>reasoning</think>"],
+                            ["type": "text", "text": "Final answer"],
+                        ],
+                    ],
+                ],
+            ],
+        ])
+
+        XCTAssertEqual(
+            LLMAgentResponseSupport.extractOpenAICompatibleText(from: data),
+            "<think>reasoning</think>Final answer",
+        )
+    }
+
     func testExtractAnthropicToolCall() throws {
         let data = try jsonData([
             "content": [
