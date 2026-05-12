@@ -87,6 +87,63 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         XCTAssertEqual(body["include_reasoning"] as? Bool, false)
     }
 
+    func testProviderTuningDoesNotUseStaticRulesForCustomProvider() throws {
+        var body: [String: Any] = ["model": "private-model", "stream": true]
+        try OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &body,
+            baseURL: XCTUnwrap(URL(string: "https://llm.example.com/v1")),
+            model: "private-model",
+            provider: .custom,
+        )
+
+        XCTAssertNil(body["thinking"])
+        XCTAssertNil(body["enable_thinking"])
+        XCTAssertNil(body["reasoning"])
+        XCTAssertNil(body["include_reasoning"])
+        XCTAssertEqual(body["model"] as? String, "private-model")
+        XCTAssertEqual(body["stream"] as? Bool, true)
+    }
+
+    func testRemoveCustomThinkingTuningPreservesOtherBodyKeys() {
+        var body: [String: Any] = [
+            "model": "private-model",
+            "stream": true,
+            "thinking": ["type": "disabled"],
+            "enable_thinking": false,
+            "reasoning": ["effort": "none"],
+            "include_reasoning": false,
+        ]
+
+        OpenAICompatibleResponseSupport.removeCustomThinkingTuning(body: &body)
+
+        XCTAssertEqual(body["model"] as? String, "private-model")
+        XCTAssertEqual(body["stream"] as? Bool, true)
+        XCTAssertNil(body["thinking"])
+        XCTAssertNil(body["enable_thinking"])
+        XCTAssertNil(body["reasoning"])
+        XCTAssertNil(body["include_reasoning"])
+    }
+
+    func testDetectsUnsupportedThinkingParameterErrors() {
+        let error = NSError(
+            domain: "LLM",
+            code: 400,
+            userInfo: [NSLocalizedDescriptionKey: "HTTP 400: unknown parameter: enable_thinking"],
+        )
+
+        XCTAssertTrue(OpenAICompatibleResponseSupport.shouldRetryWithoutCustomThinkingTuning(error: error))
+    }
+
+    func testDoesNotRetryForUnrelatedCustomErrors() {
+        let error = NSError(
+            domain: "LLM",
+            code: 401,
+            userInfo: [NSLocalizedDescriptionKey: "HTTP 401: invalid api key"],
+        )
+
+        XCTAssertFalse(OpenAICompatibleResponseSupport.shouldRetryWithoutCustomThinkingTuning(error: error))
+    }
+
     func testProviderTuningUsesLowestOpenAIReasoningEffort() throws {
         var modernBody: [String: Any] = ["model": "gpt-5.4"]
         try OpenAICompatibleResponseSupport.applyProviderTuning(

@@ -546,6 +546,9 @@ final class SettingsStore {
     }
 
     func setLLMBaseURL(_ value: String, for provider: LLMRemoteProvider) {
+        if provider == .custom, value != llmBaseURL(for: provider) {
+            LLMThinkingTuningAdaptationStore(defaults: defaults).resetAll()
+        }
         defaults.set(value, forKey: llmRemoteKey(provider, suffix: "baseURL"))
         if provider == llmRemoteProvider {
             defaults.set(value, forKey: "llm.baseURL")
