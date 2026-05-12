@@ -197,14 +197,8 @@ enum LLMAgentResponseSupport {
     // MARK: - Text content extraction (for when model responds with text instead of a tool call)
 
     static func extractOpenAICompatibleText(from data: Data) -> String? {
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choice = (object["choices"] as? [[String: Any]])?.first,
-              let message = choice["message"] as? [String: Any],
-              let content = message["content"] as? String
-        else {
-            return nil
-        }
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let text = OpenAICompatibleResponseSupport.extractTextDelta(from: data) else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 

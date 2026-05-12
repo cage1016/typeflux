@@ -159,6 +159,7 @@ enum RemoteAgentClient {
         switch provider.apiStyle {
         case .openAICompatible:
             try await runOpenAICompatibleTool(
+                provider: provider,
                 baseURL: baseURL,
                 model: model,
                 apiKey: apiKey,
@@ -190,6 +191,7 @@ enum RemoteAgentClient {
     // MARK: - Typed tool call (decode into T)
 
     private static func runOpenAICompatibleTool<T: Decodable & Sendable>(
+        provider: LLMRemoteProvider,
         baseURL: URL,
         model: String,
         apiKey: String,
@@ -198,7 +200,7 @@ enum RemoteAgentClient {
         decoding type: T.Type,
     ) async throws -> T {
         let toolCall = try await fetchOpenAICompatibleToolCall(
-            baseURL: baseURL, model: model, apiKey: apiKey,
+            provider: provider, baseURL: baseURL, model: model, apiKey: apiKey,
             additionalHeaders: additionalHeaders, request: request,
         )
         return try decodeToolArguments(toolCall, expectedToolName: request.forcedToolName, as: type)
@@ -249,7 +251,7 @@ enum RemoteAgentClient {
         switch provider.apiStyle {
         case .openAICompatible:
             try await fetchOpenAICompatibleToolCall(
-                baseURL: baseURL, model: model, apiKey: apiKey,
+                provider: provider, baseURL: baseURL, model: model, apiKey: apiKey,
                 additionalHeaders: additionalHeaders, request: request,
             )
         case .anthropic:
@@ -268,6 +270,7 @@ enum RemoteAgentClient {
     // MARK: - HTTP fetch helpers (provider-specific, return raw LLMAgentToolCall)
 
     private static func fetchOpenAICompatibleToolCall(
+        provider: LLMRemoteProvider,
         baseURL: URL,
         model: String,
         apiKey: String,
@@ -293,10 +296,36 @@ enum RemoteAgentClient {
             tools: request.tools,
             forcedToolName: request.forcedToolName,
         )
-        OpenAICompatibleResponseSupport.applyProviderTuning(body: &body, baseURL: baseURL, model: model)
+        OpenAICompatibleResponseSupport.applyProviderTuning(
+            body: &body,
+            baseURL: baseURL,
+            model: model,
+            provider: provider,
+        )
+        let baseBody = body
+        let tuningCandidate = RemoteLLMClient.applyCustomThinkingTuning(
+            body: &body,
+            provider: provider,
+            baseURL: baseURL,
+        )
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let data = try await RemoteLLMClient.performJSONRequest(urlRequest)
+        let result = try await RemoteLLMClient.performJSONRequestWithCustomThinkingAdaptation(
+            urlRequest,
+            baseBody: baseBody,
+            provider: provider,
+            baseURL: baseURL,
+            candidate: tuningCandidate,
+        )
+        if let text = LLMAgentResponseSupport.extractOpenAICompatibleText(from: result.data) {
+            RemoteLLMClient.recordCustomThinkingTuningSuccess(
+                provider: provider,
+                baseURL: baseURL,
+                candidate: result.candidate,
+                containsThinking: OpenAICompatibleResponseSupport.containsLeadingThinkingTags(text),
+            )
+        }
+        let data = result.data
         guard let toolCall = LLMAgentResponseSupport.extractOpenAICompatibleToolCall(from: data) else {
             if let text = LLMAgentResponseSupport.extractOpenAICompatibleText(from: data) {
                 throw LLMAgentError.textResponse(text: text)

@@ -177,6 +177,28 @@ final class LLMMultiTurnServiceOpenAIParsingTests: XCTestCase {
         XCTAssertEqual(text, "Final answer")
     }
 
+    func testParseOpenAITurnReadsStructuredContent() {
+        let data = jsonData([
+            "choices": [
+                [
+                    "message": [
+                        "role": "assistant",
+                        "content": [
+                            ["type": "text", "text": "<think>reasoning here</think>"],
+                            ["type": "text", "text": "Final answer"],
+                        ],
+                    ],
+                ],
+            ],
+        ])
+        let result = service.parseOpenAITurn(from: data)
+        guard case let .text(text) = result else {
+            XCTFail("Expected .text")
+            return
+        }
+        XCTAssertEqual(text, "Final answer")
+    }
+
     // MARK: - parseAnthropicTurn
 
     func testParseAnthropicTurnReturnsEmptyTextOnInvalidJSON() {
