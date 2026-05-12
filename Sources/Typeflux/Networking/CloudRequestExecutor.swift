@@ -124,6 +124,8 @@ struct CloudRequestExecutor: Sendable {
                 throw CancellationError()
             } catch let error as URLError where error.code == .cancelled {
                 throw CancellationError()
+            } catch let error where TypefluxCloudBillingError.fromError(error) != nil {
+                throw TypefluxCloudBillingError.fromError(error) ?? error
             } catch {
                 await selector.reportFailure(endpoint, error: error)
                 lastError = error

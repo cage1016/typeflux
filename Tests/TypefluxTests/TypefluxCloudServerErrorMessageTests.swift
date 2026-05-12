@@ -35,6 +35,22 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
         XCTAssertEqual(error?.reason, .subscriptionRequired)
     }
 
+    func testBillingErrorParsesFailingHTTP402ResponseFromNSError() throws {
+        let response = try XCTUnwrap(HTTPURLResponse(
+            url: URL(string: "https://api.example/asr")!,
+            statusCode: 402,
+            httpVersion: "HTTP/1.1",
+            headerFields: nil
+        ))
+        let error = NSError(
+            domain: NSURLErrorDomain,
+            code: URLError.badServerResponse.rawValue,
+            userInfo: ["NSErrorFailingURLResponseKey": response]
+        )
+
+        XCTAssertEqual(TypefluxCloudBillingError.fromError(error)?.reason, .subscriptionRequired)
+    }
+
     func testBillingErrorParsesQuotaAndPaymentCodes() {
         XCTAssertEqual(
             TypefluxCloudBillingError.fromServerCode("INSUFFICIENT_CREDITS", message: nil)?.reason,

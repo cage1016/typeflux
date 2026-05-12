@@ -69,6 +69,10 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
         }
 
         let nsError = error as NSError
+        if let response = nsError.userInfo["NSErrorFailingURLResponseKey"] as? HTTPURLResponse,
+           response.statusCode == 402 {
+            return TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nsError.localizedDescription)
+        }
         if nsError.code == 402, let error = fromMessage(error.localizedDescription) {
             return error
         }
