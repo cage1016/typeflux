@@ -101,6 +101,35 @@ final class CloudRequestExecutorTests: XCTestCase {
         XCTAssertEqual(calls, [urlA, urlB])
     }
 
+    func testExecuteDoesNotFailoverOrReportEndpointFailureOnBillingError() async throws {
+        let billingError = TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nil)
+        let session = StubSession()
+        await session.setHandler { _ in
+            throw billingError
+        }
+        let selector = CloudEndpointSelector(baseURLs: [urlA, urlB], prober: NoOpProber())
+        let executor = CloudRequestExecutor(selector: selector, session: session)
+
+        do {
+            _ = try await executor.execute(apiPath: "/api/v1/asr/aliyun/token") { base in
+                URLRequest(url: base.appendingPathComponent("api/v1/asr/aliyun/token"))
+            }
+            XCTFail("Expected billing error")
+        } catch let error as TypefluxCloudBillingError {
+            XCTAssertEqual(error, billingError)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        let calls = await session.callOrder
+        XCTAssertEqual(calls, [urlA])
+        let status = await selector.snapshot()
+        XCTAssertEqual(status[0].consecutiveFailures, 0)
+        XCTAssertNil(status[0].lastError)
+        XCTAssertEqual(status[1].consecutiveFailures, 0)
+        XCTAssertNil(status[1].lastError)
+    }
+
     func testExecuteThrowsAllEndpointsFailedWhenEveryAttemptFails() async throws {
         let session = StubSession()
         await session.setHandler { request in

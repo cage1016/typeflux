@@ -273,6 +273,8 @@ final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, 
                 return try await operation(baseURL.absoluteString)
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let error where TypefluxCloudBillingError.fromError(error) != nil {
+                throw TypefluxCloudBillingError.fromError(error) ?? error
             } catch let error as TypefluxOfficialASRError {
                 await CloudEndpointRegistry.shared.reportFailure(baseURL, error: error)
                 lastError = error
@@ -763,7 +765,9 @@ private actor TypefluxOfficialASRSession {
                     finalSegments: finalSegments
                 ) {
                     logger.error("WebSocket receive error: \(error.localizedDescription)")
-                    sessionError = sessionError ?? TypefluxOfficialASRError.unexpectedClose
+                    sessionError = sessionError
+                        ?? TypefluxCloudBillingError.fromError(error)
+                        ?? TypefluxOfficialASRError.unexpectedClose
                 }
                 completed = true
             }
@@ -949,7 +953,9 @@ private actor TypefluxOfficialRealtimePCMStream: PCM16RealtimeTranscriptionSessi
                        finalSegments: finalSegments,
                    ) {
                     logger.error("WebSocket receive error: \(error.localizedDescription)")
-                    sessionError = sessionError ?? TypefluxOfficialASRError.unexpectedClose
+                    sessionError = sessionError
+                        ?? TypefluxCloudBillingError.fromError(error)
+                        ?? TypefluxOfficialASRError.unexpectedClose
                 }
                 completed = true
             }

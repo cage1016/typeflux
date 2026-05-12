@@ -315,6 +315,9 @@ final class STTRouter {
                         )
                     } catch {
                         NetworkDebugLogger.logError(context: "Typeflux Cloud fallback failed", error: error)
+                        if let billingError = TypefluxCloudBillingError.fromError(error) {
+                            throw billingError
+                        }
                         if settingsStore.useAppleSpeechFallback {
                             NetworkDebugLogger.logMessage(
                                 "Falling back to Apple Speech after Typeflux Cloud fallback failure",
@@ -438,6 +441,9 @@ final class STTRouter {
                 )
             } catch {
                 NetworkDebugLogger.logError(context: "Typeflux Official STT failed", error: error)
+                if let billingError = TypefluxCloudBillingError.fromError(error) {
+                    throw billingError
+                }
                 if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
                     NetworkDebugLogger.logMessage("Auto local model succeeded after Typeflux Official STT failure")
                     return localResult
@@ -492,6 +498,9 @@ final class STTRouter {
                     "Integrated Typeflux Cloud LLM failed after ASR completed; using transcript fallback",
                 )
                 return (transcript: integratedError.transcript, rewritten: nil)
+            }
+            if let billingError = TypefluxCloudBillingError.fromError(error) {
+                throw billingError
             }
             if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onASRUpdate) {
                 NetworkDebugLogger.logMessage("Auto local model succeeded after integrated Typeflux Official failure")

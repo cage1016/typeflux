@@ -334,6 +334,26 @@ final class STTRouterTests: XCTestCase {
         XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
     }
 
+    func testTypefluxOfficialBillingFailureDoesNotFallBackToAppleSpeech() async throws {
+        let billingError = TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nil)
+        settings.sttProvider = .typefluxOfficial
+        settings.useAppleSpeechFallback = true
+        typefluxOfficial.errorToThrow = billingError
+        let router = makeRouter()
+
+        do {
+            _ = try await router.transcribe(audioFile: dummyAudioFile())
+            XCTFail("Expected billing error")
+        } catch let error as TypefluxCloudBillingError {
+            XCTAssertEqual(error, billingError)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(typefluxOfficial.transcribeCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
+    }
+
     func testDoesNotUseTypefluxCloudForUnpreparedLocalModelWhenLoggedOut() async {
         settings.sttProvider = .localModel
         settings.useAppleSpeechFallback = false
