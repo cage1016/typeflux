@@ -435,6 +435,7 @@ private final class SingleAudioProcessor {
             finalText = try await rewrite(
                 transcript: transcript,
                 personaPrompt: trimmedPersona,
+                personaID: persona.id,
                 llmService: llmService,
             )
             llmMilliseconds = milliseconds(since: llmStartedAt)
@@ -599,12 +600,18 @@ private final class SingleAudioProcessor {
         return AudioFile(fileURL: url, duration: duration)
     }
 
-    private func rewrite(transcript: String, personaPrompt: String, llmService: LLMService) async throws -> String {
+    private func rewrite(
+        transcript: String,
+        personaPrompt: String,
+        personaID: UUID?,
+        llmService: LLMService,
+    ) async throws -> String {
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
             sourceText: transcript,
             spokenInstruction: nil,
             personaPrompt: personaPrompt,
+            personaID: personaID,
             vocabularyTerms: VocabularyStore.activeTerms(),
         )
 
@@ -765,6 +772,7 @@ private final class WAVPersonaBenchmark {
                     record.personaResult = try await rewrite(
                         transcript: transcript,
                         personaPrompt: persona.prompt,
+                        personaID: persona.id,
                         llmService: llmService,
                     )
                     record.llmMilliseconds = milliseconds(since: startedAt)
@@ -843,9 +851,9 @@ private final class WAVPersonaBenchmark {
         )
     }
 
-    private func resolvePersona(settingsStore: SettingsStore) throws -> (name: String, prompt: String) {
+    private func resolvePersona(settingsStore: SettingsStore) throws -> (name: String, prompt: String, id: UUID?) {
         if config.noPersona {
-            return ("none", "")
+            return ("none", "", nil)
         }
 
         switch config.personaSelector {
@@ -853,20 +861,20 @@ private final class WAVPersonaBenchmark {
             guard let persona = settingsStore.personas.first(where: { $0.id == id }) else {
                 throw BatchCommandError(message: "No saved persona found for id: \(id.uuidString)")
             }
-            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona))
+            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona), persona.id)
         case .name(let name):
             guard let persona = settingsStore.personas.first(where: { $0.name == name }) else {
                 throw BatchCommandError(message: "No saved persona found named: \(name)")
             }
-            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona))
+            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona), persona.id)
         case .promptFile(let url):
             let prompt = try String(contentsOf: url, encoding: .utf8)
-            return (url.lastPathComponent, prompt)
+            return (url.lastPathComponent, prompt, nil)
         case .none:
             guard let persona = settingsStore.activePersona else {
-                return ("none", "")
+                return ("none", "", nil)
             }
-            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona))
+            return (persona.name, settingsStore.resolvedPersonaPrompt(for: persona), persona.id)
         }
     }
 
@@ -900,12 +908,18 @@ private final class WAVPersonaBenchmark {
         return AudioFile(fileURL: url, duration: duration)
     }
 
-    private func rewrite(transcript: String, personaPrompt: String, llmService: LLMService) async throws -> String {
+    private func rewrite(
+        transcript: String,
+        personaPrompt: String,
+        personaID: UUID?,
+        llmService: LLMService,
+    ) async throws -> String {
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
             sourceText: transcript,
             spokenInstruction: nil,
             personaPrompt: personaPrompt,
+            personaID: personaID,
             vocabularyTerms: VocabularyStore.activeTerms(),
         )
 

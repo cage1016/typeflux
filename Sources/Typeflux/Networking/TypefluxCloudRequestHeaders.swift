@@ -148,6 +148,18 @@ enum TypefluxCloudRequestHeaders {
         request.setValue(personaID.uuidString, forHTTPHeaderField: personaIDField)
     }
 
+    static func applyingPersonaID(
+        _ personaID: UUID?,
+        to headers: [String: String] = [:],
+        provider: LLMRemoteProvider,
+    ) -> [String: String] {
+        guard provider == .typefluxCloud, let personaID else { return headers }
+
+        var merged = headers
+        merged[personaIDField] = personaID.uuidString
+        return merged
+    }
+
     static func applyCloudHeaders(
         scenario: TypefluxCloudScenario,
         to request: inout URLRequest,
@@ -191,10 +203,15 @@ enum TypefluxCloudRequestHeaders {
 }
 
 extension ResolvedLLMConnection {
-    func headers(for scenario: TypefluxCloudScenario) -> [String: String] {
-        TypefluxCloudRequestHeaders.applyingScenario(
+    func headers(for scenario: TypefluxCloudScenario, personaID: UUID? = nil) -> [String: String] {
+        let scenarioHeaders = TypefluxCloudRequestHeaders.applyingScenario(
             scenario,
             to: additionalHeaders,
+            provider: provider,
+        )
+        return TypefluxCloudRequestHeaders.applyingPersonaID(
+            personaID,
+            to: scenarioHeaders,
             provider: provider,
         )
     }

@@ -164,8 +164,9 @@ final class OpenAICompatibleLLMService: LLMService {
     private func headers(
         for connection: ResolvedLLMConnection,
         scenario: TypefluxCloudScenario,
+        personaID: UUID? = nil,
     ) -> [String: String] {
-        connection.headers(for: scenario)
+        connection.headers(for: scenario, personaID: personaID)
     }
 
     func streamRewrite(request rewriteRequest: LLMRewriteRequest) -> AsyncThrowingStream<String, Error> {
@@ -262,7 +263,7 @@ final class OpenAICompatibleLLMService: LLMService {
     ) async throws -> String {
         let llmConfig = settingsStore.textLLMConfiguration()
         let call = try await resolveConnection(for: llmConfig)
-        let additionalHeaders = headers(for: call.connection, scenario: .textRewrite)
+        let additionalHeaders = headers(for: call.connection, scenario: .textRewrite, personaID: rewriteRequest.personaID)
 
         let prompts = PromptCatalog.rewritePrompts(for: rewriteRequest)
         var effectiveSystemPrompt = PromptCatalog.appendUserEnvironmentContext(

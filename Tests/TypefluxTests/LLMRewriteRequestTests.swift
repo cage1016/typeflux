@@ -11,17 +11,20 @@ final class LLMRewriteRequestTests: XCTestCase {
     }
 
     func testCanCreateRequestWithAllParameters() {
+        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
         let request = LLMRewriteRequest(
             mode: .editSelection,
             sourceText: "source",
             spokenInstruction: "make it better",
             personaPrompt: "formal tone",
+            personaID: personaID,
             vocabularyTerms: ["Typeflux"],
         )
 
         XCTAssertEqual(request.sourceText, "source")
         XCTAssertEqual(request.spokenInstruction, "make it better")
         XCTAssertEqual(request.personaPrompt, "formal tone")
+        XCTAssertEqual(request.personaID, personaID)
         XCTAssertEqual(request.vocabularyTerms, ["Typeflux"])
     }
 
@@ -36,6 +39,7 @@ final class LLMRewriteRequestTests: XCTestCase {
         XCTAssertEqual(request.sourceText, "raw text")
         XCTAssertNil(request.spokenInstruction)
         XCTAssertNil(request.personaPrompt)
+        XCTAssertNil(request.personaID)
         XCTAssertTrue(request.vocabularyTerms.isEmpty)
     }
 

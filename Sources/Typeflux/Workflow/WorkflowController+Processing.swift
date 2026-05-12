@@ -762,6 +762,7 @@ extension WorkflowController {
                 try await processPersonaRewriteFlow(
                     transcribedText: transcribedText,
                     personaPrompt: personaPrompt ?? "",
+                    personaID: personaID,
                     selectionSnapshot: selectionSnapshot,
                     inputContext: inputContext,
                     multimodalHandlesPersona: multimodalHandlesPersona && !hasInputContext,
@@ -1333,6 +1334,7 @@ extension WorkflowController {
             sourceText: "{{transcript}}",
             spokenInstruction: nil,
             personaPrompt: personaPrompt,
+            personaID: personaID,
             appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
             vocabularyTerms: VocabularyStore.activeTerms(),
         )
@@ -1406,6 +1408,7 @@ extension WorkflowController {
     private func processPersonaRewriteFlow(
         transcribedText: String,
         personaPrompt: String,
+        personaID: UUID?,
         selectionSnapshot: TextSelectionSnapshot,
         inputContext: InputContextSnapshot?,
         multimodalHandlesPersona: Bool,
@@ -1462,6 +1465,7 @@ extension WorkflowController {
                         sourceText: transcribedText,
                         spokenInstruction: nil,
                         personaPrompt: personaPrompt,
+                        personaID: personaID,
                         appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
                         inputContext: inputContext,
                         vocabularyTerms: VocabularyStore.activeTerms(),
