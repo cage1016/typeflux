@@ -148,6 +148,30 @@ final class AuthStateTests: XCTestCase {
         XCTAssertNotNil(state.subscriptionError)
     }
 
+    func testLoginSuccessUsesInMemoryTokenWhenPersistenceDoesNotImmediatelyLoad() async {
+        var savedProfile: UserProfile?
+        var fetchedProfileToken: String?
+        let profile = makeProfile(email: "memory-session@test.com")
+        let state = AuthState(
+            loadStoredToken: { nil },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { _, _ in },
+            saveStoredUserProfile: { savedProfile = $0 },
+            clearStoredSession: {},
+            fetchProfile: { token in
+                fetchedProfileToken = token
+                return profile
+            },
+            fetchSubscription: { _ in .none },
+        )
+
+        await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
+
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(fetchedProfileToken, "token-1")
+        XCTAssertEqual(savedProfile, profile)
+    }
+
     func testLoginSuccessAcceptsRelativeExpirySeconds() async {
         var storedToken: (token: String, expiresAt: Int)?
         let now = Int(Date().timeIntervalSince1970)

@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Security
 
 /// Stores authentication tokens in the macOS Keychain.
@@ -19,12 +20,14 @@ struct KeychainTokenStore {
     }
     private static let tokenAccount = "session"
     private static let userProfileAccount = "userProfile"
+    private static let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "KeychainTokenStore")
 
     // MARK: - Token
 
-    static func saveToken(_ token: String, expiresAt: Int, refreshToken: String? = nil) {
+    @discardableResult
+    static func saveToken(_ token: String, expiresAt: Int, refreshToken: String? = nil) -> Bool {
         let storedToken = StoredToken(token: token, expiresAt: expiresAt, refreshToken: refreshToken)
-        setKeychainValue(storedToken, account: tokenAccount)
+        return setKeychainValue(storedToken, account: tokenAccount)
     }
 
     static func loadToken() -> (token: String, expiresAt: Int)? {
@@ -57,7 +60,8 @@ struct KeychainTokenStore {
 
     // MARK: - User Profile
 
-    static func saveUserProfile(_ profile: UserProfile) {
+    @discardableResult
+    static func saveUserProfile(_ profile: UserProfile) -> Bool {
         setKeychainValue(profile, account: userProfileAccount)
     }
 
@@ -78,8 +82,12 @@ struct KeychainTokenStore {
 
     // MARK: - Keychain Helpers
 
-    private static func setKeychainValue<Value: Encodable>(_ value: Value, account: String) {
-        guard let data = try? JSONEncoder().encode(value) else { return }
+    @discardableResult
+    private static func setKeychainValue<Value: Encodable>(_ value: Value, account: String) -> Bool {
+        guard let data = try? JSONEncoder().encode(value) else {
+            logger.error("Failed to encode keychain value for account \(account, privacy: .public)")
+            return false
+        }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -87,14 +95,28 @@ struct KeychainTokenStore {
             kSecAttrAccount as String: account,
         ]
 
-        // Delete existing item first
-        SecItemDelete(query as CFDictionary)
+        let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updateStatus == errSecSuccess {
+            return true
+        }
+        if updateStatus != errSecItemNotFound {
+            logger.error(
+                "Failed to update keychain account \(account, privacy: .public): \(describeStatus(updateStatus), privacy: .public)"
+            )
+        }
 
         var addQuery = query
         addQuery[kSecValueData as String] = data
         addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
-        SecItemAdd(addQuery as CFDictionary, nil)
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus == errSecSuccess {
+            return true
+        }
+        logger.error(
+            "Failed to add keychain account \(account, privacy: .public): \(describeStatus(addStatus), privacy: .public)"
+        )
+        return false
     }
 
     private static func getKeychainValue<Value: Decodable>(account: String) -> Value? {
@@ -109,10 +131,20 @@ struct KeychainTokenStore {
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let value = try? JSONDecoder().decode(Value.self, from: data)
-        else {
+        guard status == errSecSuccess else {
+            if status != errSecItemNotFound {
+                logger.error(
+                    "Failed to load keychain account \(account, privacy: .public): \(describeStatus(status), privacy: .public)"
+                )
+            }
+            return nil
+        }
+        guard let data = result as? Data else {
+            logger.error("Loaded non-data keychain value for account \(account, privacy: .public)")
+            return nil
+        }
+        guard let value = try? JSONDecoder().decode(Value.self, from: data) else {
+            logger.error("Failed to decode keychain value for account \(account, privacy: .public)")
             return nil
         }
         return value
@@ -125,5 +157,12 @@ struct KeychainTokenStore {
             kSecAttrAccount as String: account,
         ]
         SecItemDelete(query as CFDictionary)
+    }
+
+    private static func describeStatus(_ status: OSStatus) -> String {
+        if let message = SecCopyErrorMessageString(status, nil) as String? {
+            return "\(status) (\(message))"
+        }
+        return "\(status)"
     }
 }
