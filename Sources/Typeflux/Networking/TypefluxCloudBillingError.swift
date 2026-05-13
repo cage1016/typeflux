@@ -132,7 +132,7 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
         "INVOICE_PAST_DUE",
         "INVOICE_UNPAID",
         "SUBSCRIPTION_PAST_DUE",
-        "SUBSCRIPTION_UNPAID",
+        "SUBSCRIPTION_UNPAID"
     ]
 
     private static let quotaExceededCodes: Set<String> = [
@@ -140,7 +140,7 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
         "ASR_QUOTA_EXCEEDED",
         "LLM_QUOTA_EXCEEDED",
         "INSUFFICIENT_CREDITS",
-        "CREDIT_EXHAUSTED",
+        "CREDIT_EXHAUSTED"
     ]
 
     private static func normalized(_ value: String) -> String {

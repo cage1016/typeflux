@@ -219,7 +219,7 @@ struct MarkdownWebView: NSViewRepresentable {
             """
             [MarkdownWebView] Markdown passed to WebView:
             \(normalized)
-            """,
+            """
         )
 
         return normalized
@@ -244,7 +244,7 @@ struct MarkdownWebView: NSViewRepresentable {
         func webView(
             _: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
-            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
             if navigationAction.navigationType == .linkActivated,
                let url = navigationAction.request.url
@@ -259,7 +259,7 @@ struct MarkdownWebView: NSViewRepresentable {
 
         private func updateContentHeight(for webView: WKWebView) {
             webView.evaluateJavaScript(
-                "Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight, document.body.getBoundingClientRect().height))",
+                "Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight, document.body.getBoundingClientRect().height))"
             ) { [weak self] result, _ in
                 guard let self else { return }
                 let rawHeight: CGFloat? = if let number = result as? NSNumber {

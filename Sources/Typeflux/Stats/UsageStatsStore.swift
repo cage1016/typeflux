@@ -243,8 +243,9 @@ final class UsageStatsStore {
     }
 
     private func postRecordingWaitSeconds(for record: HistoryRecord) -> Double {
-        guard let milliseconds = (record.pipelineStats ?? record.pipelineTiming?.generatedStats())?.endToEndMilliseconds,
-              milliseconds > 0
+        guard let milliseconds = (record.pipelineStats ?? record.pipelineTiming?.generatedStats())?
+            .endToEndMilliseconds,
+            milliseconds > 0
         else {
             return 0
         }
@@ -261,7 +262,7 @@ final class UsageStatsStore {
         case .editSelection:
             return editedTextContribution(
                 originalText: record.selectionOriginalText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
-                editedText: finalText,
+                editedText: finalText
             )
         case .askAnswer:
             return ""
@@ -282,7 +283,7 @@ final class UsageStatsStore {
 
         var lengths = Array(
             repeating: Array(repeating: 0, count: edited.count + 1),
-            count: original.count + 1,
+            count: original.count + 1
         )
 
         if !original.isEmpty, !edited.isEmpty {

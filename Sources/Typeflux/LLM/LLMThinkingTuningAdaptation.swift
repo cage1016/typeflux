@@ -7,39 +7,39 @@ struct LLMThinkingTuningCandidate: Equatable {
     static let all: [LLMThinkingTuningCandidate] = [
         LLMThinkingTuningCandidate(
             id: "thinking-disabled",
-            parameters: ["thinking": ["type": "disabled"]],
+            parameters: ["thinking": ["type": "disabled"]]
         ),
         LLMThinkingTuningCandidate(
             id: "enable-thinking-false",
-            parameters: ["enable_thinking": false],
+            parameters: ["enable_thinking": false]
         ),
         LLMThinkingTuningCandidate(
             id: "reasoning-effort-none",
-            parameters: ["reasoning": ["effort": "none"]],
+            parameters: ["reasoning": ["effort": "none"]]
         ),
         LLMThinkingTuningCandidate(
             id: "openrouter-reasoning-exclude",
             parameters: [
                 "reasoning": [
                     "effort": "none",
-                    "exclude": true,
+                    "exclude": true
                 ],
-                "include_reasoning": false,
-            ],
+                "include_reasoning": false
+            ]
         ),
         LLMThinkingTuningCandidate(
             id: "thinking-and-enable-thinking",
             parameters: [
                 "thinking": ["type": "disabled"],
-                "enable_thinking": false,
-            ],
+                "enable_thinking": false
+            ]
         ),
         LLMThinkingTuningCandidate(
             id: "thinking-and-reasoning-effort",
             parameters: [
                 "thinking": ["type": "disabled"],
-                "reasoning": ["effort": "none"],
-            ],
+                "reasoning": ["effort": "none"]
+            ]
         ),
         LLMThinkingTuningCandidate(
             id: "all-known-thinking-controls",
@@ -48,11 +48,11 @@ struct LLMThinkingTuningCandidate: Equatable {
                 "enable_thinking": false,
                 "reasoning": [
                     "effort": "none",
-                    "exclude": true,
+                    "exclude": true
                 ],
-                "include_reasoning": false,
-            ],
-        ),
+                "include_reasoning": false
+            ]
+        )
     ]
 
     static func candidate(id: String) -> LLMThinkingTuningCandidate? {
@@ -96,7 +96,7 @@ struct LLMThinkingTuningAdaptationState: Codable, Equatable {
 
     static func probing(
         nextCandidateIndex: Int = 0,
-        failures: [LLMThinkingTuningCandidateFailure] = [],
+        failures: [LLMThinkingTuningCandidateFailure] = []
     ) -> LLMThinkingTuningAdaptationState {
         LLMThinkingTuningAdaptationState(
             mode: .probing,
@@ -104,14 +104,14 @@ struct LLMThinkingTuningAdaptationState: Codable, Equatable {
             lockedCandidateID: nil,
             lockedAt: nil,
             unsupportedMarkedAt: nil,
-            failures: failures,
+            failures: failures
         )
     }
 
     static func locked(
         candidateID: String,
         lockedAt: Date,
-        failures: [LLMThinkingTuningCandidateFailure],
+        failures: [LLMThinkingTuningCandidateFailure]
     ) -> LLMThinkingTuningAdaptationState {
         LLMThinkingTuningAdaptationState(
             mode: .locked,
@@ -119,13 +119,13 @@ struct LLMThinkingTuningAdaptationState: Codable, Equatable {
             lockedCandidateID: candidateID,
             lockedAt: lockedAt,
             unsupportedMarkedAt: nil,
-            failures: failures,
+            failures: failures
         )
     }
 
     static func unsupported(
         markedAt: Date,
-        failures: [LLMThinkingTuningCandidateFailure],
+        failures: [LLMThinkingTuningCandidateFailure]
     ) -> LLMThinkingTuningAdaptationState {
         LLMThinkingTuningAdaptationState(
             mode: .unsupported,
@@ -133,7 +133,7 @@ struct LLMThinkingTuningAdaptationState: Codable, Equatable {
             lockedCandidateID: nil,
             lockedAt: nil,
             unsupportedMarkedAt: markedAt,
-            failures: failures,
+            failures: failures
         )
     }
 }
@@ -159,7 +159,7 @@ final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
 
     func applyCandidate(
         to body: inout [String: Any],
-        for baseURL: URL,
+        for baseURL: URL
     ) -> LLMThinkingTuningCandidate? {
         guard let candidate = candidate(for: baseURL) else { return nil }
         for (key, value) in candidate.parameters {
@@ -178,7 +178,7 @@ final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
     func recordSuccess(
         baseURL: URL,
         candidate: LLMThinkingTuningCandidate?,
-        containsThinking: Bool,
+        containsThinking: Bool
     ) {
         guard let candidate else { return }
         locked {
@@ -278,7 +278,7 @@ final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
     private func recordFailureLocked(
         baseURL: URL,
         candidate: LLMThinkingTuningCandidate,
-        reason: LLMThinkingTuningFailureReason,
+        reason: LLMThinkingTuningFailureReason
     ) {
         let key = Self.normalizedBaseURLKey(baseURL)
         var states = loadStates()
@@ -288,8 +288,8 @@ final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
             LLMThinkingTuningCandidateFailure(
                 candidateID: candidate.id,
                 reason: reason,
-                observedAt: now(),
-            ),
+                observedAt: now()
+            )
         )
 
         guard let currentIndex = LLMThinkingTuningCandidate.index(of: candidate.id) else {

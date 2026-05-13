@@ -22,7 +22,7 @@ enum CloudEndpointRegistry {
         let resolved = urls.isEmpty ? [URL(string: "https://typeflux.app")!] : urls
         let selector = CloudEndpointSelector(
             baseURLs: resolved,
-            prober: HTTPCloudEndpointProber(),
+            prober: HTTPCloudEndpointProber()
         )
         cached = selector
         return selector
@@ -50,7 +50,7 @@ final class CloudEndpointProbeScheduler {
     init(
         selector: CloudEndpointSelector = CloudEndpointRegistry.shared,
         interval: TimeInterval = CloudEndpointSelectorConfig.default.probeInterval,
-        initialDelay: TimeInterval = 1,
+        initialDelay: TimeInterval = 1
     ) {
         self.selector = selector
         self.interval = interval

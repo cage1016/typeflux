@@ -27,7 +27,7 @@ final class CloudEndpointProberTests: XCTestCase {
         let result = try await prober.probe(
             baseURL: XCTUnwrap(URL(string: "https://example.com")),
             nonce: "abc-123",
-            timeout: 1,
+            timeout: 1
         )
 
         XCTAssertTrue(result.nonceMatches)
@@ -49,7 +49,7 @@ final class CloudEndpointProberTests: XCTestCase {
         _ = try await prober.probe(
             baseURL: XCTUnwrap(URL(string: "https://example.com/edge/")),
             nonce: "n",
-            timeout: 1,
+            timeout: 1
         )
     }
 
@@ -64,7 +64,7 @@ final class CloudEndpointProberTests: XCTestCase {
             _ = try await prober.probe(
                 baseURL: XCTUnwrap(URL(string: "https://example.com")),
                 nonce: "expected",
-                timeout: 1,
+                timeout: 1
             )
             XCTFail("Expected nonceMismatch")
         } catch CloudEndpointProbeError.nonceMismatch {
@@ -84,7 +84,7 @@ final class CloudEndpointProberTests: XCTestCase {
             _ = try await prober.probe(
                 baseURL: XCTUnwrap(URL(string: "https://example.com")),
                 nonce: "n",
-                timeout: 1,
+                timeout: 1
             )
             XCTFail("Expected httpStatus")
         } catch let CloudEndpointProbeError.httpStatus(code) {
@@ -104,7 +104,7 @@ final class CloudEndpointProberTests: XCTestCase {
             _ = try await prober.probe(
                 baseURL: XCTUnwrap(URL(string: "https://example.com")),
                 nonce: "n",
-                timeout: 1,
+                timeout: 1
             )
             XCTFail("Expected decoding")
         } catch CloudEndpointProbeError.decoding {
@@ -127,7 +127,7 @@ final class CloudEndpointProberTests: XCTestCase {
             url: url,
             statusCode: status,
             httpVersion: "HTTP/1.1",
-            headerFields: ["Content-Type": "application/json"],
+            headerFields: ["Content-Type": "application/json"]
         )!
         return (response, Data(body.utf8))
     }

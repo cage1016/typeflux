@@ -6,12 +6,16 @@ final class LocalNotificationTriggerTests: XCTestCase {
     func testPrepareOllamaModelSendsReadyNotificationOnSuccess() async throws {
         let notificationService = RecordingLocalNotificationService()
         let viewModel = try StudioViewModel(
-            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "LocalNotificationTriggerTests.ollama.\(UUID().uuidString)"))),
+            settingsStore: SettingsStore(
+                defaults: XCTUnwrap(UserDefaults(
+                    suiteName: "LocalNotificationTriggerTests.ollama.\(UUID().uuidString)"
+                ))
+            ),
             historyStore: InMemoryNotificationHistoryStore(),
             initialSection: .models,
             modelManager: MockOllamaModelManager(),
             localModelManager: MockLocalSTTModelManager(),
-            notificationService: notificationService,
+            notificationService: notificationService
         )
 
         viewModel.prepareOllamaModel()
@@ -28,12 +32,16 @@ final class LocalNotificationTriggerTests: XCTestCase {
         let notificationService = RecordingLocalNotificationService()
         let localModelManager = MockLocalSTTModelManager()
         let viewModel = try StudioViewModel(
-            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "LocalNotificationTriggerTests.localSTT.\(UUID().uuidString)"))),
+            settingsStore: SettingsStore(
+                defaults: XCTUnwrap(UserDefaults(
+                    suiteName: "LocalNotificationTriggerTests.localSTT.\(UUID().uuidString)"
+                ))
+            ),
             historyStore: InMemoryNotificationHistoryStore(),
             initialSection: .models,
             modelManager: MockOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: notificationService,
+            notificationService: notificationService
         )
 
         viewModel.prepareLocalSTTModel()
@@ -49,16 +57,20 @@ final class LocalNotificationTriggerTests: XCTestCase {
     func testDeleteLocalSTTModelKeepsBundledModelReady() throws {
         let bundledInfo = LocalSTTPreparedModelInfo(
             storagePath: "/Applications/Typeflux.app/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small",
-            sourceDisplayName: L("common.bundled"),
+            sourceDisplayName: L("common.bundled")
         )
         let localModelManager = BundledLocalSTTModelManager(preparedInfo: bundledInfo)
         let viewModel = try StudioViewModel(
-            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "LocalNotificationTriggerTests.bundledDelete.\(UUID().uuidString)"))),
+            settingsStore: SettingsStore(
+                defaults: XCTUnwrap(UserDefaults(
+                    suiteName: "LocalNotificationTriggerTests.bundledDelete.\(UUID().uuidString)"
+                ))
+            ),
             historyStore: InMemoryNotificationHistoryStore(),
             initialSection: .models,
             modelManager: MockOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: RecordingLocalNotificationService(),
+            notificationService: RecordingLocalNotificationService()
         )
 
         viewModel.deleteLocalSTTModel(.senseVoiceSmall)
@@ -71,7 +83,7 @@ final class LocalNotificationTriggerTests: XCTestCase {
 
     private func waitForNotificationCount(
         _ expectedCount: Int,
-        in service: RecordingLocalNotificationService,
+        in service: RecordingLocalNotificationService
     ) async throws {
         for _ in 0 ..< 50 {
             if await service.notificationCount() == expectedCount {
@@ -92,14 +104,14 @@ private final class MockLocalSTTModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore _: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         prepareCallCount += 1
         onUpdate?(LocalSTTPreparationUpdate(
             message: "ready",
             progress: 1,
             storagePath: "/tmp/typeflux-local-model",
-            source: "test",
+            source: "test"
         ))
     }
 
@@ -127,7 +139,7 @@ private final class BundledLocalSTTModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore _: SettingsStore,
-        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {}
 
     func preparedModelInfo(settingsStore _: SettingsStore) -> LocalSTTPreparedModelInfo? {

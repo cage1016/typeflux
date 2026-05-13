@@ -58,7 +58,7 @@ extension WorkflowController {
 
     func personaPickerIcon(
         for mode: PersonaPickerMode,
-        applicationIcon: NSImage? = nil,
+        applicationIcon: NSImage? = nil
     ) -> OverlayController.PersonaPickerIcon {
         switch mode {
         case .switchDefault:
@@ -77,8 +77,8 @@ extension WorkflowController {
                 PersonaPickerEntry(
                     id: nil,
                     title: L("persona.none.title"),
-                    subtitle: L("persona.none.subtitle"),
-                ),
+                    subtitle: L("persona.none.subtitle")
+                )
             )
         }
         items.append(
@@ -86,9 +86,9 @@ extension WorkflowController {
                 PersonaPickerEntry(
                     id: $0.id,
                     title: $0.name,
-                    subtitle: settingsStore.resolvedPersonaPrompt(for: $0),
+                    subtitle: settingsStore.resolvedPersonaPrompt(for: $0)
                 )
-            },
+            }
         )
         return items
     }
@@ -128,7 +128,10 @@ extension WorkflowController {
             settingsStore.updatePersonaAppBindingPersona(id: binding.id, personaID: selected.id)
             if selected.id != nil {
                 Task { @MainActor in
-                    self.overlayController.showNotice(message: L("workflow.persona.applicationSwitched", selected.title))
+                    self.overlayController.showNotice(message: L(
+                        "workflow.persona.applicationSwitched",
+                        selected.title
+                    ))
                 }
             } else {
                 Task { @MainActor in
@@ -167,7 +170,8 @@ extension WorkflowController {
 
     // swiftlint:disable:next function_body_length
     func applyPersonaToSelection(_ context: PersonaSelectionContext, persona: PersonaProfile) {
-        let personaPrompt = settingsStore.resolvedPersonaPrompt(for: persona).trimmingCharacters(in: .whitespacesAndNewlines)
+        let personaPrompt = settingsStore.resolvedPersonaPrompt(for: persona)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !personaPrompt.isEmpty else { return }
 
         cancelCurrentProcessing(resetUI: false, reason: L("workflow.cancel.newRecording"))
@@ -182,7 +186,7 @@ extension WorkflowController {
             recordingStatus: .skipped,
             transcriptionStatus: .skipped,
             processingStatus: .running,
-            applyStatus: .pending,
+            applyStatus: .pending
         )
         saveHistoryRecord(record)
         activeProcessingRecordID = record.id
@@ -204,11 +208,11 @@ extension WorkflowController {
                         spokenInstruction: nil,
                         personaPrompt: personaPrompt,
                         personaID: persona.id,
-                        appSystemContext: AppSystemContext(snapshot: context.snapshot),
+                        appSystemContext: AppSystemContext(snapshot: context.snapshot)
                     ),
                     sessionID: sessionID,
                     showsStreamingPreview: WorkflowOverlayPresentationPolicy
-                        .shouldShowLLMStreamingPreviewForPersonaSelectionApplication(),
+                        .shouldShowLLMStreamingPreviewForPersonaSelectionApplication()
                 )
                 try ensureProcessingIsActive(sessionID)
 
@@ -223,7 +227,7 @@ extension WorkflowController {
                         self.lastDialogResultText = rewriteResult.text
                         self.overlayController.showResultDialog(
                             title: L("workflow.result.copyTitle"),
-                            message: rewriteResult.text,
+                            message: rewriteResult.text
                         )
                     }
                     outcome = .presentedInDialog
@@ -231,7 +235,7 @@ extension WorkflowController {
                     outcome = applyText(
                         rewriteResult.text,
                         replace: true,
-                        fallbackTitle: L("workflow.result.copyTitle"),
+                        fallbackTitle: L("workflow.result.copyTitle")
                     )
                 }
 

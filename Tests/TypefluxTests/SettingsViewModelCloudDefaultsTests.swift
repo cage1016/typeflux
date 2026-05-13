@@ -17,7 +17,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             historyStore: EmptyHistoryStore(),
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
-            localModelManager: NoopLocalSTTModelManager(),
+            localModelManager: NoopLocalSTTModelManager()
         )
         viewModel.setModelDomain(.llm)
 
@@ -46,7 +46,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
 
         viewModel.focusLocalSTTModel(LocalSTTModel.qwen3ASR)
@@ -79,13 +79,13 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
         let progressExpectation = expectation(description: "manual local model download progress")
         let observer = NotificationCenter.default.addObserver(
             forName: .localModelDownloadProgressDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { _ in
             if case .downloading(model: .qwen3ASR, progress: let progress) =
                 LocalModelDownloadProgressCenter.shared.status,
@@ -116,7 +116,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: NoopLocalSTTModelManager(),
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
 
         LocalModelDownloadProgressCenter.shared.reportDownloading(model: .whisperLocal, progress: 0.35)
@@ -143,7 +143,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: NoopLocalSTTModelManager(),
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
         viewModel.focusLocalSTTModel(.qwen3ASR)
 
@@ -170,7 +170,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
 
         viewModel.prepareLocalSTTModel(.qwen3ASR)
@@ -193,7 +193,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .qwen3ASR
         let localModelManager = MutableAvailabilityLocalSTTModelManager(
-            availableModels: [.qwen3ASR, .funASR, .whisperLocal],
+            availableModels: [.qwen3ASR, .funASR, .whisperLocal]
         )
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
@@ -201,7 +201,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
 
         viewModel.deleteLocalSTTModel(.qwen3ASR)
@@ -210,7 +210,10 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         XCTAssertEqual(viewModel.localSTTFocusedModel, .funASR)
         XCTAssertEqual(settingsStore.localSTTModel, .funASR)
         XCTAssertTrue(viewModel.isLocalSTTPrepared)
-        XCTAssertEqual(viewModel.localSTTStatus, L("settings.models.localSTT.readyNamed", LocalSTTModel.funASR.displayName))
+        XCTAssertEqual(
+            viewModel.localSTTStatus,
+            L("settings.models.localSTT.readyNamed", LocalSTTModel.funASR.displayName)
+        )
     }
 
     func testDeletingOnlyDownloadedLocalSTTModelFallsBackToUndownloadedSenseVoice() throws {
@@ -226,7 +229,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
 
         viewModel.deleteLocalSTTModel(.qwen3ASR)
@@ -246,7 +249,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .senseVoiceSmall
         let localModelManager = MutableAvailabilityLocalSTTModelManager(
-            availableModels: [.senseVoiceSmall, .qwen3ASR],
+            availableModels: [.senseVoiceSmall, .qwen3ASR]
         )
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
@@ -254,7 +257,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
             initialSection: .models,
             modelManager: NoopOllamaModelManager(),
             localModelManager: localModelManager,
-            notificationService: NoopLocalNotificationService(),
+            notificationService: NoopLocalNotificationService()
         )
         viewModel.focusLocalSTTModel(.qwen3ASR)
 
@@ -274,7 +277,7 @@ private final class NoopOllamaModelManager: OllamaModelManaging {
 private final class NoopLocalSTTModelManager: LocalSTTModelManaging {
     func prepareModel(
         settingsStore _: SettingsStore,
-        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {}
 
     func preparedModelInfo(settingsStore _: SettingsStore) -> LocalSTTPreparedModelInfo? {
@@ -297,14 +300,14 @@ private final class CapturingLocalSTTModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         preparedModel = settingsStore.localSTTModel
         onUpdate?(LocalSTTPreparationUpdate(
             message: "ready",
             progress: 1,
             storagePath: "/tmp/typeflux-local-model",
-            source: "test",
+            source: "test"
         ))
     }
 
@@ -337,14 +340,14 @@ private final class SuspendedLocalSTTModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore _: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         started.fulfill()
         onUpdate?(LocalSTTPreparationUpdate(
             message: "downloading",
             progress: 0.25,
             storagePath: "/tmp/typeflux-local-model",
-            source: "test",
+            source: "test"
         ))
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
@@ -380,14 +383,14 @@ private final class MutableAvailabilityLocalSTTModelManager: LocalSTTModelManagi
 
     func prepareModel(
         settingsStore _: SettingsStore,
-        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {}
 
     func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo? {
         guard availableModels.contains(settingsStore.localSTTModel) else { return nil }
         return LocalSTTPreparedModelInfo(
             storagePath: storagePath(for: LocalSTTConfiguration(settingsStore: settingsStore)),
-            sourceDisplayName: "test",
+            sourceDisplayName: "test"
         )
     }
 

@@ -6,7 +6,7 @@ extension Notification.Name {
     /// Posted after account-backed Typeflux Cloud model defaults have been
     /// applied to ``SettingsStore``.
     static let cloudAccountModelDefaultsDidApply = Notification.Name(
-        "CloudLoginSyncCoordinator.cloudAccountModelDefaultsDidApply",
+        "CloudLoginSyncCoordinator.cloudAccountModelDefaultsDidApply"
     )
 }
 
@@ -54,14 +54,14 @@ final class CloudLoginSyncCoordinator {
 
     init(
         settingsStore: SettingsStore,
-        promptPresenter: CloudModelDefaultsPrompting? = nil,
+        promptPresenter: CloudModelDefaultsPrompting? = nil
     ) {
         self.settingsStore = settingsStore
         self.promptPresenter = promptPresenter ?? CloudModelDefaultsAlertPresenter()
         observer = NotificationCenter.default.addObserver(
             forName: .authCheckoutSubscriptionDidBecomeEntitled,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.offerCloudDefaultsIfNeeded()

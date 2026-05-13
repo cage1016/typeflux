@@ -191,7 +191,7 @@ final class WorkflowController {
             SystemLocalModelDownloadAlertPresenter(),
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
-        },
+        }
     ) {
         self.appState = appState
         self.settingsStore = settingsStore
@@ -224,28 +224,28 @@ final class WorkflowController {
                     cancelCurrentProcessing(resetUI: true, reason: L("workflow.cancel.userCancelled"))
                 }
             },
-            onConfirm: { [weak self] in self?.confirmLockedRecording() },
+            onConfirm: { [weak self] in self?.confirmLockedRecording() }
         )
         self.overlayController.setResultDialogHandler(
-            onCopy: { [weak self] in self?.copyLastResultFromDialog() },
+            onCopy: { [weak self] in self?.copyLastResultFromDialog() }
         )
         self.overlayController.setFailureRetryHandler(
             onRetry: { [weak self] in
                 guard let self, let record = lastRetryableFailureRecord else { return }
                 retry(record: record)
-            },
+            }
         )
         self.overlayController.setPersonaPickerHandlers(
             onMoveUp: { [weak self] in self?.moveOverlayPickerSelection(delta: -1) },
             onMoveDown: { [weak self] in self?.moveOverlayPickerSelection(delta: 1) },
             onSelect: { [weak self] index in self?.selectOverlayPickerSelection(at: index) },
             onConfirm: { [weak self] in self?.confirmOverlayPickerSelection() },
-            onCancel: { [weak self] in self?.dismissOverlayPicker() },
+            onCancel: { [weak self] in self?.dismissOverlayPicker() }
         )
         self.overlayController.setHistoryPickerActionHandlers(
             onCopy: { [weak self] index in self?.copyHistorySelection(at: index) },
             onInsert: { [weak self] index in self?.insertHistorySelection(at: index) },
-            onRetry: { [weak self] index in self?.retryHistorySelection(at: index) },
+            onRetry: { [weak self] index in self?.retryHistorySelection(at: index) }
         )
         self.agentClarificationWindowController.onDismiss = { [weak self] in
             self?.dismissClarification()
@@ -261,14 +261,14 @@ final class WorkflowController {
             Selected Text Length: \(selectedText?.count ?? 0)
             Answer Markdown Length: \(answerMarkdown.count)
             Answer Markdown Preview: \(String(answerMarkdown.prefix(160)))
-            """,
+            """
         )
         overlayController.dismissImmediately()
         askAnswerWindowController.show(
             title: L("workflow.ask.answerTitle"),
             question: question,
             selectedText: selectedText,
-            answerMarkdown: answerMarkdown,
+            answerMarkdown: answerMarkdown
         )
     }
 
@@ -316,7 +316,7 @@ final class WorkflowController {
         localModelPreheatObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             self?.preheatLocalModelIfNeeded()
         }
@@ -621,7 +621,7 @@ final class WorkflowController {
             }
             localModelDownloadAlertPresenter.showDownloadingAlert(
                 model: model,
-                progress: progress,
+                progress: progress
             )
         }
     }
@@ -640,7 +640,7 @@ final class WorkflowController {
                 try await localModelManager.prepareModel(configuration: configuration) { update in
                     LocalModelDownloadProgressCenter.shared.reportDownloading(
                         model: configuration.model,
-                        progress: update.progress,
+                        progress: update.progress
                     )
                 }
                 guard !Task.isCancelled else { return }
@@ -648,7 +648,7 @@ final class WorkflowController {
                 await notificationService.sendLocalNotification(
                     title: L("notification.localModelReady.title"),
                     body: L("notification.localModelReady.body"),
-                    identifier: "ai.gulu.app.typeflux.local-model-ready",
+                    identifier: "ai.gulu.app.typeflux.local-model-ready"
                 )
             } catch {
                 guard !Task.isCancelled else {
@@ -658,7 +658,7 @@ final class WorkflowController {
                 NetworkDebugLogger.logError(context: "Workflow local STT model download failed", error: error)
                 LocalModelDownloadProgressCenter.shared.reportFailed(
                     model: configuration.model,
-                    message: error.localizedDescription,
+                    message: error.localizedDescription
                 )
             }
             await MainActor.run { [weak self, configuration] in
@@ -681,7 +681,7 @@ final class WorkflowController {
                snapshot.hasAskSelectionContext
             {
                 NetworkDebugLogger.logMessage(
-                    "[Ask Flow] preserved pre-promotion selection capture for Ask Anything recording",
+                    "[Ask Flow] preserved pre-promotion selection capture for Ask Anything recording"
                 )
                 return snapshot
             }
@@ -690,7 +690,7 @@ final class WorkflowController {
                 bundleIdentifier: Self.isTypefluxFrontmostApplication() ? Bundle.main.bundleIdentifier : nil,
                 source: "ask-promoted-isolated",
                 isEditable: false,
-                isFocusedTarget: false,
+                isFocusedTarget: false
             )
         }
         inputContextTask = prePromotionInputContextTask
@@ -742,7 +742,7 @@ final class WorkflowController {
 
         let personaHotkeyAppliesToSelection = settingsStore.personaHotkeyAppliesToSelection
         logger.debug(
-            "handlePersonaPickerRequested — personaHotkeyAppliesToSelection=\(personaHotkeyAppliesToSelection)",
+            "handlePersonaPickerRequested — personaHotkeyAppliesToSelection=\(personaHotkeyAppliesToSelection)"
         )
         Task { [weak self] in
             guard let self else { return }
@@ -753,7 +753,10 @@ final class WorkflowController {
                 TextSelectionSnapshot()
             }
 
-            logger.debug("snapshot: isFocusedTarget=\(selectionSnapshot.isFocusedTarget) isEditable=\(selectionSnapshot.isEditable) hasSelection=\(selectionSnapshot.hasSelection) source=\(selectionSnapshot.source) selectedText=\(selectionSnapshot.selectedText?.prefix(32) ?? "nil")")
+            logger
+                .debug(
+                    "snapshot: isFocusedTarget=\(selectionSnapshot.isFocusedTarget) isEditable=\(selectionSnapshot.isEditable) hasSelection=\(selectionSnapshot.hasSelection) source=\(selectionSnapshot.source) selectedText=\(selectionSnapshot.selectedText?.prefix(32) ?? "nil")"
+                )
 
             let selectedText = editingSelectedText(from: selectionSnapshot)
             let frontmostApplicationContext = Self.frontmostApplicationContext()
@@ -762,7 +765,7 @@ final class WorkflowController {
             let applicationIcon = Self.applicationIcon(
                 appName: appName,
                 bundleIdentifier: bundleIdentifier,
-                frontmostApplicationContext: frontmostApplicationContext,
+                frontmostApplicationContext: frontmostApplicationContext
             )
             let mode: PersonaPickerMode
             let items: [PersonaPickerEntry]
@@ -773,13 +776,19 @@ final class WorkflowController {
                 items = personaPickerEntries(includeNoneOption: false)
             } else if let appBinding = settingsStore.activePersonaAppBinding(
                 appName: appName,
-                bundleIdentifier: bundleIdentifier,
+                bundleIdentifier: bundleIdentifier
             ) {
-                logger.debug("mode=switchApplication appName=\(appName ?? "nil") bundleIdentifier=\(bundleIdentifier ?? "nil")")
+                logger
+                    .debug(
+                        "mode=switchApplication appName=\(appName ?? "nil") bundleIdentifier=\(bundleIdentifier ?? "nil")"
+                    )
                 mode = .switchApplication(appBinding)
                 items = personaPickerEntries(includeNoneOption: true)
             } else {
-                logger.debug("mode=switchDefault  selectedText=\(selectedText ?? "nil")  hotkeyApplies=\(settingsStore.personaHotkeyAppliesToSelection)")
+                logger
+                    .debug(
+                        "mode=switchDefault  selectedText=\(selectedText ?? "nil")  hotkeyApplies=\(settingsStore.personaHotkeyAppliesToSelection)"
+                    )
                 mode = .switchDefault
                 items = personaPickerEntries(includeNoneOption: true)
             }
@@ -805,13 +814,13 @@ final class WorkflowController {
                         OverlayController.PersonaPickerItem(
                             id: $0.id?.uuidString ?? "plain-dictation",
                             title: $0.title,
-                            subtitle: $0.subtitle,
+                            subtitle: $0.subtitle
                         )
                     },
                     selectedIndex: selectedIndex,
                     title: self.personaPickerTitle(for: mode),
                     instructions: self.personaPickerInstructions(for: mode),
-                    icon: self.personaPickerIcon(for: mode, applicationIcon: applicationIcon),
+                    icon: self.personaPickerIcon(for: mode, applicationIcon: applicationIcon)
                 )
             }
         }
@@ -829,7 +838,7 @@ final class WorkflowController {
         return FrontmostApplicationContext(
             appName: isTypeflux ? nil : application?.localizedName,
             bundleIdentifier: isTypeflux ? nil : application?.bundleIdentifier,
-            icon: isTypeflux ? nil : application?.icon,
+            icon: isTypeflux ? nil : application?.icon
         )
     }
 
@@ -845,9 +854,10 @@ final class WorkflowController {
     private static func applicationIcon(
         appName: String?,
         bundleIdentifier: String?,
-        frontmostApplicationContext: FrontmostApplicationContext,
+        frontmostApplicationContext: FrontmostApplicationContext
     ) -> NSImage? {
-        if PersonaAppBinding.normalize(bundleIdentifier) == PersonaAppBinding.normalize(frontmostApplicationContext.bundleIdentifier)
+        if PersonaAppBinding.normalize(bundleIdentifier) == PersonaAppBinding
+            .normalize(frontmostApplicationContext.bundleIdentifier)
             || PersonaAppBinding.normalize(appName) == PersonaAppBinding.normalize(frontmostApplicationContext.appName)
         {
             return frontmostApplicationContext.icon
@@ -915,13 +925,14 @@ final class WorkflowController {
                             latestRecordingPreviewText = trimmed
                             overlayController.updateRecordingPreviewText(trimmed)
                         }
-                    },
+                    }
                 )
             } else {
                 nil
             }
             if effectiveIntent == .askSelection {
-                NetworkDebugLogger.logMessage("[Ask Flow] realtime transcription disabled for isolated Ask Anything recording")
+                NetworkDebugLogger
+                    .logMessage("[Ask Flow] realtime transcription disabled for isolated Ask Anything recording")
             }
             let realtimeAudioBufferPump = realtimeSession.map { RealtimeAudioBufferPump(session: $0) }
             activeRealtimeTranscriptionSession = realtimeSession
@@ -938,7 +949,7 @@ final class WorkflowController {
                             await livePreviewer?.append(buffer)
                         }
                     }
-                } : nil,
+                } : nil
             )
             RecordingStartupLatencyTrace.shared.mark("workflow.audio_start_return")
             isAudioRecorderStarting = false
@@ -967,19 +978,24 @@ final class WorkflowController {
 
             let askAnswerWindowIsFrontmost = Self.isTypefluxAskAnswerWindowFrontmost()
             let shouldSkipSelectionCapture = effectiveIntent == .askSelection || askAnswerWindowIsFrontmost
-            selectionTask = Task { [weak self, shouldSkipSelectionCapture, askAnswerWindowIsFrontmost, effectiveIntent] in
+            selectionTask = Task { [
+                weak self,
+                shouldSkipSelectionCapture,
+                askAnswerWindowIsFrontmost,
+                effectiveIntent
+            ] in
                 guard let self else { return TextSelectionSnapshot() }
                 if shouldSkipSelectionCapture {
                     let source = effectiveIntent == .askSelection ? "ask-isolated" : "typeflux-ask-answer-window"
                     NetworkDebugLogger.logMessage(
-                        "[Ask Flow] skipped selection capture source=\(source)",
+                        "[Ask Flow] skipped selection capture source=\(source)"
                     )
                     return TextSelectionSnapshot(
                         processName: askAnswerWindowIsFrontmost ? "Typeflux" : nil,
                         bundleIdentifier: askAnswerWindowIsFrontmost ? Bundle.main.bundleIdentifier : nil,
                         source: source,
                         isEditable: false,
-                        isFocusedTarget: false,
+                        isFocusedTarget: false
                     )
                 }
                 return await textInjector.getSelectionSnapshot()
@@ -992,12 +1008,12 @@ final class WorkflowController {
                     let inputSnapshot = await textInjector.currentInputTextSnapshot()
                     let context = InputContextSnapshot.make(
                         inputSnapshot: inputSnapshot,
-                        selectionSnapshot: selectionSnapshot,
+                        selectionSnapshot: selectionSnapshot
                     )
                     InputContextSnapshot.logCapture(
                         inputSnapshot: inputSnapshot,
                         selectionSnapshot: selectionSnapshot,
-                        context: context,
+                        context: context
                     )
                     return context
                 }
@@ -1035,7 +1051,7 @@ final class WorkflowController {
                 recordingStatus: .failed,
                 transcriptionStatus: .skipped,
                 processingStatus: .skipped,
-                applyStatus: .skipped,
+                applyStatus: .skipped
             )
             record.errorMessage = "Audio start failed: \(error.localizedDescription)"
             saveHistoryRecord(record)
@@ -1144,7 +1160,7 @@ final class WorkflowController {
         do {
             try audioRecorder.start(
                 levelHandler: { _ in },
-                audioBufferHandler: nil,
+                audioBufferHandler: nil
             )
             isAudioRecorderStarted = true
         } catch {
@@ -1206,7 +1222,7 @@ final class WorkflowController {
         let isLoggedIn = await MainActor.run { AuthState.shared.isLoggedIn }
         let validator = LLMConfigurationValidator(
             settingsStore: settingsStore,
-            isLoggedIn: isLoggedIn,
+            isLoggedIn: isLoggedIn
         )
         return validator.validate()
     }
@@ -1232,7 +1248,7 @@ final class WorkflowController {
                     isRetry: false,
                     handler: {
                         LoginWindowController.shared.show()
-                    },
+                    }
                 ),
                 OverlayFailureAction(
                     title: L("workflow.llmNotConfigured.action.configureCustomModel"),
@@ -1244,15 +1260,15 @@ final class WorkflowController {
                         SettingsWindowController.shared.show(
                             settingsStore: settingsStore,
                             historyStore: historyStore,
-                            initialSection: .models,
+                            initialSection: .models
                         )
-                    },
-                ),
+                    }
+                )
             ]
 
             self.overlayController.showFailureWithActions(
                 message: reason.localizedMessage,
-                actions: actions,
+                actions: actions
             )
         }
     }
@@ -1272,9 +1288,9 @@ final class WorkflowController {
                         SettingsWindowController.shared.show(
                             settingsStore: settingsStore,
                             historyStore: historyStore,
-                            initialSection: .account,
+                            initialSection: .account
                         )
-                    },
+                    }
                 ),
                 OverlayFailureAction(
                     title: L("cloud.billing.action.switchModel"),
@@ -1285,17 +1301,17 @@ final class WorkflowController {
                         SettingsWindowController.shared.show(
                             settingsStore: settingsStore,
                             historyStore: historyStore,
-                            initialSection: .models,
+                            initialSection: .models
                         )
-                    },
-                ),
+                    }
+                )
             ]
 
             self.overlayController.showFailureWithActions(
                 title: error.title,
                 message: error.localizedDescription,
                 tone: .billing,
-                actions: actions,
+                actions: actions
             )
         }
     }

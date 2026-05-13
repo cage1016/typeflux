@@ -136,7 +136,7 @@ final class AppLocalization: ObservableObject {
                     forResource: "Localizable",
                     withExtension: "strings",
                     subdirectory: nil,
-                    localization: localizationName,
+                    localization: localizationName
                 ),
                 let dictionary = NSDictionary(contentsOf: tableURL) as? [String: String]
             else {

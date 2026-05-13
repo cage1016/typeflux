@@ -51,7 +51,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultInputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain,
+            mElement: kAudioObjectPropertyElementMain
         )
         var deviceID = AudioDeviceID(kAudioObjectUnknown)
         var size = UInt32(MemoryLayout<AudioDeviceID>.size)
@@ -62,7 +62,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
                 0,
                 nil,
                 &size,
-                pointer,
+                pointer
             )
         }
         guard status == noErr, deviceID != kAudioObjectUnknown, deviceSupportsInput(deviceID) else {
@@ -76,11 +76,11 @@ final class AudioDeviceManager: AudioDeviceManaging {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain,
+            mElement: kAudioObjectPropertyElementMain
         )
         guard let dataSize = propertyDataSize(
             objectID: AudioObjectID(kAudioObjectSystemObject),
-            address: &address,
+            address: &address
         ) else {
             return []
         }
@@ -96,7 +96,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
                 0,
                 nil,
                 &size,
-                baseAddress,
+                baseAddress
             )
         }
         guard status == noErr else {
@@ -110,7 +110,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyStreams,
             mScope: kAudioDevicePropertyScopeInput,
-            mElement: kAudioObjectPropertyElementMain,
+            mElement: kAudioObjectPropertyElementMain
         )
 
         guard let size = propertyDataSize(objectID: deviceID, address: &address) else {
@@ -124,7 +124,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyDeviceUID,
             mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain,
+            mElement: kAudioObjectPropertyElementMain
         )
         var value: Unmanaged<CFString>?
         var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
@@ -142,7 +142,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioObjectPropertyName,
             mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain,
+            mElement: kAudioObjectPropertyElementMain
         )
         var value: Unmanaged<CFString>?
         var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
@@ -158,7 +158,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
 
     private func propertyDataSize(
         objectID: AudioObjectID,
-        address: inout AudioObjectPropertyAddress,
+        address: inout AudioObjectPropertyAddress
     ) -> UInt32? {
         var size: UInt32 = 0
         let status = AudioObjectGetPropertyDataSize(objectID, &address, 0, nil, &size)

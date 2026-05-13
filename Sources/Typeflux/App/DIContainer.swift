@@ -35,7 +35,7 @@ final class DIContainer {
         hotkeyService = EventTapHotkeyService(settingsStore: settingsStore)
         audioRecorder = AVFoundationAudioRecorder(
             settingsStore: settingsStore,
-            audioDeviceManager: audioDeviceManager,
+            audioDeviceManager: audioDeviceManager
         )
         overlayController = OverlayController(appState: appState)
         clipboard = SystemClipboardService()
@@ -43,21 +43,22 @@ final class DIContainer {
         agentClarificationWindowController = AgentClarificationWindowController(settingsStore: settingsStore)
         soundEffectPlayer = SoundEffectPlayer(settingsStore: settingsStore)
         textInjector = AXTextInjector(settingsStore: settingsStore)
-        Logger(subsystem: "ai.gulu.app.typeflux", category: "DIContainer").debug("DIContainer initialized — Logger test message")
+        Logger(subsystem: "ai.gulu.app.typeflux", category: "DIContainer")
+            .debug("DIContainer initialized — Logger test message")
         historyStore = SQLiteHistoryStore()
         agentJobStore = SQLiteAgentJobStore()
         agentExecutionRegistry = AgentExecutionRegistry()
         agentJobsWindowController = AgentJobsWindowController(
             settingsStore: settingsStore,
             jobStore: agentJobStore,
-            executionRegistry: agentExecutionRegistry,
+            executionRegistry: agentExecutionRegistry
         )
         mcpRegistry = MCPRegistry()
         ollamaModelManager = OllamaLocalModelManager()
         llmAgentService = LLMAgentRouter(
             settingsStore: settingsStore,
             remote: OpenAICompatibleAgentService(settingsStore: settingsStore),
-            ollama: OllamaAgentService(),
+            ollama: OllamaAgentService()
         )
         notificationService = SystemLocalNotificationService.shared
         cloudLoginSyncCoordinator = CloudLoginSyncCoordinator(settingsStore: settingsStore)
@@ -66,12 +67,12 @@ final class DIContainer {
         autoModelDownloadService = AutoModelDownloadService(
             modelManager: localModelManager,
             settingsStore: settingsStore,
-            notificationService: notificationService,
+            notificationService: notificationService
         )
         llmService = LLMRouter(
             settingsStore: settingsStore,
             openAICompatible: OpenAICompatibleLLMService(settingsStore: settingsStore),
-            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: ollamaModelManager),
+            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: ollamaModelManager)
         )
         sttRouter = STTRouter(
             settingsStore: settingsStore,
@@ -87,10 +88,10 @@ final class DIContainer {
                 settingsStore: settingsStore,
                 baseURLOverride: "https://api.groq.com/openai/v1",
                 apiKeyOverride: { [settingsStore] in settingsStore.groqSTTAPIKey },
-                modelOverride: { [settingsStore] in settingsStore.groqSTTModel },
+                modelOverride: { [settingsStore] in settingsStore.groqSTTModel }
             ),
             typefluxOfficial: TypefluxOfficialTranscriber(),
-            autoModelDownloadService: autoModelDownloadService,
+            autoModelDownloadService: autoModelDownloadService
         )
     }
 }

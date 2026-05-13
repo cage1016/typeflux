@@ -44,7 +44,7 @@ struct LLMConfigurationValidator {
             let model = settingsStore.ollamaModel.trimmingCharacters(in: .whitespacesAndNewlines)
             if baseURL.isEmpty || model.isEmpty {
                 return .notConfigured(
-                    reason: .incompleteConfig(details: "Ollama base URL or model not configured"),
+                    reason: .incompleteConfig(details: "Ollama base URL or model not configured")
                 )
             }
             return .ready
@@ -60,7 +60,7 @@ struct LLMConfigurationValidator {
                 let model = settingsStore.llmModel.trimmingCharacters(in: .whitespacesAndNewlines)
                 return model.isEmpty
                     ? .notConfigured(
-                        reason: .incompleteConfig(details: "Free model not selected"),
+                        reason: .incompleteConfig(details: "Free model not selected")
                     )
                     : .ready
 
@@ -69,7 +69,7 @@ struct LLMConfigurationValidator {
                 let model = settingsStore.llmModel.trimmingCharacters(in: .whitespacesAndNewlines)
                 if baseURL.isEmpty || model.isEmpty {
                     return .notConfigured(
-                        reason: .incompleteConfig(details: "Custom LLM base URL or model not configured"),
+                        reason: .incompleteConfig(details: "Custom LLM base URL or model not configured")
                     )
                 }
                 return .ready

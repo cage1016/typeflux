@@ -18,7 +18,7 @@ enum TypefluxOfficialASRRouteDecision: Equatable, Sendable {
 protocol TypefluxOfficialASRRoutingClient: Sendable {
     func fetchRoute(
         accessToken: String,
-        scenario: TypefluxCloudScenario,
+        scenario: TypefluxCloudScenario
     ) async throws -> TypefluxOfficialASRRouteDecision
 
     func reportAliyunUsage(
@@ -26,7 +26,7 @@ protocol TypefluxOfficialASRRoutingClient: Sendable {
         usageReportID: String,
         audioDurationMs: Int64,
         outputChars: Int,
-        scenario: TypefluxCloudScenario,
+        scenario: TypefluxCloudScenario
     ) async throws
 }
 
@@ -48,7 +48,7 @@ enum TypefluxOfficialASRRoutingError: LocalizedError, Equatable {
             TypefluxCloudServerErrorMessage.userMessage(
                 code: code,
                 message: message,
-                fallback: "Typeflux Cloud ASR routing request failed.",
+                fallback: "Typeflux Cloud ASR routing request failed."
             )
         case let .unknownRouteType(type):
             "Unknown Typeflux Cloud ASR route type: \(type)"
@@ -70,10 +70,13 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
 
     func fetchRoute(
         accessToken: String,
-        scenario: TypefluxCloudScenario,
+        scenario: TypefluxCloudScenario
     ) async throws -> TypefluxOfficialASRRouteDecision {
         let (data, response) = try await executor.execute(apiPath: "/api/v1/asr/aliyun/token") { baseURL in
-            var request = URLRequest(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/asr/aliyun/token"))
+            var request = URLRequest(url: AuthEndpointResolver.resolve(
+                baseURL: baseURL,
+                path: "/api/v1/asr/aliyun/token"
+            ))
             request.httpMethod = "POST"
             request.timeoutInterval = 30
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -114,16 +117,19 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
         usageReportID: String,
         audioDurationMs: Int64,
         outputChars: Int,
-        scenario: TypefluxCloudScenario,
+        scenario: TypefluxCloudScenario
     ) async throws {
         let body = AliyunUsageReportRequest(
             usageReportID: usageReportID,
             audioDurationMs: audioDurationMs,
-            outputChars: outputChars,
+            outputChars: outputChars
         )
         let payload = try JSONEncoder().encode(body)
         let (data, response) = try await executor.execute(apiPath: "/api/v1/asr/aliyun/usage") { baseURL in
-            var request = URLRequest(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/asr/aliyun/usage"))
+            var request = URLRequest(url: AuthEndpointResolver.resolve(
+                baseURL: baseURL,
+                path: "/api/v1/asr/aliyun/usage"
+            ))
             request.httpMethod = "POST"
             request.timeoutInterval = 30
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -138,7 +144,10 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
             throw TypefluxOfficialASRRoutingError.unauthorized
         }
         guard (200 ..< 300).contains(response.statusCode), envelope.code == "OK" else {
-            logger.error("Aliyun usage report failed with status \(response.statusCode): \(String(data: data, encoding: .utf8) ?? "<non-utf8>")")
+            logger
+                .error(
+                    "Aliyun usage report failed with status \(response.statusCode): \(String(data: data, encoding: .utf8) ?? "<non-utf8>")"
+                )
             throw TypefluxOfficialASRRoutingError.serverError(code: envelope.code, message: envelope.message)
         }
     }
@@ -155,7 +164,7 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
 enum TypefluxOfficialASRUsageMeter {
     static func audioDurationMilliseconds(
         pcm16ByteCount: Int,
-        sampleRate: Double = CloudASRAudioConverter.targetSampleRate,
+        sampleRate: Double = CloudASRAudioConverter.targetSampleRate
     ) -> Int64 {
         guard pcm16ByteCount > 0, sampleRate > 0 else { return 0 }
         let bytesPerFrame = 2.0

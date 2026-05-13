@@ -11,7 +11,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
     func testLocalModelDownloadTitleIncludesModelAndProgress() {
         let title = StatusBarMenuSupport.localModelDownloadTitle(
-            for: .downloading(model: .qwen3ASR, progress: 0.42),
+            for: .downloading(model: .qwen3ASR, progress: 0.42)
         )
 
         XCTAssertEqual(title, L("menu.downloadingLocalModelNamed", LocalSTTModel.qwen3ASR.displayName, 42))
@@ -20,7 +20,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
     func testLocalModelDownloadTitleIncludesFailureState() {
         let title = StatusBarMenuSupport.localModelDownloadTitle(
-            for: .failed(model: .senseVoiceSmall, message: "Network unavailable"),
+            for: .failed(model: .senseVoiceSmall, message: "Network unavailable")
         )
 
         XCTAssertEqual(title, L("menu.localModelDownloadFailedNamed", LocalSTTModel.senseVoiceSmall.displayName))
@@ -36,9 +36,11 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
         let controller = try StatusBarController(
             appState: AppStateStore(),
-            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "StatusBarMenuProgressTests.\(UUID().uuidString)"))),
+            settingsStore: SettingsStore(
+                defaults: XCTUnwrap(UserDefaults(suiteName: "StatusBarMenuProgressTests.\(UUID().uuidString)"))
+            ),
             historyStore: EmptyHistoryStore(),
-            agentJobStore: EmptyAgentJobStore(),
+            agentJobStore: EmptyAgentJobStore()
         )
 
         controller.start()
@@ -59,9 +61,11 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
         let controller = try StatusBarController(
             appState: AppStateStore(),
-            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "StatusBarMenuSupportTests.\(UUID().uuidString)"))),
+            settingsStore: SettingsStore(
+                defaults: XCTUnwrap(UserDefaults(suiteName: "StatusBarMenuSupportTests.\(UUID().uuidString)"))
+            ),
             historyStore: EmptyHistoryStore(),
-            agentJobStore: EmptyAgentJobStore(),
+            agentJobStore: EmptyAgentJobStore()
         )
 
         controller.start()
@@ -72,14 +76,15 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
         XCTAssertEqual(controller.menu?.showsStateColumn, false)
         XCTAssertNotEqual(settingsItem.title, "Settings")
-        XCTAssertFalse(try NSStringFromSelector(XCTUnwrap(settingsItem.action)).localizedCaseInsensitiveContains("settings"))
+        XCTAssertFalse(try NSStringFromSelector(XCTUnwrap(settingsItem.action))
+            .localizedCaseInsensitiveContains("settings"))
         XCTAssertLessThan(
             try XCTUnwrap(titles.firstIndex(of: L("menu.appearance"))),
-            try XCTUnwrap(titles.firstIndex(of: L("menu.settings"))),
+            try XCTUnwrap(titles.firstIndex(of: L("menu.settings")))
         )
         XCTAssertLessThan(
             try XCTUnwrap(titles.firstIndex(of: L("menu.settings"))),
-            try XCTUnwrap(titles.firstIndex(of: L("menu.checkForUpdates"))),
+            try XCTUnwrap(titles.firstIndex(of: L("menu.checkForUpdates")))
         )
     }
 
@@ -90,7 +95,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
             HistoryRecord(date: base.addingTimeInterval(2), transcriptText: "   "),
             HistoryRecord(date: base.addingTimeInterval(3), errorMessage: "failed"),
             HistoryRecord(date: base.addingTimeInterval(4), transcriptText: "new"),
-            HistoryRecord(date: base.addingTimeInterval(5), personaResultText: "newest"),
+            HistoryRecord(date: base.addingTimeInterval(5), personaResultText: "newest")
         ]
 
         let recent = StatusBarMenuSupport.recentTranscriptionRecords(from: records, limit: 2)
@@ -101,7 +106,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
     func testRecentHistoryTitleFlattensNewlinesAndTruncatesLongText() {
         let record = HistoryRecord(
             date: Date(timeIntervalSince1970: 1000),
-            transcriptText: "first line\nsecond line with a very long transcript body that should be shortened",
+            transcriptText: "first line\nsecond line with a very long transcript body that should be shortened"
         )
 
         let title = StatusBarMenuSupport.recentHistoryTitle(for: record)

@@ -253,7 +253,7 @@ final class AuthModelsTests: XCTestCase {
             status: 1,
             provider: "google",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
         )
         let data = try JSONEncoder().encode(profile)
         let decoded = try JSONDecoder().decode(UserProfile.self, from: data)
@@ -268,7 +268,7 @@ final class AuthModelsTests: XCTestCase {
             status: 1,
             provider: "password",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
         )
         let googleProfile = UserProfile(
             id: "google-user",
@@ -277,7 +277,7 @@ final class AuthModelsTests: XCTestCase {
             status: 1,
             provider: "google",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
         )
 
         XCTAssertTrue(passwordProfile.canChangePassword)
@@ -292,7 +292,7 @@ final class AuthModelsTests: XCTestCase {
         """
         let envelope = try JSONDecoder().decode(
             APIResponse<LoginResponse>.self,
-            from: XCTUnwrap(json.data(using: .utf8)),
+            from: XCTUnwrap(json.data(using: .utf8))
         )
         XCTAssertEqual(envelope.code, "OK")
         XCTAssertNil(envelope.message)
@@ -305,7 +305,7 @@ final class AuthModelsTests: XCTestCase {
         """
         let envelope = try JSONDecoder().decode(
             APIResponse<LoginResponse>.self,
-            from: XCTUnwrap(json.data(using: .utf8)),
+            from: XCTUnwrap(json.data(using: .utf8))
         )
         XCTAssertEqual(envelope.data?.refreshToken, "rt_xyz")
     }
@@ -316,7 +316,7 @@ final class AuthModelsTests: XCTestCase {
         """
         let envelope = try JSONDecoder().decode(
             APIResponse<LoginResponse>.self,
-            from: XCTUnwrap(json.data(using: .utf8)),
+            from: XCTUnwrap(json.data(using: .utf8))
         )
         XCTAssertEqual(envelope.code, "AUTH_INVALID_CREDENTIALS")
         XCTAssertEqual(envelope.message, "wrong password")
@@ -357,7 +357,10 @@ final class AuthModelsTests: XCTestCase {
         AppLocalization.shared.setLanguage(.english)
         defer { AppLocalization.shared.setLanguage(originalLanguage) }
 
-        let error = AuthError.serverError(code: "AUTH_REFRESH_TOKEN_INVALID", message: "invalid or expired refresh token")
+        let error = AuthError.serverError(
+            code: "AUTH_REFRESH_TOKEN_INVALID",
+            message: "invalid or expired refresh token"
+        )
         XCTAssertEqual(error.authErrorCode, "AUTH_REFRESH_TOKEN_INVALID")
         XCTAssertEqual(error.errorDescription, "Session expired. Please sign in again.")
     }

@@ -10,16 +10,16 @@ final class SettingsViewModelHotkeyTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: HotkeyTestHistoryStore(),
-            initialSection: .settings,
+            initialSection: .settings
         )
 
         XCTAssertEqual(
             viewModel.activationHotkey?.signature,
-            HotkeyBinding.defaultActivation.signature,
+            HotkeyBinding.defaultActivation.signature
         )
         XCTAssertEqual(
             viewModel.askHotkey?.signature,
-            HotkeyBinding.defaultAsk.signature,
+            HotkeyBinding.defaultAsk.signature
         )
 
         settingsStore.activationHotkey = .rightCommandActivation
@@ -28,14 +28,14 @@ final class SettingsViewModelHotkeyTests: XCTestCase {
         try await waitForHotkeys(
             in: viewModel,
             activation: .rightCommandActivation,
-            ask: .rightCommandAsk,
+            ask: .rightCommandAsk
         )
     }
 
     private func waitForHotkeys(
         in viewModel: StudioViewModel,
         activation: HotkeyBinding,
-        ask: HotkeyBinding,
+        ask: HotkeyBinding
     ) async throws {
         for _ in 0 ..< 50 {
             if viewModel.activationHotkey?.signature == activation.signature,

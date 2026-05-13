@@ -9,9 +9,9 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
         let audioPreviewPlayer = FakeHistoryAudioPreviewPlayer(playResult: true)
         let viewModel = makeViewModel(
             records: [
-                makeRecord(id: recordID, audioFilePath: audioURL.path),
+                makeRecord(id: recordID, audioFilePath: audioURL.path)
             ],
-            audioPreviewPlayer: audioPreviewPlayer,
+            audioPreviewPlayer: audioPreviewPlayer
         )
         waitForHistoryRecord(recordID, in: viewModel)
 
@@ -28,9 +28,9 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
         let audioPreviewPlayer = FakeHistoryAudioPreviewPlayer(playResult: true)
         let viewModel = makeViewModel(
             records: [
-                makeRecord(id: recordID, audioFilePath: audioURL.path),
+                makeRecord(id: recordID, audioFilePath: audioURL.path)
             ],
-            audioPreviewPlayer: audioPreviewPlayer,
+            audioPreviewPlayer: audioPreviewPlayer
         )
         waitForHistoryRecord(recordID, in: viewModel)
 
@@ -48,9 +48,9 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
         let audioPreviewPlayer = FakeHistoryAudioPreviewPlayer(playResult: true)
         let viewModel = makeViewModel(
             records: [
-                makeRecord(id: recordID, audioFilePath: audioURL.path),
+                makeRecord(id: recordID, audioFilePath: audioURL.path)
             ],
-            audioPreviewPlayer: audioPreviewPlayer,
+            audioPreviewPlayer: audioPreviewPlayer
         )
         waitForHistoryRecord(recordID, in: viewModel)
 
@@ -68,9 +68,9 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
         let audioPreviewPlayer = FakeHistoryAudioPreviewPlayer(playResult: true)
         let viewModel = makeViewModel(
             records: [
-                makeRecord(id: recordID, audioFilePath: missingURL.path),
+                makeRecord(id: recordID, audioFilePath: missingURL.path)
             ],
-            audioPreviewPlayer: audioPreviewPlayer,
+            audioPreviewPlayer: audioPreviewPlayer
         )
         waitForHistoryRecord(recordID, in: viewModel)
 
@@ -86,9 +86,9 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
         let audioPreviewPlayer = FakeHistoryAudioPreviewPlayer(playResult: false)
         let viewModel = makeViewModel(
             records: [
-                makeRecord(id: recordID, audioFilePath: audioURL.path),
+                makeRecord(id: recordID, audioFilePath: audioURL.path)
             ],
-            audioPreviewPlayer: audioPreviewPlayer,
+            audioPreviewPlayer: audioPreviewPlayer
         )
         waitForHistoryRecord(recordID, in: viewModel)
 
@@ -101,7 +101,7 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
 
     private func makeViewModel(
         records: [HistoryRecord],
-        audioPreviewPlayer: HistoryAudioPreviewPlaying,
+        audioPreviewPlayer: HistoryAudioPreviewPlaying
     ) -> StudioViewModel {
         let suiteName = "SettingsViewModelHistoryAudioTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -109,7 +109,7 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
             settingsStore: SettingsStore(defaults: defaults),
             historyStore: FixedHistoryStore(records: records),
             initialSection: .history,
-            audioPreviewPlayer: audioPreviewPlayer,
+            audioPreviewPlayer: audioPreviewPlayer
         )
     }
 
@@ -118,7 +118,7 @@ final class SettingsViewModelHistoryAudioTests: XCTestCase {
             id: id,
             date: Date(),
             audioFilePath: audioFilePath,
-            transcriptText: "hello",
+            transcriptText: "hello"
         )
     }
 

@@ -5,7 +5,7 @@ enum LoginGooglePreflight {
     static func errorMessage(
         for step: LoginView.Step,
         hasAcceptedPolicies: Bool,
-        localization: AppLocalization = .shared,
+        localization: AppLocalization = .shared
     ) -> String? {
         guard step == .enterEmail, !hasAcceptedPolicies else {
             return nil
@@ -17,7 +17,7 @@ enum LoginGooglePreflight {
 
 enum LoginApplePreflight {
     static func errorMessage(
-        availability: AppleSignInService.Availability = AppleSignInService.currentAvailability(),
+        availability: AppleSignInService.Availability = AppleSignInService.currentAvailability()
     ) -> String? {
         guard case let .unavailable(description) = availability else {
             return nil
@@ -37,7 +37,7 @@ enum SocialLoginLayout {
     static func enabledProviders(
         googleClientID: String,
         githubClientID: String,
-        includeApple: Bool = true,
+        includeApple: Bool = true
     ) -> [SocialLoginProvider] {
         var providers: [SocialLoginProvider] = []
 
@@ -56,7 +56,7 @@ enum SocialLoginLayout {
 
     static func rows(
         for providers: [SocialLoginProvider],
-        maxItemsPerRow: Int = 2,
+        maxItemsPerRow: Int = 2
     ) -> [[SocialLoginProvider]] {
         guard !providers.isEmpty else {
             return []
@@ -120,7 +120,7 @@ struct LoginView: View {
 
     init(
         presentationStyle: PresentationStyle = .card,
-        onDismiss: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
     ) {
         self.presentationStyle = presentationStyle
         self.onDismiss = onDismiss
@@ -268,7 +268,7 @@ struct LoginView: View {
                     size: 84,
                     symbolSize: 40,
                     backgroundShape: .circle,
-                    showsBorder: true,
+                    showsBorder: true
                 )
                 .padding(.bottom, 10)
 
@@ -312,7 +312,7 @@ struct LoginView: View {
             LoginTextField(
                 placeholder: L("auth.field.email"),
                 text: $email,
-                icon: "envelope",
+                icon: "envelope"
             )
 
             loginButton(title: L("auth.login.continue"), action: checkEmail)
@@ -323,7 +323,7 @@ struct LoginView: View {
         SocialLoginLayout.enabledProviders(
             googleClientID: googleClientID,
             githubClientID: githubClientID,
-            includeApple: appleLoginErrorMessage == nil,
+            includeApple: appleLoginErrorMessage == nil
         )
     }
 
@@ -362,11 +362,11 @@ struct LoginView: View {
             .padding(.horizontal, 14)
             .background(
                 RoundedRectangle(cornerRadius: socialButtonCornerRadius, style: .continuous)
-                    .fill(socialButtonFillColor(for: provider)),
+                    .fill(socialButtonFillColor(for: provider))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: socialButtonCornerRadius, style: .continuous)
-                    .stroke(socialButtonStrokeColor(for: provider), lineWidth: 1),
+                    .stroke(socialButtonStrokeColor(for: provider), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -484,14 +484,14 @@ struct LoginView: View {
                 placeholder: L("auth.field.email"),
                 text: .constant(email),
                 icon: "envelope",
-                isDisabled: true,
+                isDisabled: true
             )
 
             LoginTextField(
                 placeholder: L("auth.field.password"),
                 text: $password,
                 icon: "lock",
-                isSecure: true,
+                isSecure: true
             )
 
             loginButton(title: L("auth.login.signIn"), action: performLogin)
@@ -512,27 +512,27 @@ struct LoginView: View {
                 placeholder: L("auth.field.email"),
                 text: .constant(email),
                 icon: "envelope",
-                isDisabled: true,
+                isDisabled: true
             )
 
             LoginTextField(
                 placeholder: L("auth.field.name"),
                 text: $name,
-                icon: "person",
+                icon: "person"
             )
 
             LoginTextField(
                 placeholder: L("auth.field.password"),
                 text: $password,
                 icon: "lock",
-                isSecure: true,
+                isSecure: true
             )
 
             LoginTextField(
                 placeholder: L("auth.field.confirmPassword"),
                 text: $confirmPassword,
                 icon: "lock.rotation",
-                isSecure: true,
+                isSecure: true
             )
 
             loginButton(title: L("auth.login.createAccount"), action: performRegister)
@@ -549,7 +549,7 @@ struct LoginView: View {
             LoginTextField(
                 placeholder: L("auth.field.activationCode"),
                 text: $activationCode,
-                icon: "number",
+                icon: "number"
             )
 
             loginButton(title: L("auth.login.activate"), action: performActivate)
@@ -576,7 +576,7 @@ struct LoginView: View {
                 placeholder: L("auth.field.email"),
                 text: .constant(email),
                 icon: "envelope",
-                isDisabled: true,
+                isDisabled: true
             )
 
             loginButton(title: L("auth.login.sendResetCode"), action: performForgotPassword)
@@ -602,27 +602,27 @@ struct LoginView: View {
                 placeholder: L("auth.field.email"),
                 text: .constant(email),
                 icon: "envelope",
-                isDisabled: true,
+                isDisabled: true
             )
 
             LoginTextField(
                 placeholder: L("auth.field.resetCode"),
                 text: $resetCode,
-                icon: "key",
+                icon: "key"
             )
 
             LoginTextField(
                 placeholder: L("auth.field.newPassword"),
                 text: $resetPassword,
                 icon: "lock",
-                isSecure: true,
+                isSecure: true
             )
 
             LoginTextField(
                 placeholder: L("auth.field.confirmNewPassword"),
                 text: $resetPasswordConfirmation,
                 icon: "lock.rotation",
-                isSecure: true,
+                isSecure: true
             )
 
             loginButton(title: L("auth.login.resetPassword"), action: performResetPassword)
@@ -646,11 +646,11 @@ struct LoginView: View {
             .foregroundStyle(buttonTextColor)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(buttonFillColor),
+                    .fill(buttonFillColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .stroke(buttonStrokeColor, lineWidth: buttonStrokeWidth),
+                    .stroke(buttonStrokeColor, lineWidth: buttonStrokeWidth)
             )
         }
         .buttonStyle(.plain)
@@ -1009,7 +1009,8 @@ struct LoginView: View {
 
         Task {
             do {
-                let response = try await AuthAPIService.enterEmail(email.trimmingCharacters(in: .whitespacesAndNewlines))
+                let response = try await AuthAPIService
+                    .enterEmail(email.trimmingCharacters(in: .whitespacesAndNewlines))
                 isLoading = false
                 withAnimation(.easeInOut(duration: 0.2)) {
                     step = response.exists ? .login : .register
@@ -1033,12 +1034,12 @@ struct LoginView: View {
             do {
                 let response = try await AuthAPIService.login(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: password,
+                    password: password
                 )
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken,
+                    refreshToken: response.refreshToken
                 )
                 isLoading = false
                 onDismiss()
@@ -1076,7 +1077,7 @@ struct LoginView: View {
                 _ = try await AuthAPIService.register(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: password,
-                    name: name.isEmpty ? nil : name,
+                    name: name.isEmpty ? nil : name
                 )
                 isLoading = false
                 statusMessage = L("auth.login.activationCodeSent")
@@ -1104,16 +1105,16 @@ struct LoginView: View {
             do {
                 _ = try await AuthAPIService.activate(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    code: activationCode.trimmingCharacters(in: .whitespacesAndNewlines),
+                    code: activationCode.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
                 let loginResponse = try await AuthAPIService.login(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: password,
+                    password: password
                 )
                 await authState.handleLoginSuccess(
                     token: loginResponse.accessToken,
                     expiresAt: loginResponse.expiresAt,
-                    refreshToken: loginResponse.refreshToken,
+                    refreshToken: loginResponse.refreshToken
                 )
                 isLoading = false
                 onDismiss()
@@ -1133,7 +1134,7 @@ struct LoginView: View {
             do {
                 _ = try await AuthAPIService.resendActivation(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: password,
+                    password: password
                 )
                 isLoading = false
                 statusMessage = L("auth.login.activationCodeResent")
@@ -1158,7 +1159,8 @@ struct LoginView: View {
 
         Task {
             do {
-                _ = try await AuthAPIService.forgotPassword(email: email.trimmingCharacters(in: .whitespacesAndNewlines))
+                _ = try await AuthAPIService
+                    .forgotPassword(email: email.trimmingCharacters(in: .whitespacesAndNewlines))
                 isLoading = false
                 statusMessage = L("auth.login.resetCodeSent")
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -1192,16 +1194,16 @@ struct LoginView: View {
                 _ = try await AuthAPIService.resetPassword(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     code: resetCode.trimmingCharacters(in: .whitespacesAndNewlines),
-                    newPassword: resetPassword,
+                    newPassword: resetPassword
                 )
                 let loginResponse = try await AuthAPIService.login(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: resetPassword,
+                    password: resetPassword
                 )
                 await authState.handleLoginSuccess(
                     token: loginResponse.accessToken,
                     expiresAt: loginResponse.expiresAt,
-                    refreshToken: loginResponse.refreshToken,
+                    refreshToken: loginResponse.refreshToken
                 )
                 isLoading = false
                 onDismiss()
@@ -1238,7 +1240,7 @@ struct LoginView: View {
         guard !googleClientID.isEmpty else { return }
         if let policyError = LoginGooglePreflight.errorMessage(
             for: step,
-            hasAcceptedPolicies: hasAcceptedPolicies,
+            hasAcceptedPolicies: hasAcceptedPolicies
         ) {
             statusMessage = nil
             errorMessage = policyError
@@ -1251,13 +1253,13 @@ struct LoginView: View {
             do {
                 let idToken = try await GoogleOAuthService.signIn(
                     clientID: googleClientID,
-                    clientSecret: googleClientSecret.isEmpty ? nil : googleClientSecret,
+                    clientSecret: googleClientSecret.isEmpty ? nil : googleClientSecret
                 )
                 let response = try await AuthAPIService.loginWithGoogle(idToken: idToken)
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken,
+                    refreshToken: response.refreshToken
                 )
                 isGoogleLoading = false
                 onDismiss()
@@ -1296,7 +1298,7 @@ struct LoginView: View {
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken,
+                    refreshToken: response.refreshToken
                 )
                 isAppleLoading = false
                 onDismiss()
@@ -1328,12 +1330,12 @@ struct LoginView: View {
                 let authorization = try await GitHubOAuthService.signIn(clientID: githubClientID)
                 let response = try await AuthAPIService.loginWithGitHub(
                     code: authorization.code,
-                    codeVerifier: authorization.codeVerifier,
+                    codeVerifier: authorization.codeVerifier
                 )
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken,
+                    refreshToken: response.refreshToken
                 )
                 isGitHubLoading = false
                 onDismiss()
@@ -1406,11 +1408,11 @@ private struct LoginTextField: View {
         .frame(height: 46)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .fill(fieldBackgroundColor),
+                .fill(fieldBackgroundColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .stroke(fieldBorderColor, lineWidth: StudioTheme.BorderWidth.thin),
+                .stroke(fieldBorderColor, lineWidth: StudioTheme.BorderWidth.thin)
         )
         .shadow(color: fieldShadowColor, radius: fieldShadowRadius, x: 0, y: fieldShadowY)
         .opacity(isDisabled ? 0.6 : 1)
@@ -1455,7 +1457,11 @@ private struct SocialProviderLogoMark: View {
     }
 
     private var logoImage: NSImage? {
-        guard let url = Bundle.appResources.url(forResource: resourceName, withExtension: "svg", subdirectory: "Resources")
+        guard let url = Bundle.appResources.url(
+            forResource: resourceName,
+            withExtension: "svg",
+            subdirectory: "Resources"
+        )
             ?? Bundle.appResources.url(forResource: resourceName, withExtension: "svg")
         else {
             return nil

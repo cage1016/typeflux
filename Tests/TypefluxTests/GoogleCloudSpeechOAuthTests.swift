@@ -18,8 +18,8 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
             GoogleCloudSpeechOAuthToken(
                 accessToken: "ya29.valid-token",
                 refreshToken: nil,
-                expiresAt: Int(Date().timeIntervalSince1970) + 3600,
-            ),
+                expiresAt: Int(Date().timeIntervalSince1970) + 3600
+            )
         )
 
         XCTAssertTrue(GoogleCloudSpeechCredentialResolver.isStoredAuthorizationAvailable())
@@ -30,8 +30,8 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
             GoogleCloudSpeechOAuthToken(
                 accessToken: "",
                 refreshToken: "refresh-token",
-                expiresAt: Int(Date().timeIntervalSince1970) - 60,
-            ),
+                expiresAt: Int(Date().timeIntervalSince1970) - 60
+            )
         )
 
         XCTAssertTrue(GoogleCloudSpeechCredentialResolver.isStoredAuthorizationAvailable())
@@ -42,12 +42,12 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
             GoogleCloudSpeechOAuthToken(
                 accessToken: "ya29.stored-token",
                 refreshToken: nil,
-                expiresAt: Int(Date().timeIntervalSince1970) + 3600,
-            ),
+                expiresAt: Int(Date().timeIntervalSince1970) + 3600
+            )
         )
 
         let credential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(
-            manualCredential: "AIzaManualKey",
+            manualCredential: "AIzaManualKey"
         )
 
         XCTAssertEqual(credential, "AIzaManualKey")
@@ -58,12 +58,12 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
             GoogleCloudSpeechOAuthToken(
                 accessToken: "ya29.stored-token",
                 refreshToken: "refresh-token",
-                expiresAt: Int(Date().timeIntervalSince1970) + 3600,
-            ),
+                expiresAt: Int(Date().timeIntervalSince1970) + 3600
+            )
         )
 
         let credential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(
-            manualCredential: " ",
+            manualCredential: " "
         )
 
         XCTAssertEqual(credential, "ya29.stored-token")
@@ -73,12 +73,12 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
         let storedToken = GoogleCloudSpeechOAuthToken(
             accessToken: "ya29.expiring-token",
             refreshToken: "refresh-token",
-            expiresAt: Int(Date().timeIntervalSince1970) + 60,
+            expiresAt: Int(Date().timeIntervalSince1970) + 60
         )
         let refreshedToken = GoogleCloudSpeechOAuthToken(
             accessToken: "ya29.refreshed-token",
             refreshToken: "refresh-token-updated",
-            expiresAt: Int(Date().timeIntervalSince1970) + 3600,
+            expiresAt: Int(Date().timeIntervalSince1970) + 3600
         )
         var savedToken: GoogleCloudSpeechOAuthToken?
         var capturedRefreshToken: String?
@@ -96,7 +96,7 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
                 capturedClientID = clientID
                 capturedClientSecret = clientSecret
                 return refreshedToken
-            },
+            }
         )
 
         XCTAssertEqual(credential, refreshedToken.accessToken)
@@ -110,18 +110,18 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
         let storedToken = GoogleCloudSpeechOAuthToken(
             accessToken: "ya29.expiring-token",
             refreshToken: " ",
-            expiresAt: Int(Date().timeIntervalSince1970) + 60,
+            expiresAt: Int(Date().timeIntervalSince1970) + 60
         )
 
         await XCTAssertThrowsErrorAsync({
             try await GoogleCloudSpeechCredentialResolver.resolveCredential(
                 manualCredential: "",
-                tokenLoader: { storedToken },
+                tokenLoader: { storedToken }
             )
         }) { error in
             XCTAssertEqual(
                 error.localizedDescription,
-                GoogleCloudSpeechError.missingAPIKey.localizedDescription,
+                GoogleCloudSpeechError.missingAPIKey.localizedDescription
             )
         }
     }
@@ -131,12 +131,12 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
 
         await XCTAssertThrowsErrorAsync({
             try await GoogleCloudSpeechCredentialResolver.resolveCredential(
-                manualCredential: "",
+                manualCredential: ""
             )
         }) { error in
             XCTAssertEqual(
                 error.localizedDescription,
-                GoogleCloudSpeechError.missingAPIKey.localizedDescription,
+                GoogleCloudSpeechError.missingAPIKey.localizedDescription
             )
         }
     }
@@ -144,7 +144,7 @@ final class GoogleCloudSpeechOAuthTests: XCTestCase {
 
 private func XCTAssertThrowsErrorAsync(
     _ expression: () async throws -> some Any,
-    _ errorHandler: (Error) -> Void,
+    _ errorHandler: (Error) -> Void
 ) async {
     do {
         _ = try await expression()

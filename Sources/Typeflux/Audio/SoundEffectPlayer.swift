@@ -37,7 +37,7 @@ final class SoundEffectPlayer {
         settingsStore: SettingsStore,
         playerFactory: @escaping (URL) throws -> SoundEffectPlayback = { url in
             try AVAudioPlayer(contentsOf: url)
-        },
+        }
     ) {
         self.settingsStore = settingsStore
         self.playerFactory = playerFactory
@@ -116,7 +116,8 @@ final class SoundEffectPlayer {
             players[effect] = player
             return player
         } catch {
-            ErrorLogStore.shared.log("Failed to initialize sound effect \(effect.rawValue): \(error.localizedDescription)")
+            ErrorLogStore.shared
+                .log("Failed to initialize sound effect \(effect.rawValue): \(error.localizedDescription)")
             return nil
         }
     }

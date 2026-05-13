@@ -6,14 +6,14 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         let request = try TypefluxOfficialASRRequestFactory.makeWebSocketRequest(
             apiBaseURL: "https://cloud.typeflux.dev",
             token: "token-123",
-            scenario: .voiceInput,
+            scenario: .voiceInput
         )
 
         XCTAssertEqual(request.url?.absoluteString, "wss://cloud.typeflux.dev/api/v1/asr/ws/default")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-123")
         XCTAssertEqual(
             request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.scenarioField),
-            TypefluxCloudScenario.voiceInput.rawValue,
+            TypefluxCloudScenario.voiceInput.rawValue
         )
         XCTAssertNotNil(request.value(forHTTPHeaderField: "User-Agent"))
         XCTAssertNotNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientIDField))
@@ -26,12 +26,12 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
             apiBaseURL: "https://cloud.typeflux.dev",
             token: "token-123",
             scenario: .voiceInput,
-            personaID: personaID,
+            personaID: personaID
         )
 
         XCTAssertEqual(
             request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField),
-            personaID.uuidString,
+            personaID.uuidString
         )
     }
 
@@ -39,8 +39,8 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertTrue(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                 completed: false,
-                finalSegments: [],
-            ),
+                finalSegments: []
+            )
         )
     }
 
@@ -48,8 +48,8 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertFalse(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                 completed: false,
-                finalSegments: ["hello world"],
-            ),
+                finalSegments: ["hello world"]
+            )
         )
     }
 
@@ -57,8 +57,8 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertFalse(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                 completed: true,
-                finalSegments: [],
-            ),
+                finalSegments: []
+            )
         )
     }
 }

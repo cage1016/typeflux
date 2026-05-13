@@ -34,8 +34,8 @@ final class AppPreferencesTests: XCTestCase {
                 .googleCloud,
                 .whisperAPI,
                 .multimodalLLM,
-                .groq,
-            ],
+                .groq
+            ]
         )
     }
 
@@ -147,7 +147,7 @@ final class AppPreferencesTests: XCTestCase {
         let json: [String: Any] = [
             "id": UUID().uuidString,
             "name": "Legacy",
-            "prompt": "Be casual",
+            "prompt": "Be casual"
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         let decoded = try JSONDecoder().decode(PersonaProfile.self, from: data)
@@ -232,7 +232,10 @@ extension AppPreferencesTests {
 
     func testLocalSTTModelDefaultModelIdentifierIsNonEmpty() {
         for model in LocalSTTModel.allCases {
-            XCTAssertFalse(model.defaultModelIdentifier.isEmpty, "\(model) should have a non-empty default model identifier")
+            XCTAssertFalse(
+                model.defaultModelIdentifier.isEmpty,
+                "\(model) should have a non-empty default model identifier"
+            )
         }
     }
 

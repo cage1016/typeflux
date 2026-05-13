@@ -24,7 +24,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         XCTAssertNil(viewModel.selectedPersonaID)
@@ -40,7 +40,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.selectPersona(nil)
@@ -58,7 +58,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         let persona = try XCTUnwrap(viewModel.personas.first)
@@ -78,7 +78,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         let persona = try XCTUnwrap(viewModel.personas.first(where: { $0.id == SettingsStore.defaultPersonaID }))
@@ -98,7 +98,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.searchQuery = "口头填充词"
@@ -114,7 +114,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.selectPersona(SettingsStore.defaultPersonaID)
@@ -134,7 +134,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.selectPersona(nil)
@@ -153,7 +153,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         let persona = try XCTUnwrap(viewModel.personas.first)
@@ -176,7 +176,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.personaAppBindingDraftIdentifier = "com.apple.Notes"
@@ -198,13 +198,13 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         settingsStore.personas = settingsStore.personas + [customPersona]
         settingsStore.savePersonaAppBinding(
             appIdentifier: "com.tinyspeck.slackmacgap",
-            personaID: customPersona.id,
+            personaID: customPersona.id
         )
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.deletePersona(id: customPersona.id)
@@ -221,7 +221,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.setPersonaAppBindingsEnabled(false)
@@ -243,7 +243,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.updatePersonaAppBindingPersona(id: bindingID, personaID: updatedPersona.id)
@@ -264,7 +264,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.updatePersonaAppBindingPersona(id: bindingID, personaID: nil)
@@ -284,7 +284,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .personas,
+            initialSection: .personas
         )
 
         viewModel.setPersonaAppBindingEnabled(id: bindingID, isEnabled: false)
@@ -303,7 +303,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .home,
+            initialSection: .home
         )
 
         XCTAssertFalse(settingsStore.personaRewriteEnabled)
@@ -322,7 +322,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .home,
+            initialSection: .home
         )
 
         viewModel.setLLMRemoteProvider(LLMRemoteProvider.openAI)
@@ -343,7 +343,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
             historyStore: historyStore,
-            initialSection: .home,
+            initialSection: .home
         )
 
         // User explicitly turns persona off before configuring LLM.

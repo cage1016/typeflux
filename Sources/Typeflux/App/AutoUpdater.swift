@@ -53,12 +53,13 @@ final class AutoUpdater {
         initialAutoCheckWorkItem = initialCheck
         DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: initialCheck)
 
-        autoCheckTimer = Timer.scheduledTimer(withTimeInterval: Self.autoCheckInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard self?.settingsStore?.autoUpdateEnabled == true else { return }
-                self?.checkForUpdates(manual: false)
+        autoCheckTimer = Timer
+            .scheduledTimer(withTimeInterval: Self.autoCheckInterval, repeats: true) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard self?.settingsStore?.autoUpdateEnabled == true else { return }
+                    self?.checkForUpdates(manual: false)
+                }
             }
-        }
     }
 
     func stopAutoCheck() {
@@ -80,9 +81,15 @@ final class AutoUpdater {
             let executor = CloudRequestExecutor()
             do {
                 let (data, _) = try await executor.execute(apiPath: "/api/v1/app/update") { baseURL in
-                    var components = URLComponents(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update"), resolvingAgainstBaseURL: false) ?? URLComponents()
+                    var components = URLComponents(
+                        url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update"),
+                        resolvingAgainstBaseURL: false
+                    ) ?? URLComponents()
                     components.queryItems = AutoUpdateRequestSupport.queryItems(currentVersion: currentVersion)
-                    let url = components.url ?? AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/app/update")
+                    let url = components.url ?? AuthEndpointResolver.resolve(
+                        baseURL: baseURL,
+                        path: "/api/v1/app/update"
+                    )
                     var request = URLRequest(url: url)
                     request.httpMethod = "GET"
                     return request
@@ -154,14 +161,14 @@ final class AutoUpdater {
     private func promptUpdate(
         info: UpdateInfo,
         downloadedArchiveURL: URL?,
-        sourceURL: URL?,
+        sourceURL: URL?
     ) {
         let appearanceMode = settingsStore?.appearanceMode ?? .system
         let controller = UpdateAlertWindowController(
             version: info.latestVersion,
             releaseNotes: info.releaseNotes,
             releaseURL: info.releaseURL.flatMap(URL.init),
-            appearanceMode: appearanceMode,
+            appearanceMode: appearanceMode
         )
         controller.onAction = { [weak self, weak controller] action in
             self?.updateAlertWindowController = nil
@@ -173,7 +180,7 @@ final class AutoUpdater {
                         await self?.installDownloadedUpdate(
                             archiveURL: downloadedArchiveURL,
                             sourceURL: sourceURL,
-                            relaunch: true,
+                            relaunch: true
                         )
                     }
                 } else if let url = self?.websiteURL {
@@ -218,7 +225,7 @@ final class AutoUpdater {
 
             NetworkDebugLogger.logError(
                 context: "Auto update download failed; retrying through GitHub proxy",
-                error: error,
+                error: error
             )
             return try await downloadFile(from: proxyURL)
         }
@@ -260,7 +267,7 @@ final class AutoUpdater {
                 newAppURL: newAppURL,
                 cleanupURL: tempDir,
                 currentProcessIdentifier: getpid(),
-                relaunch: relaunch,
+                relaunch: relaunch
             )
             try script.write(to: scriptURL, atomically: true, encoding: .utf8)
             try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
@@ -329,7 +336,7 @@ enum AutoUpdateArchiveInstaller {
 
         let status = try runProcess(
             executablePath: "/usr/bin/ditto",
-            arguments: ["-xk", zipURL.path, extractDir.path],
+            arguments: ["-xk", zipURL.path, extractDir.path]
         )
         guard status == 0 else {
             throw UpdateError.extractionFailed
@@ -346,7 +353,7 @@ enum AutoUpdateArchiveInstaller {
 
         let attachStatus = try runProcess(
             executablePath: "/usr/bin/hdiutil",
-            arguments: ["attach", dmgURL.path, "-nobrowse", "-readonly", "-mountpoint", mountPoint.path],
+            arguments: ["attach", dmgURL.path, "-nobrowse", "-readonly", "-mountpoint", mountPoint.path]
         )
         guard attachStatus == 0 else {
             throw UpdateError.extractionFailed
@@ -355,7 +362,7 @@ enum AutoUpdateArchiveInstaller {
             _ = try? runProcess(
                 executablePath: "/usr/bin/hdiutil",
                 arguments: ["detach", mountPoint.path, "-quiet", "-force"],
-                timeout: 10,
+                timeout: 10
             )
         }
 
@@ -370,7 +377,7 @@ enum AutoUpdateArchiveInstaller {
         guard let enumerator = FileManager.default.enumerator(
             at: rootURL,
             includingPropertiesForKeys: keys,
-            options: [.skipsHiddenFiles],
+            options: [.skipsHiddenFiles]
         ) else {
             throw UpdateError.appNotFound
         }
@@ -390,7 +397,7 @@ enum AutoUpdateArchiveInstaller {
     static func verifyCodeSignature(of appURL: URL) throws {
         let status = try runProcess(
             executablePath: "/usr/bin/codesign",
-            arguments: ["--verify", "--deep", "--strict", appURL.path],
+            arguments: ["--verify", "--deep", "--strict", appURL.path]
         )
         guard status == 0 else {
             throw UpdateError.signatureVerificationFailed
@@ -402,7 +409,7 @@ enum AutoUpdateArchiveInstaller {
         newAppURL: URL,
         cleanupURL: URL? = nil,
         currentProcessIdentifier: pid_t? = nil,
-        relaunch: Bool,
+        relaunch: Bool
     ) -> String {
         let currentAppPath = shellSingleQuoted(currentAppURL.path)
         let newAppPath = shellSingleQuoted(newAppURL.path)
@@ -466,7 +473,7 @@ enum AutoUpdateArchiveInstaller {
     private static func runProcess(
         executablePath: String,
         arguments: [String],
-        timeout: TimeInterval? = nil,
+        timeout: TimeInterval? = nil
     ) throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executablePath)
@@ -503,7 +510,7 @@ enum GitHubProxyDownloadURL {
 enum AutoUpdateRequestSupport {
     static func queryItems(
         currentVersion: String,
-        architecture: String? = packageArchitecture(),
+        architecture: String? = packageArchitecture()
     ) -> [URLQueryItem] {
         var items = [URLQueryItem(name: "version", value: currentVersion)]
         if let architecture, !architecture.isEmpty {

@@ -130,7 +130,7 @@ final class BillingAPIServiceTests: XCTestCase {
 
         let sessionResponse = try await service.createCheckoutSession(
             token: "token-1",
-            planCode: BillingPlan.defaultPlanCode,
+            planCode: BillingPlan.defaultPlanCode
         )
 
         XCTAssertEqual(sessionResponse.sessionID, "cs_test_1")

@@ -14,7 +14,7 @@ final class OllamaLocalModelManager: OllamaModelManaging {
             throw NSError(
                 domain: "OllamaLocalModelManager",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Please configure a local Ollama model first."],
+                userInfo: [NSLocalizedDescriptionKey: "Please configure a local Ollama model first."]
             )
         }
 
@@ -38,7 +38,7 @@ final class OllamaLocalModelManager: OllamaModelManaging {
             throw NSError(
                 domain: "OllamaLocalModelManager",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."],
+                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."]
             )
         }
 
@@ -49,7 +49,7 @@ final class OllamaLocalModelManager: OllamaModelManaging {
         let commonPaths = [
             "/opt/homebrew/bin/ollama",
             "/usr/local/bin/ollama",
-            "/usr/bin/ollama",
+            "/usr/bin/ollama"
         ]
 
         if let existing = commonPaths.first(where: fileManager.isExecutableFile(atPath:)) {
@@ -70,14 +70,16 @@ final class OllamaLocalModelManager: OllamaModelManaging {
             throw NSError(
                 domain: "OllamaLocalModelManager",
                 code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Ollama is not installed. Enable auto setup or install Ollama manually."],
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Ollama is not installed. Enable auto setup or install Ollama manually."
+                ]
             )
         }
 
         NetworkDebugLogger.logMessage("Installing Ollama automatically")
         _ = try await commandRunner.run(
             executablePath: "/bin/bash",
-            arguments: ["-lc", "curl -fsSL https://ollama.com/install.sh | sh"],
+            arguments: ["-lc", "curl -fsSL https://ollama.com/install.sh | sh"]
         )
 
         if let existing = commonPaths.first(where: fileManager.isExecutableFile(atPath:)) {
@@ -90,7 +92,7 @@ final class OllamaLocalModelManager: OllamaModelManaging {
             throw NSError(
                 domain: "OllamaLocalModelManager",
                 code: 4,
-                userInfo: [NSLocalizedDescriptionKey: "Ollama install finished but executable was not found."],
+                userInfo: [NSLocalizedDescriptionKey: "Ollama install finished but executable was not found."]
             )
         }
 
@@ -140,7 +142,7 @@ final class OllamaLocalModelManager: OllamaModelManaging {
         throw NSError(
             domain: "OllamaLocalModelManager",
             code: 5,
-            userInfo: [NSLocalizedDescriptionKey: "Ollama service did not start in time."],
+            userInfo: [NSLocalizedDescriptionKey: "Ollama service did not start in time."]
         )
     }
 

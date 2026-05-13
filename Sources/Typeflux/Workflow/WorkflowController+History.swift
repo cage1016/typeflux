@@ -30,21 +30,21 @@ extension WorkflowController {
                 OverlayController.PersonaPickerItem(
                     id: $0.id.uuidString,
                     title: $0.title,
-                    subtitle: $0.subtitle,
+                    subtitle: $0.subtitle
                 )
             },
             selectedIndex: 0,
             title: L("overlay.historyPicker.title"),
             instructions: L("overlay.historyPicker.instructions"),
             icon: .none,
-            style: .history,
+            style: .history
         )
     }
 
     func historyPickerEntries() -> [HistoryPickerEntry] {
         StatusBarMenuSupport.recentTranscriptionRecords(
             from: historyStore.list(limit: Self.historyPickerLimit * 3, offset: 0, searchQuery: nil),
-            limit: Self.historyPickerLimit,
+            limit: Self.historyPickerLimit
         )
         .compactMap { record in
             guard let text = record.finalText?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -56,7 +56,7 @@ extension WorkflowController {
                 title: StatusBarMenuSupport.recentHistoryTitle(for: record),
                 subtitle: Self.historyPickerSubtitle(for: record.date),
                 text: text,
-                record: record,
+                record: record
             )
         }
     }
@@ -101,7 +101,7 @@ extension WorkflowController {
         _ = applyText(
             selected.text,
             replace: false,
-            fallbackTitle: L("overlay.historyPicker.pasteFallbackTitle"),
+            fallbackTitle: L("overlay.historyPicker.pasteFallbackTitle")
         )
     }
 

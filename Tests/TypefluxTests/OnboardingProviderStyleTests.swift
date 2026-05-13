@@ -9,7 +9,7 @@ final class OnboardingProviderStyleTests: XCTestCase {
 
     func testMonochromeProvidersUseLightIconPlate() {
         let providers: [StudioModelProviderID] = [
-            .openAI, .whisperAPI, .multimodalLLM, .openRouter, .grok, .groq, .groqSTT, .ollama,
+            .openAI, .whisperAPI, .multimodalLLM, .openRouter, .grok, .groq, .groqSTT, .ollama
         ]
 
         for provider in providers {
@@ -19,7 +19,7 @@ final class OnboardingProviderStyleTests: XCTestCase {
 
     func testColorfulAndSymbolProvidersUseNeutralIconPlate() {
         let providers: [StudioModelProviderID] = [
-            .aliCloud, .doubaoRealtime, .anthropic, .gemini, .freeSTT, .freeModel, .appleSpeech,
+            .aliCloud, .doubaoRealtime, .anthropic, .gemini, .freeSTT, .freeModel, .appleSpeech
         ]
 
         for provider in providers {

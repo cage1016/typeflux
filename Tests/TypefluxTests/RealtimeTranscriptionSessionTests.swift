@@ -9,7 +9,7 @@ final class RealtimeTranscriptionSessionTests: XCTestCase {
         XCTAssertEqual(chunker.append(Data([1, 2, 3])), [])
         XCTAssertEqual(chunker.append(Data([4, 5, 6, 7, 8])), [
             Data([1, 2, 3, 4]),
-            Data([5, 6, 7, 8]),
+            Data([5, 6, 7, 8])
         ])
         XCTAssertEqual(chunker.append(Data([9, 10])), [])
         XCTAssertEqual(chunker.flush(), [Data([9, 10])])
@@ -22,7 +22,7 @@ final class RealtimeTranscriptionSessionTests: XCTestCase {
 
         XCTAssertEqual(chunks, [
             Data([1, 2, 3, 4]),
-            Data([5, 6, 7, 8]),
+            Data([5, 6, 7, 8])
         ])
         XCTAssertEqual(chunks.map(\.startIndex), [0, 0])
         XCTAssertEqual(chunker.append(Data([9, 10])), [])
@@ -101,7 +101,7 @@ final class RealtimeTranscriptionSessionTests: XCTestCase {
             commonFormat: .pcmFormatFloat32,
             sampleRate: CloudASRAudioConverter.targetSampleRate,
             channels: 1,
-            interleaved: false,
+            interleaved: false
         )!
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
         buffer.frameLength = frameCount

@@ -29,7 +29,9 @@ final class LLMConfigurationReminderPolicyTests: XCTestCase {
         store.lastTypefluxCloudLoginReminderAt = lastShownAt
         let policy = LLMConfigurationReminderPolicy(
             settingsStore: store,
-            now: { lastShownAt.addingTimeInterval(LLMConfigurationReminderPolicy.typefluxCloudLoginReminderInterval - 1) },
+            now: {
+                lastShownAt.addingTimeInterval(LLMConfigurationReminderPolicy.typefluxCloudLoginReminderInterval - 1)
+            }
         )
 
         let presentation = policy.presentation(for: .notConfigured(reason: .cloudNotLoggedIn))

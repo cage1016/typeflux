@@ -40,7 +40,7 @@ final class RequestRetryTests: XCTestCase {
                 operation: {
                     _ = await recorder.incrementAttempt()
                     throw expectedError
-                },
+                }
             ) as String
             XCTFail("Expected retry helper to rethrow the final error")
         } catch {
@@ -73,7 +73,7 @@ final class RequestRetryTests: XCTestCase {
                     throw NSError(domain: "RequestRetryTests", code: attemptCount, userInfo: nil)
                 }
                 return "ok"
-            },
+            }
         )
 
         let attempts = await recorder.attemptCount
@@ -99,7 +99,7 @@ final class RequestRetryTests: XCTestCase {
                 operation: {
                     _ = await recorder.incrementAttempt()
                     throw CancellationError()
-                },
+                }
             ) as String
             XCTFail("Expected cancellation to be rethrown")
         } catch is CancellationError {
@@ -132,7 +132,7 @@ final class RequestRetryTests: XCTestCase {
                 operation: {
                     _ = await recorder.incrementAttempt()
                     throw expectedError
-                },
+                }
             ) as String
             XCTFail("Expected billing error to be rethrown")
         } catch let error as TypefluxCloudBillingError {
@@ -178,7 +178,7 @@ extension RequestRetryTests {
         let recorder = Recorder()
         let result = try await RequestRetry.perform(
             operationName: "immediate-success",
-            sleep: { _ in },
+            sleep: { _ in }
         ) {
             _ = await recorder.incrementAttempt()
             return "success"
@@ -193,7 +193,7 @@ extension RequestRetryTests {
         do {
             _ = try await RequestRetry.perform(
                 operationName: "always-fails",
-                sleep: { _ in },
+                sleep: { _ in }
             ) {
                 let count = await recorder.incrementAttempt()
                 throw NSError(domain: "test", code: count)

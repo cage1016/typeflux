@@ -40,7 +40,7 @@ enum GoogleCloudSpeechOAuthTokenStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
 
         SecItemDelete(query as CFDictionary)
@@ -64,7 +64,7 @@ enum GoogleCloudSpeechOAuthTokenStore {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
@@ -90,7 +90,7 @@ enum GoogleCloudSpeechOAuthTokenStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
         SecItemDelete(query as CFDictionary)
     }
@@ -123,7 +123,7 @@ enum GoogleCloudSpeechCredentialResolver {
         clientSecret: String = AppServerConfiguration.googleCloudOAuthClientSecret,
         tokenLoader: TokenLoader = GoogleCloudSpeechOAuthTokenStore.load,
         tokenSaver: TokenSaver = GoogleCloudSpeechOAuthTokenStore.save,
-        tokenRefresher: TokenRefresher = GoogleOAuthService.refreshAccessToken,
+        tokenRefresher: TokenRefresher = GoogleOAuthService.refreshAccessToken
     ) async throws -> String {
         let trimmedManualCredential = manualCredential.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedManualCredential.isEmpty {
@@ -148,7 +148,7 @@ enum GoogleCloudSpeechCredentialResolver {
         let refreshedToken = try await tokenRefresher(
             refreshToken,
             clientID,
-            trimmedClientSecret.isEmpty ? nil : trimmedClientSecret,
+            trimmedClientSecret.isEmpty ? nil : trimmedClientSecret
         )
         tokenSaver(refreshedToken)
         return refreshedToken.accessToken

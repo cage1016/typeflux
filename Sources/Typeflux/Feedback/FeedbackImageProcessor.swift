@@ -28,11 +28,11 @@ enum FeedbackImageProcessor {
         guard let resizedRep = resizedBitmapRepresentation(
             for: sourceImage,
             pixelsWide: sourceRep.pixelsWide,
-            pixelsHigh: sourceRep.pixelsHigh,
+            pixelsHigh: sourceRep.pixelsHigh
         ),
             let data = resizedRep.representation(
                 using: .jpeg,
-                properties: [.compressionFactor: jpegCompression],
+                properties: [.compressionFactor: jpegCompression]
             )
         else {
             throw FeedbackAPIError.networkError(L("feedback.error.invalidImage"))
@@ -44,7 +44,7 @@ enum FeedbackImageProcessor {
             data: data,
             filename: jpegFilename(from: url),
             contentType: "image/jpeg",
-            thumbnail: thumbnail,
+            thumbnail: thumbnail
         )
     }
 
@@ -63,7 +63,7 @@ enum FeedbackImageProcessor {
     private static func resizedBitmapRepresentation(
         for image: NSImage,
         pixelsWide: Int,
-        pixelsHigh: Int,
+        pixelsHigh: Int
     ) -> NSBitmapImageRep? {
         let longestSide = max(pixelsWide, pixelsHigh)
         let scale = longestSide > maxPixelDimension
@@ -82,7 +82,7 @@ enum FeedbackImageProcessor {
             isPlanar: false,
             colorSpaceName: .deviceRGB,
             bytesPerRow: 0,
-            bitsPerPixel: 0,
+            bitsPerPixel: 0
         ) else {
             return nil
         }
@@ -99,7 +99,7 @@ enum FeedbackImageProcessor {
             in: NSRect(x: 0, y: 0, width: targetPixelsWide, height: targetPixelsHigh),
             from: .zero,
             operation: .copy,
-            fraction: 1,
+            fraction: 1
         )
         return rep
     }

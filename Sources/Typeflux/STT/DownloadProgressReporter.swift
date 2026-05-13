@@ -4,7 +4,7 @@ enum DownloadProgressReporter {
     static func download(
         request: URLRequest,
         session: URLSession = .shared,
-        onProgress: (@Sendable (Int64, Int64?) -> Void)? = nil,
+        onProgress: (@Sendable (Int64, Int64?) -> Void)? = nil
     ) async throws -> (URL, URLResponse) {
         guard onProgress != nil else {
             return try await session.download(for: request)
@@ -27,7 +27,7 @@ private final class ProgressDelegate: NSObject, URLSessionDownloadDelegate, @unc
         downloadTask _: URLSessionDownloadTask,
         didWriteData _: Int64,
         totalBytesWritten: Int64,
-        totalBytesExpectedToWrite: Int64,
+        totalBytesExpectedToWrite: Int64
     ) {
         let totalBytes = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : nil
         onProgress?(totalBytesWritten, totalBytes)
@@ -36,6 +36,6 @@ private final class ProgressDelegate: NSObject, URLSessionDownloadDelegate, @unc
     func urlSession(
         _: URLSession,
         downloadTask _: URLSessionDownloadTask,
-        didFinishDownloadingTo _: URL,
+        didFinishDownloadingTo _: URL
     ) {}
 }

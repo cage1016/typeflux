@@ -14,7 +14,7 @@ enum AuthAPIService {
     static func register(email: String, password: String, name: String?) async throws -> RegisterResponse {
         try await post(
             path: "/api/v1/auth/register",
-            body: RegisterRequest(email: email, password: password, name: name),
+            body: RegisterRequest(email: email, password: password, name: name)
         )
     }
 
@@ -25,7 +25,7 @@ enum AuthAPIService {
     static func resendActivation(email: String, password: String) async throws -> ResendActivationResponse {
         try await post(
             path: "/api/v1/auth/resend-activation",
-            body: ResendActivationRequest(email: email, password: password),
+            body: ResendActivationRequest(email: email, password: password)
         )
     }
 
@@ -40,15 +40,17 @@ enum AuthAPIService {
     static func resetPassword(email: String, code: String, newPassword: String) async throws -> ResetPasswordResponse {
         try await post(
             path: "/api/v1/auth/reset-password",
-            body: ResetPasswordRequest(email: email, code: code, newPassword: newPassword),
+            body: ResetPasswordRequest(email: email, code: code, newPassword: newPassword)
         )
     }
 
-    static func changePassword(token: String, oldPassword: String, newPassword: String) async throws -> ChangePasswordResponse {
+    static func changePassword(token: String, oldPassword: String,
+                               newPassword: String) async throws -> ChangePasswordResponse
+    {
         try await post(
             path: "/api/v1/auth/change-password",
             body: ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword),
-            token: token,
+            token: token
         )
     }
 
@@ -61,7 +63,10 @@ enum AuthAPIService {
     }
 
     static func logout(refreshToken: String) async throws {
-        let _: LogoutResponse = try await post(path: "/api/v1/auth/logout", body: LogoutRequest(refreshToken: refreshToken))
+        let _: LogoutResponse = try await post(
+            path: "/api/v1/auth/logout",
+            body: LogoutRequest(refreshToken: refreshToken)
+        )
     }
 
     static func loginWithGoogle(idToken: String) async throws -> LoginResponse {
@@ -75,7 +80,7 @@ enum AuthAPIService {
     static func loginWithGitHub(code: String, codeVerifier: String) async throws -> LoginResponse {
         try await post(
             path: "/api/v1/auth/oauth/github",
-            body: GitHubOAuthRequest(code: code, codeVerifier: codeVerifier),
+            body: GitHubOAuthRequest(code: code, codeVerifier: codeVerifier)
         )
     }
 
@@ -84,7 +89,7 @@ enum AuthAPIService {
     private static func post<Response: Decodable>(
         path: String,
         body: some Encodable,
-        token: String? = nil,
+        token: String? = nil
     ) async throws -> Response {
         let payload: Data
         do {
@@ -98,7 +103,7 @@ enum AuthAPIService {
 
     private static func get<Response: Decodable>(
         path: String,
-        token: String? = nil,
+        token: String? = nil
     ) async throws -> Response {
         try await execute(path: path, method: "GET", token: token, body: nil)
     }
@@ -107,7 +112,7 @@ enum AuthAPIService {
         path: String,
         method: String,
         token: String?,
-        body: Data?,
+        body: Data?
     ) async throws -> Response {
         let executor = CloudRequestExecutor()
 
@@ -157,10 +162,13 @@ enum AuthAPIService {
               let responseData = envelope.data
         else {
             let raw = String(data: data, encoding: .utf8) ?? "<non-utf8>"
-            logger.error("[\(path, privacy: .public)] \(httpResponse.statusCode, privacy: .public) body: \(raw, privacy: .public)")
+            logger
+                .error(
+                    "[\(path, privacy: .public)] \(httpResponse.statusCode, privacy: .public) body: \(raw, privacy: .public)"
+                )
             throw AuthError.serverError(
                 code: envelope.code,
-                message: envelope.message,
+                message: envelope.message
             )
         }
 

@@ -104,7 +104,7 @@ struct HTTPCloudEndpointProber: CloudEndpointProbing {
             latencyMs: durationToMilliseconds(elapsed),
             serverID: payload?.serverID,
             serverVersion: payload?.version,
-            nonceMatches: true,
+            nonceMatches: true
         )
     }
 

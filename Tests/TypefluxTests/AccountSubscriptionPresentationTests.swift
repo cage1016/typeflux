@@ -20,7 +20,7 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
             currentPeriodStart: "2026-05-01T00:00:00Z",
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true,
+            entitled: true
         )
 
         let presentation = AccountSubscriptionPresentation.make(from: snapshot)
@@ -44,7 +44,7 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
             planName: "Free",
             active: true,
             paid: false,
-            periodSource: "free",
+            periodSource: "free"
         )
 
         let presentation = AccountSubscriptionPresentation.make(from: snapshot)
@@ -56,7 +56,7 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.periodLabelKey, "auth.account.subscriptionBillingCycle")
         XCTAssertEqual(
             presentation.period,
-            .cycle(start: "2026-05-12T00:00:00Z", end: "2026-06-12T00:00:00Z"),
+            .cycle(start: "2026-05-12T00:00:00Z", end: "2026-06-12T00:00:00Z")
         )
     }
 
@@ -67,7 +67,7 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
             currentPeriodStart: "2026-05-01T00:00:00Z",
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: true,
-            entitled: true,
+            entitled: true
         )
 
         let presentation = AccountSubscriptionPresentation.make(from: snapshot)
@@ -82,7 +82,7 @@ final class AccountSubscriptionPresentationTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: nil,
             cancelAtPeriodEnd: false,
-            entitled: false,
+            entitled: false
         )
 
         let presentation = AccountSubscriptionPresentation.make(from: snapshot)

@@ -18,7 +18,7 @@ final class LLMRewriteRequestTests: XCTestCase {
             spokenInstruction: "make it better",
             personaPrompt: "formal tone",
             personaID: personaID,
-            vocabularyTerms: ["Typeflux"],
+            vocabularyTerms: ["Typeflux"]
         )
 
         XCTAssertEqual(request.sourceText, "source")
@@ -33,7 +33,7 @@ final class LLMRewriteRequestTests: XCTestCase {
             mode: .rewriteTranscript,
             sourceText: "raw text",
             spokenInstruction: nil,
-            personaPrompt: nil,
+            personaPrompt: nil
         )
 
         XCTAssertEqual(request.sourceText, "raw text")
@@ -52,14 +52,14 @@ final class LLMRewriteRequestTests: XCTestCase {
             isFocusedTarget: true,
             prefix: "Project Apollo will ship",
             suffix: "after QA signs off",
-            selectedText: nil,
+            selectedText: nil
         )
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
             sourceText: "next Friday",
             spokenInstruction: nil,
             personaPrompt: nil,
-            inputContext: inputContext,
+            inputContext: inputContext
         )
 
         let prompts = PromptCatalog.rewritePrompts(for: request)
@@ -69,9 +69,11 @@ final class LLMRewriteRequestTests: XCTestCase {
         XCTAssertTrue(prompts.user.contains("<metadata>"))
         XCTAssertTrue(prompts.user.contains("<app_name>\nNotes\n</app_name>"))
         XCTAssertTrue(prompts.user.contains("<active_text>"))
-        XCTAssertTrue(prompts.user.contains("<text_before_cursor><![CDATA[\nProject Apollo will ship\n]]></text_before_cursor>"))
+        XCTAssertTrue(prompts.user
+            .contains("<text_before_cursor><![CDATA[\nProject Apollo will ship\n]]></text_before_cursor>"))
         XCTAssertTrue(prompts.user.contains("<cursor />"))
-        XCTAssertTrue(prompts.user.contains("<text_after_cursor><![CDATA[\nafter QA signs off\n]]></text_after_cursor>"))
+        XCTAssertTrue(prompts.user
+            .contains("<text_after_cursor><![CDATA[\nafter QA signs off\n]]></text_after_cursor>"))
         XCTAssertTrue(prompts.user.contains("Project Apollo will ship"))
         XCTAssertTrue(prompts.user.contains("after QA signs off"))
     }
@@ -85,14 +87,14 @@ final class LLMRewriteRequestTests: XCTestCase {
             isFocusedTarget: true,
             prefix: "before",
             suffix: "after",
-            selectedText: "selected",
+            selectedText: "selected"
         )
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
             sourceText: "replacement",
             spokenInstruction: nil,
             personaPrompt: nil,
-            inputContext: inputContext,
+            inputContext: inputContext
         )
 
         let prompts = PromptCatalog.rewritePrompts(for: request)

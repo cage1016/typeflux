@@ -27,7 +27,7 @@ final class HistoryExportDestinationTests: XCTestCase {
 
         let destinationURL = try HistoryExportDestination.moveExport(
             at: sourceURL,
-            to: destinationDirectoryURL,
+            to: destinationDirectoryURL
         )
 
         XCTAssertEqual(destinationURL, destinationDirectoryURL.appendingPathComponent("history-123.md"))
@@ -45,7 +45,7 @@ final class HistoryExportDestinationTests: XCTestCase {
 
         let resultURL = try HistoryExportDestination.moveExport(
             at: sourceURL,
-            to: destinationDirectoryURL,
+            to: destinationDirectoryURL
         )
 
         XCTAssertEqual(resultURL, destinationURL)
@@ -58,7 +58,7 @@ final class HistoryExportDestinationTests: XCTestCase {
 
         let destinationURL = try HistoryExportDestination.moveExport(
             at: sourceURL,
-            to: testDir,
+            to: testDir
         )
 
         XCTAssertEqual(destinationURL, sourceURL)

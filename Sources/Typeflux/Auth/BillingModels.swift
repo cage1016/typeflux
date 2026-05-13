@@ -41,7 +41,7 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
         planName: String? = nil,
         active: Bool? = nil,
         paid: Bool? = nil,
-        periodSource: String? = nil,
+        periodSource: String? = nil
     ) {
         self.planCode = planCode
         self.planName = planName
@@ -69,7 +69,7 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
             ?? active
             ?? Self.defaultEntitlement(
                 for: status,
-                periodEnd: source.decodeIfPresent(String.self, forKey: .currentPeriodEnd),
+                periodEnd: source.decodeIfPresent(String.self, forKey: .currentPeriodEnd)
             )
 
         try self.init(
@@ -82,7 +82,7 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
             planName: source.decodeIfPresent(String.self, forKey: .planName),
             active: active,
             paid: source.decodeIfPresent(Bool.self, forKey: .paid),
-            periodSource: source.decodeIfPresent(String.self, forKey: .periodSource),
+            periodSource: source.decodeIfPresent(String.self, forKey: .periodSource)
         )
     }
 
@@ -113,7 +113,7 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
             cancelAtPeriodEnd: false,
             entitled: false,
             active: false,
-            paid: false,
+            paid: false
         )
     }
 
@@ -197,7 +197,7 @@ struct AccountSubscriptionPresentation: Equatable {
             status: statusValue(for: snapshot),
             periodLabelKey: periodLabelKey(for: snapshot),
             period: periodValue(for: snapshot),
-            billingAction: snapshot.hasPaidSubscription ? .manageBilling : .subscribe,
+            billingAction: snapshot.hasPaidSubscription ? .manageBilling : .subscribe
         )
     }
 

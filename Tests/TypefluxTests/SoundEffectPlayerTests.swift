@@ -28,7 +28,7 @@ final class SoundEffectPlayerTests: XCTestCase {
         let volumes: Set<Float> = [
             SoundEffectPlayer.Effect.tip.volume,
             SoundEffectPlayer.Effect.done.volume,
-            SoundEffectPlayer.Effect.error.volume,
+            SoundEffectPlayer.Effect.error.volume
         ]
         XCTAssertEqual(volumes.count, 3)
     }

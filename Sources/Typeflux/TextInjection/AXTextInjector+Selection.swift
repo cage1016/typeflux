@@ -10,7 +10,7 @@ extension AXTextInjector {
             role: copyStringAttribute(kAXRoleAttribute as String, from: element),
             isEditable: isLikelyEditable(element: element),
             isFocused: copyBooleanAttribute(kAXFocusedAttribute as String, from: element),
-            selectedRange: copySelectedTextRange(from: element),
+            selectedRange: copySelectedTextRange(from: element)
         )
     }
 
@@ -29,7 +29,7 @@ extension AXTextInjector {
             let childLines = subtreeSummary(
                 of: child,
                 depthRemaining: depthRemaining - 1,
-                maxChildren: maxChildren,
+                maxChildren: maxChildren
             )
             lines.append(contentsOf: childLines.map { "child[\(index)] " + $0 })
         }
@@ -43,7 +43,7 @@ extension AXTextInjector {
 
     func findBestEditableDescendant(
         in element: AXUIElement,
-        depthRemaining: Int,
+        depthRemaining: Int
     ) -> AXUIElement? {
         guard depthRemaining >= 0 else { return nil }
 
@@ -83,7 +83,7 @@ extension AXTextInjector {
             [Focus Resolution] \(context)
             root: \(elementSummary(rootElement))
             resolved: \(resolvedSummary)
-            """,
+            """
         )
     }
 
@@ -163,7 +163,7 @@ extension AXTextInjector {
             windowTitle: selectionWindow.flatMap(windowTitle(of:)),
             isFocusedTarget: isFocusedTarget,
             source: "accessibility",
-            capturedAt: Date(),
+            capturedAt: Date()
         )
 
         return (text, context)
@@ -207,7 +207,7 @@ extension AXTextInjector {
             logFocusResolution(
                 context: "systemFocusedElement",
                 rootElement: focused,
-                resolvedElement: resolved,
+                resolvedElement: resolved
             )
             return resolved
         }
@@ -224,7 +224,7 @@ extension AXTextInjector {
             logFocusResolution(
                 context: "focusedElement(appFocusedUIElement)",
                 rootElement: focused,
-                resolvedElement: resolved,
+                resolvedElement: resolved
             )
             return resolved
         }
@@ -235,7 +235,7 @@ extension AXTextInjector {
             logFocusResolution(
                 context: "focusedElement(focusedWindow)",
                 rootElement: focusedWindow,
-                resolvedElement: resolved,
+                resolvedElement: resolved
             )
             return resolved
         }
@@ -274,7 +274,7 @@ extension AXTextInjector {
     func copyDocumentURL(from element: AXUIElement) -> URL? {
         let attributeNames = [
             kAXDocumentAttribute as String,
-            "AXURL",
+            "AXURL"
         ]
 
         for attributeName in attributeNames {
@@ -313,7 +313,7 @@ extension AXTextInjector {
                fileSize.intValue > Self.documentContextMaxBytes
             {
                 NetworkDebugLogger.logMessage(
-                    "[InputContext] document context skipped; file too large: \(url.path)",
+                    "[InputContext] document context skipped; file too large: \(url.path)"
                 )
                 return nil
             }
@@ -321,7 +321,7 @@ extension AXTextInjector {
             return try String(contentsOf: url, encoding: .utf8)
         } catch {
             NetworkDebugLogger.logMessage(
-                "[InputContext] document context read failed: \(url.path) | \(error.localizedDescription)",
+                "[InputContext] document context read failed: \(url.path) | \(error.localizedDescription)"
             )
             return nil
         }
@@ -335,7 +335,7 @@ extension AXTextInjector {
         let candidates = collectVisibleTextCandidates(
             in: root,
             depthRemaining: Self.visibleTextContextSearchDepth,
-            remainingNodes: &remainingNodes,
+            remainingNodes: &remainingNodes
         )
         return Self.joinedVisibleTextCandidates(candidates)
     }
@@ -343,7 +343,7 @@ extension AXTextInjector {
     func collectVisibleTextCandidates(
         in element: AXUIElement,
         depthRemaining: Int,
-        remainingNodes: inout Int,
+        remainingNodes: inout Int
     ) -> [String] {
         guard depthRemaining >= 0, remainingNodes > 0 else { return [] }
         remainingNodes -= 1
@@ -365,8 +365,8 @@ extension AXTextInjector {
                 contentsOf: collectVisibleTextCandidates(
                     in: child,
                     depthRemaining: depthRemaining - 1,
-                    remainingNodes: &remainingNodes,
-                ),
+                    remainingNodes: &remainingNodes
+                )
             )
             guard remainingNodes > 0 else { break }
         }
@@ -403,7 +403,7 @@ extension AXTextInjector {
             let projectedCount = characterCount + trimmed.count + (lines.isEmpty ? 0 : 1)
             guard projectedCount <= visibleTextContextMaxCharacters else {
                 NetworkDebugLogger.logMessage(
-                    "[InputContext] visible text context truncated at \(characterCount) characters",
+                    "[InputContext] visible text context truncated at \(characterCount) characters"
                 )
                 break
             }
@@ -419,7 +419,7 @@ extension AXTextInjector {
     func applicationStateContext(
         bundleIdentifier: String?,
         selectedText: String?,
-        windowTitle: String?,
+        windowTitle: String?
     ) -> ApplicationStateContext? {
         lastApplicationStateFailureReason = nil
 
@@ -427,12 +427,12 @@ extension AXTextInjector {
         case "com.sublimetext.4", "com.sublimetext.3", "com.sublimetext.2":
             return sublimeSessionContext(
                 selectedText: selectedText?.trimmingCharacters(in: .whitespacesAndNewlines),
-                windowTitle: windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+                windowTitle: windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         case "dev.zed.Zed":
             return zedEditorContext(
                 selectedText: selectedText?.trimmingCharacters(in: .whitespacesAndNewlines),
-                windowTitle: windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+                windowTitle: windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         default:
             return browserDOMContext(bundleIdentifier: bundleIdentifier)
@@ -444,7 +444,7 @@ extension AXTextInjector {
         let script = Self.browserDOMContextAppleScript(
             bundleIdentifier: kind.bundleIdentifier,
             javascript: Self.browserDOMContextJavaScript,
-            command: kind.command,
+            command: kind.command
         )
 
         guard let output = executeAppleScript(script) else {
@@ -532,7 +532,7 @@ extension AXTextInjector {
     static func shouldPreferApplicationStateContextBeforeAXValue(
         bundleIdentifier: String?,
         role: String?,
-        isFocusedTarget: Bool,
+        isFocusedTarget: Bool
     ) -> Bool {
         guard browserAutomationKind(for: bundleIdentifier) != nil else { return false }
 
@@ -546,7 +546,7 @@ extension AXTextInjector {
     static func shouldSuppressAXValueContext(
         bundleIdentifier: String?,
         role: String?,
-        isFocusedTarget: Bool,
+        isFocusedTarget: Bool
     ) -> Bool {
         browserAutomationKind(for: bundleIdentifier) != nil
             && role == "AXTextField"
@@ -556,7 +556,7 @@ extension AXTextInjector {
     static func browserDOMContextAppleScript(
         bundleIdentifier: String,
         javascript: String,
-        command: BrowserAutomationKind.Command,
+        command: BrowserAutomationKind.Command
     ) -> String {
         let quotedBundle = appleScriptQuotedString(bundleIdentifier)
         let quotedJavaScript = appleScriptQuotedString(javascript)
@@ -614,7 +614,7 @@ extension AXTextInjector {
         let end = max(0, min(payload.selectionEnd, payload.text.utf16.count))
         return ApplicationStateContext(
             text: payload.text,
-            selectedRange: CFRange(location: min(start, end), length: abs(end - start)),
+            selectedRange: CFRange(location: min(start, end), length: abs(end - start))
         )
     }
 
@@ -707,14 +707,14 @@ extension AXTextInjector {
     func zedEditorContext(selectedText: String?, windowTitle: String?) -> ApplicationStateContext? {
         let dbURLs = [
             FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/Zed/db/0-stable/db.sqlite"),
+                .appendingPathComponent("Library/Application Support/Zed/db/0-stable/db.sqlite")
         ]
 
         for dbURL in dbURLs {
             guard let context = zedEditorContext(
                 dbURL: dbURL,
                 selectedText: selectedText,
-                windowTitle: windowTitle,
+                windowTitle: windowTitle
             ) else {
                 continue
             }
@@ -727,7 +727,7 @@ extension AXTextInjector {
     func zedEditorContext(
         dbURL: URL,
         selectedText: String?,
-        windowTitle: String?,
+        windowTitle: String?
     ) -> ApplicationStateContext? {
         guard FileManager.default.fileExists(atPath: dbURL.path) else { return nil }
 
@@ -764,7 +764,7 @@ extension AXTextInjector {
                 bufferPath: bufferPath,
                 selectedRange: range,
                 selectedText: selectedText,
-                windowTitle: windowTitle,
+                windowTitle: windowTitle
             ) else {
                 continue
             }
@@ -779,7 +779,7 @@ extension AXTextInjector {
         bufferPath: String?,
         selectedRange: CFRange?,
         selectedText: String?,
-        windowTitle: String?,
+        windowTitle: String?
     ) -> ApplicationStateContext? {
         let text = contents?.isEmpty == false
             ? contents
@@ -834,14 +834,14 @@ extension AXTextInjector {
             .appendingPathComponent("Library/Application Support/Sublime Text/Local", isDirectory: true)
         let sessionURLs = [
             localDirectory.appendingPathComponent("Auto Save Session.sublime_session"),
-            localDirectory.appendingPathComponent("Session.sublime_session"),
+            localDirectory.appendingPathComponent("Session.sublime_session")
         ]
 
         for url in sessionURLs {
             guard let data = try? Data(contentsOf: url) else { continue }
             guard data.count <= Self.applicationStateContextMaxBytes else {
                 NetworkDebugLogger.logMessage(
-                    "[InputContext] Sublime session context skipped; file too large: \(url.path)",
+                    "[InputContext] Sublime session context skipped; file too large: \(url.path)"
                 )
                 continue
             }
@@ -850,7 +850,7 @@ extension AXTextInjector {
                 let context = Self.firstSublimeSessionContext(
                     selectedText: selectedText,
                     windowTitle: windowTitle,
-                    in: object,
+                    in: object
                 )
             else {
                 continue
@@ -865,7 +865,7 @@ extension AXTextInjector {
     static func firstSublimeSessionContext(
         selectedText: String?,
         windowTitle: String?,
-        in object: Any,
+        in object: Any
     ) -> ApplicationStateContext? {
         guard let dictionary = object as? [String: Any],
               let windows = dictionary["windows"] as? [[String: Any]]
@@ -891,10 +891,15 @@ extension AXTextInjector {
                     continue
                 }
 
-                if Self.sublimeBuffer(contents, sheet: sheet, matchesSelectedText: selectedText, windowTitle: windowTitle) {
+                if Self.sublimeBuffer(
+                    contents,
+                    sheet: sheet,
+                    matchesSelectedText: selectedText,
+                    windowTitle: windowTitle
+                ) {
                     return ApplicationStateContext(
                         text: contents,
-                        selectedRange: Self.sublimeSelectedRange(from: sheet),
+                        selectedRange: Self.sublimeSelectedRange(from: sheet)
                     )
                 }
             }
@@ -932,7 +937,7 @@ extension AXTextInjector {
         _ contents: String,
         sheet: [String: Any],
         matchesSelectedText selectedText: String?,
-        windowTitle: String?,
+        windowTitle: String?
     ) -> Bool {
         if let selectedText,
            sessionContents(contents, containsSelection: selectedText)
@@ -1042,7 +1047,11 @@ extension AXTextInjector {
         let characters = Array(normalizedSelection)
         var fragments: [String] = []
 
-        for start in stride(from: 0, to: max(characters.count - preferredLength + 1, 1), by: max(preferredLength / 2, 1)) {
+        for start in stride(
+            from: 0,
+            to: max(characters.count - preferredLength + 1, 1),
+            by: max(preferredLength / 2, 1)
+        ) {
             let end = min(start + preferredLength, characters.count)
             let fragment = String(characters[start ..< end])
             if fragment.count >= minimumLength {
@@ -1061,7 +1070,7 @@ extension AXTextInjector {
     static func contextTextSource(
         documentText: String?,
         applicationStateText: String?,
-        visibleText: String?,
+        visibleText: String?
     ) -> String? {
         if documentText != nil { return "document" }
         if applicationStateText != nil { return "application-state" }
@@ -1085,14 +1094,14 @@ extension AXTextInjector {
 
         if let descendant = findFocusedDescendant(
             in: element,
-            depthRemaining: Self.focusedDescendantSearchDepth,
+            depthRemaining: Self.focusedDescendantSearchDepth
         ) {
             return descendant
         }
 
         if let editableDescendant = findBestEditableDescendant(
             in: element,
-            depthRemaining: Self.focusedDescendantSearchDepth,
+            depthRemaining: Self.focusedDescendantSearchDepth
         ) {
             let candidate = focusResolutionCandidate(for: editableDescendant)
             NetworkDebugLogger.logMessage(
@@ -1100,7 +1109,7 @@ extension AXTextInjector {
                 [Focus Resolution] no focused descendant found; editable descendant exists
                 window: \(elementSummary(element))
                 editableDescendant: \(elementSummary(editableDescendant))
-                """,
+                """
             )
             if Self.shouldPreferEditableDescendant(overWindowRole: role, candidate: candidate) {
                 NetworkDebugLogger.logMessage(
@@ -1108,7 +1117,7 @@ extension AXTextInjector {
                     [Focus Resolution] promoting editable descendant as focused target
                     window: \(elementSummary(element))
                     promotedDescendant: \(elementSummary(editableDescendant))
-                    """,
+                    """
                 )
                 return editableDescendant
             }
@@ -1190,7 +1199,7 @@ extension AXTextInjector {
     func restoreSelectionContext(_ context: SelectionContext) {
         let needsReactivation = Self.shouldReactivateProcessForSelectionRestore(
             targetProcessID: context.processID,
-            frontmostProcessID: frontmostProcessID(),
+            frontmostProcessID: frontmostProcessID()
         )
 
         if needsReactivation,

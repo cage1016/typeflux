@@ -17,7 +17,7 @@ enum AccountUsageDisplayFormatter {
             (1_000_000_000_000, "T"),
             (1_000_000_000, "B"),
             (1_000_000, "M"),
-            (1000, "K"),
+            (1000, "K")
         ]
 
         for index in units.indices {

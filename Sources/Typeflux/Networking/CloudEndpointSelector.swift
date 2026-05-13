@@ -70,7 +70,7 @@ actor CloudEndpointSelector {
         baseURLs: [URL],
         prober: CloudEndpointProbing,
         config: CloudEndpointSelectorConfig = .default,
-        now: @escaping @Sendable () -> Date = { Date() },
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         precondition(!baseURLs.isEmpty, "CloudEndpointSelector requires at least one base URL")
         // Preserve the configured order while removing duplicates.
@@ -115,7 +115,7 @@ actor CloudEndpointSelector {
                 inCooldown: inCooldown,
                 latency: state.latencyMs,
                 cooldownUntil: state.cooldownUntil,
-                insertionIndex: idx,
+                insertionIndex: idx
             )
         }
 
@@ -165,7 +165,7 @@ actor CloudEndpointSelector {
                 url: url,
                 inCooldown: inCooldown,
                 cooldownUntil: state.cooldownUntil,
-                insertionIndex: idx,
+                insertionIndex: idx
             )
         }
 
@@ -259,7 +259,7 @@ actor CloudEndpointSelector {
                             url,
                             latencyMs: result.latencyMs,
                             serverID: result.serverID,
-                            serverVersion: result.serverVersion,
+                            serverVersion: result.serverVersion
                         )
                     } catch {
                         await reportFailure(url, error: error)
@@ -283,7 +283,7 @@ actor CloudEndpointSelector {
                 cooldownUntil: state.cooldownUntil,
                 serverID: state.serverID,
                 serverVersion: state.serverVersion,
-                lastError: state.lastError,
+                lastError: state.lastError
             )
         }
     }

@@ -14,7 +14,7 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
             settingsStore: settingsStore,
             localBackendFactory: { localBackend },
             openAIBackendFactory: { openAIBackend },
-            appleBackendFactory: { appleBackend },
+            appleBackendFactory: { appleBackend }
         )
 
         try await previewer.start(onTextUpdate: { _ in })
@@ -39,7 +39,7 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
             settingsStore: settingsStore,
             localBackendFactory: { localBackend },
             openAIBackendFactory: { openAIBackend },
-            appleBackendFactory: { appleBackend },
+            appleBackendFactory: { appleBackend }
         )
 
         try await previewer.start(onTextUpdate: { _ in })
@@ -63,7 +63,7 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
         let previewer = LiveTranscriptionPreviewer(
             settingsStore: settingsStore,
             openAIBackendFactory: { backend },
-            appleBackendFactory: { backend },
+            appleBackendFactory: { backend }
         )
 
         let buffer = try makeTestBuffer(sampleCount: 4)
@@ -104,7 +104,7 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
             commonFormat: .pcmFormatFloat32,
             sampleRate: 16000,
             channels: 1,
-            interleaved: false,
+            interleaved: false
         ) else {
             throw XCTSkip("Unable to create audio format")
         }

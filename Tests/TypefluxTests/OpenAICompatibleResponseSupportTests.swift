@@ -5,8 +5,8 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
     func testExtractsPlainStringDelta() throws {
         let data = try jsonData([
             "choices": [
-                ["delta": ["content": "hello"]],
-            ],
+                ["delta": ["content": "hello"]]
+            ]
         ])
 
         XCTAssertEqual(OpenAICompatibleResponseSupport.extractTextDelta(from: data), "hello")
@@ -15,8 +15,8 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
     func testExtractsStructuredTextDelta() throws {
         let data = try jsonData([
             "choices": [
-                ["delta": ["content": [["type": "text", "text": "hello"], ["type": "text", "text": " world"]]]],
-            ],
+                ["delta": ["content": [["type": "text", "text": "hello"], ["type": "text", "text": " world"]]]]
+            ]
         ])
 
         XCTAssertEqual(OpenAICompatibleResponseSupport.extractTextDelta(from: data), "hello world")
@@ -27,22 +27,22 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
             "choices": [
                 ["message": ["content": [
                     ["type": "text", "text": "## Summary"],
-                    ["type": "text", "text": "- first item\n- second item"],
-                ]]],
-            ],
+                    ["type": "text", "text": "- first item\n- second item"]
+                ]]]
+            ]
         ])
 
         XCTAssertEqual(
             OpenAICompatibleResponseSupport.extractTextDelta(from: data),
-            "## Summary\n\n- first item\n- second item",
+            "## Summary\n\n- first item\n- second item"
         )
     }
 
     func testDetectsReasoningOnlyDelta() throws {
         let data = try jsonData([
             "choices": [
-                ["delta": ["reasoning_content": "step by step"]],
-            ],
+                ["delta": ["reasoning_content": "step by step"]]
+            ]
         ])
 
         XCTAssertNil(OpenAICompatibleResponseSupport.extractTextDelta(from: data))
@@ -54,7 +54,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://ark.cn-beijing.volces.com/api/v3")),
-            model: "doubao-seed-1-6",
+            model: "doubao-seed-1-6"
         )
 
         let thinking = try XCTUnwrap(body["thinking"] as? [String: String])
@@ -66,7 +66,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://dashscope.aliyuncs.com/compatible-mode/v1")),
-            model: "qwen-plus",
+            model: "qwen-plus"
         )
 
         XCTAssertEqual(body["enable_thinking"] as? Bool, false)
@@ -78,7 +78,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://openrouter.ai/api/v1")),
-            model: "openai/gpt-5.4",
+            model: "openai/gpt-5.4"
         )
 
         let reasoning = try XCTUnwrap(body["reasoning"] as? [String: Any])
@@ -93,7 +93,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://llm.example.com/v1")),
             model: "private-model",
-            provider: .custom,
+            provider: .custom
         )
 
         XCTAssertNil(body["thinking"])
@@ -111,7 +111,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
             "thinking": ["type": "disabled"],
             "enable_thinking": false,
             "reasoning": ["effort": "none"],
-            "include_reasoning": false,
+            "include_reasoning": false
         ]
 
         OpenAICompatibleResponseSupport.removeCustomThinkingTuning(body: &body)
@@ -128,7 +128,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         let error = NSError(
             domain: "LLM",
             code: 400,
-            userInfo: [NSLocalizedDescriptionKey: "HTTP 400: unknown parameter: enable_thinking"],
+            userInfo: [NSLocalizedDescriptionKey: "HTTP 400: unknown parameter: enable_thinking"]
         )
 
         XCTAssertTrue(OpenAICompatibleResponseSupport.shouldRetryWithoutCustomThinkingTuning(error: error))
@@ -138,8 +138,8 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         let data = try jsonData([
             "error": [
                 "message": "unknown parameter: thinking",
-                "status": 400,
-            ],
+                "status": 400
+            ]
         ])
 
         let error = try XCTUnwrap(OpenAICompatibleResponseSupport.streamError(from: data))
@@ -151,7 +151,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         let error = NSError(
             domain: "LLM",
             code: 401,
-            userInfo: [NSLocalizedDescriptionKey: "HTTP 401: invalid api key"],
+            userInfo: [NSLocalizedDescriptionKey: "HTTP 401: invalid api key"]
         )
 
         XCTAssertFalse(OpenAICompatibleResponseSupport.shouldRetryWithoutCustomThinkingTuning(error: error))
@@ -162,22 +162,22 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &modernBody,
             baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
-            model: "gpt-5.4",
+            model: "gpt-5.4"
         )
         XCTAssertEqual(
             (modernBody["reasoning"] as? [String: String])?["effort"],
-            "none",
+            "none"
         )
 
         var legacyBody: [String: Any] = ["model": "gpt-5"]
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &legacyBody,
             baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
-            model: "gpt-5",
+            model: "gpt-5"
         )
         XCTAssertEqual(
             (legacyBody["reasoning"] as? [String: String])?["effort"],
-            "minimal",
+            "minimal"
         )
     }
 
@@ -186,14 +186,14 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://api.deepseek.com")),
-            model: "deepseek-reasoner",
+            model: "deepseek-reasoner"
         )
 
         let thinking = try XCTUnwrap(body["thinking"] as? [String: String])
         XCTAssertEqual(thinking["type"], "disabled")
         XCTAssertEqual(
             (body["reasoning"] as? [String: String])?["effort"],
-            "none",
+            "none"
         )
     }
 
@@ -201,21 +201,21 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
         var flashConfig: [String: Any] = ["candidateCount": 1]
         OpenAICompatibleResponseSupport.applyGeminiTuning(
             generationConfig: &flashConfig,
-            model: "gemini-2.5-flash",
+            model: "gemini-2.5-flash"
         )
         XCTAssertEqual(
             (flashConfig["thinkingConfig"] as? [String: Int])?["thinkingBudget"],
-            0,
+            0
         )
 
         var gemini3Config: [String: Any] = ["candidateCount": 1]
         OpenAICompatibleResponseSupport.applyGeminiTuning(
             generationConfig: &gemini3Config,
-            model: "gemini-3-flash-preview",
+            model: "gemini-3-flash-preview"
         )
         XCTAssertEqual(
             (gemini3Config["thinkingConfig"] as? [String: String])?["thinkingLevel"],
-            "low",
+            "low"
         )
     }
 
@@ -225,7 +225,7 @@ final class OpenAICompatibleResponseSupportTests: XCTestCase {
 
         XCTAssertEqual(
             (body["thinking"] as? [String: String])?["type"],
-            "disabled",
+            "disabled"
         )
         XCTAssertNil(body["output_config"])
     }
@@ -256,7 +256,8 @@ extension OpenAICompatibleResponseSupportTests {
     }
 
     func testStripLeadingThinkingTagsWithThinkBlockAndAnswer() {
-        let result = OpenAICompatibleResponseSupport.stripLeadingThinkingTags("<think>I think...</think>The answer is 42.")
+        let result = OpenAICompatibleResponseSupport
+            .stripLeadingThinkingTags("<think>I think...</think>The answer is 42.")
         XCTAssertEqual(result, "The answer is 42.")
     }
 
@@ -334,8 +335,8 @@ extension OpenAICompatibleResponseSupportTests {
     func testExtractTextDeltaFromValidDelta() throws {
         let data = try jsonData([
             "choices": [
-                ["delta": ["content": "partial text"]],
-            ],
+                ["delta": ["content": "partial text"]]
+            ]
         ])
         let result = OpenAICompatibleResponseSupport.extractTextDelta(from: data)
         XCTAssertEqual(result, "partial text")
@@ -344,8 +345,8 @@ extension OpenAICompatibleResponseSupportTests {
     func testExtractTextDeltaFromEmptyDeltaContent() throws {
         let data = try jsonData([
             "choices": [
-                ["delta": ["content": ""]],
-            ],
+                ["delta": ["content": ""]]
+            ]
         ])
         let result = OpenAICompatibleResponseSupport.extractTextDelta(from: data)
         XCTAssertNil(result)
@@ -356,8 +357,8 @@ extension OpenAICompatibleResponseSupportTests {
     func testContainsReasoningDeltaReturnsFalseForTextOnlyDelta() throws {
         let data = try jsonData([
             "choices": [
-                ["delta": ["content": "text content"]],
-            ],
+                ["delta": ["content": "text content"]]
+            ]
         ])
         XCTAssertFalse(OpenAICompatibleResponseSupport.containsReasoningDelta(data))
     }
@@ -373,7 +374,7 @@ extension OpenAICompatibleResponseSupportTests {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
-            model: "gpt-4o",
+            model: "gpt-4o"
         )
         // For endpoints/models that don't match any tuning rules, body should not be modified
         XCTAssertNil(body["thinking"])
@@ -384,7 +385,7 @@ extension OpenAICompatibleResponseSupportTests {
         try OpenAICompatibleResponseSupport.applyProviderTuning(
             body: &body,
             baseURL: XCTUnwrap(URL(string: "https://api.custom.com/v1")),
-            model: "custom-model",
+            model: "custom-model"
         )
         XCTAssertEqual(body["model"] as? String, "custom-model")
         XCTAssertEqual(body["stream"] as? Bool, true)

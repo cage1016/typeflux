@@ -49,7 +49,7 @@ extension AXTextInjector {
         let result = AXUIElementCopyAttributeValue(
             element,
             kAXSelectedTextRangeAttribute as CFString,
-            &value,
+            &value
         )
         guard result == .success, let axValue = value else { return nil }
         guard CFGetTypeID(axValue) == AXValueGetTypeID() else { return nil }
@@ -69,7 +69,7 @@ extension AXTextInjector {
         let result = AXUIElementSetAttributeValue(
             element,
             kAXSelectedTextRangeAttribute as CFString,
-            axRange,
+            axRange
         )
         return result == .success
     }
@@ -80,7 +80,7 @@ extension AXTextInjector {
         let result = AXUIElementSetAttributeValue(
             element,
             kAXFocusedAttribute as CFString,
-            value,
+            value
         )
         return result == .success
     }

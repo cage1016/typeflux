@@ -9,7 +9,7 @@ struct MCPToolAdapter: AgentTool {
         LLMAgentTool(
             name: toolDef.name,
             description: toolDef.description ?? "",
-            inputSchema: convertSchema(toolDef.inputSchema),
+            inputSchema: convertSchema(toolDef.inputSchema)
         )
     }
 
@@ -38,7 +38,7 @@ struct MCPToolAdapter: AgentTool {
 
     private func convertSchema(_ mcpSchema: MCPObjectSchema) -> LLMJSONSchema {
         var schema: [String: AnySendable] = [
-            "type": .string("object"),
+            "type": .string("object")
         ]
 
         if let properties = mcpSchema.properties {

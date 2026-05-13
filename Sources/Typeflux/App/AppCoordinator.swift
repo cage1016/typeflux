@@ -41,16 +41,16 @@ final class AppCoordinator {
                             }
                             return LocalModelTranscriber(
                                 settingsStore: settingsStore,
-                                modelManager: localModelManager,
+                                modelManager: localModelManager
                             )
-                        },
+                        }
                     )
                 },
                 openAIBackendFactory: { OpenAIRealtimePreviewBackend(settingsStore: settingsStore) },
-                appleBackendFactory: { AppleSpeechPreviewBackend() },
+                appleBackendFactory: { AppleSpeechPreviewBackend() }
             ),
             localModelManager: localModelManager,
-            notificationService: di.notificationService,
+            notificationService: di.notificationService
         )
         self.workflowController = workflowController
 
@@ -71,7 +71,7 @@ final class AppCoordinator {
             },
             onOpenAgentJob: { [weak self] jobID in
                 self?.di.agentJobsWindowController.showJob(id: jobID)
-            },
+            }
         )
         statusBarController?.start()
         self.workflowController?.start()
@@ -105,7 +105,7 @@ final class AppCoordinator {
         controller.show(
             settingsStore: di.settingsStore,
             localModelManager: di.localModelManager,
-            notificationService: di.notificationService,
+            notificationService: di.notificationService
         ) { [weak self] in
             self?.onboardingWindowController = nil
             self?.presentPermissionGuidanceIfNeeded()
@@ -135,7 +135,7 @@ final class AppCoordinator {
             notificationService: di.notificationService,
             onRetryHistory: { [weak self] record in
                 self?.workflowController?.retry(record: record)
-            },
+            }
         )
     }
 }

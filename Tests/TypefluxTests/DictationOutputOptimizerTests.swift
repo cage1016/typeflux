@@ -25,7 +25,7 @@ final class DictationOutputOptimizerTests: XCTestCase {
     func testOptimizeLeavesMultiSentenceTextUnchanged() {
         XCTAssertEqual(
             DictationOutputOptimizer.optimize("Hello world. How are you?"),
-            "Hello world. How are you?",
+            "Hello world. How are you?"
         )
     }
 

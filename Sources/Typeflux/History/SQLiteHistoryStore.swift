@@ -98,7 +98,7 @@ final class SQLiteHistoryStore: HistoryStore {
                     sql: "DELETE FROM history_records WHERE id = ?;",
                     bind: { statement in
                         self.bind(id.uuidString, at: 1, in: statement)
-                    },
+                    }
                 )
                 if let audioPath {
                     self.removeAudioFileIfNeeded(at: audioPath)
@@ -119,7 +119,7 @@ final class SQLiteHistoryStore: HistoryStore {
                     sql: "DELETE FROM history_records WHERE date < ?;",
                     bind: { statement in
                         sqlite3_bind_double(statement, 1, cutoff.timeIntervalSince1970)
-                    },
+                    }
                 )
                 staleAudioPaths.forEach(self.removeAudioFileIfNeeded(at:))
                 self.notifyChange()
@@ -271,7 +271,7 @@ final class SQLiteHistoryStore: HistoryStore {
                    error_message, apply_message, recording_status, transcription_status, processing_status, apply_status
             FROM history_records
             ORDER BY date DESC;
-            """,
+            """
         )
     }
 
@@ -290,7 +290,7 @@ final class SQLiteHistoryStore: HistoryStore {
                 bind: { statement in
                     sqlite3_bind_int64(statement, 1, sqlite3_int64(limit))
                     sqlite3_bind_int64(statement, 2, sqlite3_int64(offset))
-                },
+                }
             )
         }
 
@@ -319,7 +319,7 @@ final class SQLiteHistoryStore: HistoryStore {
                 self.bind(wildcardQuery, at: 6, in: statement)
                 sqlite3_bind_int64(statement, 7, sqlite3_int64(limit))
                 sqlite3_bind_int64(statement, 8, sqlite3_int64(offset))
-            },
+            }
         )
     }
 
@@ -335,13 +335,13 @@ final class SQLiteHistoryStore: HistoryStore {
             """,
             bind: { statement in
                 self.bind(id.uuidString, at: 1, in: statement)
-            },
+            }
         ).first
     }
 
     private func fetchRecords(
         sql: String,
-        bind: ((OpaquePointer?) -> Void)? = nil,
+        bind: ((OpaquePointer?) -> Void)? = nil
     ) throws -> [HistoryRecord] {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -398,7 +398,11 @@ final class SQLiteHistoryStore: HistoryStore {
             self.bind(record.selectionEditedText, at: 9, in: statement)
             self.bind(record.recordingDurationSeconds, at: 10, in: statement)
             self.bind(self.encodeCodable(record.pipelineTiming), at: 11, in: statement)
-            self.bind(self.encodeCodable(record.pipelineStats ?? record.pipelineTiming?.generatedStats()), at: 12, in: statement)
+            self.bind(
+                self.encodeCodable(record.pipelineStats ?? record.pipelineTiming?.generatedStats()),
+                at: 12,
+                in: statement
+            )
             self.bind(record.errorMessage, at: 13, in: statement)
             self.bind(record.applyMessage, at: 14, in: statement)
             self.bind(record.recordingStatus.rawValue, at: 15, in: statement)
@@ -427,7 +431,7 @@ final class SQLiteHistoryStore: HistoryStore {
             sql: "SELECT audio_file_path FROM history_records WHERE date < ? AND audio_file_path IS NOT NULL;",
             bind: { statement in
                 sqlite3_bind_double(statement, 1, cutoff.timeIntervalSince1970)
-            },
+            }
         )
     }
 
@@ -437,7 +441,7 @@ final class SQLiteHistoryStore: HistoryStore {
 
     private func fetchAudioPaths(
         sql: String,
-        bind: ((OpaquePointer?) -> Void)? = nil,
+        bind: ((OpaquePointer?) -> Void)? = nil
     ) throws -> [String] {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -493,13 +497,13 @@ final class SQLiteHistoryStore: HistoryStore {
             recordingStatus: recordingStatus,
             transcriptionStatus: transcriptionStatus,
             processingStatus: processingStatus,
-            applyStatus: applyStatus,
+            applyStatus: applyStatus
         )
     }
 
     private func execute(
         sql: String,
-        bind: ((OpaquePointer?) -> Void)? = nil,
+        bind: ((OpaquePointer?) -> Void)? = nil
     ) throws {
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
@@ -623,7 +627,7 @@ final class SQLiteHistoryStore: HistoryStore {
             ("Transcript -> LLM start", stats.transcriptToLLMStartMilliseconds),
             ("LLM duration", stats.llmDurationMilliseconds),
             ("Apply duration", stats.applyDurationMilliseconds),
-            ("End-to-end", stats.endToEndMilliseconds),
+            ("End-to-end", stats.endToEndMilliseconds)
         ]
 
         for (label, value) in durations {
@@ -650,7 +654,7 @@ final class SQLiteHistoryStore: HistoryStore {
         let detail = db.flatMap { sqlite3_errmsg($0) }.map { String(cString: $0) } ?? "unknown"
         let code = db.map { sqlite3_errcode($0) } ?? SQLITE_ERROR
         return NSError(domain: "SQLiteHistoryStore", code: Int(code), userInfo: [
-            NSLocalizedDescriptionKey: "\(message): \(detail)",
+            NSLocalizedDescriptionKey: "\(message): \(detail)"
         ])
     }
 }

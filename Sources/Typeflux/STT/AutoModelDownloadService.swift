@@ -2,7 +2,7 @@ import Foundation
 
 extension Notification.Name {
     static let autoModelDownloadStateDidChange = Notification.Name(
-        "AutoModelDownloadService.stateDidChange",
+        "AutoModelDownloadService.stateDidChange"
     )
 }
 
@@ -78,7 +78,7 @@ final class AutoModelDownloadService {
     init(
         modelManager: LocalModelManager,
         settingsStore: SettingsStore,
-        notificationService: LocalNotificationSending = NoopLocalNotificationService(),
+        notificationService: LocalNotificationSending = NoopLocalNotificationService()
     ) {
         self.modelManager = modelManager
         self.settingsStore = settingsStore
@@ -86,7 +86,7 @@ final class AutoModelDownloadService {
         NotificationCenter.default.addObserver(
             forName: .localOptimizationDidEnable,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             self?.triggerIfNeeded()
         }
@@ -157,7 +157,7 @@ final class AutoModelDownloadService {
             model: .senseVoiceSmall,
             modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
             downloadSource: .huggingFace,
-            autoSetup: true,
+            autoSetup: true
         )
     }
 
@@ -186,12 +186,12 @@ final class AutoModelDownloadService {
 
         do {
             let storagePath = try await modelManager.downloadModelFilesOnly(
-                configuration: config,
+                configuration: config
             ) { [weak self] update in
                 self?.setStatus(.downloading(progress: update.progress))
                 LocalModelDownloadProgressCenter.shared.reportDownloading(
                     model: config.model,
-                    progress: update.progress,
+                    progress: update.progress
                 )
             }
 
@@ -199,7 +199,7 @@ final class AutoModelDownloadService {
                 throw NSError(
                     domain: "AutoModelDownloadService",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Model files not usable after download"],
+                    userInfo: [NSLocalizedDescriptionKey: "Model files not usable after download"]
                 )
             }
 
@@ -222,12 +222,12 @@ final class AutoModelDownloadService {
             setStatus(.failed)
             LocalModelDownloadProgressCenter.shared.reportFailed(
                 model: config.model,
-                message: error.localizedDescription,
+                message: error.localizedDescription
             )
 
             var failedState = loadState()
             failedState.nextRetryDate = Date().addingTimeInterval(
-                Self.backoffInterval(for: failedState.attemptCount),
+                Self.backoffInterval(for: failedState.attemptCount)
             )
             saveState(failedState)
 
@@ -239,7 +239,7 @@ final class AutoModelDownloadService {
         await notificationService.sendLocalNotification(
             title: L("notification.localModelReady.title"),
             body: L("notification.localModelReady.body"),
-            identifier: "ai.gulu.app.typeflux.local-model-ready",
+            identifier: "ai.gulu.app.typeflux.local-model-ready"
         )
     }
 

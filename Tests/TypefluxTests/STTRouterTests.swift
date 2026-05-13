@@ -18,7 +18,7 @@ private final class MockTranscriber: Transcriber {
 
     func transcribeStream(
         audioFile _: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         transcribeCallCount += 1
         if let error = errorToThrow {
@@ -44,7 +44,7 @@ private final class MockRecordingPrewarmingTranscriber: RecordingPrewarmingTrans
 
     func transcribeStream(
         audioFile _: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         transcribeCallCount += 1
         if let error = errorToThrow { throw error }
@@ -75,7 +75,7 @@ private final class MockScenarioAwareTranscriber: TypefluxCloudScenarioAwareTran
     func transcribeStream(
         audioFile _: AudioFile,
         scenario: TypefluxCloudScenario,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         transcribeCallCount += 1
         lastScenario = scenario
@@ -96,7 +96,7 @@ private final class MockIntegratedTypefluxTranscriber: TypefluxCloudLLMIntegrate
     func transcribeStream(
         audioFile _: AudioFile,
         scenario _: TypefluxCloudScenario,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         await onUpdate(TranscriptionSnapshot(text: resultToReturn.transcript, isFinal: true))
         return resultToReturn.transcript
@@ -108,7 +108,7 @@ private final class MockIntegratedTypefluxTranscriber: TypefluxCloudLLMIntegrate
         scenario _: TypefluxCloudScenario,
         onASRUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
         onLLMStart _: @escaping @Sendable () async -> Void,
-        onLLMChunk _: @escaping @Sendable (String) async -> Void,
+        onLLMChunk _: @escaping @Sendable (String) async -> Void
     ) async throws -> (transcript: String, rewritten: String?) {
         integratedCallCount += 1
         if let errorToThrow {
@@ -174,7 +174,7 @@ final class STTRouterTests: XCTestCase {
         localModelOverride: Transcriber? = nil,
         doubaoRealtimeOverride: Transcriber? = nil,
         typefluxOfficialOverride: Transcriber? = nil,
-        isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = { false },
+        isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = { false }
     ) -> STTRouter {
         STTRouter(
             settingsStore: settings,
@@ -188,7 +188,7 @@ final class STTRouterTests: XCTestCase {
             googleCloud: googleCloud,
             groq: groq,
             typefluxOfficial: typefluxOfficialOverride ?? typefluxOfficial,
-            isTypefluxCloudLoggedIn: isTypefluxCloudLoggedIn,
+            isTypefluxCloudLoggedIn: isTypefluxCloudLoggedIn
         )
     }
 
@@ -322,7 +322,7 @@ final class STTRouterTests: XCTestCase {
         settings.useAppleSpeechFallback = false
         localModel.errorToThrow = NSError(
             domain: LocalModelTranscriber.notPreparedErrorDomain,
-            code: LocalModelTranscriber.notPreparedErrorCode,
+            code: LocalModelTranscriber.notPreparedErrorCode
         )
         typefluxOfficial.resultToReturn = "cloud fallback"
         let router = makeRouter(isTypefluxCloudLoggedIn: { true })
@@ -359,7 +359,7 @@ final class STTRouterTests: XCTestCase {
         settings.useAppleSpeechFallback = false
         localModel.errorToThrow = NSError(
             domain: LocalModelTranscriber.notPreparedErrorDomain,
-            code: LocalModelTranscriber.notPreparedErrorCode,
+            code: LocalModelTranscriber.notPreparedErrorCode
         )
         let router = makeRouter(isTypefluxCloudLoggedIn: { false })
 
@@ -482,12 +482,12 @@ final class STTRouterTests: XCTestCase {
             doubaoRealtime: doubaoRealtime,
             googleCloud: googleCloud,
             groq: groq,
-            typefluxOfficial: scenarioAware,
+            typefluxOfficial: scenarioAware
         )
 
         let result = try await router.transcribe(
             audioFile: dummyAudioFile(),
-            scenario: .askAnything,
+            scenario: .askAnything
         )
 
         XCTAssertEqual(result, "transcribed")
@@ -501,7 +501,7 @@ final class STTRouterTests: XCTestCase {
         let integrated = MockIntegratedTypefluxTranscriber()
         integrated.errorToThrow = TypefluxCloudIntegratedRewriteError(
             transcript: "already transcribed",
-            underlyingError: TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nil),
+            underlyingError: TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nil)
         )
         let router = makeRouter(typefluxOfficialOverride: integrated)
 
@@ -511,7 +511,7 @@ final class STTRouterTests: XCTestCase {
             scenario: .voiceInput,
             onASRUpdate: { _ in },
             onLLMStart: {},
-            onLLMChunk: { _ in },
+            onLLMChunk: { _ in }
         )
 
         XCTAssertEqual(result.transcript, "already transcribed")

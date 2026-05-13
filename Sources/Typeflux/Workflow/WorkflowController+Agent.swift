@@ -41,7 +41,7 @@ extension WorkflowController {
         spokenInstruction: String,
         personaPrompt: String?,
         jobID: UUID = UUID(),
-        appSystemContext: AppSystemContext? = nil,
+        appSystemContext: AppSystemContext? = nil
     ) async throws -> AskAgentExecutionResult {
         let configStatus = await validateLLMConfiguration()
         guard case .ready = configStatus else {
@@ -70,7 +70,7 @@ extension WorkflowController {
                     personaPrompt: personaPrompt,
                     appSystemContext: appSystemContext,
                     llmService: llmService,
-                    clarificationTurns: clarificationTurns,
+                    clarificationTurns: clarificationTurns
                 )
             } catch is CancellationError {
                 await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
@@ -83,7 +83,7 @@ extension WorkflowController {
                     userReply = try await showClarificationAndWaitForReply(
                         modelResponse: modelText,
                         question: spokenInstruction,
-                        selectedText: selectedText,
+                        selectedText: selectedText
                     )
                 } catch {
                     await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
@@ -106,7 +106,7 @@ extension WorkflowController {
                 toolCallName: phase1Result.toolCallName,
                 toolCallArgumentsJSON: phase1Result.toolCallArgumentsJSON,
                 resultContent: phase1ResultContent,
-                durationMs: phase1Result.durationMs,
+                durationMs: phase1Result.durationMs
             )
 
             switch phase1Result.decision {
@@ -127,7 +127,7 @@ extension WorkflowController {
                     personaPrompt: personaPrompt,
                     appSystemContext: appSystemContext,
                     llmService: llmService,
-                    jobRecorder: jobRecorder,
+                    jobRecorder: jobRecorder
                 )
                 return AskAgentExecutionResult(jobID: jobRecorder.recordedJobID, result: result)
             }
@@ -141,7 +141,7 @@ extension WorkflowController {
     private func showClarificationAndWaitForReply(
         modelResponse: String,
         question: String,
-        selectedText: String?,
+        selectedText: String?
     ) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             pendingClarificationContinuation = continuation
@@ -151,7 +151,7 @@ extension WorkflowController {
                 self.agentClarificationWindowController.show(
                     question: question,
                     selectedText: selectedText,
-                    modelResponse: modelResponse,
+                    modelResponse: modelResponse
                 )
             }
         }
@@ -165,7 +165,7 @@ extension WorkflowController {
         personaPrompt: String?,
         appSystemContext: AppSystemContext?,
         llmService: OpenAICompatibleAgentService,
-        clarificationTurns: [(modelText: String, userReply: String)] = [],
+        clarificationTurns: [(modelText: String, userReply: String)] = []
     ) async throws -> Phase1RouterResult {
         let systemPrompt = AgentPromptCatalog.routerSystemPrompt(personaPrompt: personaPrompt)
 
@@ -179,7 +179,7 @@ extension WorkflowController {
 
         let userPrompt = AgentPromptCatalog.routerUserPrompt(
             selectedText: selectedText,
-            instruction: instruction,
+            instruction: instruction
         )
         let tools = [AnswerTextTool().definition, EditTextTool().definition, RunAgentTool().definition]
 
@@ -189,8 +189,8 @@ extension WorkflowController {
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
                 tools: tools,
-                appSystemContext: appSystemContext,
-            ),
+                appSystemContext: appSystemContext
+            )
         )
         let end = DispatchTime.now()
         let durationMs = Int64((end.uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000)
@@ -215,7 +215,7 @@ extension WorkflowController {
             decision: decision,
             toolCallName: toolCall.name,
             toolCallArgumentsJSON: toolCall.argumentsJSON,
-            durationMs: durationMs,
+            durationMs: durationMs
         )
     }
 
@@ -229,7 +229,7 @@ extension WorkflowController {
         personaPrompt: String?,
         appSystemContext _: AppSystemContext?,
         llmService: OpenAICompatibleAgentService,
-        jobRecorder: AgentJobRecorder,
+        jobRecorder: AgentJobRecorder
     ) async throws -> AskAgentResult {
         // Connect MCP servers (only in Phase 2)
         await mcpRegistry.connectEnabledServers(settingsStore.mcpServers)
@@ -249,13 +249,13 @@ extension WorkflowController {
             allowParallelToolCalls: AgentConfig.default.allowParallelToolCalls,
             temperature: AgentConfig.default.temperature,
             enableStreaming: AgentConfig.default.enableStreaming,
-            initialStepIndex: 1,
+            initialStepIndex: 1
         )
 
         let loop = AgentLoop(
             llmService: llmService,
             toolRegistry: registry,
-            config: phase2Config,
+            config: phase2Config
         )
         await loop.setStepMonitor(jobRecorder)
 
@@ -263,14 +263,14 @@ extension WorkflowController {
         let userPrompt = AgentPromptCatalog.agentUserPrompt(
             selectedText: selectedText,
             spokenInstruction: spokenInstruction,
-            detailedInstruction: detailedInstruction,
+            detailedInstruction: detailedInstruction
         )
 
         let result: AgentResult
         do {
             result = try await loop.run(messages: [
                 .system(systemPrompt),
-                .user(userPrompt),
+                .user(userPrompt)
             ])
         } catch is CancellationError {
             await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
@@ -304,14 +304,14 @@ extension WorkflowController {
         let titleLLMService = LLMRouter(
             settingsStore: settingsStore,
             openAICompatible: OpenAICompatibleLLMService(settingsStore: settingsStore),
-            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager()),
+            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager())
         )
         Task.detached {
             if var job = try? await jobStore.job(id: jobID) {
                 let title = await AgentJobTitleGenerator.generateTitle(
                     for: job,
                     using: titleLLMService,
-                    appLanguage: self.settingsStore.appLanguage,
+                    appLanguage: self.settingsStore.appLanguage
                 )
                 if let title {
                     job.title = title

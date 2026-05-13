@@ -30,7 +30,7 @@ enum HotkeyFormat {
             flags.contains(.control) ? "⌃" : nil,
             flags.contains(.option) ? "⌥" : nil,
             flags.contains(.shift) ? "⇧" : nil,
-            flags.contains(.command) ? "⌘" : nil,
+            flags.contains(.command) ? "⌘" : nil
         ].compactMap(\.self)
 
         parts.append(keyCodeDisplayName(binding.keyCode))

@@ -59,7 +59,7 @@ final class AppleSignInService: NSObject {
 extension AppleSignInService: ASAuthorizationControllerDelegate {
     func authorizationController(
         controller _: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization,
+        didCompleteWithAuthorization authorization: ASAuthorization
     ) {
         guard
             let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
@@ -78,7 +78,7 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
             aud=\(tokenSummary.audience ?? "<missing>", privacy: .public) \
             iss=\(tokenSummary.issuer ?? "<missing>", privacy: .public) \
             sub=\(tokenSummary.subject ?? "<missing>", privacy: .private(mask: .hash))
-            """,
+            """
         )
         continuation?.resume(returning: idToken)
         continuation = nil
@@ -86,7 +86,7 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
 
     func authorizationController(
         controller _: ASAuthorizationController,
-        didCompleteWithError error: Error,
+        didCompleteWithError error: Error
     ) {
         let nsError = error as NSError
         let runtimeConfiguration = Self.currentRuntimeConfiguration()
@@ -98,7 +98,7 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
             bundleID=\(runtimeConfiguration?.bundleIdentifier ?? "<unknown>", privacy: .public) \
             teamID=\(runtimeConfiguration?.teamIdentifier ?? "<none>", privacy: .public) \
             hasEntitlement=\(runtimeConfiguration?.hasAppleSignInEntitlement == true, privacy: .public)
-            """,
+            """
         )
         continuation?.resume(throwing: Self.mapSystemError(error, runtimeConfiguration: runtimeConfiguration))
         continuation = nil
@@ -190,7 +190,7 @@ extension AppleSignInService {
 
     nonisolated static func mapSystemError(
         _ error: Error,
-        runtimeConfiguration: RuntimeConfiguration?,
+        runtimeConfiguration: RuntimeConfiguration?
     ) -> Error {
         let nsError = error as NSError
         guard
@@ -206,7 +206,7 @@ extension AppleSignInService {
     }
 
     nonisolated static func configurationIssueDescription(
-        for runtimeConfiguration: RuntimeConfiguration,
+        for runtimeConfiguration: RuntimeConfiguration
     ) -> String? {
         if !runtimeConfiguration.hasAppleSignInEntitlement {
             return """
@@ -240,7 +240,8 @@ extension AppleSignInService {
         var staticCode: SecStaticCode?
         let copyStaticStatus = SecCodeCopyStaticCode(selfCode, [], &staticCode)
         guard copyStaticStatus == errSecSuccess, let staticCode else {
-            logger.error("[Apple Sign In] failed to inspect static code signature: \(copyStaticStatus, privacy: .public)")
+            logger
+                .error("[Apple Sign In] failed to inspect static code signature: \(copyStaticStatus, privacy: .public)")
             return nil
         }
 
@@ -248,7 +249,7 @@ extension AppleSignInService {
         let status = SecCodeCopySigningInformation(
             staticCode,
             SecCSFlags(rawValue: kSecCSSigningInformation),
-            &signingInformation,
+            &signingInformation
         )
         guard status == errSecSuccess,
               let info = signingInformation as? [String: Any]
@@ -264,7 +265,7 @@ extension AppleSignInService {
         return RuntimeConfiguration(
             bundleIdentifier: info[kSecCodeInfoIdentifier as String] as? String ?? Bundle.main.bundleIdentifier,
             teamIdentifier: info[kSecCodeInfoTeamIdentifier as String] as? String,
-            hasAppleSignInEntitlement: hasAppleSignInEntitlement,
+            hasAppleSignInEntitlement: hasAppleSignInEntitlement
         )
     }
 }

@@ -66,7 +66,7 @@ final class SettingsStoreTests: XCTestCase {
         let observer = NotificationCenter.default.addObserver(
             forName: .appearanceModeDidChange,
             object: nil,
-            queue: nil,
+            queue: nil
         ) { _ in
             expectation.fulfill()
         }
@@ -83,7 +83,7 @@ final class SettingsStoreTests: XCTestCase {
         let observer = NotificationCenter.default.addObserver(
             forName: .appearanceModeDidChange,
             object: nil,
-            queue: nil,
+            queue: nil
         ) { _ in
             notificationFired = true
         }
@@ -238,11 +238,11 @@ final class SettingsStoreTests: XCTestCase {
     func testResolvedDefaultWhisperConfigurationUsesOpenAIDefaults() {
         XCTAssertEqual(
             OpenAIAudioModelCatalog.resolvedWhisperEndpoint(store.whisperBaseURL),
-            "https://api.openai.com/v1/audio/transcriptions",
+            "https://api.openai.com/v1/audio/transcriptions"
         )
         XCTAssertEqual(
             OpenAIAudioModelCatalog.resolvedWhisperModel(store.whisperModel),
-            "gpt-4o-transcribe",
+            "gpt-4o-transcribe"
         )
     }
 
@@ -252,9 +252,9 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(
             OpenAIAudioModelCatalog.resolvedWhisperModel(
                 store.whisperModel,
-                endpoint: store.whisperBaseURL,
+                endpoint: store.whisperBaseURL
             ),
-            "whisper-1",
+            "whisper-1"
         )
     }
 
@@ -461,7 +461,7 @@ final class SettingsStoreTests: XCTestCase {
 
         let effectivePersona = store.effectivePersona(
             appName: "Slack",
-            bundleIdentifier: "com.tinyspeck.slackmacgap",
+            bundleIdentifier: "com.tinyspeck.slackmacgap"
         )
 
         XCTAssertEqual(effectivePersona?.id, appSpecificPersona.id)
@@ -474,7 +474,7 @@ final class SettingsStoreTests: XCTestCase {
 
         let effectivePersona = store.effectivePersona(
             appName: "Slack",
-            bundleIdentifier: "com.tinyspeck.slackmacgap",
+            bundleIdentifier: "com.tinyspeck.slackmacgap"
         )
 
         XCTAssertNil(effectivePersona)
@@ -488,7 +488,7 @@ final class SettingsStoreTests: XCTestCase {
 
         let effectivePersona = store.effectivePersona(
             appName: "Notes",
-            bundleIdentifier: "com.apple.Notes",
+            bundleIdentifier: "com.apple.Notes"
         )
 
         XCTAssertEqual(store.personaAppBindings.first?.personaID, missingPersonaID)
@@ -505,7 +505,7 @@ final class SettingsStoreTests: XCTestCase {
 
         let effectivePersona = store.effectivePersona(
             appName: "Slack",
-            bundleIdentifier: "com.tinyspeck.slackmacgap",
+            bundleIdentifier: "com.tinyspeck.slackmacgap"
         )
 
         XCTAssertEqual(effectivePersona?.id, defaultPersona.id)
@@ -519,7 +519,7 @@ final class SettingsStoreTests: XCTestCase {
 
         let effectivePersona = store.effectivePersona(
             appName: "Slack",
-            bundleIdentifier: nil,
+            bundleIdentifier: nil
         )
 
         XCTAssertEqual(effectivePersona?.id, defaultPersona.id)
@@ -556,7 +556,7 @@ final class SettingsStoreTests: XCTestCase {
 
         let effectivePersona = store.effectivePersona(
             appName: "Slack",
-            bundleIdentifier: nil,
+            bundleIdentifier: nil
         )
 
         XCTAssertEqual(effectivePersona?.id, defaultPersona.id)
@@ -571,17 +571,17 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(
             store.activePersonaAppBinding(
                 appName: "Slack",
-                bundleIdentifier: "com.tinyspeck.slackmacgap",
+                bundleIdentifier: "com.tinyspeck.slackmacgap"
             )?.id,
-            bindingID,
+            bindingID
         )
 
         store.setPersonaAppBindingEnabled(id: bindingID, isEnabled: false)
         XCTAssertNil(
             store.activePersonaAppBinding(
                 appName: "Slack",
-                bundleIdentifier: "com.tinyspeck.slackmacgap",
-            ),
+                bundleIdentifier: "com.tinyspeck.slackmacgap"
+            )
         )
 
         store.setPersonaAppBindingEnabled(id: bindingID, isEnabled: true)
@@ -589,8 +589,8 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertNil(
             store.activePersonaAppBinding(
                 appName: "Slack",
-                bundleIdentifier: "com.tinyspeck.slackmacgap",
-            ),
+                bundleIdentifier: "com.tinyspeck.slackmacgap"
+            )
         )
     }
 
@@ -650,7 +650,7 @@ final class SettingsStoreTests: XCTestCase {
         let observer = NotificationCenter.default.addObserver(
             forName: .personaSelectionDidChange,
             object: nil,
-            queue: nil,
+            queue: nil
         ) { _ in
             expectation.fulfill()
         }
@@ -670,7 +670,7 @@ final class SettingsStoreTests: XCTestCase {
         let observer = NotificationCenter.default.addObserver(
             forName: .personaSelectionDidChange,
             object: nil,
-            queue: nil,
+            queue: nil
         ) { _ in
             expectation.fulfill()
         }

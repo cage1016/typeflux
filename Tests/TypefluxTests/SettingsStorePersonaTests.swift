@@ -151,12 +151,12 @@ final class SettingsStorePersonaTests: XCTestCase {
         let legacyBuiltIn = PersonaProfile(
             id: UUID(),
             name: "Professional Assistant",
-            prompt: "Rewrite in professional, clear, and concise Chinese. Improve sentence flow, preserve key information, and make it suitable to send directly to colleagues or clients.",
+            prompt: "Rewrite in professional, clear, and concise Chinese. Improve sentence flow, preserve key information, and make it suitable to send directly to colleagues or clients."
         )
         let legacyCustom = PersonaProfile(
             id: UUID(),
             name: "Founder Voice",
-            prompt: "Rewrite in a calm founder tone.",
+            prompt: "Rewrite in a calm founder tone."
         )
 
         let data = try JSONEncoder().encode([legacyBuiltIn, legacyCustom])

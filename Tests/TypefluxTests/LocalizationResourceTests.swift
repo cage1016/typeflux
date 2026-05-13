@@ -11,7 +11,7 @@ final class LocalizationResourceTests: XCTestCase {
 
             XCTAssertNoThrow(
                 try PropertyListSerialization.propertyList(from: data, options: [], format: nil),
-                "Failed to parse Localizable.strings for \(language.rawValue)",
+                "Failed to parse Localizable.strings for \(language.rawValue)"
             )
         }
     }
@@ -24,7 +24,7 @@ final class LocalizationResourceTests: XCTestCase {
             XCTAssertNotEqual(
                 localized,
                 "settings.general",
-                "Missing localized value for \(language.rawValue)",
+                "Missing localized value for \(language.rawValue)"
             )
         }
     }
@@ -41,7 +41,7 @@ final class LocalizationResourceTests: XCTestCase {
     func testOverlayProcessingPhaseKeysExistForAllSupportedLanguages() throws {
         let keys = [
             "overlay.processing.transcribing",
-            "overlay.processing.thinking",
+            "overlay.processing.thinking"
         ]
 
         for language in AppLanguage.allCases {
@@ -60,14 +60,14 @@ final class LocalizationResourceTests: XCTestCase {
             let transcribing = bundle.localizedString(
                 forKey: "overlay.processing.transcribing",
                 value: nil,
-                table: nil,
+                table: nil
             )
             let thinking = bundle.localizedString(forKey: "overlay.processing.thinking", value: nil, table: nil)
 
             XCTAssertEqual(
                 transcribing,
                 thinking,
-                "Processing overlay should use thinking copy in \(language.rawValue)",
+                "Processing overlay should use thinking copy in \(language.rawValue)"
             )
         }
     }
@@ -78,7 +78,7 @@ final class LocalizationResourceTests: XCTestCase {
             .simplifiedChinese: "思考中…",
             .traditionalChinese: "思考中…",
             .japanese: "思考中…",
-            .korean: "생각 중…",
+            .korean: "생각 중…"
         ]
 
         for language in AppLanguage.allCases {
@@ -88,7 +88,7 @@ final class LocalizationResourceTests: XCTestCase {
             XCTAssertEqual(
                 localized,
                 expectedValues[language],
-                "Unexpected processing status copy in \(language.rawValue)",
+                "Unexpected processing status copy in \(language.rawValue)"
             )
         }
     }
@@ -101,7 +101,7 @@ final class LocalizationResourceTests: XCTestCase {
             XCTAssertNotEqual(
                 localized,
                 "history.action.more",
-                "Missing localized history actions menu label for \(language.rawValue)",
+                "Missing localized history actions menu label for \(language.rawValue)"
             )
             XCTAssertFalse(localized.isEmpty)
         }
@@ -113,7 +113,7 @@ final class LocalizationResourceTests: XCTestCase {
             .simplifiedChinese: "思考中...",
             .traditionalChinese: "思考中...",
             .japanese: "思考中...",
-            .korean: "생각 중...",
+            .korean: "생각 중..."
         ]
 
         for language in AppLanguage.allCases {
@@ -121,13 +121,13 @@ final class LocalizationResourceTests: XCTestCase {
             let localized = bundle.localizedString(
                 forKey: "agent.clarification.transcribingHint",
                 value: nil,
-                table: nil,
+                table: nil
             )
 
             XCTAssertEqual(
                 localized,
                 expectedValues[language],
-                "Unexpected clarification hint in \(language.rawValue)",
+                "Unexpected clarification hint in \(language.rawValue)"
             )
         }
     }
@@ -137,7 +137,7 @@ final class LocalizationResourceTests: XCTestCase {
             language.bundleLocalizationCandidates.compactMap {
                 Bundle.module.path(forResource: $0, ofType: "lproj")
             }.first,
-            "Missing bundle path for \(language.rawValue)",
+            "Missing bundle path for \(language.rawValue)"
         )
 
         return try XCTUnwrap(Bundle(path: path), "Missing bundle for \(language.rawValue)")

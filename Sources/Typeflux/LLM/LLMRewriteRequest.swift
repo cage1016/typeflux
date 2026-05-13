@@ -46,7 +46,7 @@ struct LLMRewriteRequest {
         personaID: UUID? = nil,
         appSystemContext: AppSystemContext? = nil,
         inputContext: InputContextSnapshot? = nil,
-        vocabularyTerms: [String] = [],
+        vocabularyTerms: [String] = []
     ) {
         self.mode = mode
         self.sourceText = sourceText

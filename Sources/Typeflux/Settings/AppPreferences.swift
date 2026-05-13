@@ -37,7 +37,7 @@ enum STTProvider: String, CaseIterable, Codable {
         .googleCloud,
         .whisperAPI,
         .multimodalLLM,
-        .groq,
+        .groq
     ]
 
     static let onboardingDisplayOrder: [STTProvider] = settingsDisplayOrder.filter {
@@ -155,31 +155,31 @@ enum LocalSTTModel: String, CaseIterable, Codable {
             Specs(
                 summary: L("localSTT.whisperLocal.summary"),
                 parameterValue: L("localSTT.whisperLocal.parameterValue"),
-                sizeValue: L("localSTT.whisperLocal.sizeValue"),
+                sizeValue: L("localSTT.whisperLocal.sizeValue")
             )
         case .whisperLocalLarge:
             Specs(
                 summary: L("localSTT.whisperLocalLarge.summary"),
                 parameterValue: L("localSTT.whisperLocalLarge.parameterValue"),
-                sizeValue: L("localSTT.whisperLocalLarge.sizeValue"),
+                sizeValue: L("localSTT.whisperLocalLarge.sizeValue")
             )
         case .senseVoiceSmall:
             Specs(
                 summary: L("localSTT.senseVoiceSmall.summary"),
                 parameterValue: L("localSTT.senseVoiceSmall.parameterValue"),
-                sizeValue: L("localSTT.senseVoiceSmall.sizeValue"),
+                sizeValue: L("localSTT.senseVoiceSmall.sizeValue")
             )
         case .qwen3ASR:
             Specs(
                 summary: L("localSTT.qwen3ASR.summary"),
                 parameterValue: L("localSTT.qwen3ASR.parameterValue"),
-                sizeValue: L("localSTT.qwen3ASR.sizeValue"),
+                sizeValue: L("localSTT.qwen3ASR.sizeValue")
             )
         case .funASR:
             Specs(
                 summary: L("localSTT.funASR.summary"),
                 parameterValue: L("localSTT.funASR.parameterValue"),
-                sizeValue: L("localSTT.funASR.sizeValue"),
+                sizeValue: L("localSTT.funASR.sizeValue")
             )
         }
     }

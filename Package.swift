@@ -5,17 +5,17 @@ let package = Package(
     name: "Typeflux",
     defaultLocalization: "en",
     platforms: [
-        .macOS(.v13),
+        .macOS(.v13)
     ],
     products: [
         .library(name: "TypefluxKit", targets: ["Typeflux"]),
-        .executable(name: "Typeflux", targets: ["TypefluxCLI"]),
+        .executable(name: "Typeflux", targets: ["TypefluxCLI"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-markdown.git", from: "0.3.0"),
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.9.0"),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.28.2"),
-        .package(url: "https://github.com/grpc/grpc-swift.git", from: "1.26.0"),
+        .package(url: "https://github.com/grpc/grpc-swift.git", from: "1.26.0")
     ],
     targets: [
         .target(
@@ -24,30 +24,30 @@ let package = Package(
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "WhisperKit", package: "WhisperKit"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "GRPC", package: "grpc-swift"),
+                .product(name: "GRPC", package: "grpc-swift")
             ],
             path: "Sources/Typeflux",
             exclude: [
-                "Resources/Info.plist",
+                "Resources/Info.plist"
             ],
             resources: [
-                .process("Resources"),
+                .process("Resources")
             ],
             linkerSettings: [
-                .linkedLibrary("sqlite3"),
-            ],
+                .linkedLibrary("sqlite3")
+            ]
         ),
         .executableTarget(
             name: "TypefluxCLI",
             dependencies: [
-                "Typeflux",
+                "Typeflux"
             ],
-            path: "Sources/TypefluxCLI",
+            path: "Sources/TypefluxCLI"
         ),
         .testTarget(
             name: "TypefluxTests",
             dependencies: ["Typeflux"],
-            path: "Tests/TypefluxTests",
-        ),
-    ],
+            path: "Tests/TypefluxTests"
+        )
+    ]
 )

@@ -258,7 +258,7 @@ final class StudioViewModel: ObservableObject {
         localModelManager: LocalSTTModelManaging = LocalModelManager(),
         audioDeviceManager: AudioDeviceManager = AudioDeviceManager(),
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
-        audioPreviewPlayer: HistoryAudioPreviewPlaying = AVFoundationHistoryAudioPreviewPlayer(),
+        audioPreviewPlayer: HistoryAudioPreviewPlaying = AVFoundationHistoryAudioPreviewPlayer()
     ) {
         self.settingsStore = settingsStore
         self.historyStore = historyStore
@@ -385,7 +385,7 @@ final class StudioViewModel: ObservableObject {
         historyObserver = NotificationCenter.default.addObserver(
             forName: .historyStoreDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.scheduleHistoryRefresh(reset: false, debounce: .milliseconds(120))
@@ -394,7 +394,7 @@ final class StudioViewModel: ObservableObject {
         personaSelectionObserver = NotificationCenter.default.addObserver(
             forName: .personaSelectionDidChange,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncPersonaSelectionFromStore()
@@ -403,7 +403,7 @@ final class StudioViewModel: ObservableObject {
         hotkeySettingsObserver = NotificationCenter.default.addObserver(
             forName: .hotkeySettingsDidChange,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncHotkeysFromStore()
@@ -412,7 +412,7 @@ final class StudioViewModel: ObservableObject {
         appearanceObserver = NotificationCenter.default.addObserver(
             forName: .appearanceModeDidChange,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -422,7 +422,7 @@ final class StudioViewModel: ObservableObject {
         vocabularyObserver = NotificationCenter.default.addObserver(
             forName: .vocabularyStoreDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] notification in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -436,7 +436,7 @@ final class StudioViewModel: ObservableObject {
         agentJobObserver = NotificationCenter.default.addObserver(
             forName: .agentJobStoreDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.refreshAgentJobs()
@@ -445,7 +445,7 @@ final class StudioViewModel: ObservableObject {
         cloudAccountModelDefaultsObserver = NotificationCenter.default.addObserver(
             forName: .cloudAccountModelDefaultsDidApply,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncCloudAccountModelsFromStore()
@@ -454,7 +454,7 @@ final class StudioViewModel: ObservableObject {
         localModelDownloadProgressObserver = NotificationCenter.default.addObserver(
             forName: .localModelDownloadProgressDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncLocalModelDownloadProgress()
@@ -535,7 +535,7 @@ final class StudioViewModel: ObservableObject {
             "settings.models.localSTT.transferProgress",
             "\(min(max(percentage, 0), 100))%",
             formatter.string(fromByteCount: downloadedBytes),
-            formatter.string(fromByteCount: totalBytes),
+            formatter.string(fromByteCount: totalBytes)
         )
     }
 
@@ -633,7 +633,7 @@ final class StudioViewModel: ObservableObject {
             let termOrder = lhs.term.compare(
                 rhs.term,
                 options: [.caseInsensitive, .diacriticInsensitive],
-                locale: Locale(identifier: "en_US_POSIX"),
+                locale: Locale(identifier: "en_US_POSIX")
             )
             if termOrder != .orderedSame {
                 return termOrder == .orderedAscending
@@ -680,7 +680,7 @@ final class StudioViewModel: ObservableObject {
                     metadata: freeSTTModel.isEmpty ? "Model not set" : freeSTTModel,
                     isSelected: sttProvider == .freeModel,
                     isMuted: false,
-                    actionTitle: sttProvider == .freeModel ? "Selected" : "Use Free",
+                    actionTitle: sttProvider == .freeModel ? "Selected" : "Use Free"
                 ),
                 StudioModelCard(
                     id: "local-stt",
@@ -690,7 +690,7 @@ final class StudioViewModel: ObservableObject {
                     metadata: localSTTModel.displayName,
                     isSelected: sttProvider == .localModel,
                     isMuted: false,
-                    actionTitle: sttProvider == .localModel ? "Selected" : "Use Local",
+                    actionTitle: sttProvider == .localModel ? "Selected" : "Use Local"
                 ),
                 StudioModelCard(
                     id: "apple-speech",
@@ -700,7 +700,7 @@ final class StudioViewModel: ObservableObject {
                     metadata: "Built-in • Offline friendly",
                     isSelected: sttProvider == .appleSpeech,
                     isMuted: false,
-                    actionTitle: sttProvider == .appleSpeech ? "Selected" : "Use Local",
+                    actionTitle: sttProvider == .appleSpeech ? "Selected" : "Use Local"
                 ),
                 StudioModelCard(
                     id: "whisper-api",
@@ -710,7 +710,7 @@ final class StudioViewModel: ObservableObject {
                     metadata: whisperModel.isEmpty ? "Model not set" : whisperModel,
                     isSelected: sttProvider == .whisperAPI,
                     isMuted: false,
-                    actionTitle: sttProvider == .whisperAPI ? "Selected" : "Use Remote",
+                    actionTitle: sttProvider == .whisperAPI ? "Selected" : "Use Remote"
                 ),
                 StudioModelCard(
                     id: "multimodal-llm",
@@ -720,8 +720,8 @@ final class StudioViewModel: ObservableObject {
                     metadata: multimodalLLMModel.isEmpty ? "Model not configured" : multimodalLLMModel,
                     isSelected: sttProvider == .multimodalLLM,
                     isMuted: false,
-                    actionTitle: sttProvider == .multimodalLLM ? "Selected" : "Use Multimodal",
-                ),
+                    actionTitle: sttProvider == .multimodalLLM ? "Selected" : "Use Multimodal"
+                )
             ]
 
         case .llm:
@@ -735,7 +735,7 @@ final class StudioViewModel: ObservableObject {
                     isSelected: llmProvider == .openAICompatible && llmRemoteProvider == .freeModel,
                     isMuted: false,
                     actionTitle: llmProvider == .openAICompatible && llmRemoteProvider == .freeModel
-                        ? "Selected" : "Use Free",
+                        ? "Selected" : "Use Free"
                 ),
                 StudioModelCard(
                     id: "ollama-local",
@@ -745,7 +745,7 @@ final class StudioViewModel: ObservableObject {
                     metadata: ollamaModel,
                     isSelected: llmProvider == .ollama,
                     isMuted: false,
-                    actionTitle: llmProvider == .ollama ? "Selected" : "Use Local",
+                    actionTitle: llmProvider == .ollama ? "Selected" : "Use Local"
                 ),
                 StudioModelCard(
                     id: "openai-compatible",
@@ -755,8 +755,8 @@ final class StudioViewModel: ObservableObject {
                     metadata: llmModel.isEmpty ? "Model not set" : llmModel,
                     isSelected: llmProvider == .openAICompatible,
                     isMuted: false,
-                    actionTitle: llmProvider == .openAICompatible ? "Selected" : "Use Remote",
-                ),
+                    actionTitle: llmProvider == .openAICompatible ? "Selected" : "Use Remote"
+                )
             ]
         }
     }
@@ -821,7 +821,7 @@ final class StudioViewModel: ObservableObject {
 
     private func refreshHistory(
         reset: Bool,
-        completion: (() -> Void)?,
+        completion: (() -> Void)?
     ) {
         historyRefreshTask?.cancel()
         if reset {
@@ -839,7 +839,7 @@ final class StudioViewModel: ObservableObject {
             let records = historyStoreBox.base.list(
                 limit: pageSize,
                 offset: 0,
-                searchQuery: searchQuery,
+                searchQuery: searchQuery
             )
 
             DispatchQueue.main.async {
@@ -864,7 +864,7 @@ final class StudioViewModel: ObservableObject {
         let nextPage = historyStore.list(
             limit: Self.historyPageSize,
             offset: historyRecords.count,
-            searchQuery: historySearchQuery,
+            searchQuery: historySearchQuery
         )
 
         if nextPage.isEmpty {
@@ -1256,7 +1256,7 @@ final class StudioViewModel: ObservableObject {
                 let token = try await GoogleOAuthService.authorizeGoogleCloud(
                     clientID: AppServerConfiguration.googleCloudOAuthClientID,
                     clientSecret: AppServerConfiguration.googleCloudOAuthClientSecret.isEmpty
-                        ? nil : AppServerConfiguration.googleCloudOAuthClientSecret,
+                        ? nil : AppServerConfiguration.googleCloudOAuthClientSecret
                 )
                 GoogleCloudSpeechOAuthTokenStore.save(token)
                 googleCloudAPIKey = ""
@@ -1437,13 +1437,13 @@ final class StudioViewModel: ObservableObject {
             transport = .stdio(MCPStdioTransportConfig(
                 command: mcpDraftStdioCommand.trimmingCharacters(in: .whitespacesAndNewlines),
                 args: mcpDraftStdioArgs.split(separator: " ").map(String.init),
-                env: envDict,
+                env: envDict
             ))
         case .http:
             let headersDict = parseMCPEnvString(mcpDraftHTTPHeaders)
             transport = .http(MCPHTTPTransportConfig(
                 url: mcpDraftHTTPURL.trimmingCharacters(in: .whitespacesAndNewlines),
-                headers: headersDict,
+                headers: headersDict
             ))
         }
 
@@ -1459,7 +1459,7 @@ final class StudioViewModel: ObservableObject {
                 name: mcpDraftName.trimmingCharacters(in: .whitespacesAndNewlines),
                 transport: transport,
                 enabled: mcpDraftEnabled,
-                autoConnect: mcpDraftAutoConnect,
+                autoConnect: mcpDraftAutoConnect
             )
             mcpServers.append(server)
         }
@@ -1494,13 +1494,13 @@ final class StudioViewModel: ObservableObject {
             transport = .stdio(MCPStdioTransportConfig(
                 command: mcpDraftStdioCommand.trimmingCharacters(in: .whitespacesAndNewlines),
                 args: mcpDraftStdioArgs.split(separator: " ").map(String.init),
-                env: envDict,
+                env: envDict
             ))
         case .http:
             let headersDict = parseMCPEnvString(mcpDraftHTTPHeaders)
             transport = .http(MCPHTTPTransportConfig(
                 url: mcpDraftHTTPURL.trimmingCharacters(in: .whitespacesAndNewlines),
-                headers: headersDict,
+                headers: headersDict
             ))
         }
         testMCPConnectionWithConfig(transport)
@@ -1523,7 +1523,7 @@ final class StudioViewModel: ObservableObject {
                 switch transport {
                 case let .stdio(config):
                     client = StdioMCPClient(config: MCPStdioConfig(
-                        command: config.command, args: config.args, env: config.env,
+                        command: config.command, args: config.args, env: config.env
                     ))
                 case let .http(config):
                     guard let url = URL(string: config.url) else {
@@ -1543,7 +1543,7 @@ final class StudioViewModel: ObservableObject {
                         MCPConnectionTestState.MCPDiscoveredTool(
                             id: $0.name,
                             name: $0.name,
-                            description: $0.description ?? "",
+                            description: $0.description ?? ""
                         )
                     }
                     mcpConnectionTestState = .success(tools: discoveredTools)
@@ -1865,7 +1865,7 @@ final class StudioViewModel: ObservableObject {
 
             guard showImportConfirmationAlert(
                 subject: sourceURL.lastPathComponent,
-                itemCount: previewItems.count,
+                itemCount: previewItems.count
             ) else { return }
 
             let result = try VocabularyStore.importItems(previewItems)
@@ -1981,7 +1981,8 @@ final class StudioViewModel: ObservableObject {
             return
         }
 
-        guard let selectedPersonaID, let index = personas.firstIndex(where: { $0.id == selectedPersonaID }) else { return }
+        guard let selectedPersonaID,
+              let index = personas.firstIndex(where: { $0.id == selectedPersonaID }) else { return }
         guard !personas[index].isSystem else { return }
         personas[index].name = name
         personas[index].prompt = prompt
@@ -2065,7 +2066,7 @@ final class StudioViewModel: ObservableObject {
         localSTTStoragePath = localModelManager.storagePath(for: configuration)
         LocalModelDownloadProgressCenter.shared.reportDownloading(
             model: targetModel,
-            progress: localSTTPreparationProgress,
+            progress: localSTTPreparationProgress
         )
 
         localSTTPreparationTask = Task { @MainActor [weak self] in
@@ -2080,13 +2081,13 @@ final class StudioViewModel: ObservableObject {
                         }
                         LocalModelDownloadProgressCenter.shared.reportDownloading(
                             model: targetModel,
-                            progress: update.progress,
+                            progress: update.progress
                         )
                         self?.localSTTPreparationProgress = update.progress
                         self?.localSTTPreparationDetail = update.message
                         self?.localSTTTransferDetail = Self.localSTTTransferText(
                             downloadedBytes: update.downloadedBytes,
-                            totalBytes: update.totalBytes,
+                            totalBytes: update.totalBytes
                         )
                         self?.localSTTStoragePath = update.storagePath
                         if let source = update.source {
@@ -2125,7 +2126,7 @@ final class StudioViewModel: ObservableObject {
                 isLocalSTTPrepared = false
                 LocalModelDownloadProgressCenter.shared.reportFailed(
                     model: targetModel,
-                    message: error.localizedDescription,
+                    message: error.localizedDescription
                 )
                 showToast(L("settings.models.localSTT.prepareFailed"))
             }
@@ -2184,7 +2185,7 @@ final class StudioViewModel: ObservableObject {
             let exportedURL = try historyStore.exportMarkdown()
             let url = try HistoryExportDestination.moveExport(
                 at: exportedURL,
-                to: destinationDirectoryURL,
+                to: destinationDirectoryURL
             )
             NSWorkspace.shared.activateFileViewerSelecting([url])
             showToast(L("history.toast.exported"))
@@ -2404,14 +2405,14 @@ final class StudioViewModel: ObservableObject {
                             provider: capturedRemoteProvider,
                             baseURL: capturedBaseURL,
                             model: capturedModel,
-                            apiKey: capturedAPIKey,
+                            apiKey: capturedAPIKey
                         )
                         let preview = try await RemoteLLMClient.previewConnection(
                             provider: connection.provider,
                             baseURL: connection.baseURL,
                             model: connection.model,
                             apiKey: connection.apiKey,
-                            additionalHeaders: connection.headers(for: .modelSetup),
+                            additionalHeaders: connection.headers(for: .modelSetup)
                         )
                         if !preview.isEmpty {
                             firstTokenDate = Date()
@@ -2419,12 +2420,16 @@ final class StudioViewModel: ObservableObject {
                         collected = preview
                     case .ollama:
                         guard let baseURL = URL(string: capturedOllamaURL) else {
-                            throw NSError(domain: "LLMTest", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."])
+                            throw NSError(
+                                domain: "LLMTest",
+                                code: 1,
+                                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."]
+                            )
                         }
                         let url = baseURL.appendingPathComponent("api/chat")
                         var urlRequest = URLRequest(
                             url: url,
-                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds),
+                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds)
                         )
                         urlRequest.httpMethod = "POST"
                         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -2432,13 +2437,17 @@ final class StudioViewModel: ObservableObject {
                             "model": capturedOllamaModel,
                             "stream": true,
                             "messages": [["role": "user", "content": "Hello"]],
-                            "options": ["num_predict": 50],
+                            "options": ["num_predict": 50]
                         ]
                         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
                         let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
                         guard let http = response as? HTTPURLResponse else {
-                            throw NSError(domain: "LLMTest", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response."])
+                            throw NSError(
+                                domain: "LLMTest",
+                                code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "Invalid response."]
+                            )
                         }
                         guard (200 ..< 300).contains(http.statusCode) else {
                             var errorData = Data()
@@ -2446,7 +2455,11 @@ final class StudioViewModel: ObservableObject {
                                 errorData.append(byte)
                             }
                             let message = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-                            throw NSError(domain: "LLMTest", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(message)"])
+                            throw NSError(
+                                domain: "LLMTest",
+                                code: http.statusCode,
+                                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode): \(message)"]
+                            )
                         }
 
                         struct OllamaTestResponse: Decodable {
@@ -2460,7 +2473,8 @@ final class StudioViewModel: ObservableObject {
                             if Task.isCancelled { return (firstTokenDate, collected) }
                             lineBuffer.append(byte)
                             guard byte == 0x0A else { continue }
-                            let lineStr = String(data: lineBuffer, encoding: .utf8)?.trimmingCharacters(in: .newlines) ?? ""
+                            let lineStr = String(data: lineBuffer, encoding: .utf8)?
+                                .trimmingCharacters(in: .newlines) ?? ""
                             lineBuffer = Data()
                             guard !lineStr.isEmpty,
                                   let lineData = lineStr.data(using: .utf8),
@@ -2486,7 +2500,7 @@ final class StudioViewModel: ObservableObject {
                 llmConnectionTestState = .success(
                     firstTokenMs: firstMs,
                     totalMs: totalMs,
-                    preview: String(collected.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+                    preview: String(collected.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
                 )
             } catch {
                 if !Task.isCancelled {
@@ -2531,13 +2545,13 @@ final class StudioViewModel: ObservableObject {
                         try await WhisperAPITranscriber.testConnection(
                             baseURL: capturedWhisperBaseURL,
                             model: capturedWhisperModel,
-                            apiKey: capturedWhisperAPIKey,
+                            apiKey: capturedWhisperAPIKey
                         )
                     case .multimodalLLM:
                         try await MultimodalLLMTranscriber.testConnection(
                             baseURL: capturedMultimodalBaseURL,
                             model: capturedMultimodalModel,
-                            apiKey: capturedMultimodalAPIKey,
+                            apiKey: capturedMultimodalAPIKey
                         )
                     case .aliCloud:
                         try await AliCloudRealtimeTranscriber.testConnection(apiKey: capturedAliCloudAPIKey)
@@ -2545,21 +2559,21 @@ final class StudioViewModel: ObservableObject {
                         try await DoubaoRealtimeTranscriber.testConnection(
                             appID: capturedDoubaoAppID,
                             accessToken: capturedDoubaoAccessToken,
-                            resourceID: capturedDoubaoResourceID,
+                            resourceID: capturedDoubaoResourceID
                         )
                     case .googleCloud:
                         try await GoogleCloudSpeechTranscriber.testConnection(
                             projectID: capturedGoogleProjectID,
                             apiKey: capturedGoogleAPIKey,
                             model: capturedGoogleModel,
-                            appLanguage: capturedAppLanguage,
+                            appLanguage: capturedAppLanguage
                         )
                     case .groqSTT:
                         try await WhisperAPITranscriber.testConnection(
                             baseURL: "https://api.groq.com/openai/v1",
                             model: capturedGroqSTTModel.isEmpty
                                 ? OpenAIAudioModelCatalog.groqWhisperModels[0] : capturedGroqSTTModel,
-                            apiKey: capturedGroqSTTAPIKey,
+                            apiKey: capturedGroqSTTAPIKey
                         )
                     case .typefluxOfficial:
                         try await TypefluxOfficialTranscriber.testConnection()
@@ -2574,7 +2588,7 @@ final class StudioViewModel: ObservableObject {
                 sttConnectionTestState = .success(
                     firstTokenMs: totalMs,
                     totalMs: totalMs,
-                    preview: String(preview.prefix(120)),
+                    preview: String(preview.prefix(120))
                 )
             } catch {
                 if !Task.isCancelled {
@@ -2609,7 +2623,7 @@ final class StudioViewModel: ObservableObject {
                 detail: snapshot.detail,
                 isGranted: snapshot.isGranted,
                 badgeText: snapshot.badgeText,
-                actionTitle: snapshot.actionTitle,
+                actionTitle: snapshot.actionTitle
             )
         }
     }
@@ -2647,7 +2661,10 @@ final class StudioViewModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 350_000_000)
             refreshPermissionRows()
             if let row = permissionRows.first(where: { $0.id == id }) {
-                showToast(row.isGranted ? L("settings.permissions.ready", row.title) : L("settings.permissions.reviewInSystemSettings", row.title))
+                showToast(row.isGranted ? L("settings.permissions.ready", row.title) : L(
+                    "settings.permissions.reviewInSystemSettings",
+                    row.title
+                ))
             }
         }
     }
@@ -2756,7 +2773,7 @@ final class StudioViewModel: ObservableObject {
 
                 guard self.showImportConfirmationAlert(
                     subject: source.displayName,
-                    itemCount: discovery.terms.count,
+                    itemCount: discovery.terms.count
                 ) else { return }
 
                 let result = VocabularyStore.importTerms(discovery.terms, source: source)
@@ -2786,7 +2803,7 @@ final class StudioViewModel: ObservableObject {
         await notificationService.sendLocalNotification(
             title: L("notification.localModelReady.title"),
             body: L("notification.localModelReady.body"),
-            identifier: "ai.gulu.app.typeflux.local-model-ready",
+            identifier: "ai.gulu.app.typeflux.local-model-ready"
         )
     }
 
@@ -2800,7 +2817,7 @@ final class StudioViewModel: ObservableObject {
             model: model,
             modelIdentifier: model.defaultModelIdentifier,
             downloadSource: model.recommendedDownloadSource,
-            autoSetup: true,
+            autoSetup: true
         )
     }
 
@@ -2854,7 +2871,8 @@ final class StudioViewModel: ObservableObject {
             personaResultText: record.personaResultText,
             selectionOriginalText: record.selectionOriginalText,
             selectionEditedText: record.selectionEditedText,
-            pipelineStatItems: historyPipelineStatItems(record.pipelineStats ?? record.pipelineTiming?.generatedStats()),
+            pipelineStatItems: historyPipelineStatItems(record.pipelineStats ?? record.pipelineTiming?
+                .generatedStats()),
             errorMessage: record.errorMessage,
             applyMessage: record.applyMessage,
             hasTranscriptToCopy: !(record.finalText?.isEmpty ?? true),
@@ -2862,7 +2880,7 @@ final class StudioViewModel: ObservableObject {
             hasFailure: record.hasFailure,
             failureMessage: record.errorMessage,
             accentName: iconData.0,
-            accentColorName: iconData.1,
+            accentColorName: iconData.1
         )
     }
 
@@ -2872,7 +2890,7 @@ final class StudioViewModel: ObservableObject {
         let durationRows: [(String, Int?)] = [
             (L("history.stats.transcriptionDuration"), stats.transcriptionDurationMilliseconds),
             (L("history.stats.llmDuration"), stats.llmDurationMilliseconds),
-            (L("history.stats.endToEnd"), stats.endToEndMilliseconds),
+            (L("history.stats.endToEnd"), stats.endToEndMilliseconds)
         ]
 
         return durationRows.enumerated().compactMap { item -> HistoryPipelineStatPresentationItem? in
@@ -2883,7 +2901,7 @@ final class StudioViewModel: ObservableObject {
                 id: "duration-\(index)",
                 title: row.0,
                 value: historyDurationText(milliseconds: value),
-                style: .duration,
+                style: .duration
             )
         }
     }

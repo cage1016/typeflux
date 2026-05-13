@@ -39,7 +39,7 @@ enum AudioContentAnalyzer {
                 peakPowerDB: -Float.infinity,
                 audibleDuration: 0,
                 audibleFrameRatio: 0,
-                frameCount: totalFrames,
+                frameCount: totalFrames
             )
         }
 
@@ -48,7 +48,7 @@ enum AudioContentAnalyzer {
             throw NSError(
                 domain: "AudioContentAnalyzer",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Unable to allocate audio analysis buffer."],
+                userInfo: [NSLocalizedDescriptionKey: "Unable to allocate audio analysis buffer."]
             )
         }
 
@@ -58,7 +58,10 @@ enum AudioContentAnalyzer {
         var audibleFrameCount: AVAudioFramePosition = 0
 
         while audioFile.framePosition < totalFrames {
-            try audioFile.read(into: buffer, frameCount: min(chunkCapacity, AVAudioFrameCount(totalFrames - audioFile.framePosition)))
+            try audioFile.read(
+                into: buffer,
+                frameCount: min(chunkCapacity, AVAudioFrameCount(totalFrames - audioFile.framePosition))
+            )
             let framesInBuffer = Int(buffer.frameLength)
             guard framesInBuffer > 0, let channels = buffer.floatChannelData else { break }
 
@@ -88,7 +91,7 @@ enum AudioContentAnalyzer {
             peakPowerDB: decibels(fromAmplitude: peakAmplitude),
             audibleDuration: Double(audibleFrameCount) / sampleRate,
             audibleFrameRatio: frameCount > 0 ? Double(audibleFrameCount) / Double(frameCount) : 0,
-            frameCount: frameCount,
+            frameCount: frameCount
         )
     }
 

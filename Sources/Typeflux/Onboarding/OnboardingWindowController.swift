@@ -22,7 +22,7 @@ final class OnboardingWindowController: NSObject {
         settingsStore: SettingsStore,
         localModelManager: LocalModelManager? = nil,
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
-        onComplete: @escaping () -> Void,
+        onComplete: @escaping () -> Void
     ) {
         if let window {
             DockVisibilityController.shared.windowDidShow(window)
@@ -36,14 +36,14 @@ final class OnboardingWindowController: NSObject {
         let viewModel = OnboardingViewModel(
             settingsStore: settingsStore,
             localModelManager: localModelManager,
-            notificationService: notificationService,
+            notificationService: notificationService
         ) { [weak self] in
             self?.handleComplete()
         }
 
         let view = OnboardingView(
             viewModel: viewModel,
-            appearanceMode: settingsStore.appearanceMode,
+            appearanceMode: settingsStore.appearanceMode
         )
         let hosting = NSHostingView(rootView: view)
 
@@ -51,7 +51,7 @@ final class OnboardingWindowController: NSObject {
             contentRect: NSRect(x: 0, y: 0, width: Self.windowWidth, height: Self.windowHeight),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
-            defer: false,
+            defer: false
         )
         window.title = L("onboarding.window.title")
         window.center()

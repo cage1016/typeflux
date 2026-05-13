@@ -51,7 +51,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         makeAudioEngine: @escaping () -> AVAudioEngine = { AVAudioEngine() },
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
-        },
+        }
     ) {
         self.settingsStore = settingsStore
         self.audioDeviceManager = audioDeviceManager
@@ -63,7 +63,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
     func start(
         levelHandler: @escaping (Float) -> Void,
-        audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
     ) throws {
         let startupAttempt = RecordingStartupAttempt()
         let startupResult = RecordingStartupResultBox()
@@ -77,7 +77,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             do {
                 let preparedSession = try prepareRecordingSession(
                     id: startupAttempt.id,
-                    startupAttempt: startupAttempt,
+                    startupAttempt: startupAttempt
                 )
                 startupResult.store(.success(preparedSession))
             } catch {
@@ -89,7 +89,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         guard startupSemaphore.wait(timeout: .now() + Self.audioStartupTimeout) == .success else {
             startupAttempt.cancel()
             NetworkDebugLogger.logMessage(
-                "[Audio Recorder] Microphone input startup timed out; abandoning stale AVAudioEngine startup.",
+                "[Audio Recorder] Microphone input startup timed out; abandoning stale AVAudioEngine startup."
             )
             throw RecorderError.inputStartupTimedOut
         }
@@ -216,7 +216,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
 
     private func prepareRecordingSession(
         id: UUID,
-        startupAttempt: RecordingStartupAttempt,
+        startupAttempt: RecordingStartupAttempt
     ) throws -> PreparedRecordingSession {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let now = Date()
@@ -234,7 +234,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             inputNodeAndFormat = try prepareInputNodeAndFormat(for: sessionEngine)
         } catch RecorderError.inputDeviceUnavailable {
             NetworkDebugLogger.logMessage(
-                "[Audio Recorder] Rebuilding audio engine after microphone input format became unavailable.",
+                "[Audio Recorder] Rebuilding audio engine after microphone input format became unavailable."
             )
             sessionEngine.stop()
             sessionEngine.reset()
@@ -251,7 +251,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsBigEndianKey: false,
             AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsNonInterleaved: false,
+            AVLinearPCMIsNonInterleaved: false
         ]
 
         let outputFile = try AVAudioFile(forWriting: url, settings: outputSettings)
@@ -283,7 +283,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             id: id,
             engine: sessionEngine,
             audioFile: outputFile,
-            startedAt: Date(),
+            startedAt: Date()
         )
     }
 
@@ -332,13 +332,13 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             isRecording: isRecording,
             callbackCountAtStart: callbackCountAtStart,
             currentCallbackCount: inputBufferCallbackCount,
-            peakInputPowerSinceStart: peakInputPowerSinceStart,
+            peakInputPowerSinceStart: peakInputPowerSinceStart
         )
         stateCondition.unlock()
         guard shouldRecover else { return }
 
         NetworkDebugLogger.logMessage(
-            "[Audio Recorder] Microphone input is silent after start; rebuilding audio engine.",
+            "[Audio Recorder] Microphone input is silent after start; rebuilding audio engine."
         )
 
         do {
@@ -420,7 +420,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
                 preferredMicrophoneID: \(preferredID)
                 sampleRate: \(preferredFormat.sampleRate)
                 channelCount: \(preferredFormat.channelCount)
-                """,
+                """
             )
             resetUnavailablePreferredMicrophone(preferredID: preferredID)
             throw RecorderError.inputDeviceUnavailable
@@ -454,7 +454,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             """
             [Audio Recorder] Preferred microphone is unavailable; falling back to automatic selection.
             preferredMicrophoneID: \(preferredID)
-            """,
+            """
         )
         settingsStore.preferredMicrophoneID = AudioDeviceManager.automaticDeviceID
     }
@@ -547,12 +547,12 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             commonFormat: .pcmFormatFloat32,
             sampleRate: buffer.format.sampleRate,
             channels: 1,
-            interleaved: false,
+            interleaved: false
         ) else {
             throw NSError(
                 domain: "AudioRecorder",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Unable to create mono audio format."],
+                userInfo: [NSLocalizedDescriptionKey: "Unable to create mono audio format."]
             )
         }
 
@@ -561,7 +561,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
                 throw NSError(
                     domain: "AudioRecorder",
                     code: 3,
-                    userInfo: [NSLocalizedDescriptionKey: "Unable to clone mono audio buffer."],
+                    userInfo: [NSLocalizedDescriptionKey: "Unable to clone mono audio buffer."]
                 )
             }
             return clone
@@ -571,18 +571,18 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             throw NSError(
                 domain: "AudioRecorder",
                 code: 4,
-                userInfo: [NSLocalizedDescriptionKey: "Unable to create audio converter."],
+                userInfo: [NSLocalizedDescriptionKey: "Unable to create audio converter."]
             )
         }
 
         guard let outputBuffer = AVAudioPCMBuffer(
             pcmFormat: monoFormat,
-            frameCapacity: buffer.frameCapacity,
+            frameCapacity: buffer.frameCapacity
         ) else {
             throw NSError(
                 domain: "AudioRecorder",
                 code: 5,
-                userInfo: [NSLocalizedDescriptionKey: "Unable to allocate mono audio buffer."],
+                userInfo: [NSLocalizedDescriptionKey: "Unable to allocate mono audio buffer."]
             )
         }
 
@@ -607,7 +607,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
             throw NSError(
                 domain: "AudioRecorder",
                 code: 6,
-                userInfo: [NSLocalizedDescriptionKey: "Unable to convert input audio."],
+                userInfo: [NSLocalizedDescriptionKey: "Unable to convert input audio."]
             )
         }
 
@@ -632,7 +632,10 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         let frameCount = Int(buffer.frameLength)
         let channelCount = Int(targetFormat.channelCount)
         for channel in 0 ..< channelCount {
-            destination[channel].update(from: source[min(channel, Int(buffer.format.channelCount) - 1)], count: frameCount)
+            destination[channel].update(
+                from: source[min(channel, Int(buffer.format.channelCount) - 1)],
+                count: frameCount
+            )
         }
 
         return copy
@@ -665,7 +668,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         isRecording: Bool,
         callbackCountAtStart: Int,
         currentCallbackCount: Int,
-        peakInputPowerSinceStart: Float,
+        peakInputPowerSinceStart: Float
     ) -> Bool {
         guard isRecording else { return false }
         guard currentCallbackCount > callbackCountAtStart else { return true }

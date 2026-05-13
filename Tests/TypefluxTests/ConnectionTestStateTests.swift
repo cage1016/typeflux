@@ -75,7 +75,7 @@ final class ConnectionTestStateTests: XCTestCase {
     func testMCPConnectionTestStateSuccess() {
         let tools = [
             MCPConnectionTestState.MCPDiscoveredTool(id: "1", name: "tool-a", description: "desc a"),
-            MCPConnectionTestState.MCPDiscoveredTool(id: "2", name: "tool-b", description: "desc b"),
+            MCPConnectionTestState.MCPDiscoveredTool(id: "2", name: "tool-b", description: "desc b")
         ]
         let state = MCPConnectionTestState.success(tools: tools)
         XCTAssertEqual(state, .success(tools: tools))

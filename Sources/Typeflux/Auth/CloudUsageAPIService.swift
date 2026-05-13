@@ -20,7 +20,7 @@ struct CloudUsageAPIService: Sendable {
 
     private func execute<Response: Decodable>(
         path: String,
-        token: String,
+        token: String
     ) async throws -> Response {
         let data: Data
         let httpResponse: HTTPURLResponse

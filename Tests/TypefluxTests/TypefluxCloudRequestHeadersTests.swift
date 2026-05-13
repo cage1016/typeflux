@@ -26,7 +26,10 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "Accept-Language"), "zh-Hans-US, en-US;q=0.9")
         XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientIDField), "client-123")
         XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientLocaleField), "zh_Hans_US")
-        XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientLanguagesField), "zh-Hans-US,en-US")
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientLanguagesField),
+            "zh-Hans-US,en-US"
+        )
         XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientOSField), "macOS")
         XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientOSVersionField), "14.6.1")
         XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientArchitectureField), "arm64")
@@ -37,7 +40,7 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
             .askAnything,
             to: ["x-request-id": "req-1"],
             provider: .typefluxCloud,
-            clientInfoProvider: .fixture,
+            clientInfoProvider: .fixture
         )
 
         XCTAssertEqual(headers["x-request-id"], "req-1")
@@ -51,7 +54,7 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
             .askAnything,
             to: ["x-request-id": "req-1"],
             provider: .openAI,
-            clientInfoProvider: .fixture,
+            clientInfoProvider: .fixture
         )
 
         XCTAssertEqual(headers["x-request-id"], "req-1")
@@ -68,7 +71,7 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
 
         XCTAssertEqual(
             request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField),
-            personaID.uuidString,
+            personaID.uuidString
         )
     }
 
@@ -86,12 +89,12 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         let cloudHeaders = TypefluxCloudRequestHeaders.applyingPersonaID(
             personaID,
             to: ["x-request-id": "req-1"],
-            provider: .typefluxCloud,
+            provider: .typefluxCloud
         )
         let openAIHeaders = TypefluxCloudRequestHeaders.applyingPersonaID(
             personaID,
             to: ["x-request-id": "req-1"],
-            provider: .openAI,
+            provider: .openAI
         )
 
         XCTAssertEqual(cloudHeaders["x-request-id"], "req-1")
@@ -111,7 +114,7 @@ private extension TypefluxCloudClientInfoProvider {
             preferredLanguages: ["zh-Hans-US", "en-US"],
             osName: "macOS",
             osVersion: "14.6.1",
-            architecture: "arm64",
+            architecture: "arm64"
         )
     }
 }

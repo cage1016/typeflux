@@ -2,7 +2,7 @@ import Foundation
 
 extension Notification.Name {
     static let localModelDownloadProgressDidChange = Notification.Name(
-        "LocalModelDownloadProgressCenter.progressDidChange",
+        "LocalModelDownloadProgressCenter.progressDidChange"
     )
 }
 

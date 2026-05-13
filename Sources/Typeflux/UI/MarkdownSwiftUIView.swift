@@ -54,7 +54,7 @@ struct MarkdownSwiftUIView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.small, style: .continuous)
-                        .fill(StudioTheme.surfaceMuted.opacity(0.92)),
+                        .fill(StudioTheme.surfaceMuted.opacity(0.92))
                 ))
         } else if markup is ThematicBreak {
             return AnyView(Divider()

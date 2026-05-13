@@ -156,7 +156,7 @@ final class OnboardingViewModelTests: XCTestCase {
         let viewModel = OnboardingViewModel(
             settingsStore: store,
             localModelManager: modelManager,
-            onComplete: {},
+            onComplete: {}
         )
         viewModel.currentStep = .stt
 
@@ -209,18 +209,18 @@ final class OnboardingViewModelTests: XCTestCase {
             PrivacyGuard.PermissionSnapshot(
                 id: .microphone,
                 state: .needsAttention,
-                detail: "Microphone missing",
+                detail: "Microphone missing"
             ),
             PrivacyGuard.PermissionSnapshot(
                 id: .speechRecognition,
                 state: .granted,
-                detail: "Speech granted",
+                detail: "Speech granted"
             ),
             PrivacyGuard.PermissionSnapshot(
                 id: .accessibility,
                 state: .granted,
-                detail: "Accessibility granted",
-            ),
+                detail: "Accessibility granted"
+            )
         ]
 
         viewModel.advance()
@@ -237,18 +237,18 @@ final class OnboardingViewModelTests: XCTestCase {
             PrivacyGuard.PermissionSnapshot(
                 id: .microphone,
                 state: .granted,
-                detail: "Microphone granted",
+                detail: "Microphone granted"
             ),
             PrivacyGuard.PermissionSnapshot(
                 id: .speechRecognition,
                 state: .needsAttention,
-                detail: "Speech missing",
+                detail: "Speech missing"
             ),
             PrivacyGuard.PermissionSnapshot(
                 id: .accessibility,
                 state: .granted,
-                detail: "Accessibility granted",
-            ),
+                detail: "Accessibility granted"
+            )
         ]
 
         viewModel.advance()
@@ -390,7 +390,7 @@ final class OnboardingViewModelTests: XCTestCase {
     private func makeLoggedInAuthState() -> AuthState {
         let storedToken = (
             token: "token",
-            expiresAt: Int(Date().timeIntervalSince1970) + 3600,
+            expiresAt: Int(Date().timeIntervalSince1970) + 3600
         )
         let storedProfile = UserProfile(
             id: "user_123",
@@ -399,7 +399,7 @@ final class OnboardingViewModelTests: XCTestCase {
             status: 1,
             provider: "email",
             createdAt: "2026-01-01T00:00:00Z",
-            updatedAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z"
         )
         return AuthState(
             loadStoredToken: { storedToken },
@@ -407,7 +407,7 @@ final class OnboardingViewModelTests: XCTestCase {
             saveStoredToken: { _, _ in },
             saveStoredUserProfile: { _ in },
             clearStoredSession: {},
-            fetchProfile: { _ in storedProfile },
+            fetchProfile: { _ in storedProfile }
         )
     }
 
@@ -417,7 +417,7 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(url.scheme, "x-apple.systempreferences")
         XCTAssertTrue(
             url.absoluteString.contains("Keyboard"),
-            "URL should target the Keyboard settings pane, got: \(url.absoluteString)",
+            "URL should target the Keyboard settings pane, got: \(url.absoluteString)"
         )
     }
 
@@ -429,12 +429,12 @@ final class OnboardingViewModelTests: XCTestCase {
         let readyVM = OnboardingViewModel(
             settingsStore: store,
             globeKeyReader: readyReader,
-            onComplete: {},
+            onComplete: {}
         )
         let notReadyVM = OnboardingViewModel(
             settingsStore: store,
             globeKeyReader: notReadyReader,
-            onComplete: {},
+            onComplete: {}
         )
 
         XCTAssertTrue(readyVM.isGlobeKeyReady)
@@ -447,7 +447,7 @@ final class OnboardingViewModelTests: XCTestCase {
         let viewModel = OnboardingViewModel(
             settingsStore: store,
             globeKeyReader: reader,
-            onComplete: {},
+            onComplete: {}
         )
         XCTAssertFalse(viewModel.isGlobeKeyReady)
 
@@ -466,7 +466,7 @@ final class OnboardingViewModelTests: XCTestCase {
         let viewModel = OnboardingViewModel(
             settingsStore: store,
             globeKeyReader: reader,
-            onComplete: {},
+            onComplete: {}
         )
 
         XCTAssertFalse(viewModel.isGlobeKeyReady)
@@ -552,14 +552,14 @@ private final class StubLocalModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         try await prepareModel(configuration: LocalSTTConfiguration(settingsStore: settingsStore), onUpdate: onUpdate)
     }
 
     func prepareModel(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         lock.withLock {
             _preparedConfigurations.append(configuration)
@@ -568,7 +568,7 @@ private final class StubLocalModelManager: LocalSTTModelManaging {
             message: "Preparing",
             progress: 0.5,
             storagePath: storagePath(for: configuration),
-            source: "Test",
+            source: "Test"
         ))
         onPrepare?()
     }

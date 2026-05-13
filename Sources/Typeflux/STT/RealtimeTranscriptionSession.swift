@@ -266,12 +266,12 @@ final class RealtimePCM16AudioEncoder {
             commonFormat: .pcmFormatInt16,
             sampleRate: targetSampleRate,
             channels: 1,
-            interleaved: true,
+            interleaved: true
         ) else {
             throw NSError(
                 domain: "RealtimePCM16AudioEncoder",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to create realtime target audio format."],
+                userInfo: [NSLocalizedDescriptionKey: "Failed to create realtime target audio format."]
             )
         }
 
@@ -280,7 +280,7 @@ final class RealtimePCM16AudioEncoder {
             throw NSError(
                 domain: "RealtimePCM16AudioEncoder",
                 code: 5,
-                userInfo: [NSLocalizedDescriptionKey: "Source audio format has an invalid sample rate."],
+                userInfo: [NSLocalizedDescriptionKey: "Source audio format has an invalid sample rate."]
             )
         }
 
@@ -291,7 +291,7 @@ final class RealtimePCM16AudioEncoder {
             throw NSError(
                 domain: "RealtimePCM16AudioEncoder",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to allocate realtime target audio buffer."],
+                userInfo: [NSLocalizedDescriptionKey: "Failed to allocate realtime target audio buffer."]
             )
         }
 
@@ -312,7 +312,7 @@ final class RealtimePCM16AudioEncoder {
             throw NSError(
                 domain: "RealtimePCM16AudioEncoder",
                 code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Realtime audio conversion failed."],
+                userInfo: [NSLocalizedDescriptionKey: "Realtime audio conversion failed."]
             )
         }
 
@@ -330,7 +330,7 @@ final class RealtimePCM16AudioEncoder {
             throw NSError(
                 domain: "RealtimePCM16AudioEncoder",
                 code: 4,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to create realtime audio converter."],
+                userInfo: [NSLocalizedDescriptionKey: "Failed to create realtime audio converter."]
             )
         }
         converter = newConverter

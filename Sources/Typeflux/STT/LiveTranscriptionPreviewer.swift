@@ -45,7 +45,7 @@ actor LiveTranscriptionPreviewer: LiveTranscriptionPreviewing {
             UnavailableLivePreviewBackend(providerName: "Local model")
         },
         openAIBackendFactory: @escaping () -> any LivePreviewBackend,
-        appleBackendFactory: @escaping () -> any LivePreviewBackend,
+        appleBackendFactory: @escaping () -> any LivePreviewBackend
     ) {
         self.settingsStore = settingsStore
         self.localBackendFactory = localBackendFactory
@@ -86,7 +86,10 @@ actor LiveTranscriptionPreviewer: LiveTranscriptionPreviewing {
                 await flushPendingBuffers()
                 return
             } catch {
-                NetworkDebugLogger.logError(context: "Realtime preview setup failed, falling back to Apple Speech", error: error)
+                NetworkDebugLogger.logError(
+                    context: "Realtime preview setup failed, falling back to Apple Speech",
+                    error: error
+                )
             }
         }
 
@@ -186,7 +189,7 @@ actor UnavailableLivePreviewBackend: LivePreviewBackend {
         throw NSError(
             domain: "UnavailableLivePreviewBackend",
             code: 1,
-            userInfo: [NSLocalizedDescriptionKey: "\(providerName) live preview is not configured."],
+            userInfo: [NSLocalizedDescriptionKey: "\(providerName) live preview is not configured."]
         )
     }
 
@@ -213,7 +216,7 @@ actor AppleSpeechPreviewBackend: LivePreviewBackend {
             throw NSError(
                 domain: "AppleSpeechPreviewBackend",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Speech recognition not authorized"],
+                userInfo: [NSLocalizedDescriptionKey: "Speech recognition not authorized"]
             )
         }
 
@@ -227,7 +230,7 @@ actor AppleSpeechPreviewBackend: LivePreviewBackend {
             throw NSError(
                 domain: "AppleSpeechPreviewBackend",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Speech recognizer not available"],
+                userInfo: [NSLocalizedDescriptionKey: "Speech recognizer not available"]
             )
         }
 

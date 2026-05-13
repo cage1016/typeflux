@@ -4,7 +4,7 @@ import Foundation
 extension WorkflowController {
     func startAudioRecorderWithStartupRetry(
         levelHandler: @escaping (Float) -> Void,
-        audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
     ) async throws {
         for attempt in 1 ... Self.audioStartupMaxAttemptCount {
             do {
@@ -25,7 +25,7 @@ extension WorkflowController {
                     attempt: \(attempt)
                     maxAttempts: \(Self.audioStartupMaxAttemptCount)
                     retryDelayMilliseconds: 250
-                    """,
+                    """
                 )
                 await sleep(Self.audioStartupRetryDelay)
                 guard isRecording else {

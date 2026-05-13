@@ -80,7 +80,7 @@ final class LLMThinkingTuningAdaptationTests: XCTestCase {
 
         XCTAssertEqual(
             LLMThinkingTuningAdaptationStore.normalizedBaseURLKey(upper),
-            LLMThinkingTuningAdaptationStore.normalizedBaseURLKey(lower),
+            LLMThinkingTuningAdaptationStore.normalizedBaseURLKey(lower)
         )
     }
 

@@ -35,7 +35,7 @@ extension WorkflowController {
         request: LLMRewriteRequest,
         sessionID: UUID,
         showsStreamingPreview: Bool = true,
-        timeout: TimeInterval? = nil,
+        timeout: TimeInterval? = nil
     ) async throws -> RewriteGenerationResult {
         let configStatus = await validateLLMConfiguration()
         guard case .ready = configStatus else {
@@ -57,7 +57,7 @@ extension WorkflowController {
                             self.overlayController.updateStreamingText("")
                         }
                     }
-                },
+                }
             ) { [self] in
                 var buffer = ""
                 var lastChunkAt = Date()
@@ -82,7 +82,7 @@ extension WorkflowController {
 
                 return RewriteGenerationResult(
                     text: buffer.trimmingCharacters(in: .whitespacesAndNewlines),
-                    completedAt: Date(),
+                    completedAt: Date()
                 )
             }
         }
@@ -111,7 +111,7 @@ extension WorkflowController {
         personaPrompt: String?,
         editableTarget: Bool?,
         appSystemContext: AppSystemContext? = nil,
-        sessionID: UUID,
+        sessionID: UUID
     ) async throws -> AskSelectionDecisionResult {
         let configStatus = await validateLLMConfiguration()
         guard case .ready = configStatus else {
@@ -128,13 +128,13 @@ extension WorkflowController {
             editableTarget: \(editableTarget.map { $0 ? "true" : "false" } ?? "<unknown>")
             selectedTextLength: \(selectedText?.count ?? 0)
             spokenInstruction: \(spokenInstruction)
-            """,
+            """
         )
         let prompts = PromptCatalog.askSelectionDecisionPrompts(
             selectedText: selectedText,
             spokenInstruction: spokenInstruction,
             personaPrompt: personaPrompt,
-            editableTarget: editableTarget,
+            editableTarget: editableTarget
         )
         let decision = try await RequestRetry.perform(operationName: "Ask selection decision") { [self] in
             try await llmAgentService.runTool(
@@ -143,9 +143,9 @@ extension WorkflowController {
                     userPrompt: prompts.user,
                     tools: [AskSelectionDecision.tool],
                     forcedToolName: AskSelectionDecision.tool.name,
-                    appSystemContext: appSystemContext,
+                    appSystemContext: appSystemContext
                 ),
-                decoding: AskSelectionDecision.self,
+                decoding: AskSelectionDecision.self
             )
         }
 
@@ -155,7 +155,7 @@ extension WorkflowController {
             throw NSError(
                 domain: "WorkflowController",
                 code: 3001,
-                userInfo: [NSLocalizedDescriptionKey: "Ask selection decision returned invalid tool arguments."],
+                userInfo: [NSLocalizedDescriptionKey: "Ask selection decision returned invalid tool arguments."]
             )
         }
 
@@ -163,14 +163,14 @@ extension WorkflowController {
             throw NSError(
                 domain: "WorkflowController",
                 code: 3002,
-                userInfo: [NSLocalizedDescriptionKey: "Ask selection content was empty."],
+                userInfo: [NSLocalizedDescriptionKey: "Ask selection content was empty."]
             )
         }
 
         let normalizedDecision: AskSelectionDecision = if editableTarget == false, decision.answerEdit == .edit {
             AskSelectionDecision(
                 answerEdit: .answer,
-                content: decision.content,
+                content: decision.content
             )
         } else {
             decision
@@ -183,7 +183,7 @@ extension WorkflowController {
             modelDecision: \(decision.answerEdit.rawValue)
             normalizedDecision: \(normalizedDecision.answerEdit.rawValue)
             contentPreview: \(String(normalizedDecision.trimmedContent.prefix(120)))
-            """,
+            """
         )
 
         return AskSelectionDecisionResult(decision: normalizedDecision, completedAt: Date())
@@ -196,7 +196,7 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         record: inout HistoryRecord,
         pipelineTiming: inout HistoryPipelineTiming,
-        sessionID: UUID,
+        sessionID: UUID
     ) async throws {
         switch askDecisionResult.decision.answerEdit {
         case .answer:
@@ -217,7 +217,7 @@ extension WorkflowController {
                 self.presentAskAnswer(
                     question: question,
                     selectedText: selectedText,
-                    answerMarkdown: askDecisionResult.decision.trimmedContent,
+                    answerMarkdown: askDecisionResult.decision.trimmedContent
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -245,14 +245,14 @@ extension WorkflowController {
             NetworkDebugLogger.logMessage(
                 "[Apply Decision] mode=editSelection hasSelection=\(selectionSnapshot.hasSelection) " +
                     "isEditable=\(selectionSnapshot.isEditable) hasRange=\(selectionSnapshot.selectedRange != nil) " +
-                    "replaceSelection=\(replaceSelection) showResultDialog=\(shouldShowResultDialog)",
+                    "replaceSelection=\(replaceSelection) showResultDialog=\(shouldShowResultDialog)"
             )
             if shouldShowResultDialog {
                 await MainActor.run {
                     self.lastDialogResultText = askDecisionResult.decision.trimmedContent
                     self.overlayController.showResultDialog(
                         title: L("workflow.result.copyTitle"),
-                        message: askDecisionResult.decision.trimmedContent,
+                        message: askDecisionResult.decision.trimmedContent
                     )
                 }
                 outcome = .presentedInDialog
@@ -261,7 +261,7 @@ extension WorkflowController {
                     askDecisionResult.decision.trimmedContent,
                     replace: replaceSelection,
                     fallbackTitle: L("workflow.result.copyTitle"),
-                    targetSnapshot: selectionSnapshot,
+                    targetSnapshot: selectionSnapshot
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -287,7 +287,7 @@ extension WorkflowController {
         _ text: String,
         replace: Bool,
         fallbackTitle: String = L("workflow.result.copyTitle"),
-        targetSnapshot: TextSelectionSnapshot? = nil,
+        targetSnapshot: TextSelectionSnapshot? = nil
     ) -> ApplyOutcome {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         NetworkDebugLogger.logMessage(
@@ -297,7 +297,7 @@ extension WorkflowController {
             fallbackTitle: \(fallbackTitle)
             textLength: \(text.count)
             normalizedPreview: \(String(normalizedText.prefix(120)))
-            """,
+            """
         )
         if let targetSnapshot, shouldBypassTextInjection(for: targetSnapshot) {
             NetworkDebugLogger.logMessage(
@@ -307,7 +307,7 @@ extension WorkflowController {
                 bundleIdentifier: \(targetSnapshot.bundleIdentifier ?? "<unknown>")
                 source: \(targetSnapshot.source)
                 window: \(targetSnapshot.windowTitle ?? "<unknown>")
-                """,
+                """
             )
             presentResultDialog(title: fallbackTitle, text: text)
             return .presentedInDialog
@@ -322,7 +322,7 @@ extension WorkflowController {
             let bumpedTerms = VocabularyStore.incrementOccurrences(in: text)
             if !bumpedTerms.isEmpty {
                 NetworkDebugLogger.logMessage(
-                    "[Apply Text] vocabulary occurrences bumped: \(bumpedTerms.joined(separator: ", "))",
+                    "[Apply Text] vocabulary occurrences bumped: \(bumpedTerms.joined(separator: ", "))"
                 )
             }
             scheduleAutomaticVocabularyObservation(for: text)
@@ -331,7 +331,7 @@ extension WorkflowController {
                 [Apply Text] success
                 replace: \(replace)
                 textLength: \(text.count)
-                """,
+                """
             )
             return .inserted
         } catch {
@@ -343,23 +343,24 @@ extension WorkflowController {
 
     func applyTranscribedText(
         _ text: String,
-        selectionSnapshot: TextSelectionSnapshot,
+        selectionSnapshot: TextSelectionSnapshot
     ) -> ApplyOutcome {
         let optimizedText = DictationOutputOptimizer.optimize(text)
         return applyText(
             optimizedText,
             replace: shouldReplaceActiveSelection(for: selectionSnapshot),
-            targetSnapshot: selectionSnapshot,
+            targetSnapshot: selectionSnapshot
         )
     }
 
     func finishRecordingAndProcess(recordingStoppedAt: Date) async {
         do {
             let finishStartedAt = Date()
-            NetworkDebugLogger.logMessage("[Ask Timing] finishRecordingAndProcess entered intent=\(recordingIntent.traceName)")
+            NetworkDebugLogger
+                .logMessage("[Ask Timing] finishRecordingAndProcess entered intent=\(recordingIntent.traceName)")
             let audioFile = try audioRecorder.stop()
             NetworkDebugLogger.logMessage(
-                "[Ask Timing] audioRecorder.stop completed in \(Self.formatDurationSince(finishStartedAt))",
+                "[Ask Timing] audioRecorder.stop completed in \(Self.formatDurationSince(finishStartedAt))"
             )
             _ = await liveTranscriptionPreviewer?.finish()
             let realtimeTranscriptionSession = activeRealtimeTranscriptionSession
@@ -378,7 +379,7 @@ extension WorkflowController {
             let inputContext = await inputContextTask?.value
             inputContextTask = nil
             NetworkDebugLogger.logMessage(
-                "[Ask Timing] context tasks completed in \(Self.formatDurationSince(selectionAwaitStartedAt))",
+                "[Ask Timing] context tasks completed in \(Self.formatDurationSince(selectionAwaitStartedAt))"
             )
 
             let audioAnalysisStartedAt = Date()
@@ -387,11 +388,11 @@ extension WorkflowController {
                 try AudioContentAnalyzer.analyze(fileURL: audioFileURL)
             }.value
             NetworkDebugLogger.logMessage(
-                "[Ask Timing] audio analysis completed in \(Self.formatDurationSince(audioAnalysisStartedAt))",
+                "[Ask Timing] audio analysis completed in \(Self.formatDurationSince(audioAnalysisStartedAt))"
             )
             let validatedAudioFile = AudioFile(
                 fileURL: audioFile.fileURL,
-                duration: audioAnalysis.duration,
+                duration: audioAnalysis.duration
             )
 
             if validatedAudioFile.duration < Self.minimumRecordingDuration {
@@ -428,7 +429,7 @@ extension WorkflowController {
                     audibleDuration: \(String(format: "%.3f", audioAnalysis.audibleDuration))
                     audibleFrameRatio: \(audioAnalysis.audibleFrameRatio)
                     previewLength: \(recordingPreviewText.count)
-                    """,
+                    """
                 )
             }
 
@@ -462,7 +463,7 @@ extension WorkflowController {
                 mode: inferredMode(
                     selectedText: selectedText,
                     personaPrompt: personaPrompt,
-                    recordingIntent: recordingIntent,
+                    recordingIntent: recordingIntent
                 ),
                 audioFilePath: validatedAudioFile.fileURL.path,
                 transcriptText: nil,
@@ -471,12 +472,12 @@ extension WorkflowController {
                 recordingDurationSeconds: validatedAudioFile.duration,
                 pipelineTiming: HistoryPipelineTiming(
                     recordingStoppedAt: recordingStoppedAt,
-                    audioFileReadyAt: audioFileReadyAt,
+                    audioFileReadyAt: audioFileReadyAt
                 ),
                 recordingStatus: .succeeded,
                 transcriptionStatus: .running,
                 processingStatus: .pending,
-                applyStatus: .pending,
+                applyStatus: .pending
             )
             saveHistoryRecord(record)
             logPipelineEvent("audio-file-ready", for: record)
@@ -487,10 +488,11 @@ extension WorkflowController {
             processingTask = Task { [weak self] in
                 guard let self else { return }
                 let processingStartedAt = Date()
-                NetworkDebugLogger.logMessage("[Ask Timing] processing task entered intent=\(recordingIntent.traceName)")
+                NetworkDebugLogger
+                    .logMessage("[Ask Timing] processing task entered intent=\(recordingIntent.traceName)")
                 await realtimeAudioBufferPump?.finishInput()
                 NetworkDebugLogger.logMessage(
-                    "[Ask Timing] realtime audio pump finished in \(Self.formatDurationSince(processingStartedAt))",
+                    "[Ask Timing] realtime audio pump finished in \(Self.formatDurationSince(processingStartedAt))"
                 )
                 await process(
                     audioFile: validatedAudioFile,
@@ -504,10 +506,10 @@ extension WorkflowController {
                     personaID: activePersonaProfile?.id,
                     recordingIntent: recordingIntent,
                     sessionID: sessionID,
-                    recordingPreviewText: recordingPreviewText,
+                    recordingPreviewText: recordingPreviewText
                 )
                 NetworkDebugLogger.logMessage(
-                    "[Ask Timing] process completed in \(Self.formatDurationSince(processingStartedAt))",
+                    "[Ask Timing] process completed in \(Self.formatDurationSince(processingStartedAt))"
                 )
                 cancelProcessingTimeout()
                 await MainActor.run {
@@ -533,7 +535,7 @@ extension WorkflowController {
                 recordingStatus: .failed,
                 transcriptionStatus: .skipped,
                 processingStatus: .skipped,
-                applyStatus: .skipped,
+                applyStatus: .skipped
             )
             record.errorMessage = msg
             saveHistoryRecord(record)
@@ -571,7 +573,7 @@ extension WorkflowController {
         mutableRecord.applyStatus = .pending
         mutableRecord.pipelineTiming = HistoryPipelineTiming(
             recordingStoppedAt: Date(),
-            audioFileReadyAt: Date(),
+            audioFileReadyAt: Date()
         )
         saveHistoryRecord(mutableRecord)
         logPipelineEvent("retry-restarted", for: mutableRecord)
@@ -595,7 +597,7 @@ extension WorkflowController {
                 selectedRange: nil,
                 selectedText: selectedText,
                 source: "history-retry",
-                isEditable: false,
+                isEditable: false
             ),
             selectedText: selectedText,
             askContextText: selectedText,
@@ -605,7 +607,7 @@ extension WorkflowController {
                 ? .askSelection
                 : .dictation,
             sessionID: sessionID,
-            forceResultDialogOnSuccess: true,
+            forceResultDialogOnSuccess: true
         )
     }
 
@@ -623,7 +625,7 @@ extension WorkflowController {
         recordingIntent: RecordingIntent,
         sessionID: UUID,
         forceResultDialogOnSuccess: Bool = false,
-        recordingPreviewText: String = "",
+        recordingPreviewText: String = ""
     ) async {
         var record = record
         do {
@@ -638,7 +640,7 @@ extension WorkflowController {
             let hasInputContext = inputContext?.hasContent == true
             let shouldRewriteTranscript = Self.shouldRewriteTranscript(
                 personaPrompt: personaPrompt,
-                inputContext: inputContext,
+                inputContext: inputContext
             )
             pipelineTiming.transcriptionStartedAt = Date()
             record.pipelineTiming = pipelineTiming
@@ -674,32 +676,35 @@ extension WorkflowController {
                 } catch {
                     NetworkDebugLogger.logError(
                         context: "Realtime STT session failed; falling back to recorded audio",
-                        error: error,
+                        error: error
                     )
                     rawTranscribedText = try await sttRouter.transcribeStream(
                         audioFile: audioFile,
-                        scenario: cloudScenario,
+                        scenario: cloudScenario
                     ) { _ in }
                 }
-            } else if canMergeWithLLM, let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !resolvedPersonaPrompt.isEmpty {
+            } else if canMergeWithLLM,
+                      let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !resolvedPersonaPrompt.isEmpty
+            {
                 let mergedResult = try await performMergedCloudTranscription(
                     audioFile: audioFile,
                     personaPrompt: resolvedPersonaPrompt,
                     personaID: personaID,
                     selectionSnapshot: selectionSnapshot,
                     cloudScenario: cloudScenario,
-                    sessionID: sessionID,
+                    sessionID: sessionID
                 )
                 rawTranscribedText = mergedResult.transcript
                 mergedLLMResult = mergedResult.rewritten
             } else {
                 rawTranscribedText = try await sttRouter.transcribeStream(
                     audioFile: audioFile,
-                    scenario: cloudScenario,
+                    scenario: cloudScenario
                 ) { _ in }
             }
             NetworkDebugLogger.logMessage(
-                "[Ask Timing] transcription completed in \(Self.formatDurationSince(transcriptionStartedAt))",
+                "[Ask Timing] transcription completed in \(Self.formatDurationSince(transcriptionStartedAt))"
             )
 
             try ensureProcessingIsActive(sessionID)
@@ -708,7 +713,7 @@ extension WorkflowController {
             if normalizedRawTranscript.isEmpty, !fallbackPreviewText.isEmpty {
                 transcribedText = fallbackPreviewText
                 NetworkDebugLogger.logMessage(
-                    "[Transcription] using recording preview text because final transcription was empty",
+                    "[Transcription] using recording preview text because final transcription was empty"
                 )
             } else {
                 transcribedText = rawTranscribedText
@@ -745,7 +750,7 @@ extension WorkflowController {
                     selectionSnapshot: selectionSnapshot,
                     sessionID: sessionID,
                     record: &record,
-                    pipelineTiming: &pipelineTiming,
+                    pipelineTiming: &pipelineTiming
                 )
             } else if recordingIntent == .askSelection {
                 detachedAgentExecution = try await processAskFlowWithoutSelection(
@@ -755,7 +760,7 @@ extension WorkflowController {
                     selectionSnapshot: selectionSnapshot,
                     sessionID: sessionID,
                     record: &record,
-                    pipelineTiming: &pipelineTiming,
+                    pipelineTiming: &pipelineTiming
                 )
             } else if shouldRewriteTranscript {
                 detachedAgentExecution = false
@@ -769,7 +774,7 @@ extension WorkflowController {
                     mergedLLMResult: mergedLLMResult,
                     sessionID: sessionID,
                     record: &record,
-                    pipelineTiming: &pipelineTiming,
+                    pipelineTiming: &pipelineTiming
                 )
             } else {
                 detachedAgentExecution = false
@@ -778,7 +783,7 @@ extension WorkflowController {
                     selectionSnapshot: selectionSnapshot,
                     sessionID: sessionID,
                     record: &record,
-                    pipelineTiming: &pipelineTiming,
+                    pipelineTiming: &pipelineTiming
                 )
             }
 
@@ -805,13 +810,13 @@ extension WorkflowController {
                             self.presentAskAnswer(
                                 question: finalTranscriptText ?? "",
                                 selectedText: finalSelectionOriginalText,
-                                answerMarkdown: finalText,
+                                answerMarkdown: finalText
                             )
                         } else {
                             self.lastDialogResultText = finalText
                             self.overlayController.showResultDialog(
                                 title: L("workflow.result.copyTitle"),
-                                message: finalText,
+                                message: finalText
                             )
                         }
                     } else {
@@ -900,7 +905,7 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming: inout HistoryPipelineTiming,
+        pipelineTiming: inout HistoryPipelineTiming
     ) async throws -> Bool {
         NetworkDebugLogger.logMessage(
             """
@@ -908,7 +913,7 @@ extension WorkflowController {
             snapshot: \(askSelectionSnapshotSummary(selectionSnapshot))
             selectedTextLength: \(askContextText.count)
             instruction: \(transcribedText)
-            """,
+            """
         )
         record.processingStatus = .running
         saveHistoryRecord(record)
@@ -927,7 +932,7 @@ extension WorkflowController {
                 selectionSnapshot: selectionSnapshot,
                 sessionID: sessionID,
                 record: &record,
-                pipelineTiming: &pipelineTiming,
+                pipelineTiming: &pipelineTiming
             )
             return true
         }
@@ -940,13 +945,13 @@ extension WorkflowController {
                 personaPrompt: personaPrompt,
                 editableTarget: askEditableTargetContext(for: selectionSnapshot),
                 appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
-                sessionID: sessionID,
+                sessionID: sessionID
             )
         } catch let error as LLMConfigurationError {
             completeAskFlowAfterLLMConfigurationFallback(
                 error: error,
                 record: &record,
-                pipelineTiming: &pipelineTiming,
+                pipelineTiming: &pipelineTiming
             )
             return false
         }
@@ -957,7 +962,7 @@ extension WorkflowController {
             selectionSnapshot: selectionSnapshot,
             record: &record,
             pipelineTiming: &pipelineTiming,
-            sessionID: sessionID,
+            sessionID: sessionID
         )
         return false
     }
@@ -969,7 +974,7 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming _: inout HistoryPipelineTiming,
+        pipelineTiming _: inout HistoryPipelineTiming
     ) async throws {
         try ensureProcessingIsActive(sessionID)
         let jobID = UUID()
@@ -981,7 +986,7 @@ extension WorkflowController {
             personaPrompt: personaPrompt,
             sessionID: sessionID,
             selectionSnapshot: selectionSnapshot,
-            selectedTextForAnswerPresentation: askContextText,
+            selectedTextForAnswerPresentation: askContextText
         )
         handleDetachedAgentLaunch()
     }
@@ -993,7 +998,7 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming _: inout HistoryPipelineTiming,
+        pipelineTiming _: inout HistoryPipelineTiming
     ) async throws {
         try ensureProcessingIsActive(sessionID)
         let jobID = UUID()
@@ -1005,7 +1010,7 @@ extension WorkflowController {
             personaPrompt: personaPrompt,
             sessionID: sessionID,
             selectionSnapshot: selectionSnapshot,
-            selectedTextForAnswerPresentation: askContextText,
+            selectedTextForAnswerPresentation: askContextText
         )
         handleDetachedAgentLaunch()
     }
@@ -1017,14 +1022,14 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming: inout HistoryPipelineTiming,
+        pipelineTiming: inout HistoryPipelineTiming
     ) async throws -> Bool {
         NetworkDebugLogger.logMessage(
             """
             [Ask Flow] no selected-text context
             snapshot: \(askSelectionSnapshotSummary(selectionSnapshot))
             instruction: \(transcribedText)
-            """,
+            """
         )
         record.processingStatus = .running
         saveHistoryRecord(record)
@@ -1044,10 +1049,10 @@ extension WorkflowController {
                 selectionSnapshot: selectionSnapshot,
                 sessionID: sessionID,
                 record: &record,
-                pipelineTiming: &pipelineTiming,
+                pipelineTiming: &pipelineTiming
             )
             NetworkDebugLogger.logMessage(
-                "[Ask Timing] detached agent ask launched in \(Self.formatDurationSince(agentLaunchStartedAt))",
+                "[Ask Timing] detached agent ask launched in \(Self.formatDurationSince(agentLaunchStartedAt))"
             )
             return true
         }
@@ -1061,18 +1066,18 @@ extension WorkflowController {
                 personaPrompt: personaPrompt,
                 editableTarget: askEditableTargetContext(for: selectionSnapshot),
                 appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
-                sessionID: sessionID,
+                sessionID: sessionID
             )
         } catch let error as LLMConfigurationError {
             completeAskFlowAfterLLMConfigurationFallback(
                 error: error,
                 record: &record,
-                pipelineTiming: &pipelineTiming,
+                pipelineTiming: &pipelineTiming
             )
             return false
         }
         NetworkDebugLogger.logMessage(
-            "[Ask Timing] ask decision completed in \(Self.formatDurationSince(askDecisionStartedAt))",
+            "[Ask Timing] ask decision completed in \(Self.formatDurationSince(askDecisionStartedAt))"
         )
         try await applyLegacyAskDecision(
             askDecisionResult,
@@ -1081,7 +1086,7 @@ extension WorkflowController {
             selectionSnapshot: selectionSnapshot,
             record: &record,
             pipelineTiming: &pipelineTiming,
-            sessionID: sessionID,
+            sessionID: sessionID
         )
         return false
     }
@@ -1089,10 +1094,10 @@ extension WorkflowController {
     private func completeAskFlowAfterLLMConfigurationFallback(
         error: LLMConfigurationError,
         record: inout HistoryRecord,
-        pipelineTiming: inout HistoryPipelineTiming,
+        pipelineTiming: inout HistoryPipelineTiming
     ) {
         ErrorLogStore.shared.log(
-            "Ask flow skipped because LLM configuration is unavailable: \(error.localizedDescription)",
+            "Ask flow skipped because LLM configuration is unavailable: \(error.localizedDescription)"
         )
         pipelineTiming.llmProcessingCompletedAt = Date()
         record.pipelineTiming = pipelineTiming
@@ -1109,7 +1114,7 @@ extension WorkflowController {
         personaPrompt: String?,
         sessionID: UUID,
         selectionSnapshot: TextSelectionSnapshot,
-        selectedTextForAnswerPresentation: String?,
+        selectedTextForAnswerPresentation: String?
     ) {
         let task = Task { [weak self] in
             guard let self else { return }
@@ -1129,7 +1134,7 @@ extension WorkflowController {
                     spokenInstruction: transcribedText,
                     personaPrompt: personaPrompt,
                     jobID: jobID,
-                    appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
+                    appSystemContext: AppSystemContext(snapshot: selectionSnapshot)
                 )
                 await completeDetachedAgentAskTask(
                     execution: execution,
@@ -1137,7 +1142,7 @@ extension WorkflowController {
                     sessionID: sessionID,
                     transcribedText: transcribedText,
                     selectionSnapshot: selectionSnapshot,
-                    selectedTextForAnswerPresentation: selectedTextForAnswerPresentation,
+                    selectedTextForAnswerPresentation: selectedTextForAnswerPresentation
                 )
             } catch let error as LLMConfigurationError {
                 guard var record = historyStore.record(id: recordID) else { return }
@@ -1145,7 +1150,7 @@ extension WorkflowController {
                 completeAskFlowAfterLLMConfigurationFallback(
                     error: error,
                     record: &record,
-                    pipelineTiming: &pipelineTiming,
+                    pipelineTiming: &pipelineTiming
                 )
                 saveHistoryRecord(record)
                 logPipelineEvent("pipeline-completed", for: record)
@@ -1160,7 +1165,7 @@ extension WorkflowController {
                     recordID: recordID,
                     sessionID: sessionID,
                     errorMessage: L("workflow.cancel.userCancelled"),
-                    treatAsCancellation: true,
+                    treatAsCancellation: true
                 )
             } catch {
                 let message = "Processing failed: \(error.localizedDescription)"
@@ -1169,7 +1174,7 @@ extension WorkflowController {
                     recordID: recordID,
                     sessionID: sessionID,
                     errorMessage: message,
-                    treatAsCancellation: false,
+                    treatAsCancellation: false
                 )
             }
         }
@@ -1185,7 +1190,7 @@ extension WorkflowController {
         sessionID: UUID,
         transcribedText: String,
         selectionSnapshot: TextSelectionSnapshot,
-        selectedTextForAnswerPresentation: String?,
+        selectedTextForAnswerPresentation: String?
     ) async {
         guard var record = historyStore.record(id: recordID) else { return }
 
@@ -1211,7 +1216,7 @@ extension WorkflowController {
                 self.presentAskAnswer(
                     question: transcribedText,
                     selectedText: selectedTextForAnswerPresentation,
-                    answerMarkdown: text,
+                    answerMarkdown: text
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -1251,7 +1256,7 @@ extension WorkflowController {
         recordID: UUID,
         sessionID: UUID,
         errorMessage: String,
-        treatAsCancellation: Bool,
+        treatAsCancellation: Bool
     ) async {
         guard var record = historyStore.record(id: recordID) else { return }
 
@@ -1327,7 +1332,7 @@ extension WorkflowController {
     private func buildASRLLMConfig(
         personaPrompt: String,
         personaID: UUID?,
-        selectionSnapshot: TextSelectionSnapshot,
+        selectionSnapshot: TextSelectionSnapshot
     ) -> ASRLLMConfig {
         let placeholderRequest = LLMRewriteRequest(
             mode: .rewriteTranscript,
@@ -1336,29 +1341,29 @@ extension WorkflowController {
             personaPrompt: personaPrompt,
             personaID: personaID,
             appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
-            vocabularyTerms: VocabularyStore.activeTerms(),
+            vocabularyTerms: VocabularyStore.activeTerms()
         )
         let prompts = PromptCatalog.rewritePrompts(for: placeholderRequest)
         var effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
-            to: prompts.system,
+            to: prompts.system
         )
         let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: prompts.user,
-            appLanguage: settingsStore.appLanguage,
+            appLanguage: settingsStore.appLanguage
         )
         if let appContext = placeholderRequest.appSystemContext {
             let extra = PromptCatalog.appSpecificSystemContext(appContext)
             if !extra.isEmpty {
                 effectiveSystemPrompt = PromptCatalog.appendAdditionalSystemContext(
                     extra,
-                    to: effectiveSystemPrompt,
+                    to: effectiveSystemPrompt
                 )
             }
         }
         return ASRLLMConfig(
             systemPrompt: effectiveSystemPrompt,
             userPromptTemplate: effectiveUserPrompt,
-            personaID: personaID,
+            personaID: personaID
         )
     }
 
@@ -1371,12 +1376,12 @@ extension WorkflowController {
         personaID: UUID?,
         selectionSnapshot: TextSelectionSnapshot,
         cloudScenario: TypefluxCloudScenario,
-        sessionID: UUID,
+        sessionID: UUID
     ) async throws -> (transcript: String, rewritten: String?) {
         let llmConfig = buildASRLLMConfig(
             personaPrompt: personaPrompt,
             personaID: personaID,
-            selectionSnapshot: selectionSnapshot,
+            selectionSnapshot: selectionSnapshot
         )
         let llmBuffer = LLMStreamBuffer()
         let suppressStreamingPreview = shouldSuppressPostRecordingStreamingPreviewForCurrentSTTProvider
@@ -1404,7 +1409,7 @@ extension WorkflowController {
                         self.overlayController.updateStreamingText(current)
                     }
                 }
-            },
+            }
         )
     }
 
@@ -1418,7 +1423,7 @@ extension WorkflowController {
         mergedLLMResult: String? = nil,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming: inout HistoryPipelineTiming,
+        pipelineTiming: inout HistoryPipelineTiming
     ) async throws {
         record.mode = Self.hasRewritePersona(personaPrompt) ? .personaRewrite : .dictation
 
@@ -1471,12 +1476,12 @@ extension WorkflowController {
                         personaID: personaID,
                         appSystemContext: AppSystemContext(snapshot: selectionSnapshot),
                         inputContext: inputContext,
-                        vocabularyTerms: VocabularyStore.activeTerms(),
+                        vocabularyTerms: VocabularyStore.activeTerms()
                     ),
                     sessionID: sessionID,
                     showsStreamingPreview: WorkflowOverlayPresentationPolicy
                         .shouldShowLLMStreamingPreviewAfterTranscription(),
-                    timeout: llmTimeoutAfterTranscription,
+                    timeout: llmTimeoutAfterTranscription
                 )
 
                 try ensureProcessingIsActive(sessionID)
@@ -1494,7 +1499,7 @@ extension WorkflowController {
                 // Timeout: insert transcript as fallback so the user isn't left empty-handed
                 // after waiting the full timeout period. Log for diagnostics.
                 ErrorLogStore.shared.log(
-                    "Persona rewrite timed out after \(String(format: "%.2f", llmTimeoutAfterTranscription))s, using transcript as fallback",
+                    "Persona rewrite timed out after \(String(format: "%.2f", llmTimeoutAfterTranscription))s, using transcript as fallback"
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
@@ -1508,7 +1513,7 @@ extension WorkflowController {
                 record.personaResultText = transcribedText
             } catch let error as LLMConfigurationError {
                 ErrorLogStore.shared.log(
-                    "LLM configuration unavailable (\(error.localizedDescription)), using transcript as fallback",
+                    "LLM configuration unavailable (\(error.localizedDescription)), using transcript as fallback"
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
@@ -1516,7 +1521,7 @@ extension WorkflowController {
             } catch let error where TypefluxCloudBillingError.fromError(error) != nil {
                 let billingError = TypefluxCloudBillingError.fromError(error)
                 ErrorLogStore.shared.log(
-                    "Typeflux Cloud billing requirement during persona rewrite, using transcript as fallback",
+                    "Typeflux Cloud billing requirement during persona rewrite, using transcript as fallback"
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
@@ -1553,7 +1558,7 @@ extension WorkflowController {
         selectionSnapshot: TextSelectionSnapshot,
         sessionID: UUID,
         record: inout HistoryRecord,
-        pipelineTiming: inout HistoryPipelineTiming,
+        pipelineTiming: inout HistoryPipelineTiming
     ) throws {
         record.mode = .dictation
         record.processingStatus = .skipped
@@ -1580,7 +1585,7 @@ extension WorkflowController {
 
     static func shouldRewriteTranscript(
         personaPrompt: String?,
-        inputContext: InputContextSnapshot?,
+        inputContext: InputContextSnapshot?
     ) -> Bool {
         hasRewritePersona(personaPrompt) || inputContext?.hasContent == true
     }
@@ -1710,7 +1715,7 @@ extension WorkflowController {
     func inferredMode(
         selectedText: String?,
         personaPrompt: String?,
-        recordingIntent: RecordingIntent,
+        recordingIntent: RecordingIntent
     ) -> HistoryRecord.Mode {
         if recordingIntent == .askSelection {
             return .askAnswer
@@ -1736,7 +1741,7 @@ extension WorkflowController {
 
     func activePersonaPrompt(
         selectionSnapshot: TextSelectionSnapshot,
-        inputContext: InputContextSnapshot?,
+        inputContext: InputContextSnapshot?
     ) -> String? {
         guard let persona = activePersona(selectionSnapshot: selectionSnapshot, inputContext: inputContext) else {
             return nil
@@ -1746,11 +1751,11 @@ extension WorkflowController {
 
     func activePersona(
         selectionSnapshot: TextSelectionSnapshot,
-        inputContext: InputContextSnapshot?,
+        inputContext: InputContextSnapshot?
     ) -> PersonaProfile? {
         settingsStore.effectivePersona(
             appName: inputContext?.appName ?? selectionSnapshot.processName,
-            bundleIdentifier: inputContext?.bundleIdentifier ?? selectionSnapshot.bundleIdentifier,
+            bundleIdentifier: inputContext?.bundleIdentifier ?? selectionSnapshot.bundleIdentifier
         )
     }
 
@@ -1823,7 +1828,7 @@ extension WorkflowController {
 
     func askContextText(
         from snapshot: TextSelectionSnapshot,
-        inputContext: InputContextSnapshot?,
+        inputContext: InputContextSnapshot?
     ) -> String? {
         let snapshotText = snapshot.selectedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !snapshotText.isEmpty {
@@ -1894,14 +1899,14 @@ extension WorkflowController {
 
     func applyDetachedAgentEditResult(
         _ text: String,
-        selectionSnapshot: TextSelectionSnapshot,
+        selectionSnapshot: TextSelectionSnapshot
     ) -> ApplyOutcome {
         let replaceSelection = shouldReplaceActiveSelection(for: selectionSnapshot)
         let shouldShowResultDialog = shouldShowDialogForDetachedAgentEdit(using: selectionSnapshot)
         NetworkDebugLogger.logMessage(
             "[Apply Detached Agent Edit] hasSelection=\(selectionSnapshot.hasSelection) " +
                 "isEditable=\(selectionSnapshot.isEditable) hasRange=\(selectionSnapshot.selectedRange != nil) " +
-                "replaceSelection=\(replaceSelection) showResultDialog=\(shouldShowResultDialog)",
+                "replaceSelection=\(replaceSelection) showResultDialog=\(shouldShowResultDialog)"
         )
 
         if shouldShowResultDialog {
@@ -1913,7 +1918,7 @@ extension WorkflowController {
             text,
             replace: replaceSelection,
             fallbackTitle: L("workflow.result.copyTitle"),
-            targetSnapshot: selectionSnapshot,
+            targetSnapshot: selectionSnapshot
         )
     }
 
@@ -1930,7 +1935,7 @@ extension WorkflowController {
             title: \(title)
             textLength: \(text.count)
             preview: \(String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)))
-            """,
+            """
         )
         let work = { [weak self] in
             guard let self else { return }
@@ -1958,16 +1963,19 @@ extension WorkflowController {
             ("stop_to_audio_ms", timing.millisecondsBetween(timing.recordingStoppedAt, timing.audioFileReadyAt)),
             ("stt_ms", timing.millisecondsBetween(timing.transcriptionStartedAt, timing.transcriptionCompletedAt)),
             ("stop_to_stt_ms", timing.millisecondsBetween(timing.recordingStoppedAt, timing.transcriptionCompletedAt)),
-            ("transcript_to_llm_ms", timing.millisecondsBetween(timing.transcriptionCompletedAt, timing.llmProcessingStartedAt)),
+            (
+                "transcript_to_llm_ms",
+                timing.millisecondsBetween(timing.transcriptionCompletedAt, timing.llmProcessingStartedAt)
+            ),
             ("llm_ms", timing.millisecondsBetween(timing.llmProcessingStartedAt, timing.llmProcessingCompletedAt)),
             ("apply_ms", timing.millisecondsBetween(timing.applyStartedAt, timing.applyCompletedAt)),
             (
                 "end_to_end_ms",
                 timing.millisecondsBetween(
                     timing.recordingStoppedAt,
-                    timing.applyCompletedAt ?? timing.llmProcessingCompletedAt ?? timing.transcriptionCompletedAt,
-                ),
-            ),
+                    timing.applyCompletedAt ?? timing.llmProcessingCompletedAt ?? timing.transcriptionCompletedAt
+                )
+            )
         ]
 
         let durationSummary = durations
@@ -1976,7 +1984,7 @@ extension WorkflowController {
 
         NetworkDebugLogger.logMessage(
             "[Voice Pipeline] event=\(event) record_id=\(record.id.uuidString) mode=\(record.mode.rawValue) \(durationSummary)"
-                .trimmingCharacters(in: .whitespaces),
+                .trimmingCharacters(in: .whitespaces)
         )
     }
 

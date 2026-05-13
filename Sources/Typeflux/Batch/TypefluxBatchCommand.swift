@@ -103,7 +103,9 @@ private struct BatchConfiguration {
         let personaPromptFile = parser.consumeValue("--persona-prompt-file")
         let selectors = [personaID, personaName, personaPromptFile].compactMap(\.self)
         guard selectors.count <= 1 else {
-            throw BatchCommandError(message: "Use only one persona selector: --persona-id, --persona-name, or --persona-prompt-file.")
+            throw BatchCommandError(
+                message: "Use only one persona selector: --persona-id, --persona-name, or --persona-prompt-file."
+            )
         }
         if let personaID {
             guard let uuid = UUID(uuidString: personaID) else {
@@ -252,7 +254,9 @@ private struct SingleAudioConfiguration {
         let personaPromptFile = parser.consumeValue("--persona-prompt-file")
         let selectors = [personaID, personaName, personaPromptFile].compactMap(\.self)
         guard selectors.count <= 1 else {
-            throw BatchCommandError(message: "Use only one persona selector: --persona-id, --persona-name, or --persona-prompt-file.")
+            throw BatchCommandError(
+                message: "Use only one persona selector: --persona-id, --persona-name, or --persona-prompt-file."
+            )
         }
         if let personaID {
             guard let uuid = UUID(uuidString: personaID) else {
@@ -415,7 +419,9 @@ private final class SingleAudioProcessor {
         let llmService = makeLLMService(settingsStore: settingsStore)
         let audioFile = try makeAudioFile(config.audioURL)
 
-        writeStandardError("Transcribing \(config.audioURL.lastPathComponent) with \(sttModelDescription(settingsStore: settingsStore))")
+        writeStandardError(
+            "Transcribing \(config.audioURL.lastPathComponent) with \(sttModelDescription(settingsStore: settingsStore))"
+        )
         let sttStartedAt = Date()
         let transcript = try await sttRouter.transcribeStream(audioFile: audioFile, scenario: .voiceInput) { _ in }
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -440,7 +446,7 @@ private final class SingleAudioProcessor {
                 transcript: transcript,
                 personaPrompt: trimmedPersona,
                 personaID: persona.id,
-                llmService: llmService,
+                llmService: llmService
             )
             llmMilliseconds = milliseconds(since: llmStartedAt)
         }
@@ -453,7 +459,7 @@ private final class SingleAudioProcessor {
 
         let totalMilliseconds = sttMilliseconds + llmMilliseconds
         writeStandardError(
-            "Completed in \(totalMilliseconds)ms (stt=\(sttMilliseconds)ms, llm=\(llmMilliseconds)ms, persona=\(persona.name))",
+            "Completed in \(totalMilliseconds)ms (stt=\(sttMilliseconds)ms, llm=\(llmMilliseconds)ms, persona=\(persona.name))"
         )
     }
 
@@ -534,9 +540,9 @@ private final class SingleAudioProcessor {
                 settingsStore: settingsStore,
                 baseURLOverride: "https://api.groq.com/openai/v1",
                 apiKeyOverride: { [settingsStore] in settingsStore.groqSTTAPIKey },
-                modelOverride: { [settingsStore] in settingsStore.groqSTTModel },
+                modelOverride: { [settingsStore] in settingsStore.groqSTTModel }
             ),
-            typefluxOfficial: TypefluxOfficialTranscriber(),
+            typefluxOfficial: TypefluxOfficialTranscriber()
         )
     }
 
@@ -544,7 +550,7 @@ private final class SingleAudioProcessor {
         LLMRouter(
             settingsStore: settingsStore,
             openAICompatible: OpenAICompatibleLLMService(settingsStore: settingsStore),
-            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager()),
+            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager())
         )
     }
 
@@ -577,7 +583,7 @@ private final class SingleAudioProcessor {
 
     private func applyPersonaForProviderInternalRewrite(
         _ persona: (name: String, prompt: String, id: UUID?),
-        settingsStore: SettingsStore,
+        settingsStore: SettingsStore
     ) throws {
         let trimmedPrompt = persona.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPrompt.isEmpty else {
@@ -608,7 +614,7 @@ private final class SingleAudioProcessor {
         transcript: String,
         personaPrompt: String,
         personaID: UUID?,
-        llmService: LLMService,
+        llmService: LLMService
     ) async throws -> String {
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
@@ -616,7 +622,7 @@ private final class SingleAudioProcessor {
             spokenInstruction: nil,
             personaPrompt: personaPrompt,
             personaID: personaID,
-            vocabularyTerms: VocabularyStore.activeTerms(),
+            vocabularyTerms: VocabularyStore.activeTerms()
         )
 
         var output = ""
@@ -634,7 +640,7 @@ private final class SingleAudioProcessor {
         case .whisperAPI:
             OpenAIAudioModelCatalog.resolvedWhisperModel(
                 settingsStore.whisperModel,
-                endpoint: OpenAIAudioModelCatalog.resolvedWhisperEndpoint(settingsStore.whisperBaseURL),
+                endpoint: OpenAIAudioModelCatalog.resolvedWhisperEndpoint(settingsStore.whisperBaseURL)
             )
         case .appleSpeech:
             "appleSpeech"
@@ -714,7 +720,7 @@ private final class WAVPersonaBenchmark {
                 ?? BenchmarkRecord(
                     relativePath: file.relativePath,
                     absolutePath: file.url.path,
-                    status: .pending,
+                    status: .pending
                 )
             record.absolutePath = file.url.path
             record.fileSizeBytes = file.fileSizeBytes
@@ -745,7 +751,8 @@ private final class WAVPersonaBenchmark {
                     print("Transcribing \(file.relativePath)")
 
                     let startedAt = Date()
-                    let transcript = try await sttRouter.transcribeStream(audioFile: audioFile, scenario: .voiceInput) { _ in }
+                    let transcript = try await sttRouter
+                        .transcribeStream(audioFile: audioFile, scenario: .voiceInput) { _ in }
                     record.sttMilliseconds = milliseconds(since: startedAt)
                     record.transcript = transcript
                     record.status = .transcribed
@@ -777,7 +784,7 @@ private final class WAVPersonaBenchmark {
                         transcript: transcript,
                         personaPrompt: persona.prompt,
                         personaID: persona.id,
-                        llmService: llmService,
+                        llmService: llmService
                     )
                     record.llmMilliseconds = milliseconds(since: startedAt)
                 }
@@ -841,9 +848,9 @@ private final class WAVPersonaBenchmark {
                 settingsStore: settingsStore,
                 baseURLOverride: "https://api.groq.com/openai/v1",
                 apiKeyOverride: { [settingsStore] in settingsStore.groqSTTAPIKey },
-                modelOverride: { [settingsStore] in settingsStore.groqSTTModel },
+                modelOverride: { [settingsStore] in settingsStore.groqSTTModel }
             ),
-            typefluxOfficial: TypefluxOfficialTranscriber(),
+            typefluxOfficial: TypefluxOfficialTranscriber()
         )
     }
 
@@ -851,7 +858,7 @@ private final class WAVPersonaBenchmark {
         LLMRouter(
             settingsStore: settingsStore,
             openAICompatible: OpenAICompatibleLLMService(settingsStore: settingsStore),
-            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager()),
+            ollama: OllamaLLMService(settingsStore: settingsStore, modelManager: OllamaLocalModelManager())
         )
     }
 
@@ -886,7 +893,7 @@ private final class WAVPersonaBenchmark {
         guard let enumerator = fileManager.enumerator(
             at: directory,
             includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
         ) else {
             return []
         }
@@ -899,7 +906,7 @@ private final class WAVPersonaBenchmark {
             files.append(InputWAVFile(
                 url: url,
                 relativePath: relativePath(for: url, base: directory),
-                fileSizeBytes: Int64(values.fileSize ?? 0),
+                fileSizeBytes: Int64(values.fileSize ?? 0)
             ))
         }
         return files.sorted { $0.relativePath.localizedStandardCompare($1.relativePath) == .orderedAscending }
@@ -916,7 +923,7 @@ private final class WAVPersonaBenchmark {
         transcript: String,
         personaPrompt: String,
         personaID: UUID?,
-        llmService: LLMService,
+        llmService: LLMService
     ) async throws -> String {
         let request = LLMRewriteRequest(
             mode: .rewriteTranscript,
@@ -924,7 +931,7 @@ private final class WAVPersonaBenchmark {
             spokenInstruction: nil,
             personaPrompt: personaPrompt,
             personaID: personaID,
-            vocabularyTerms: VocabularyStore.activeTerms(),
+            vocabularyTerms: VocabularyStore.activeTerms()
         )
 
         var output = ""
@@ -980,15 +987,15 @@ private final class WAVPersonaBenchmark {
                 "stt_realtime_factor",
                 "transcript",
                 "persona_result",
-                "error",
-            ].map(csvEscape).joined(separator: ","),
+                "error"
+            ].map(csvEscape).joined(separator: ",")
         ]
 
         for file in files {
             let record = recordsByPath[file.relativePath] ?? BenchmarkRecord(
                 relativePath: file.relativePath,
                 absolutePath: file.url.path,
-                status: .pending,
+                status: .pending
             )
             let realtimeFactor = if let sttMs = record.sttMilliseconds,
                                     let duration = record.audioDurationSeconds,
@@ -1014,7 +1021,7 @@ private final class WAVPersonaBenchmark {
                 realtimeFactor,
                 record.transcript ?? "",
                 record.personaResult ?? "",
-                record.error ?? "",
+                record.error ?? ""
             ]
             lines.append(row.map(csvEscape).joined(separator: ","))
         }
@@ -1060,7 +1067,7 @@ private final class WAVPersonaBenchmark {
         case .whisperAPI:
             OpenAIAudioModelCatalog.resolvedWhisperModel(
                 settingsStore.whisperModel,
-                endpoint: OpenAIAudioModelCatalog.resolvedWhisperEndpoint(settingsStore.whisperBaseURL),
+                endpoint: OpenAIAudioModelCatalog.resolvedWhisperEndpoint(settingsStore.whisperBaseURL)
             )
         case .appleSpeech:
             "appleSpeech"

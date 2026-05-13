@@ -26,7 +26,7 @@ struct TypefluxLogoBadge: View {
         size: CGFloat = 52,
         symbolSize: CGFloat = 26,
         backgroundShape: BackgroundShape = .circle,
-        showsBorder: Bool = false,
+        showsBorder: Bool = false
     ) {
         self.size = size
         self.symbolSize = symbolSize
@@ -54,14 +54,14 @@ struct TypefluxLogoBadge: View {
                 .fill(badgeFill)
                 .overlay(
                     RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                        .stroke(borderColor, lineWidth: showsBorder ? 1 : 0),
+                        .stroke(borderColor, lineWidth: showsBorder ? 1 : 0)
                 )
         case .circle:
             Circle()
                 .fill(markFill)
                 .overlay(
                     Circle()
-                        .stroke(borderColor, lineWidth: showsBorder ? 1 : 0),
+                        .stroke(borderColor, lineWidth: showsBorder ? 1 : 0)
                 )
         }
     }
@@ -124,7 +124,7 @@ private final class TooltipFloatingPanel: NSPanel {
             contentRect: .zero,
             styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
-            defer: false,
+            defer: false
         )
         isFloatingPanel = true
         // Stay above the statusBar-level overlay panel
@@ -163,9 +163,9 @@ private final class TooltipWindowController {
                 .padding(.vertical, StudioTheme.Insets.tooltipVertical)
                 .background(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.tooltip, style: .continuous)
-                        .fill(StudioTheme.tooltipBackground),
+                        .fill(StudioTheme.tooltipBackground)
                 )
-                .fixedSize(),
+                .fixedSize()
         )
 
         if let existing = hostingView {
@@ -183,7 +183,7 @@ private final class TooltipWindowController {
         // tooltip's top edge sits above the anchor's top edge.
         var origin = NSPoint(
             x: screenFrame.midX - size.width / 2,
-            y: screenFrame.maxY + yOffset - size.height,
+            y: screenFrame.maxY + yOffset - size.height
         )
 
         // Clamp to the screen that contains the mouse
@@ -257,7 +257,7 @@ private struct StudioTooltipModifier: ViewModifier {
                     TooltipWindowController.shared.show(
                         text: text,
                         screenFrame: anchor,
-                        yOffset: yOffset,
+                        yOffset: yOffset
                     )
                 } else {
                     TooltipWindowController.shared.hide()
@@ -325,7 +325,7 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
         tintOpacity: Double = StudioTheme.Opacity.glassSurfaceTint,
         scrimOpacity: Double = StudioTheme.Opacity.glassSurfaceScrim,
         strokeOpacity: Double = StudioTheme.Opacity.glassHighlight,
-        interactive: Bool = false,
+        interactive: Bool = false
     ) {
         self.shape = shape
         self.cornerRadius = cornerRadius
@@ -347,7 +347,7 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
                                 Glass.clear
                                     .interactive(interactive)
                                     .tint(StudioTheme.glassTint.opacity(tintOpacity)),
-                                in: shape,
+                                in: shape
                             )
 
                         shape
@@ -369,13 +369,13 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
                         colors: [
                             StudioTheme.glassStrokeHighlight.opacity(strokeOpacity),
                             StudioTheme.glassStrokeHighlight.opacity(strokeOpacity * 0.28),
-                            StudioTheme.glassStrokeShadow.opacity(0.50),
+                            StudioTheme.glassStrokeShadow.opacity(0.50)
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
+                        endPoint: .bottomTrailing
                     ),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
+                    lineWidth: StudioTheme.BorderWidth.thin
+                )
         )
         .overlay(
             shape
@@ -385,14 +385,14 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
                         colors: [
                             StudioTheme.glassInnerHighlight,
                             Color.clear,
-                            StudioTheme.glassInnerHighlight.opacity(0.42),
+                            StudioTheme.glassInnerHighlight.opacity(0.42)
                         ],
                         startPoint: .top,
-                        endPoint: .bottom,
+                        endPoint: .bottom
                     ),
-                    lineWidth: 0.6,
+                    lineWidth: 0.6
                 )
-                .blendMode(.screen),
+                .blendMode(.screen)
         )
     }
 
@@ -401,7 +401,7 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
             StudioVisualEffectBlur(
                 material: material,
                 blendingMode: .withinWindow,
-                cornerRadius: cornerRadius,
+                cornerRadius: cornerRadius
             )
             .allowsHitTesting(false)
 
@@ -445,11 +445,11 @@ private struct StudioButtonChromeModifier: ViewModifier {
                     LinearGradient(
                         colors: [
                             StudioTheme.accent.opacity(0.92),
-                            StudioTheme.accent,
+                            StudioTheme.accent
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
+                        endPoint: .bottomTrailing
+                    )
                 )
                 .brightness(isPressed ? -0.06 : (isLoading ? -0.03 : 0))
                 .shadow(color: StudioTheme.accent.opacity(0.18), radius: 8, x: 0, y: 5)
@@ -460,7 +460,7 @@ private struct StudioButtonChromeModifier: ViewModifier {
                     cornerRadius: StudioTheme.CornerRadius.xLarge,
                     tintOpacity: isPressed ? 0.72 : StudioTheme.Opacity.glassControlTint,
                     scrimOpacity: isPressed ? 0.76 : StudioTheme.Opacity.glassControlScrim,
-                    interactive: true,
+                    interactive: true
                 )
 
                 buttonShape
@@ -469,7 +469,8 @@ private struct StudioButtonChromeModifier: ViewModifier {
             .brightness(isPressed ? -0.03 : (isLoading ? -0.015 : 0))
         case .ghost:
             buttonShape
-                .fill(isPressed ? StudioTheme.controlSurface : (isLoading ? StudioTheme.controlSurface.opacity(0.62) : Color.clear))
+                .fill(isPressed ? StudioTheme
+                    .controlSurface : (isLoading ? StudioTheme.controlSurface.opacity(0.62) : Color.clear))
         }
     }
 
@@ -542,8 +543,8 @@ private struct StudioButtonChrome<Label: View>: View {
                 isDisabled: isDisabled || isLoading,
                 isLoading: isLoading,
                 isPressed: isPressed,
-                minWidth: minWidth,
-            ),
+                minWidth: minWidth
+            )
         )
     }
 }
@@ -576,7 +577,7 @@ struct StudioShell<Content: View>: View {
         searchPlaceholder: String,
         agentEnabled: Bool = false,
         isLoggedIn: Bool = false,
-        @ViewBuilder content: @escaping (CGSize) -> Content,
+        @ViewBuilder content: @escaping (CGSize) -> Content
     ) {
         self.currentSection = currentSection
         self.onSelect = onSelect
@@ -607,11 +608,11 @@ struct StudioShell<Content: View>: View {
                     onOpenAbout: onOpenAbout,
                     onAccountAction: onAccountAction,
                     agentEnabled: agentEnabled,
-                    isLoggedIn: isLoggedIn,
+                    isLoggedIn: isLoggedIn
                 )
                 .frame(width: StudioTheme.sidebarWidth)
                 .background(
-                    sidebarBackground,
+                    sidebarBackground
                 )
                 .overlay(alignment: .trailing) {
                     Rectangle()
@@ -623,7 +624,7 @@ struct StudioShell<Content: View>: View {
                     ScrollView {
                         let contentWidth = min(
                             StudioTheme.contentMaxWidth,
-                            max(proxy.size.width - StudioTheme.contentInset * 2, 0),
+                            max(proxy.size.width - StudioTheme.contentInset * 2, 0)
                         )
 
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.section) {
@@ -636,7 +637,7 @@ struct StudioShell<Content: View>: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                     .background(
-                        contentBackground,
+                        contentBackground
                     )
                 }
                 .padding(.vertical, StudioTheme.Layout.contentCardInset)
@@ -664,10 +665,10 @@ struct StudioShell<Content: View>: View {
                 LinearGradient(
                     colors: [
                         Color.white.opacity(0.22),
-                        Color.clear,
+                        Color.clear
                     ],
                     startPoint: .topLeading,
-                    endPoint: .bottomTrailing,
+                    endPoint: .bottomTrailing
                 )
             }
         }
@@ -716,19 +717,19 @@ struct StudioGlassBackground: View {
                 LinearGradient(
                     colors: [
                         StudioTheme.windowHighlight.opacity(0.92),
-                        Color.clear,
+                        Color.clear
                     ],
                     startPoint: .topLeading,
-                    endPoint: .bottomTrailing,
+                    endPoint: .bottomTrailing
                 )
 
                 LinearGradient(
                     colors: [
                         Color.white.opacity(0.08),
-                        Color.clear,
+                        Color.clear
                     ],
                     startPoint: .bottomLeading,
-                    endPoint: .topTrailing,
+                    endPoint: .topTrailing
                 )
             }
         }
@@ -754,7 +755,7 @@ struct StudioSidebar: View {
                     size: 28,
                     symbolSize: 15,
                     backgroundShape: .circle,
-                    showsBorder: false,
+                    showsBorder: false
                 )
 
                 HStack(alignment: .center, spacing: 6) {
@@ -805,7 +806,7 @@ struct StudioSidebar: View {
                         systemImage: isLoggedIn ? "person.circle.fill" : "person.circle",
                         accessibilityLabel: L("sidebar.accountAccessibility"),
                         isActive: currentSection == .account,
-                        action: onAccountAction,
+                        action: onAccountAction
                     )
 
                     Spacer()
@@ -817,14 +818,14 @@ struct StudioSidebar: View {
                             systemImage: "questionmark.circle",
                             accessibilityLabel: L("sidebar.aboutAccessibility"),
                             isActive: false,
-                            action: onOpenAbout,
+                            action: onOpenAbout
                         )
 
                         utilityButton(
                             systemImage: "gearshape",
                             accessibilityLabel: L("sidebar.settingsAccessibility"),
                             isActive: currentSection == .settings,
-                            action: { onSelect(.settings) },
+                            action: { onSelect(.settings) }
                         )
                     }
                 }
@@ -844,20 +845,20 @@ struct StudioSidebar: View {
         systemImage: String,
         accessibilityLabel: String,
         isActive: Bool,
-        action: @escaping () -> Void,
+        action: @escaping () -> Void
     ) -> some View {
         StudioSidebarIconButton(
             systemImage: systemImage,
             accessibilityLabel: accessibilityLabel,
             isActive: isActive,
-            action: action,
+            action: action
         )
     }
 
     private var feedbackMenuButton: some View {
         StudioSidebarIconMenuButton(
             systemImage: "envelope.fill",
-            accessibilityLabel: L("sidebar.feedbackAccessibility"),
+            accessibilityLabel: L("sidebar.feedbackAccessibility")
         ) {
             Button(L("sidebar.feedback.directOption"), action: onSendDirectFeedback)
             Button(L("sidebar.feedback.emailOption"), action: onSendFeedbackEmail)
@@ -879,7 +880,7 @@ private struct StudioSidebarIconButton: View {
                 systemImage: systemImage,
                 accessibilityLabel: accessibilityLabel,
                 isActive: isActive,
-                isHovered: isHovered,
+                isHovered: isHovered
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
@@ -903,7 +904,7 @@ private struct StudioSidebarIconMenuButton<MenuContent: View>: View {
                 systemImage: systemImage,
                 accessibilityLabel: accessibilityLabel,
                 isActive: false,
-                isHovered: isHovered,
+                isHovered: isHovered
             )
         }
         .menuStyle(.borderlessButton)
@@ -912,7 +913,7 @@ private struct StudioSidebarIconMenuButton<MenuContent: View>: View {
         .tint(StudioTheme.textSecondary)
         .frame(
             width: StudioTheme.ControlSize.sidebarUtilityButton,
-            height: StudioTheme.ControlSize.sidebarUtilityButton,
+            height: StudioTheme.ControlSize.sidebarUtilityButton
         )
         .contentShape(Circle())
         .accessibilityLabel(accessibilityLabel)
@@ -931,10 +932,13 @@ private struct StudioSidebarIconLabel: View {
         Image(systemName: systemImage)
             .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
             .foregroundStyle(isActive ? StudioTheme.textPrimary : StudioTheme.textSecondary)
-            .frame(width: StudioTheme.ControlSize.sidebarUtilityButton, height: StudioTheme.ControlSize.sidebarUtilityButton)
+            .frame(
+                width: StudioTheme.ControlSize.sidebarUtilityButton,
+                height: StudioTheme.ControlSize.sidebarUtilityButton
+            )
             .background(
                 Circle()
-                    .fill((isHovered || isActive) ? StudioTheme.sidebarSelection.opacity(0.86) : Color.clear),
+                    .fill((isHovered || isActive) ? StudioTheme.sidebarSelection.opacity(0.86) : Color.clear)
             )
             .contentShape(Circle())
             .accessibilityLabel(accessibilityLabel)
@@ -959,7 +963,7 @@ extension StudioSidebar {
             .padding(.vertical, StudioTheme.Insets.sidebarItemVertical)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(section == currentSection ? StudioTheme.sidebarSelection : Color.clear),
+                    .fill(section == currentSection ? StudioTheme.sidebarSelection : Color.clear)
             )
             .contentShape(Rectangle())
         }
@@ -1025,7 +1029,7 @@ struct StudioCard<Content: View>: View {
         isHighlighted: Bool = false,
         isDimmed: Bool = false,
         texture: Texture = .standard,
-        @ViewBuilder content: () -> Content,
+        @ViewBuilder content: () -> Content
     ) {
         self.padding = padding
         self.showsShadow = showsShadow
@@ -1049,11 +1053,14 @@ struct StudioCard<Content: View>: View {
 
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .fill(selectionOverlay)
-            },
+            }
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .stroke(cardBorderColor, lineWidth: isHighlighted ? StudioTheme.BorderWidth.emphasis : StudioTheme.BorderWidth.thin),
+                .stroke(
+                    cardBorderColor,
+                    lineWidth: isHighlighted ? StudioTheme.BorderWidth.emphasis : StudioTheme.BorderWidth.thin
+                )
         )
         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
@@ -1061,7 +1068,7 @@ struct StudioCard<Content: View>: View {
             color: StudioTheme.shadow.opacity(showsShadow ? (isHighlighted ? 0.20 : 0.16) : 0.09),
             radius: isHighlighted ? StudioTheme.Shadow.cardRadius + 2 : StudioTheme.Shadow.cardRadius,
             x: 0,
-            y: isHighlighted ? StudioTheme.Shadow.cardY + 1 : StudioTheme.Shadow.cardY,
+            y: isHighlighted ? StudioTheme.Shadow.cardY + 1 : StudioTheme.Shadow.cardY
         )
     }
 
@@ -1098,11 +1105,11 @@ struct StudioCard<Content: View>: View {
                             colors: [
                                 Color.white.opacity(0.22),
                                 Color.clear,
-                                StudioTheme.accentSoft.opacity(0.08),
+                                StudioTheme.accentSoft.opacity(0.08)
                             ],
                             startPoint: .topLeading,
-                            endPoint: .bottomTrailing,
-                        ),
+                            endPoint: .bottomTrailing
+                        )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
@@ -1110,12 +1117,12 @@ struct StudioCard<Content: View>: View {
                                 LinearGradient(
                                     colors: [
                                         Color.clear,
-                                        StudioTheme.border.opacity(0.08),
+                                        StudioTheme.border.opacity(0.08)
                                     ],
                                     startPoint: .top,
-                                    endPoint: .bottom,
-                                ),
-                            ),
+                                    endPoint: .bottom
+                                )
+                            )
                     )
             }
         }
@@ -1139,11 +1146,11 @@ struct StudioCard<Content: View>: View {
                                 LinearGradient(
                                     colors: [
                                         Color.white.opacity(baseOpacity),
-                                        Color.clear,
+                                        Color.clear
                                     ],
                                     startPoint: .topLeading,
-                                    endPoint: .bottomTrailing,
-                                ),
+                                    endPoint: .bottomTrailing
+                                )
                             )
 
                         Ellipse()
@@ -1153,11 +1160,11 @@ struct StudioCard<Content: View>: View {
                                         Color.clear,
                                         StudioTheme.accent.opacity(accentOpacity),
                                         Color.white.opacity(highlightOpacity),
-                                        Color.clear,
+                                        Color.clear
                                     ],
                                     startPoint: .topLeading,
-                                    endPoint: .bottomTrailing,
-                                ),
+                                    endPoint: .bottomTrailing
+                                )
                             )
                             .frame(width: width * 1.12, height: height * 0.56)
                             .rotationEffect(.degrees(-17))
@@ -1171,11 +1178,11 @@ struct StudioCard<Content: View>: View {
                                         Color.clear,
                                         Color.white.opacity(highlightOpacity * 0.72),
                                         StudioTheme.accentSoft.opacity(accentOpacity * 0.52),
-                                        Color.clear,
+                                        Color.clear
                                     ],
                                     startPoint: .leading,
-                                    endPoint: .trailing,
-                                ),
+                                    endPoint: .trailing
+                                )
                             )
                             .frame(width: width * 1.08, height: height * 0.42)
                             .rotationEffect(.degrees(-17))
@@ -1187,12 +1194,13 @@ struct StudioCard<Content: View>: View {
                                 LinearGradient(
                                     colors: [
                                         Color.clear,
-                                        isHighlighted ? StudioTheme.accentSoft.opacity(accentOpacity * 0.58) : Color.clear,
-                                        Color.clear,
+                                        isHighlighted ? StudioTheme.accentSoft.opacity(accentOpacity * 0.58) : Color
+                                            .clear,
+                                        Color.clear
                                     ],
                                     startPoint: .topLeading,
-                                    endPoint: .bottomTrailing,
-                                ),
+                                    endPoint: .bottomTrailing
+                                )
                             )
                     }
                 }
@@ -1222,7 +1230,7 @@ struct StudioButton: View {
             isDisabled: isDisabled,
             isLoading: isLoading,
             minWidth: variant == .ghost ? nil : StudioTheme.ControlSize.buttonMinWidth,
-            action: action,
+            action: action
         ) {
             HStack(spacing: StudioTheme.Spacing.xSmall) {
                 if isLoading {
@@ -1257,7 +1265,7 @@ struct StudioIconButton: View {
             isDisabled: isDisabled,
             isLoading: isLoading,
             minWidth: nil,
-            action: action,
+            action: action
         ) {
             Group {
                 if isLoading {
@@ -1337,7 +1345,7 @@ struct StudioMetricCard: View {
                     .overlay(
                         Image(systemName: icon)
                             .font(.system(size: StudioTheme.Typography.iconRegular, weight: .semibold))
-                            .foregroundStyle(StudioTheme.accent),
+                            .foregroundStyle(StudioTheme.accent)
                     )
 
                 Spacer()
@@ -1403,7 +1411,13 @@ struct StudioTextInputCard<LabelTrailing: View>: View {
     var secure: Bool = false
     @ViewBuilder var labelTrailing: () -> LabelTrailing
 
-    init(label: String, placeholder: String, text: Binding<String>, secure: Bool = false, @ViewBuilder labelTrailing: @escaping () -> LabelTrailing = { EmptyView() }) {
+    init(
+        label: String,
+        placeholder: String,
+        text: Binding<String>,
+        secure: Bool = false,
+        @ViewBuilder labelTrailing: @escaping () -> LabelTrailing = { EmptyView() }
+    ) {
         self.label = label
         self.placeholder = placeholder
         _text = text
@@ -1435,11 +1449,14 @@ struct StudioTextInputCard<LabelTrailing: View>: View {
             .padding(.vertical, StudioTheme.Insets.textFieldVertical)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin),
+                    .stroke(
+                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                        lineWidth: StudioTheme.BorderWidth.thin
+                    )
             )
         }
     }
@@ -1457,7 +1474,7 @@ struct StudioSuggestedTextInputCard<LabelTrailing: View>: View {
         placeholder: String,
         text: Binding<String>,
         suggestions: [String],
-        @ViewBuilder labelTrailing: @escaping () -> LabelTrailing = { EmptyView() },
+        @ViewBuilder labelTrailing: @escaping () -> LabelTrailing = { EmptyView() }
     ) {
         self.label = label
         self.placeholder = placeholder
@@ -1520,11 +1537,14 @@ struct StudioSuggestedTextInputCard<LabelTrailing: View>: View {
             .frame(minHeight: 46)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin),
+                    .stroke(
+                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                        lineWidth: StudioTheme.BorderWidth.thin
+                    )
             )
         }
     }
@@ -1573,10 +1593,14 @@ struct StudioHistoryRow: View {
 
                 HStack(spacing: StudioTheme.Spacing.small) {
                     if let onCopyResult, record.hasTranscriptToCopy {
-                        historyIconButton(systemImage: "doc.on.doc", helpText: L("history.action.copyTranscript"), action: onCopyResult)
-                            .opacity(isHovered ? 1 : 0)
-                            .allowsHitTesting(isHovered)
-                            .animation(.easeOut(duration: 0.12), value: isHovered)
+                        historyIconButton(
+                            systemImage: "doc.on.doc",
+                            helpText: L("history.action.copyTranscript"),
+                            action: onCopyResult
+                        )
+                        .opacity(isHovered ? 1 : 0)
+                        .allowsHitTesting(isHovered)
+                        .animation(.easeOut(duration: 0.12), value: isHovered)
                     }
 
                     historyActionsMenuButton
@@ -1587,7 +1611,7 @@ struct StudioHistoryRow: View {
                     historyIconButton(
                         systemImage: isExpanded ? "chevron.up" : "chevron.down",
                         helpText: isExpanded ? L("common.collapse") : L("common.expand"),
-                        action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } },
+                        action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } }
                     )
                 }
             }
@@ -1599,18 +1623,31 @@ struct StudioHistoryRow: View {
                         content: record.audioFilePath ?? L("history.detail.noAudioFile"),
                         canPlay: record.audioFilePath != nil,
                         isPlaying: isAudioPlaying,
-                        playAction: onPlayAudio,
+                        playAction: onPlayAudio
                     )
                     historyDetailSection(
                         title: L("history.detail.rawTranscript"),
                         content: record.transcriptText,
-                        copyAction: (record.transcriptText?.isEmpty ?? true) ? nil : onCopyTranscript,
+                        copyAction: (record.transcriptText?.isEmpty ?? true) ? nil : onCopyTranscript
                     )
                     historyDetailSection(title: L("history.detail.personaResult"), content: record.personaResultText)
-                    historyDetailSection(title: L("history.detail.selectionOriginal"), content: record.selectionOriginalText)
-                    historyDetailSection(title: L("history.detail.selectionEdited"), content: record.selectionEditedText)
-                    historyPipelineStatsSection(title: L("history.detail.pipelineStats"), items: record.pipelineStatItems)
-                    historyDetailSection(title: L("history.detail.error"), content: record.errorMessage, emphasize: true)
+                    historyDetailSection(
+                        title: L("history.detail.selectionOriginal"),
+                        content: record.selectionOriginalText
+                    )
+                    historyDetailSection(
+                        title: L("history.detail.selectionEdited"),
+                        content: record.selectionEditedText
+                    )
+                    historyPipelineStatsSection(
+                        title: L("history.detail.pipelineStats"),
+                        items: record.pipelineStatItems
+                    )
+                    historyDetailSection(
+                        title: L("history.detail.error"),
+                        content: record.errorMessage,
+                        emphasize: true
+                    )
                 }
                 .padding(.top, StudioTheme.Spacing.xSmall)
             }
@@ -1676,7 +1713,7 @@ struct StudioHistoryRow: View {
         content: String?,
         canPlay: Bool,
         isPlaying: Bool,
-        playAction: (() -> Void)?,
+        playAction: (() -> Void)?
     ) -> some View {
         if let content, !content.isEmpty {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -1697,14 +1734,14 @@ struct StudioHistoryRow: View {
                         StudioIconButton(
                             systemImage: isPlaying ? "stop.circle" : "play.circle",
                             frame: 24,
-                            action: playAction,
+                            action: playAction
                         )
                         .opacity(isAudioPathHovered ? 0.78 : 0)
                         .allowsHitTesting(isAudioPathHovered)
                         .animation(.easeOut(duration: 0.12), value: isAudioPathHovered)
                         .studioTooltip(
                             isPlaying ? L("history.action.stopAudio") : L("history.action.playAudio"),
-                            yOffset: 34,
+                            yOffset: 34
                         )
                     }
                 }
@@ -1713,7 +1750,7 @@ struct StudioHistoryRow: View {
             .padding(StudioTheme.Insets.cardDense)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.controlSurface),
+                    .fill(StudioTheme.controlSurface)
             )
             .onHover { isAudioPathHovered = $0 }
         }
@@ -1722,7 +1759,7 @@ struct StudioHistoryRow: View {
     @ViewBuilder
     private func historyPipelineStatsSection(
         title: String,
-        items: [HistoryPipelineStatPresentationItem],
+        items: [HistoryPipelineStatPresentationItem]
     ) -> some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
@@ -1732,10 +1769,10 @@ struct StudioHistoryRow: View {
 
                 LazyVGrid(
                     columns: [
-                        GridItem(.adaptive(minimum: 180), spacing: StudioTheme.Spacing.small, alignment: .top),
+                        GridItem(.adaptive(minimum: 180), spacing: StudioTheme.Spacing.small, alignment: .top)
                     ],
                     alignment: .leading,
-                    spacing: StudioTheme.Spacing.small,
+                    spacing: StudioTheme.Spacing.small
                 ) {
                     ForEach(items) { item in
                         historyPipelineStatCard(item)
@@ -1746,7 +1783,7 @@ struct StudioHistoryRow: View {
             .padding(StudioTheme.Insets.cardDense)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.controlSurface),
+                    .fill(StudioTheme.controlSurface)
             )
         }
     }
@@ -1764,7 +1801,7 @@ struct StudioHistoryRow: View {
             Text(item.value)
                 .font(.studioBody(
                     isDuration ? StudioTheme.Typography.bodyLarge : StudioTheme.Typography.bodySmall,
-                    weight: isDuration ? .semibold : .medium,
+                    weight: isDuration ? .semibold : .medium
                 ))
                 .foregroundStyle(isDuration ? StudioTheme.textPrimary : StudioTheme.textSecondary)
                 .monospacedDigit()
@@ -1776,14 +1813,15 @@ struct StudioHistoryRow: View {
         .padding(.vertical, StudioTheme.Spacing.small)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .fill(isDuration ? StudioTheme.rowSurface : StudioTheme.controlSurface),
+                .fill(isDuration ? StudioTheme.rowSurface : StudioTheme.controlSurface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
                 .stroke(
-                    isDuration ? StudioTheme.accent.opacity(0.18) : StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
+                    isDuration ? StudioTheme.accent.opacity(0.18) : StudioTheme.border
+                        .opacity(StudioTheme.Opacity.cardBorder),
+                    lineWidth: StudioTheme.BorderWidth.thin
+                )
         )
     }
 
@@ -1792,7 +1830,7 @@ struct StudioHistoryRow: View {
         title: String,
         content: String?,
         emphasize: Bool = false,
-        copyAction: (() -> Void)? = nil,
+        copyAction: (() -> Void)? = nil
     ) -> some View {
         if let content, !content.isEmpty {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -1819,7 +1857,7 @@ struct StudioHistoryRow: View {
             .padding(StudioTheme.Insets.cardDense)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.controlSurface),
+                    .fill(StudioTheme.controlSurface)
             )
         }
     }
@@ -1840,29 +1878,29 @@ struct StudioSegmentedPicker<T: Hashable>: View {
                     Text(option.label)
                         .font(.studioBody(StudioTheme.Typography.body, weight: .semibold))
                         .foregroundStyle(
-                            selection == option.value ? StudioTheme.textPrimary : StudioTheme.textSecondary,
+                            selection == option.value ? StudioTheme.textPrimary : StudioTheme.textSecondary
                         )
                         .padding(.horizontal, StudioTheme.Insets.segmentedItemHorizontal)
                         .padding(.vertical, StudioTheme.Insets.segmentedItemVertical)
                         .background(
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
-                                .fill(selection == option.value ? StudioTheme.selectionSurfaceRaised : Color.clear),
+                                .fill(selection == option.value ? StudioTheme.selectionSurfaceRaised : Color.clear)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
                                 .stroke(
                                     Color.clear,
-                                    lineWidth: StudioTheme.BorderWidth.thin,
-                                ),
+                                    lineWidth: StudioTheme.BorderWidth.thin
+                                )
                         )
                         .shadow(
                             color: StudioTheme.shadow.opacity(selection == option.value ? 0.22 : 0),
                             radius: 10,
                             x: 0,
-                            y: 3,
+                            y: 3
                         )
                         .contentShape(
-                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous),
+                            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedItem, style: .continuous)
                         )
                 }
                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -1872,11 +1910,11 @@ struct StudioSegmentedPicker<T: Hashable>: View {
         .padding(.vertical, StudioTheme.Insets.segmentedControlVertical)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous)
-                .fill(StudioTheme.segmentedTrack),
+                .fill(StudioTheme.segmentedTrack)
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous)
-                .stroke(StudioTheme.border.opacity(0.55), lineWidth: StudioTheme.BorderWidth.thin),
+                .stroke(StudioTheme.border.opacity(0.55), lineWidth: StudioTheme.BorderWidth.thin)
         )
         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.segmentedControl, style: .continuous))
         .frame(minHeight: StudioTheme.Layout.modelTabsMinHeight, alignment: .leading)
@@ -1916,11 +1954,11 @@ struct StudioMenuPicker<T: Hashable>: View {
             .frame(width: width, height: height)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.controlSurface),
+                    .fill(StudioTheme.controlSurface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+                    .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin)
             )
             .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))

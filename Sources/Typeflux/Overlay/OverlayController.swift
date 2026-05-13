@@ -77,7 +77,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
         scrimOpacity: Double = 0.18,
         strokeOpacity: Double = 0.16,
         lineWidth: CGFloat = 0.9,
-        interactive: Bool = false,
+        interactive: Bool = false
     ) {
         self.shape = shape
         self.cornerRadius = cornerRadius
@@ -99,7 +99,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
                                 Glass.clear
                                     .interactive(interactive)
                                     .tint(Color.white.opacity(tintOpacity)),
-                                in: shape,
+                                in: shape
                             )
 
                         shape
@@ -120,13 +120,13 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
                         colors: [
                             Color.white.opacity(strokeOpacity + 0.08),
                             Color.white.opacity(strokeOpacity * 0.35),
-                            Color.white.opacity(strokeOpacity),
+                            Color.white.opacity(strokeOpacity)
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
+                        endPoint: .bottomTrailing
                     ),
-                    lineWidth: lineWidth,
-                ),
+                    lineWidth: lineWidth
+                )
         )
         .overlay(
             shape
@@ -136,14 +136,14 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
                         colors: [
                             Color.white.opacity(0.20),
                             Color.clear,
-                            Color.white.opacity(0.07),
+                            Color.white.opacity(0.07)
                         ],
                         startPoint: .top,
-                        endPoint: .bottom,
+                        endPoint: .bottom
                     ),
-                    lineWidth: 0.6,
+                    lineWidth: 0.6
                 )
-                .blendMode(.screen),
+                .blendMode(.screen)
         )
     }
 
@@ -152,7 +152,7 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
             RoundedVisualEffectBlur(
                 material: .popover,
                 blendingMode: .behindWindow,
-                cornerRadius: cornerRadius,
+                cornerRadius: cornerRadius
             )
             .allowsHitTesting(false)
 
@@ -168,7 +168,7 @@ private func overlayEventTapCallback(
     proxy _: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
-    refcon: UnsafeMutableRawPointer?,
+    refcon: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
     guard let refcon else { return Unmanaged.passUnretained(event) }
     let controller = Unmanaged<OverlayController>.fromOpaque(refcon).takeUnretainedValue()
@@ -180,7 +180,7 @@ private let overlayPickerSystemKeySignature: OSType = 0x5450_4B59 // TPKY
 private func overlayPickerSystemKeyCallback(
     nextHandler _: EventHandlerCallRef?,
     event: EventRef?,
-    userData: UnsafeMutableRawPointer?,
+    userData: UnsafeMutableRawPointer?
 ) -> OSStatus {
     guard let event, let userData else { return noErr }
 
@@ -192,7 +192,7 @@ private func overlayPickerSystemKeyCallback(
         nil,
         MemoryLayout<EventHotKeyID>.size,
         nil,
-        &hotkeyID,
+        &hotkeyID
     )
     guard status == noErr, hotkeyID.signature == overlayPickerSystemKeySignature else {
         return noErr
@@ -221,7 +221,7 @@ struct OverlayFailureAction {
         isRetry: Bool,
         style: Style = .primary,
         trailingSystemImage: String? = nil,
-        handler: @escaping () -> Void,
+        handler: @escaping () -> Void
     ) {
         self.title = title
         self.isRetry = isRetry
@@ -306,7 +306,7 @@ final class OverlayController {
         onMoveDown: (() -> Void)?,
         onSelect: ((Int) -> Void)?,
         onConfirm: (() -> Void)?,
-        onCancel: (() -> Void)?,
+        onCancel: (() -> Void)?
     ) {
         model.onPersonaMoveUpRequested = onMoveUp
         model.onPersonaMoveDownRequested = onMoveDown
@@ -318,7 +318,7 @@ final class OverlayController {
     func setHistoryPickerActionHandlers(
         onCopy: ((Int) -> Void)?,
         onInsert: ((Int) -> Void)?,
-        onRetry: ((Int) -> Void)?,
+        onRetry: ((Int) -> Void)?
     ) {
         model.onHistoryCopyRequested = onCopy
         model.onHistoryInsertRequested = onInsert
@@ -367,7 +367,7 @@ final class OverlayController {
             let metrics = metrics(for: .recordingHold)
             let panel = OverlayPanel(
                 contentRect: NSRect(origin: .zero, size: metrics.size),
-                styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false,
+                styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false
             )
             panel.isFloatingPanel = true
             panel.level = NSWindow.Level.statusBar
@@ -377,7 +377,7 @@ final class OverlayController {
             panel.ignoresMouseEvents = false
             panel.becomesKeyOnlyIfNeeded = true
             panel.collectionBehavior = [
-                NSWindow.CollectionBehavior.canJoinAllSpaces, NSWindow.CollectionBehavior.transient,
+                NSWindow.CollectionBehavior.canJoinAllSpaces, NSWindow.CollectionBehavior.transient
             ]
             panel.contentView = hosting
             panel.contentView?.wantsLayer = true
@@ -548,8 +548,8 @@ final class OverlayController {
             OverlayFailureAction(
                 title: L("common.retry"),
                 isRetry: true,
-                handler: { [weak self] in self?.model.onFailureRetryHandler?() },
-            ),
+                handler: { [weak self] in self?.model.onFailureRetryHandler?() }
+            )
         ])
         refreshWindow()
     }
@@ -570,8 +570,8 @@ final class OverlayController {
             OverlayFailureAction(
                 title: L("common.retry"),
                 isRetry: true,
-                handler: { [weak self] in self?.model.onFailureRetryHandler?() },
-            ),
+                handler: { [weak self] in self?.model.onFailureRetryHandler?() }
+            )
         ])
         refreshWindow()
     }
@@ -580,7 +580,7 @@ final class OverlayController {
         title: String = L("overlay.failure.title"),
         message: String,
         tone: OverlayFailureTone = .error,
-        actions: [OverlayFailureAction],
+        actions: [OverlayFailureAction]
     ) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
@@ -588,7 +588,7 @@ final class OverlayController {
                     title: title,
                     message: message,
                     tone: tone,
-                    actions: actions,
+                    actions: actions
                 )
             }
             return
@@ -606,7 +606,7 @@ final class OverlayController {
 
     static func wrapFailureActions(
         _ actions: [OverlayFailureAction],
-        beforeAction: @escaping () -> Void,
+        beforeAction: @escaping () -> Void
     ) -> [OverlayFailureAction] {
         actions.map { action in
             OverlayFailureAction(
@@ -617,7 +617,7 @@ final class OverlayController {
                 handler: {
                     beforeAction()
                     action.handler()
-                },
+                }
             )
         }
     }
@@ -688,13 +688,13 @@ final class OverlayController {
         title: String,
         instructions: String,
         icon: PersonaPickerIcon,
-        style: PickerStyle = .persona,
+        style: PickerStyle = .persona
     ) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
                 self?.showPersonaPicker(
                     items: items, selectedIndex: selectedIndex, title: title,
-                    instructions: instructions, icon: icon, style: style,
+                    instructions: instructions, icon: icon, style: style
                 )
             }
             return
@@ -846,7 +846,7 @@ final class OverlayController {
             calibratedRed: 0.13,
             green: 0.11,
             blue: 0.11,
-            alpha: 0.96,
+            alpha: 0.96
         )
 
         switch presentation {
@@ -927,49 +927,51 @@ final class OverlayController {
         case .recordingHold:
             return OverlayMetrics(
                 size: recordingOverlaySize(baseWidth: 146, baseHeight: 112), anchor: .bottom, offset: 16,
-                interactive: false,
+                interactive: false
             )
         case .recordingHoldPreview:
             let isExpanded = model.recordingPreviewExpanded
             return OverlayMetrics(
                 size: recordingOverlaySize(
                     baseWidth: isExpanded ? 428 : 146,
-                    baseHeight: isExpanded ? LiveTranscriptPreviewLayout.expandedOverlayHeight : 112,
+                    baseHeight: isExpanded ? LiveTranscriptPreviewLayout.expandedOverlayHeight : 112
                 ), anchor: .bottom, offset: 16,
-                interactive: false,
+                interactive: false
             )
         case .recordingLocked:
             return OverlayMetrics(
-                size: recordingOverlaySize(baseWidth: 196, baseHeight: 120), anchor: .bottom, offset: 16, interactive: true,
+                size: recordingOverlaySize(baseWidth: 196, baseHeight: 120), anchor: .bottom, offset: 16,
+                interactive: true
             )
         case .recordingLockedPreview:
             let isExpanded = model.recordingPreviewExpanded
             return OverlayMetrics(
                 size: recordingOverlaySize(
                     baseWidth: isExpanded ? 428 : 196,
-                    baseHeight: isExpanded ? LiveTranscriptPreviewLayout.expandedOverlayHeight : 120,
+                    baseHeight: isExpanded ? LiveTranscriptPreviewLayout.expandedOverlayHeight : 120
                 ), anchor: .bottom, offset: 16,
-                interactive: true,
+                interactive: true
             )
         case .processing:
             return OverlayMetrics(
-                size: NSSize(width: processingOverlayWidth() + Self.shadowGutter * 2, height: 112), anchor: .bottom, offset: 16,
-                interactive: false,
+                size: NSSize(width: processingOverlayWidth() + Self.shadowGutter * 2, height: 112), anchor: .bottom,
+                offset: 16,
+                interactive: false
             )
         case .processingPreview:
             return OverlayMetrics(
                 size: NSSize(width: 428, height: 218), anchor: .bottom, offset: 16,
-                interactive: false,
+                interactive: false
             )
         case .transcriptPreview:
             return OverlayMetrics(
                 size: NSSize(width: 344, height: 108), anchor: .bottom, offset: 80,
-                interactive: false,
+                interactive: false
             )
         case .notice:
             return OverlayMetrics(
                 size: NSSize(width: 344, height: 108), anchor: .bottom, offset: 80,
-                interactive: true,
+                interactive: true
             )
         case .failure:
             let actionHeight = model.failureActions.reduce(CGFloat(0)) { height, action in
@@ -978,18 +980,18 @@ final class OverlayController {
             let failureHeight: CGFloat = model.failureActions.isEmpty ? 208 : 212 + actionHeight
             return OverlayMetrics(
                 size: NSSize(width: 372, height: failureHeight), anchor: .bottom, offset: 80,
-                interactive: true,
+                interactive: true
             )
         case .personaPicker:
             let viewportHeight = min(320, max(180, model.personaViewportHeight))
             return OverlayMetrics(
                 size: NSSize(width: 458, height: viewportHeight + 152), anchor: .center, offset: 36,
-                interactive: true,
+                interactive: true
             )
         case .resultDialog:
             return OverlayMetrics(
                 size: NSSize(width: 446, height: 236), anchor: .bottom, offset: 36,
-                interactive: true,
+                interactive: true
             )
         }
     }
@@ -1001,7 +1003,7 @@ final class OverlayController {
 
         let estimatedHintWidth = max(
             baseWidth,
-            min(420, CGFloat(model.recordingHintText.count) * 10.0 + 44),
+            min(420, CGFloat(model.recordingHintText.count) * 10.0 + 44)
         )
         return NSSize(width: estimatedHintWidth, height: baseHeight + 36)
     }
@@ -1053,7 +1055,7 @@ final class OverlayController {
                 hotkeyID,
                 GetApplicationEventTarget(),
                 0,
-                &hotkeyRef,
+                &hotkeyRef
             )
             if status == noErr, let hotkeyRef {
                 pickerSystemKeyRefs[keyCode] = hotkeyRef
@@ -1068,7 +1070,7 @@ final class OverlayController {
 
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
-            eventKind: UInt32(kEventHotKeyPressed),
+            eventKind: UInt32(kEventHotKeyPressed)
         )
         let userData = Unmanaged.passUnretained(self).toOpaque()
         let status = InstallEventHandler(
@@ -1077,7 +1079,7 @@ final class OverlayController {
             1,
             &eventType,
             userData,
-            &pickerSystemKeyHandlerRef,
+            &pickerSystemKeyHandlerRef
         )
         if status != noErr {
             ErrorLogStore.shared.log("Overlay: failed to install picker system key handler, status \(status)")
@@ -1104,11 +1106,11 @@ final class OverlayController {
                 options: .defaultTap,
                 eventsOfInterest: mask,
                 callback: overlayEventTapCallback,
-                userInfo: selfPtr,
+                userInfo: selfPtr
             )
         else {
             NSLog(
-                "[OverlayController] Failed to create CGEventTap — falling back to NSEvent monitors",
+                "[OverlayController] Failed to create CGEventTap — falling back to NSEvent monitors"
             )
             installNSEventMonitorFallback()
             return
@@ -1145,7 +1147,7 @@ final class OverlayController {
     private func installMouseMonitoringIfNeeded() {
         guard _mouseOutsideMonitor == nil else { return }
         _mouseOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown],
+            matching: [.leftMouseDown, .rightMouseDown]
         ) { [weak self] _ in
             guard let self, model.presentation == .personaPicker else { return }
             let mouseLocation = NSEvent.mouseLocation
@@ -1202,7 +1204,9 @@ final class OverlayController {
     }
 
     private func handleKeyCode(_ keyCode: Int) -> Bool {
-        if model.presentation == .recordingHold || model.presentation == .recordingHoldPreview || model.presentation == .recordingLocked || model.presentation == .recordingLockedPreview {
+        if model.presentation == .recordingHold || model.presentation == .recordingHoldPreview || model
+            .presentation == .recordingLocked || model.presentation == .recordingLockedPreview
+        {
             if keyCode == 53 {
                 model.requestCancel()
                 return true
@@ -1398,11 +1402,15 @@ private struct OverlayView: View {
                 case .recordingHold:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: false) }
                 case .recordingHoldPreview:
-                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: false) }
+                    recordingStack {
+                        recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: false)
+                    }
                 case .recordingLocked:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: true) }
                 case .recordingLockedPreview:
-                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true) }
+                    recordingStack {
+                        recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true)
+                    }
                 case .processing:
                     processingCapsule
                 case .processingPreview:
@@ -1425,11 +1433,15 @@ private struct OverlayView: View {
                 case .recordingHold:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: false) }
                 case .recordingHoldPreview:
-                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: false) }
+                    recordingStack {
+                        recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: false)
+                    }
                 case .recordingLocked:
                     recordingStack { recordingMorphCapsule(expanded: false, showControls: true) }
                 case .recordingLockedPreview:
-                    recordingStack { recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true) }
+                    recordingStack {
+                        recordingMorphCapsule(expanded: model.recordingPreviewExpanded, showControls: true)
+                    }
                 case .processing:
                     processingCapsule
                 case .processingPreview:
@@ -1510,8 +1522,8 @@ private struct OverlayView: View {
                     cornerRadius: nil,
                     tintOpacity: 0.05,
                     strokeOpacity: 0.14,
-                    lineWidth: 0.8,
-                ),
+                    lineWidth: 0.8
+                )
             )
             .fixedSize(horizontal: true, vertical: true)
     }
@@ -1521,7 +1533,7 @@ private struct OverlayView: View {
             title: model.statusText.isEmpty ? L("overlay.processing.thinking") : model.statusText,
             progress: model.processingProgress,
             epoch: model.processingEpoch,
-            phase: model.processingPhase,
+            phase: model.processingPhase
         )
     }
 
@@ -1531,7 +1543,7 @@ private struct OverlayView: View {
             title: model.statusText.isEmpty ? L("overlay.processing.thinking") : model.statusText,
             progress: model.processingProgress,
             epoch: model.processingEpoch,
-            phase: model.processingPhase,
+            phase: model.processingPhase
         )
         .fixedSize(horizontal: true, vertical: true)
     }
@@ -1543,7 +1555,7 @@ private struct OverlayView: View {
             expanded: expanded,
             showControls: showControls,
             onCancel: model.requestCancel,
-            onConfirm: model.requestConfirm,
+            onConfirm: model.requestConfirm
         )
         .fixedSize(horizontal: true, vertical: true)
     }
@@ -1572,7 +1584,7 @@ private struct OverlayView: View {
                     icon: failureIcon,
                     accent: failureAccent,
                     title: model.statusText,
-                    dismissible: true,
+                    dismissible: true
                 )
 
                 ScrollView(showsIndicators: false) {
@@ -1653,14 +1665,14 @@ private struct OverlayView: View {
         switch style {
         case .primary:
             RoundedRectangle(cornerRadius: 8).fill(
-                failureAccent.opacity(model.failureTone == .billing ? 0.62 : 0.48),
+                failureAccent.opacity(model.failureTone == .billing ? 0.62 : 0.48)
             )
         case .secondary:
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.white.opacity(0.055))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.white.opacity(0.09), lineWidth: 0.8),
+                        .stroke(Color.white.opacity(0.09), lineWidth: 0.8)
                 )
         case .text:
             Color.clear
@@ -1675,7 +1687,7 @@ private struct OverlayView: View {
                     accent: StudioTheme.accent,
                     title: model.statusText,
                     dismissible: true,
-                    titleSize: 13.5,
+                    titleSize: 13.5
                 )
 
                 Text(model.detailText)
@@ -1719,11 +1731,11 @@ private struct OverlayView: View {
                         .frame(width: 26, height: 26)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.18)),
+                                .fill(Color.black.opacity(0.18))
                         )
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.20), lineWidth: 0.8),
+                                .stroke(Color.white.opacity(0.20), lineWidth: 0.8)
                         )
                         .shadow(color: Color.black.opacity(0.18), radius: 5, x: 0, y: 2)
                 }
@@ -1737,7 +1749,7 @@ private struct OverlayView: View {
                             index, item in
                             personaPickerRow(
                                 item: item, index: index,
-                                isSelected: index == model.personaSelectedIndex,
+                                isSelected: index == model.personaSelectedIndex
                             )
                             .id(index)
                         }
@@ -1776,7 +1788,7 @@ private struct OverlayView: View {
         .overlay(
             shape
                 .fill(Color.black.opacity(0.28))
-                .allowsHitTesting(false),
+                .allowsHitTesting(false)
         )
         .overlay(
             shape
@@ -1785,13 +1797,13 @@ private struct OverlayView: View {
                         colors: [
                             Color.white.opacity(0.08),
                             Color.clear,
-                            Color.black.opacity(0.10),
+                            Color.black.opacity(0.10)
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
+                        endPoint: .bottomTrailing
+                    )
                 )
-                .allowsHitTesting(false),
+                .allowsHitTesting(false)
         )
         .overlay(
             shape
@@ -1800,13 +1812,13 @@ private struct OverlayView: View {
                         colors: [
                             Color.white.opacity(0.26),
                             Color.white.opacity(0.06),
-                            Color.white.opacity(0.18),
+                            Color.white.opacity(0.18)
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
+                        endPoint: .bottomTrailing
                     ),
-                    lineWidth: 1.0,
-                ),
+                    lineWidth: 1.0
+                )
         )
         .overlay(
             shape
@@ -1816,14 +1828,14 @@ private struct OverlayView: View {
                         colors: [
                             Color.white.opacity(0.20),
                             Color.clear,
-                            Color.white.opacity(0.07),
+                            Color.white.opacity(0.07)
                         ],
                         startPoint: .top,
-                        endPoint: .bottom,
+                        endPoint: .bottom
                     ),
-                    lineWidth: 0.6,
+                    lineWidth: 0.6
                 )
-                .blendMode(.screen),
+                .blendMode(.screen)
         )
     }
 
@@ -1862,7 +1874,7 @@ private struct OverlayView: View {
                     accent: StudioTheme.accent,
                     title: model.statusText,
                     dismissible: true,
-                    titleSize: 13.5,
+                    titleSize: 13.5
                 )
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -1887,11 +1899,11 @@ private struct OverlayView: View {
                                 .padding(.vertical, 9)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.white.opacity(0.14)),
+                                        .fill(Color.white.opacity(0.14))
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .stroke(Color.white.opacity(0.12), lineWidth: 1),
+                                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -1904,14 +1916,14 @@ private struct OverlayView: View {
     }
 
     private func personaPickerRow(
-        item: OverlayController.PersonaPickerItem, index: Int, isSelected: Bool,
+        item: OverlayController.PersonaPickerItem, index: Int, isSelected: Bool
     ) -> some View {
         OverlayPickerRow(
             model: model,
             item: item,
             index: index,
             isSelected: isSelected,
-            isHistory: model.pickerStyle == .history,
+            isHistory: model.pickerStyle == .history
         )
     }
 
@@ -1984,17 +1996,17 @@ private struct OverlayView: View {
                 .fill(
                     isSelected
                         ? StudioTheme.accent.opacity(0.34)
-                        : Color.black.opacity(0.16),
+                        : Color.black.opacity(0.16)
                 )
                 .frame(width: 40, height: 40)
                 .overlay(
                     Text(String(item.title.prefix(2)).uppercased())
                         .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.78)),
+                        .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.78))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .stroke(Color.white.opacity(isSelected ? 0.20 : 0.10), lineWidth: 0.8),
+                        .stroke(Color.white.opacity(isSelected ? 0.20 : 0.10), lineWidth: 0.8)
                 )
         }
 
@@ -2041,15 +2053,15 @@ private struct OverlayView: View {
                 .fill(
                     isSelected
                         ? StudioTheme.accent.opacity(0.18)
-                        : Color.black.opacity(0.10),
+                        : Color.black.opacity(0.10)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(
                             isSelected
                                 ? StudioTheme.accent.opacity(0.95) : Color.white.opacity(0.08),
-                            lineWidth: isSelected ? 1.15 : 0.8,
-                        ),
+                            lineWidth: isSelected ? 1.15 : 0.8
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2059,9 +2071,9 @@ private struct OverlayView: View {
                                     ? [Color.white.opacity(0.055), Color.white.opacity(0.01)]
                                     : [Color.clear, Color.clear],
                                 startPoint: .top,
-                                endPoint: .bottom,
-                            ),
-                        ),
+                                endPoint: .bottom
+                            )
+                        )
                 )
         }
     }
@@ -2071,7 +2083,7 @@ private struct OverlayView: View {
         accent: Color,
         title: String,
         dismissible: Bool,
-        titleSize: CGFloat = 16.5,
+        titleSize: CGFloat = 16.5
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -2092,7 +2104,7 @@ private struct OverlayView: View {
                         .frame(width: 22, height: 22)
                         .background(
                             Circle()
-                                .fill(Color.white.opacity(0.08)),
+                                .fill(Color.white.opacity(0.08))
                         )
                 }
                 .buttonStyle(.plain)
@@ -2128,15 +2140,15 @@ private struct LockedRecordingCapsule: View {
                 tintOpacity: 0.05,
                 strokeOpacity: 0.16,
                 lineWidth: 1.0,
-                interactive: true,
-            ),
+                interactive: true
+            )
         )
         .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
     }
 
     private func roundIconButton(
-        systemName: String, action: @escaping () -> Void, inverted: Bool = false,
+        systemName: String, action: @escaping () -> Void, inverted: Bool = false
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
@@ -2145,11 +2157,11 @@ private struct LockedRecordingCapsule: View {
                 .frame(width: 24, height: 24)
                 .background(
                     Circle()
-                        .fill(inverted ? Color.white.opacity(0.92) : Color.black.opacity(0.20)),
+                        .fill(inverted ? Color.white.opacity(0.92) : Color.black.opacity(0.20))
                 )
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(inverted ? 0.46 : 0.22), lineWidth: 0.8),
+                        .stroke(Color.white.opacity(inverted ? 0.46 : 0.22), lineWidth: 0.8)
                 )
                 .shadow(color: Color.black.opacity(0.20), radius: 5, x: 0, y: 2)
         }
@@ -2193,8 +2205,8 @@ private struct MorphingRecordingCapsule: View {
                 tintOpacity: expanded ? 0.06 : 0.045,
                 strokeOpacity: 0.15,
                 lineWidth: 0.9,
-                interactive: showControls,
-            ),
+                interactive: showControls
+            )
         )
         .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
@@ -2219,7 +2231,7 @@ private struct MorphingRecordingCapsule: View {
     }
 
     private func roundIconButton(
-        systemName: String, action: @escaping () -> Void, inverted: Bool = false,
+        systemName: String, action: @escaping () -> Void, inverted: Bool = false
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
@@ -2228,11 +2240,11 @@ private struct MorphingRecordingCapsule: View {
                 .frame(width: 24, height: 24)
                 .background(
                     Circle()
-                        .fill(inverted ? Color.white.opacity(0.92) : Color.black.opacity(0.20)),
+                        .fill(inverted ? Color.white.opacity(0.92) : Color.black.opacity(0.20))
                 )
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(inverted ? 0.46 : 0.22), lineWidth: 0.8),
+                        .stroke(Color.white.opacity(inverted ? 0.46 : 0.22), lineWidth: 0.8)
                 )
                 .shadow(color: Color.black.opacity(0.20), radius: 5, x: 0, y: 2)
         }
@@ -2299,7 +2311,7 @@ private struct ThinkingProgressCapsule: View {
                 cornerRadius: nil,
                 tintOpacity: 0.05,
                 strokeOpacity: 0.16,
-                lineWidth: 1.0,
+                lineWidth: 1.0
             )
 
             GeometryReader { geo in
@@ -2384,8 +2396,8 @@ private struct ProcessingTranscriptCapsule: View {
                 cornerRadius: 22,
                 tintOpacity: 0.06,
                 strokeOpacity: 0.15,
-                lineWidth: 0.9,
-            ),
+                lineWidth: 0.9
+            )
         )
         .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 12)
         .environment(\.colorScheme, .dark)
@@ -2435,7 +2447,7 @@ private struct ProcessingTranscriptCapsule: View {
         .clipShape(capsuleShape)
         .overlay(
             capsuleShape
-                .stroke(Color.white.opacity(0.18), lineWidth: 0.8),
+                .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
         )
     }
 
@@ -2467,8 +2479,8 @@ private struct OverlayCapsule<Content: View>: View {
                     cornerRadius: nil,
                     tintOpacity: 0.05,
                     strokeOpacity: 0.16,
-                    lineWidth: 1.0,
-                ),
+                    lineWidth: 1.0
+                )
             )
             .shadow(color: Color.black.opacity(0.24), radius: 16, x: 0, y: 12)
             .environment(\.colorScheme, .dark)
@@ -2487,7 +2499,7 @@ private struct OverlayCard<Content: View>: View {
         compact: Bool = false,
         hostedInWindowChrome: Bool = false,
         shadowed: Bool = true,
-        @ViewBuilder content: () -> Content,
+        @ViewBuilder content: () -> Content
     ) {
         self.width = width
         self.compact = compact
@@ -2504,7 +2516,7 @@ private struct OverlayCard<Content: View>: View {
             .background(cardBackground)
             .shadow(
                 color: Color.black.opacity(shadowed ? 0.32 : 0), radius: shadowed ? 26 : 0, x: 0,
-                y: shadowed ? 16 : 0,
+                y: shadowed ? 16 : 0
             )
     }
 
@@ -2517,7 +2529,7 @@ private struct OverlayCard<Content: View>: View {
                 .fill(Color(red: 0.13, green: 0.11, blue: 0.11).opacity(0.96))
                 .overlay(
                     RoundedRectangle(cornerRadius: compact ? 14 : 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1),
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
                 )
         }
     }
@@ -2542,7 +2554,7 @@ private struct OverlayCompactToast<Content: View>: View {
             .background(toastBackground)
             .shadow(
                 color: Color.black.opacity(hostedInWindowChrome ? 0 : 0.28),
-                radius: hostedInWindowChrome ? 0 : 18, x: 0, y: hostedInWindowChrome ? 0 : 12,
+                radius: hostedInWindowChrome ? 0 : 18, x: 0, y: hostedInWindowChrome ? 0 : 12
             )
     }
 
@@ -2555,7 +2567,7 @@ private struct OverlayCompactToast<Content: View>: View {
                 .fill(Color(red: 0.13, green: 0.11, blue: 0.11).opacity(0.96))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1),
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
                 )
         }
     }
@@ -2578,7 +2590,7 @@ private struct OverlayButton: View {
             .padding(.vertical, compact ? 8.5 : 10.5)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.14)),
+                    .fill(Color.white.opacity(0.14))
             )
     }
 }
@@ -2594,7 +2606,7 @@ private struct LevelWaveform: View {
                     .fill(activeColor)
                     .frame(
                         width: 2.3,
-                        height: OverlayWaveformMetrics.barHeight(for: index, level: level),
+                        height: OverlayWaveformMetrics.barHeight(for: index, level: level)
                     )
                     .shadow(color: Color.black.opacity(0.34), radius: 1.6, x: 0, y: 0.6)
             }

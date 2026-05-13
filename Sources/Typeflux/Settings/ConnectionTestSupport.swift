@@ -16,7 +16,7 @@ enum ConnectionTestSupport {
     static let timeoutDuration: Duration = .seconds(timeoutSeconds)
 
     static func runWithTimeout<T: Sendable>(
-        _ operation: @escaping @Sendable () async throws -> T,
+        _ operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {

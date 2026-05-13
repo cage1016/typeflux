@@ -58,7 +58,7 @@ final class AudioContentAnalyzerTests: XCTestCase {
             commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate,
             channels: 1,
-            interleaved: false,
+            interleaved: false
         ) else {
             throw NSError(domain: "AudioContentAnalyzerTests", code: 1)
         }
@@ -71,7 +71,7 @@ final class AudioContentAnalyzerTests: XCTestCase {
 
         guard let buffer = AVAudioPCMBuffer(
             pcmFormat: format,
-            frameCapacity: AVAudioFrameCount(max(samples.count, 1)),
+            frameCapacity: AVAudioFrameCount(max(samples.count, 1))
         ) else {
             throw NSError(domain: "AudioContentAnalyzerTests", code: 2)
         }

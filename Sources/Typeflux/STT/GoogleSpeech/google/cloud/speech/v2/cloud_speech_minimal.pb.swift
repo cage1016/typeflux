@@ -85,7 +85,7 @@ struct Google_Cloud_Speech_V2_ExplicitDecodingConfig: Sendable {
             .unspecified,
             .linear16,
             .mulaw,
-            .alaw,
+            .alaw
         ]
     }
 }
@@ -227,8 +227,6 @@ struct Google_Cloud_Speech_V2_SpeechRecognitionAlternative: Sendable {
     var confidence: Float = 0
 
     var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    init() {}
 }
 
 struct Google_Cloud_Speech_V2_StreamingRecognitionResult: Sendable {
@@ -247,8 +245,6 @@ struct Google_Cloud_Speech_V2_StreamingRecognitionResult: Sendable {
     var languageCode: String = .init()
 
     var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    init() {}
 }
 
 struct Google_Cloud_Speech_V2_StreamingRecognizeResponse: Sendable {
@@ -299,7 +295,7 @@ struct Google_Cloud_Speech_V2_StreamingRecognizeResponse: Sendable {
             .unspecified,
             .endOfSingleUtterance,
             .speechActivityBegin,
-            .speechActivityEnd,
+            .speechActivityEnd
         ]
     }
 }
@@ -308,7 +304,9 @@ struct Google_Cloud_Speech_V2_StreamingRecognizeResponse: Sendable {
 
 private let _protobuf_package = "google.cloud.speech.v2"
 
-extension Google_Cloud_Speech_V2_AutoDetectDecodingConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_AutoDetectDecodingConfig: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".AutoDetectDecodingConfig"
     static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
@@ -321,15 +319,22 @@ extension Google_Cloud_Speech_V2_AutoDetectDecodingConfig: SwiftProtobuf.Message
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_AutoDetectDecodingConfig, rhs: Google_Cloud_Speech_V2_AutoDetectDecodingConfig) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_AutoDetectDecodingConfig,
+        rhs: Google_Cloud_Speech_V2_AutoDetectDecodingConfig
+    ) -> Bool {
         if lhs.unknownFields != rhs.unknownFields { return false }
         return true
     }
 }
 
-extension Google_Cloud_Speech_V2_ExplicitDecodingConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_ExplicitDecodingConfig: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase,
+    SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".ExplicitDecodingConfig"
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}encoding\0\u{3}sample_rate_hertz\0\u{3}audio_channel_count\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(bytecode: "\0\u{1}encoding\0\u{3}sample_rate_hertz\0\u{3}audio_channel_count\0")
 
     mutating func decodeMessage(decoder: inout some SwiftProtobuf.Decoder) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
@@ -358,7 +363,10 @@ extension Google_Cloud_Speech_V2_ExplicitDecodingConfig: SwiftProtobuf.Message, 
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_ExplicitDecodingConfig, rhs: Google_Cloud_Speech_V2_ExplicitDecodingConfig) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_ExplicitDecodingConfig,
+        rhs: Google_Cloud_Speech_V2_ExplicitDecodingConfig
+    ) -> Bool {
         if lhs.encoding != rhs.encoding { return false }
         if lhs.sampleRateHertz != rhs.sampleRateHertz { return false }
         if lhs.audioChannelCount != rhs.audioChannelCount { return false }
@@ -368,12 +376,18 @@ extension Google_Cloud_Speech_V2_ExplicitDecodingConfig: SwiftProtobuf.Message, 
 }
 
 extension Google_Cloud_Speech_V2_ExplicitDecodingConfig.AudioEncoding: SwiftProtobuf._ProtoNameProviding {
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0AUDIO_ENCODING_UNSPECIFIED\0\u{1}LINEAR16\0\u{1}MULAW\0\u{1}ALAW\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(bytecode: "\0\u{2}\0AUDIO_ENCODING_UNSPECIFIED\0\u{1}LINEAR16\0\u{1}MULAW\0\u{1}ALAW\0")
 }
 
-extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase,
+    SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".RecognitionConfig"
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{7}auto_decoding_config\0\u{3}explicit_decoding_config\0\u{1}model\0\u{3}language_codes\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(
+            bytecode: "\0\u{4}\u{7}auto_decoding_config\0\u{3}explicit_decoding_config\0\u{1}model\0\u{3}language_codes\0"
+        )
 
     mutating func decodeMessage(decoder: inout some SwiftProtobuf.Decoder) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
@@ -439,7 +453,9 @@ extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, Swift
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_RecognitionConfig, rhs: Google_Cloud_Speech_V2_RecognitionConfig) -> Bool {
+    static func == (lhs: Google_Cloud_Speech_V2_RecognitionConfig,
+                    rhs: Google_Cloud_Speech_V2_RecognitionConfig) -> Bool
+    {
         if lhs.decodingConfig != rhs.decodingConfig { return false }
         if lhs.model != rhs.model { return false }
         if lhs.languageCodes != rhs.languageCodes { return false }
@@ -448,9 +464,12 @@ extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, Swift
     }
 }
 
-extension Google_Cloud_Speech_V2_StreamingRecognitionFeatures: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_StreamingRecognitionFeatures: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognitionFeatures"
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}enable_voice_activity_events\0\u{3}interim_results\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(bytecode: "\0\u{3}enable_voice_activity_events\0\u{3}interim_results\0")
 
     mutating func decodeMessage(decoder: inout some SwiftProtobuf.Decoder) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
@@ -475,7 +494,10 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionFeatures: SwiftProtobuf.Mes
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_StreamingRecognitionFeatures, rhs: Google_Cloud_Speech_V2_StreamingRecognitionFeatures) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_StreamingRecognitionFeatures,
+        rhs: Google_Cloud_Speech_V2_StreamingRecognitionFeatures
+    ) -> Bool {
         if lhs.enableVoiceActivityEvents != rhs.enableVoiceActivityEvents { return false }
         if lhs.interimResults != rhs.interimResults { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
@@ -483,7 +505,9 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionFeatures: SwiftProtobuf.Mes
     }
 }
 
-extension Google_Cloud_Speech_V2_StreamingRecognitionConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_StreamingRecognitionConfig: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognitionConfig"
     static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}config\0\u{3}streaming_features\0")
 
@@ -514,7 +538,10 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionConfig: SwiftProtobuf.Messa
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_StreamingRecognitionConfig, rhs: Google_Cloud_Speech_V2_StreamingRecognitionConfig) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_StreamingRecognitionConfig,
+        rhs: Google_Cloud_Speech_V2_StreamingRecognitionConfig
+    ) -> Bool {
         if lhs._config != rhs._config { return false }
         if lhs._streamingFeatures != rhs._streamingFeatures { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
@@ -522,9 +549,12 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionConfig: SwiftProtobuf.Messa
     }
 }
 
-extension Google_Cloud_Speech_V2_StreamingRecognizeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_StreamingRecognizeRequest: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognizeRequest"
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\u{3}recognizer\0\u{2}\u{2}audio\0\u{3}streaming_config\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(bytecode: "\0\u{2}\u{3}recognizer\0\u{2}\u{2}audio\0\u{3}streaming_config\0")
 
     mutating func decodeMessage(decoder: inout some SwiftProtobuf.Decoder) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
@@ -581,7 +611,10 @@ extension Google_Cloud_Speech_V2_StreamingRecognizeRequest: SwiftProtobuf.Messag
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_StreamingRecognizeRequest, rhs: Google_Cloud_Speech_V2_StreamingRecognizeRequest) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_StreamingRecognizeRequest,
+        rhs: Google_Cloud_Speech_V2_StreamingRecognizeRequest
+    ) -> Bool {
         if lhs.recognizer != rhs.recognizer { return false }
         if lhs.streamingRequest != rhs.streamingRequest { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
@@ -589,7 +622,9 @@ extension Google_Cloud_Speech_V2_StreamingRecognizeRequest: SwiftProtobuf.Messag
     }
 }
 
-extension Google_Cloud_Speech_V2_SpeechRecognitionAlternative: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_SpeechRecognitionAlternative: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".SpeechRecognitionAlternative"
     static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}transcript\0\u{1}confidence\0")
 
@@ -616,7 +651,10 @@ extension Google_Cloud_Speech_V2_SpeechRecognitionAlternative: SwiftProtobuf.Mes
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_SpeechRecognitionAlternative, rhs: Google_Cloud_Speech_V2_SpeechRecognitionAlternative) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_SpeechRecognitionAlternative,
+        rhs: Google_Cloud_Speech_V2_SpeechRecognitionAlternative
+    ) -> Bool {
         if lhs.transcript != rhs.transcript { return false }
         if lhs.confidence != rhs.confidence { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
@@ -624,9 +662,14 @@ extension Google_Cloud_Speech_V2_SpeechRecognitionAlternative: SwiftProtobuf.Mes
     }
 }
 
-extension Google_Cloud_Speech_V2_StreamingRecognitionResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_StreamingRecognitionResult: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognitionResult"
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}alternatives\0\u{3}is_final\0\u{1}stability\0\u{4}\u{2}channel_tag\0\u{3}language_code\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(
+            bytecode: "\0\u{1}alternatives\0\u{3}is_final\0\u{1}stability\0\u{4}\u{2}channel_tag\0\u{3}language_code\0"
+        )
 
     mutating func decodeMessage(decoder: inout some SwiftProtobuf.Decoder) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
@@ -663,7 +706,10 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionResult: SwiftProtobuf.Messa
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_StreamingRecognitionResult, rhs: Google_Cloud_Speech_V2_StreamingRecognitionResult) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_StreamingRecognitionResult,
+        rhs: Google_Cloud_Speech_V2_StreamingRecognitionResult
+    ) -> Bool {
         if lhs.alternatives != rhs.alternatives { return false }
         if lhs.isFinal != rhs.isFinal { return false }
         if lhs.stability != rhs.stability { return false }
@@ -674,9 +720,12 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionResult: SwiftProtobuf.Messa
     }
 }
 
-extension Google_Cloud_Speech_V2_StreamingRecognizeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension Google_Cloud_Speech_V2_StreamingRecognizeResponse: SwiftProtobuf.Message,
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
+{
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognizeResponse"
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{3}speech_event_type\0\u{2}\u{3}results\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(bytecode: "\0\u{4}\u{3}speech_event_type\0\u{2}\u{3}results\0")
 
     mutating func decodeMessage(decoder: inout some SwiftProtobuf.Decoder) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
@@ -701,7 +750,10 @@ extension Google_Cloud_Speech_V2_StreamingRecognizeResponse: SwiftProtobuf.Messa
         try unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: Google_Cloud_Speech_V2_StreamingRecognizeResponse, rhs: Google_Cloud_Speech_V2_StreamingRecognizeResponse) -> Bool {
+    static func == (
+        lhs: Google_Cloud_Speech_V2_StreamingRecognizeResponse,
+        rhs: Google_Cloud_Speech_V2_StreamingRecognizeResponse
+    ) -> Bool {
         if lhs.results != rhs.results { return false }
         if lhs.speechEventType != rhs.speechEventType { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
@@ -710,5 +762,8 @@ extension Google_Cloud_Speech_V2_StreamingRecognizeResponse: SwiftProtobuf.Messa
 }
 
 extension Google_Cloud_Speech_V2_StreamingRecognizeResponse.SpeechEventType: SwiftProtobuf._ProtoNameProviding {
-    static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SPEECH_EVENT_TYPE_UNSPECIFIED\0\u{1}END_OF_SINGLE_UTTERANCE\0\u{1}SPEECH_ACTIVITY_BEGIN\0\u{1}SPEECH_ACTIVITY_END\0")
+    static let _protobuf_nameMap = SwiftProtobuf
+        ._NameMap(
+            bytecode: "\0\u{2}\0SPEECH_EVENT_TYPE_UNSPECIFIED\0\u{1}END_OF_SINGLE_UTTERANCE\0\u{1}SPEECH_ACTIVITY_BEGIN\0\u{1}SPEECH_ACTIVITY_END\0"
+        )
 }

@@ -27,7 +27,7 @@ final class WhisperKitTranscriber: Transcriber {
         modelRepo: String? = nil,
         modelEndpoint: String? = nil,
         modelFolder: String? = nil,
-        tokenizerFolder: URL? = nil,
+        tokenizerFolder: URL? = nil
     ) {
         self.modelName = modelName
         self.downloadBase = downloadBase
@@ -50,7 +50,7 @@ final class WhisperKitTranscriber: Transcriber {
 
     func transcribeStream(
         audioFile: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         let pipe = try await ensurePipeline()
 
@@ -58,7 +58,7 @@ final class WhisperKitTranscriber: Transcriber {
 
         let results: [TranscriptionResult] = try await pipe.transcribe(
             audioPath: audioFile.fileURL.path,
-            decodeOptions: options,
+            decodeOptions: options
         ) { progress in
             // progress.text accumulates the partial transcript window by window
             let partial = progress.text
@@ -80,7 +80,7 @@ final class WhisperKitTranscriber: Transcriber {
             language: nil,
             usePrefillPrompt: true,
             detectLanguage: true,
-            withoutTimestamps: true,
+            withoutTimestamps: true
         )
     }
 
@@ -140,7 +140,7 @@ final class WhisperKitTranscriber: Transcriber {
                 modelEndpoint: modelEndpoint,
                 modelFolder: modelFolder,
                 tokenizerFolder: tokenizerFolder,
-                verbose: false,
+                verbose: false
             ))
         }
         pipelineLoadTask = task

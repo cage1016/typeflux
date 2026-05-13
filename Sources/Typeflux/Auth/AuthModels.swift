@@ -96,7 +96,10 @@ private extension KeyedDecodingContainer {
         }
         throw DecodingError.keyNotFound(
             keys[0],
-            DecodingError.Context(codingPath: codingPath, debugDescription: "Expected one of \(keys.map(\.stringValue))")
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected one of \(keys.map(\.stringValue))"
+            )
         )
     }
 
@@ -121,7 +124,10 @@ private extension KeyedDecodingContainer {
         }
         throw DecodingError.keyNotFound(
             keys[0],
-            DecodingError.Context(codingPath: codingPath, debugDescription: "Expected one of \(keys.map(\.stringValue))")
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected one of \(keys.map(\.stringValue))"
+            )
         )
     }
 }
@@ -256,7 +262,7 @@ enum AuthError: LocalizedError {
             TypefluxCloudServerErrorMessage.userMessage(
                 code: code,
                 message: message,
-                fallback: L("auth.error.unknown"),
+                fallback: L("auth.error.unknown")
             )
         case .invalidResponse:
             L("auth.error.invalidResponse")

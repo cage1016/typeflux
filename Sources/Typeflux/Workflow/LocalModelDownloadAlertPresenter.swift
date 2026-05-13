@@ -6,7 +6,9 @@ protocol LocalModelDownloadAlertPresenting {
     func showDownloadingAlert(model: LocalSTTModel, progress: Double)
 }
 
-final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownloadAlertPresenting, NSWindowDelegate, @unchecked Sendable {
+final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownloadAlertPresenting, NSWindowDelegate,
+    @unchecked Sendable
+{
     private var alertWindow: NSPanel?
     private var alertViewModel: LocalModelDownloadAlertViewModel?
     private var progressObserver: NSObjectProtocol?
@@ -24,7 +26,7 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 190),
             styleMask: [.nonactivatingPanel, .titled, .closable, .fullSizeContentView],
             backing: .buffered,
-            defer: false,
+            defer: false
         )
         window.isFloatingPanel = true
         window.isReleasedWhenClosed = false
@@ -42,7 +44,7 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
         let contentView = LocalModelDownloadAlertContentView(
             viewModel: viewModel,
             title: L("workflow.localModelDownloadingAlert.title"),
-            message: L("workflow.localModelDownloadingAlert.message", model.displayName),
+            message: L("workflow.localModelDownloadingAlert.message", model.displayName)
         ) { [weak self] in
             self?.closeAlert()
         }
@@ -51,12 +53,12 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
         progressObserver = NotificationCenter.default.addObserver(
             forName: .localModelDownloadProgressDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self, weak viewModel] _ in
             self?.applyProgressStatus(
                 LocalModelDownloadProgressCenter.shared.status,
                 model: model,
-                viewModel: viewModel,
+                viewModel: viewModel
             )
         }
 
@@ -98,7 +100,7 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
             self?.applyProgressStatus(
                 LocalModelDownloadProgressCenter.shared.status,
                 model: model,
-                viewModel: viewModel,
+                viewModel: viewModel
             )
         }
     }
@@ -106,7 +108,7 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
     private func applyProgressStatus(
         _ status: LocalModelDownloadProgressStatus,
         model: LocalSTTModel,
-        viewModel: LocalModelDownloadAlertViewModel?,
+        viewModel: LocalModelDownloadAlertViewModel?
     ) {
         switch status {
         case let .downloading(currentModel, currentProgress) where currentModel == model:
@@ -139,7 +141,7 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
         let frame = window.frame
         let origin = NSPoint(
             x: visibleFrame.midX - frame.width / 2,
-            y: visibleFrame.midY - frame.height / 2,
+            y: visibleFrame.midY - frame.height / 2
         )
         window.setFrameOrigin(origin)
     }
@@ -198,7 +200,7 @@ private struct LocalModelDownloadAlertContentView: View {
                     .foregroundStyle(.primary)
                 Text(viewModel.failureMessage == nil ? message : L(
                     "workflow.localModelDownloadingAlert.failedMessage",
-                    viewModel.failureMessage ?? "",
+                    viewModel.failureMessage ?? ""
                 ))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

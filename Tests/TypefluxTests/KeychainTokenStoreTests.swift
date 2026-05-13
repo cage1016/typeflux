@@ -143,7 +143,7 @@ final class KeychainTokenStoreTests: XCTestCase {
             status: 1,
             provider: "password",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
         )
         KeychainTokenStore.saveUserProfile(profile)
         let loaded = KeychainTokenStore.loadUserProfile()
@@ -162,7 +162,7 @@ final class KeychainTokenStoreTests: XCTestCase {
             status: 1,
             provider: "google",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
         )
         KeychainTokenStore.saveUserProfile(profile)
         KeychainTokenStore.deleteUserProfile()
@@ -180,7 +180,7 @@ final class KeychainTokenStoreTests: XCTestCase {
             status: 1,
             provider: "apple",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
         )
         KeychainTokenStore.saveUserProfile(profile)
 

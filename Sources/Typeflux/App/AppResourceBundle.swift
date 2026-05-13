@@ -20,7 +20,7 @@ extension Bundle {
         candidates.append(
             Bundle.main.bundleURL
                 .appendingPathComponent("Contents/Resources")
-                .appendingPathComponent(bundleName),
+                .appendingPathComponent(bundleName)
         )
         for url in candidates {
             if let bundle = Bundle(url: url) {

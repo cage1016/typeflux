@@ -51,7 +51,7 @@ struct CloudRequestExecutor: Sendable {
 
     init(
         selector: CloudEndpointSelector = CloudEndpointRegistry.shared,
-        session: CloudHTTPSession = URLSession.shared,
+        session: CloudHTTPSession = URLSession.shared
     ) {
         self.selector = selector
         self.session = session
@@ -77,7 +77,7 @@ struct CloudRequestExecutor: Sendable {
     func execute(
         apiPath: String? = nil,
         routingStrategy: CloudEndpointRoutingStrategy = .automatic,
-        build: @Sendable (URL) -> URLRequest,
+        build: @Sendable (URL) -> URLRequest
     ) async throws -> (Data, HTTPURLResponse) {
         let resolvedStrategy = resolveRoutingStrategy(routingStrategy, apiPath: apiPath)
         let endpoints: [URL] = switch resolvedStrategy {
@@ -109,11 +109,14 @@ struct CloudRequestExecutor: Sendable {
                     let httpError = NSError(
                         domain: "CloudRequestExecutor",
                         code: http.statusCode,
-                        userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode) from \(endpoint.absoluteString)"],
+                        userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode) from \(endpoint.absoluteString)"]
                     )
                     await selector.reportFailure(endpoint, error: httpError)
                     lastError = httpError
-                    logger.error("HTTP \(http.statusCode) from \(endpoint.absoluteString); will try next endpoint (\(index + 1)/\(endpoints.count))")
+                    logger
+                        .error(
+                            "HTTP \(http.statusCode) from \(endpoint.absoluteString); will try next endpoint (\(index + 1)/\(endpoints.count))"
+                        )
                     continue
                 }
                 let latency = durationToMilliseconds(elapsed)
@@ -128,17 +131,21 @@ struct CloudRequestExecutor: Sendable {
             } catch {
                 await selector.reportFailure(endpoint, error: error)
                 lastError = error
-                logger.error("Endpoint \(endpoint.absoluteString) failed: \(error.localizedDescription); will try next (\(index + 1)/\(endpoints.count))")
+                logger
+                    .error(
+                        "Endpoint \(endpoint.absoluteString) failed: \(error.localizedDescription); will try next (\(index + 1)/\(endpoints.count))"
+                    )
                 continue
             }
         }
 
-        throw CloudRequestExecutorError.allEndpointsFailed(lastError: lastError ?? CloudRequestExecutorError.noEndpointsAvailable)
+        throw CloudRequestExecutorError
+            .allEndpointsFailed(lastError: lastError ?? CloudRequestExecutorError.noEndpointsAvailable)
     }
 
     private func resolveRoutingStrategy(
         _ strategy: CloudEndpointRoutingStrategy,
-        apiPath: String?,
+        apiPath: String?
     ) -> CloudEndpointRoutingStrategy {
         guard strategy == .automatic else { return strategy }
         guard let path = apiPath else { return .primaryFirst }

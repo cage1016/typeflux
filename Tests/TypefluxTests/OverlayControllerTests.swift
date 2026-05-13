@@ -7,7 +7,7 @@ final class OverlayControllerTests: XCTestCase {
         XCTAssertEqual(
             LiveTranscriptPreviewLayout.textViewportHeight,
             LiveTranscriptPreviewLayout.lineHeight * 3,
-            accuracy: 0.001,
+            accuracy: 0.001
         )
     }
 
@@ -23,10 +23,10 @@ final class OverlayControllerTests: XCTestCase {
                 OverlayFailureAction(
                     title: "Login",
                     isRetry: false,
-                    handler: { events.append("action") },
-                ),
+                    handler: { events.append("action") }
+                )
             ],
-            beforeAction: { events.append("dismiss") },
+            beforeAction: { events.append("dismiss") }
         )
 
         XCTAssertEqual(wrapped.count, 1)
@@ -44,10 +44,10 @@ final class OverlayControllerTests: XCTestCase {
                     isRetry: true,
                     style: .text,
                     trailingSystemImage: "gearshape",
-                    handler: {},
-                ),
+                    handler: {}
+                )
             ],
-            beforeAction: {},
+            beforeAction: {}
         )
 
         XCTAssertEqual(wrapped[0].title, "Retry")

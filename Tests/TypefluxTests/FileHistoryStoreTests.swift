@@ -26,14 +26,14 @@ final class FileHistoryStoreTests: XCTestCase {
         date: Date = Date(),
         transcriptText: String? = nil,
         mode: HistoryRecord.Mode = .dictation,
-        audioFilePath: String? = nil,
+        audioFilePath: String? = nil
     ) -> HistoryRecord {
         HistoryRecord(
             id: id,
             date: date,
             mode: mode,
             audioFilePath: audioFilePath,
-            transcriptText: transcriptText,
+            transcriptText: transcriptText
         )
     }
 
@@ -228,7 +228,7 @@ final class FileHistoryStoreTests: XCTestCase {
     func testExportMarkdownGeneratesFile() throws {
         store.save(record: makeRecord(
             transcriptText: "hello world",
-            mode: .dictation,
+            mode: .dictation
         ))
         flush()
 
@@ -259,7 +259,7 @@ extension FileHistoryStoreTests {
             recordingStatus: .succeeded,
             transcriptionStatus: .succeeded,
             processingStatus: .succeeded,
-            applyStatus: .succeeded,
+            applyStatus: .succeeded
         )
         store.save(record: record)
 
@@ -296,7 +296,7 @@ extension FileHistoryStoreTests {
             date: Date(),
             mode: .personaRewrite,
             transcriptText: "raw",
-            personaResultText: "polished",
+            personaResultText: "polished"
         )
         store.save(record: record)
 

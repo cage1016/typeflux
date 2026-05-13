@@ -10,7 +10,7 @@ enum HistoryExportDestination {
     static func moveExport(
         at sourceURL: URL,
         to directoryURL: URL,
-        fileManager: FileManager = .default,
+        fileManager: FileManager = .default
     ) throws -> URL {
         let destinationURL = directoryURL.appendingPathComponent(sourceURL.lastPathComponent, isDirectory: false)
 

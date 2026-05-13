@@ -11,7 +11,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
     func testOrderedEndpointsPreservesConfiguredOrderBeforeProbes() async {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlC],
-            prober: StubProber(),
+            prober: StubProber()
         )
         let ordered = await selector.orderedEndpoints()
         XCTAssertEqual(ordered, [urlA, urlB, urlC])
@@ -20,7 +20,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
     func testOrderedEndpointsDeduplicatesDuplicateBaseURLs() async {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlA],
-            prober: StubProber(),
+            prober: StubProber()
         )
         let ordered = await selector.orderedEndpoints()
         XCTAssertEqual(ordered, [urlA, urlB])
@@ -29,7 +29,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
     func testOrderedEndpointsSortsByAscendingLatency() async {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlC],
-            prober: StubProber(),
+            prober: StubProber()
         )
         await selector.reportSuccess(urlA, latencyMs: 300)
         await selector.reportSuccess(urlB, latencyMs: 50)
@@ -42,7 +42,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
     func testOrderedEndpointsPlacesUnknownLatencyAfterKnown() async {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlC],
-            prober: StubProber(),
+            prober: StubProber()
         )
         await selector.reportSuccess(urlB, latencyMs: 200)
 
@@ -58,7 +58,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlC],
             prober: StubProber(),
-            config: config,
+            config: config
         )
         await selector.reportSuccess(urlA, latencyMs: 200)
         await selector.reportSuccess(urlB, latencyMs: 100)
@@ -72,7 +72,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
     func testPrimaryFirstEndpointsPreservesConfiguredOrderDespiteLatency() async {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlC],
-            prober: StubProber(),
+            prober: StubProber()
         )
         await selector.reportSuccess(urlA, latencyMs: 300)
         await selector.reportSuccess(urlB, latencyMs: 50)
@@ -89,7 +89,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB, urlC],
             prober: StubProber(),
-            config: config,
+            config: config
         )
         await selector.reportFailure(urlA, error: SampleError.boom)
 
@@ -108,7 +108,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
             baseURLs: [urlA, urlB],
             prober: StubProber(),
             config: config,
-            now: timeline.now,
+            now: timeline.now
         )
 
         // First failure on urlA at t=0 → cooldown ends ~60s later.
@@ -129,7 +129,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA],
             prober: StubProber(),
-            config: config,
+            config: config
         )
         await selector.reportSuccess(urlA, latencyMs: 100)
         await selector.reportSuccess(urlA, latencyMs: 200)
@@ -144,7 +144,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
         let selector = CloudEndpointSelector(
             baseURLs: [urlA],
             prober: StubProber(),
-            config: config,
+            config: config
         )
         await selector.reportFailure(urlA, error: SampleError.boom)
         await selector.reportSuccess(urlA, latencyMs: 80, serverID: "srv", serverVersion: "1.2.3")
@@ -168,7 +168,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
             baseURLs: [urlA],
             prober: StubProber(),
             config: config,
-            now: timeline.now,
+            now: timeline.now
         )
 
         await selector.reportFailure(urlA, error: SampleError.boom)
@@ -194,7 +194,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
             baseURLs: [urlA],
             prober: StubProber(),
             config: config,
-            now: timeline.now,
+            now: timeline.now
         )
 
         // 1st failure at threshold → 30s cooldown.
@@ -221,15 +221,20 @@ final class CloudEndpointSelectorTests: XCTestCase {
         let prober = StubProber()
         await prober.setResponse(
             for: urlA,
-            response: .success(CloudEndpointProbeResult(latencyMs: 42, serverID: "s1", serverVersion: "1.0", nonceMatches: true)),
+            response: .success(CloudEndpointProbeResult(
+                latencyMs: 42,
+                serverID: "s1",
+                serverVersion: "1.0",
+                nonceMatches: true
+            ))
         )
         await prober.setResponse(
             for: urlB,
-            response: .failure(CloudEndpointProbeError.timedOut),
+            response: .failure(CloudEndpointProbeError.timedOut)
         )
         let selector = CloudEndpointSelector(
             baseURLs: [urlA, urlB],
-            prober: prober,
+            prober: prober
         )
         await selector.probeAll()
 
@@ -255,7 +260,7 @@ final class CloudEndpointSelectorTests: XCTestCase {
             baseURLs: [urlA, urlB],
             prober: StubProber(),
             config: config,
-            now: timeline.now,
+            now: timeline.now
         )
         await selector.reportFailure(urlA, error: SampleError.boom)
         await selector.reportFailure(urlB, error: SampleError.boom)

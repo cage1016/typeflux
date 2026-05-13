@@ -12,7 +12,7 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.scenarioField), "voice-input")
             return (
                 Data(#"{"code":"OK","message":"","data":{"type":"websocket"}}"#.utf8),
-                Self.httpResponse(url: request.url!, status: 200),
+                Self.httpResponse(url: request.url!, status: 200)
             )
         }
         let client = makeClient(session: session)
@@ -27,8 +27,9 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
         await session.setHandler { request in
             XCTAssertEqual(request.url?.path, "/api/v1/asr/aliyun/token")
             return (
-                Data(#"{"code":"OK","message":"","data":{"type":"aliyun","token":"st-temp","expires_at":1893456000,"usage_report_id":"report-1"}}"#.utf8),
-                Self.httpResponse(url: request.url!, status: 200),
+                Data(#"{"code":"OK","message":"","data":{"type":"aliyun","token":"st-temp","expires_at":1893456000,"usage_report_id":"report-1"}}"#
+                    .utf8),
+                Self.httpResponse(url: request.url!, status: 200)
             )
         }
         let client = makeClient(session: session)
@@ -54,7 +55,7 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
 
             return (
                 Data(#"{"code":"OK","message":"","data":{"updated":true}}"#.utf8),
-                Self.httpResponse(url: request.url!, status: 200),
+                Self.httpResponse(url: request.url!, status: 200)
             )
         }
         let client = makeClient(session: session)
@@ -64,7 +65,7 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
             usageReportID: "report-1",
             audioDurationMs: 1200,
             outputChars: 32,
-            scenario: .askAnything,
+            scenario: .askAnything
         )
     }
 
@@ -77,7 +78,7 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
         await session.setHandler { request in
             (
                 Data(#"{"code":"ASR_QUOTA_EXCEEDED","message":"raw quota message","data":null}"#.utf8),
-                Self.httpResponse(url: request.url!, status: 429),
+                Self.httpResponse(url: request.url!, status: 429)
             )
         }
         let client = makeClient(session: session)
@@ -98,7 +99,10 @@ final class TypefluxOfficialASRRoutingClientTests: XCTestCase {
     }
 
     private func makeClient(session: RoutingStubSession) -> TypefluxOfficialASRRoutingHTTPClient {
-        let selector = CloudEndpointSelector(baseURLs: [URL(string: "https://api.example")!], prober: RoutingNoOpProber())
+        let selector = CloudEndpointSelector(
+            baseURLs: [URL(string: "https://api.example")!],
+            prober: RoutingNoOpProber()
+        )
         let executor = CloudRequestExecutor(selector: selector, session: session)
         return TypefluxOfficialASRRoutingHTTPClient(executor: executor)
     }
@@ -113,14 +117,14 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
         let routing = MockTypefluxRoutingClient(route: .aliyun(
             token: "st-temp",
             expiresAt: 1_893_456_000,
-            usageReportID: "report-1",
+            usageReportID: "report-1"
         ))
         let transport = MockTypefluxTransport()
         transport.directTranscript = "hello"
         let transcriber = TypefluxOfficialTranscriber(
             routingClient: routing,
             transport: transport,
-            accessTokenProvider: { "cloud-token" },
+            accessTokenProvider: { "cloud-token" }
         )
         let audioFile = try makeSilentAudioFile(duration: 0.1)
 
@@ -130,7 +134,7 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
             scenario: .voiceInput,
             onASRUpdate: { _ in },
             onLLMStart: {},
-            onLLMChunk: { _ in },
+            onLLMChunk: { _ in }
         )
         let report = await routing.waitForReport()
 
@@ -153,7 +157,7 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
         let transcriber = TypefluxOfficialTranscriber(
             routingClient: routing,
             transport: transport,
-            accessTokenProvider: { "cloud-token" },
+            accessTokenProvider: { "cloud-token" }
         )
         let audioFile = try makeSilentAudioFile(duration: 0.1)
 
@@ -163,7 +167,7 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
             scenario: .voiceInput,
             onASRUpdate: { _ in },
             onLLMStart: {},
-            onLLMChunk: { _ in },
+            onLLMChunk: { _ in }
         )
 
         XCTAssertEqual(result.transcript, "raw")
@@ -182,12 +186,12 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
         let transcriber = TypefluxOfficialTranscriber(
             routingClient: routing,
             transport: transport,
-            accessTokenProvider: { "cloud-token" },
+            accessTokenProvider: { "cloud-token" }
         )
 
         let session = try await transcriber.makeRealtimeTranscriptionSession(
             scenario: .voiceInput,
-            onUpdate: { _ in },
+            onUpdate: { _ in }
         )
 
         await session.start()
@@ -200,7 +204,7 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
         await routing.release(route: .aliyun(
             token: "st-temp",
             expiresAt: nil,
-            usageReportID: "report-1",
+            usageReportID: "report-1"
         ))
 
         let transcript = try await session.finish()
@@ -217,7 +221,7 @@ final class TypefluxOfficialTranscriberRoutingTests: XCTestCase {
             commonFormat: .pcmFormatFloat32,
             sampleRate: CloudASRAudioConverter.targetSampleRate,
             channels: 1,
-            interleaved: false,
+            interleaved: false
         )!
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
         buffer.frameLength = frameCount
@@ -308,7 +312,9 @@ private actor MockTypefluxRoutingClient: TypefluxOfficialASRRoutingClient {
         self.route = route
     }
 
-    func fetchRoute(accessToken _: String, scenario _: TypefluxCloudScenario) async throws -> TypefluxOfficialASRRouteDecision {
+    func fetchRoute(accessToken _: String,
+                    scenario _: TypefluxCloudScenario) async throws -> TypefluxOfficialASRRouteDecision
+    {
         route
     }
 
@@ -317,14 +323,14 @@ private actor MockTypefluxRoutingClient: TypefluxOfficialASRRoutingClient {
         usageReportID: String,
         audioDurationMs: Int64,
         outputChars: Int,
-        scenario: TypefluxCloudScenario,
+        scenario: TypefluxCloudScenario
     ) async throws {
         let report = Report(
             accessToken: accessToken,
             usageReportID: usageReportID,
             audioDurationMs: audioDurationMs,
             outputChars: outputChars,
-            scenario: scenario,
+            scenario: scenario
         )
         self.report = report
         reportContinuation?.resume(returning: report)
@@ -350,7 +356,7 @@ private actor DelayedTypefluxRoutingClient: TypefluxOfficialASRRoutingClient {
 
     func fetchRoute(
         accessToken _: String,
-        scenario _: TypefluxCloudScenario,
+        scenario _: TypefluxCloudScenario
     ) async throws -> TypefluxOfficialASRRouteDecision {
         didStartFetch = true
         fetchStartedContinuation?.resume()
@@ -365,7 +371,7 @@ private actor DelayedTypefluxRoutingClient: TypefluxOfficialASRRoutingClient {
         usageReportID _: String,
         audioDurationMs _: Int64,
         outputChars _: Int,
-        scenario _: TypefluxCloudScenario,
+        scenario _: TypefluxCloudScenario
     ) async throws {}
 
     func waitUntilFetchStarted() async {
@@ -398,7 +404,7 @@ private final class MockTypefluxTransport: TypefluxOfficialASRTransport, @unchec
         apiBaseURL _: String,
         token _: String,
         scenario _: TypefluxCloudScenario,
-        onUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         webSocketCallCount += 1
         return webSocketTranscript
@@ -412,7 +418,7 @@ private final class MockTypefluxTransport: TypefluxOfficialASRTransport, @unchec
         llmConfig _: ASRLLMConfig,
         onASRUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
         onLLMStart _: @escaping @Sendable () async -> Void,
-        onLLMChunk _: @escaping @Sendable (String) async -> Void,
+        onLLMChunk _: @escaping @Sendable (String) async -> Void
     ) async throws -> (transcript: String, rewritten: String?) {
         webSocketLLMCallCount += 1
         return webSocketLLMResult
@@ -421,7 +427,7 @@ private final class MockTypefluxTransport: TypefluxOfficialASRTransport, @unchec
     func transcribeViaDirectAliyun(
         pcmData _: Data,
         token: String,
-        onUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         directAliyunCallCount += 1
         lastDirectAliyunToken = token
@@ -430,7 +436,7 @@ private final class MockTypefluxTransport: TypefluxOfficialASRTransport, @unchec
 
     func makeDirectAliyunPCMStream(
         token: String,
-        onUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate _: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) -> any PCM16RealtimeTranscriptionSession {
         lastDirectAliyunToken = token
         return directPCMStreamFactory()

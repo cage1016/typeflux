@@ -5,7 +5,7 @@ private func hotkeyRecorderEventTapCallback(
     proxy _: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
-    refcon: UnsafeMutableRawPointer?,
+    refcon: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
     guard let refcon else { return Unmanaged.passUnretained(event) }
     let recorder = Unmanaged<HotkeyRecorder>.fromOpaque(refcon).takeUnretainedValue()
@@ -46,7 +46,7 @@ final class HotkeyRecorder: ObservableObject {
                 eventType: event.type,
                 keyCode: Int(event.keyCode),
                 modifierFlags: Self.filteredFlags(event.modifierFlags),
-                isRepeat: event.isARepeat,
+                isRepeat: event.isARepeat
             )
             return shouldConsume ? nil : event
         }
@@ -86,7 +86,7 @@ final class HotkeyRecorder: ObservableObject {
             options: .defaultTap,
             eventsOfInterest: CGEventMask(mask),
             callback: hotkeyRecorderEventTapCallback,
-            userInfo: selfPointer,
+            userInfo: selfPointer
         ) else {
             return false
         }
@@ -115,7 +115,7 @@ final class HotkeyRecorder: ObservableObject {
             eventType: eventType,
             keyCode: Int(event.getIntegerValueField(.keyboardEventKeycode)),
             modifierFlags: Self.filteredFlags(NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))),
-            isRepeat: eventType == .keyDown && event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
+            isRepeat: eventType == .keyDown && event.getIntegerValueField(.keyboardEventAutorepeat) != 0
         )
         return shouldConsume ? nil : Unmanaged.passUnretained(event)
     }
@@ -124,13 +124,13 @@ final class HotkeyRecorder: ObservableObject {
         eventType: NSEvent.EventType,
         keyCode: Int,
         modifierFlags: UInt,
-        isRepeat: Bool,
+        isRepeat: Bool
     ) -> Bool {
         if eventType == .flagsChanged {
             return processModifierOnlyRecordingEvent(
                 keyCode: keyCode,
                 modifierFlags: modifierFlags,
-                timestamp: Date().timeIntervalSinceReferenceDate,
+                timestamp: Date().timeIntervalSinceReferenceDate
             )
         }
 
@@ -138,7 +138,7 @@ final class HotkeyRecorder: ObservableObject {
             eventType: eventType,
             keyCode: keyCode,
             modifierFlags: modifierFlags,
-            isRepeat: isRepeat,
+            isRepeat: isRepeat
         ) else {
             return eventType == .keyDown && isRepeat
         }
@@ -162,7 +162,7 @@ final class HotkeyRecorder: ObservableObject {
         eventType: NSEvent.EventType,
         keyCode: Int,
         modifierFlags: UInt,
-        isRepeat: Bool,
+        isRepeat: Bool
     ) -> HotkeyBinding? {
         if eventType == .flagsChanged {
             return modifierOnlyBinding(keyCode: keyCode, modifierFlags: modifierFlags)
@@ -175,7 +175,7 @@ final class HotkeyRecorder: ObservableObject {
     private func processModifierOnlyRecordingEvent(
         keyCode: Int,
         modifierFlags: UInt,
-        timestamp: TimeInterval,
+        timestamp: TimeInterval
     ) -> Bool {
         guard let binding = Self.modifierOnlyBinding(keyCode: keyCode, modifierFlags: modifierFlags) else {
             return pendingModifierOnlyBinding?.keyCode == keyCode
@@ -194,8 +194,8 @@ final class HotkeyRecorder: ObservableObject {
                 HotkeyBinding(
                     keyCode: binding.keyCode,
                     modifierFlags: binding.modifierFlags,
-                    pressCount: 2,
-                ),
+                    pressCount: 2
+                )
             )
             return true
         }
@@ -211,7 +211,7 @@ final class HotkeyRecorder: ObservableObject {
         pendingModifierOnlyWorkItem = workItem
         DispatchQueue.main.asyncAfter(
             deadline: .now() + Self.doubleTapMaximumInterval,
-            execute: workItem,
+            execute: workItem
         )
         return true
     }

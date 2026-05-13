@@ -3,7 +3,7 @@ import Foundation
 // swiftlint:disable type_body_length file_length
 extension Notification.Name {
     static let personaSelectionDidChange = Notification.Name(
-        "SettingsStore.personaSelectionDidChange",
+        "SettingsStore.personaSelectionDidChange"
     )
     static let hotkeySettingsDidChange = Notification.Name("SettingsStore.hotkeySettingsDidChange")
     static let appearanceModeDidChange = Notification.Name("SettingsStore.appearanceModeDidChange")
@@ -283,7 +283,7 @@ final class SettingsStore {
         get {
             let stored =
                 defaults.string(forKey: "stt.doubao.resourceID")?.trimmingCharacters(
-                    in: .whitespacesAndNewlines,
+                    in: .whitespacesAndNewlines
                 ) ?? ""
             if stored.isEmpty || stored == "volc.bigasr.sauc.duration" {
                 return "volc.seedasr.sauc.duration"
@@ -481,9 +481,9 @@ final class SettingsStore {
             bindings.insert(
                 PersonaAppBinding(
                     appIdentifier: trimmedIdentifier,
-                    personaID: personaID,
+                    personaID: personaID
                 ),
-                at: 0,
+                at: 0
             )
         }
         personaAppBindings = bindings
@@ -640,7 +640,7 @@ final class SettingsStore {
                 provider: .custom,
                 baseURL: multimodalLLMBaseURL,
                 model: fallbackModel.isEmpty ? OpenAIAudioModelCatalog.multimodalModels[0] : fallbackModel,
-                apiKey: multimodalLLMAPIKey,
+                apiKey: multimodalLLMAPIKey
             )
         }
 
@@ -648,7 +648,7 @@ final class SettingsStore {
             provider: llmRemoteProvider,
             baseURL: llmBaseURL,
             model: llmModel,
-            apiKey: llmAPIKey,
+            apiKey: llmAPIKey
         )
     }
 
@@ -817,14 +817,14 @@ final class SettingsStore {
                 id: Self.defaultPersonaID,
                 name: "Typeflux",
                 prompt: Self.typefluxPersonaPrompt(appLanguage: .english),
-                kind: .system,
+                kind: .system
             ),
             PersonaProfile(
                 id: UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA002")!,
                 name: "English Translator",
                 prompt: Self.englishTranslatorPersonaPrompt(),
-                kind: .system,
-            ),
+                kind: .system
+            )
         ]
     }
 
@@ -992,14 +992,14 @@ final class SettingsStore {
         let systemSignatureSet = Set(
             systemPersonas.map { systemPersona in
                 personaSignature(name: systemPersona.name, prompt: systemPersona.prompt)
-            },
+            }
         )
 
         let customPersonas = storedPersonas.compactMap { persona -> PersonaProfile? in
             let signature = personaSignature(name: persona.name, prompt: persona.prompt)
             guard !systemSignatureSet.contains(signature) else { return nil }
             return PersonaProfile(
-                id: persona.id, name: persona.name, prompt: persona.prompt, kind: .custom,
+                id: persona.id, name: persona.name, prompt: persona.prompt, kind: .custom
             )
         }
 

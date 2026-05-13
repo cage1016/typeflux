@@ -44,8 +44,8 @@ struct HistoryPipelineTiming: Codable, Equatable {
             applyDurationMilliseconds: millisecondsBetween(applyStartedAt, applyCompletedAt),
             endToEndMilliseconds: millisecondsBetween(
                 recordingStoppedAt,
-                applyCompletedAt ?? llmProcessingCompletedAt ?? transcriptionCompletedAt,
-            ),
+                applyCompletedAt ?? llmProcessingCompletedAt ?? transcriptionCompletedAt
+            )
         )
     }
 }
@@ -139,7 +139,7 @@ struct HistoryRecord: Codable, Identifiable {
         recordingStatus: StepStatus = .pending,
         transcriptionStatus: StepStatus = .pending,
         processingStatus: StepStatus = .pending,
-        applyStatus: StepStatus = .pending,
+        applyStatus: StepStatus = .pending
     ) {
         self.id = id
         self.date = date
@@ -231,9 +231,12 @@ struct HistoryRecord: Codable, Identifiable {
         errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
         applyMessage = try container.decodeIfPresent(String.self, forKey: .applyMessage)
         recordingStatus = try container.decodeIfPresent(StepStatus.self, forKey: .recordingStatus) ?? .succeeded
-        transcriptionStatus = try container.decodeIfPresent(StepStatus.self, forKey: .transcriptionStatus) ?? (legacyText == nil ? .pending : .succeeded)
+        transcriptionStatus = try container
+            .decodeIfPresent(StepStatus.self, forKey: .transcriptionStatus) ??
+            (legacyText == nil ? .pending : .succeeded)
         processingStatus = try container.decodeIfPresent(StepStatus.self, forKey: .processingStatus) ?? .skipped
-        applyStatus = try container.decodeIfPresent(StepStatus.self, forKey: .applyStatus) ?? (legacyText == nil ? .pending : .succeeded)
+        applyStatus = try container
+            .decodeIfPresent(StepStatus.self, forKey: .applyStatus) ?? (legacyText == nil ? .pending : .succeeded)
     }
 
     func encode(to encoder: Encoder) throws {

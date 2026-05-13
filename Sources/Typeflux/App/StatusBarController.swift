@@ -56,7 +56,7 @@ final class StatusBarController: NSObject {
         onRetryHistory: @escaping (HistoryRecord) -> Void = { _ in },
         onOpenOnboarding: @escaping () -> Void = {},
         onOpenAgentJobs: @escaping () -> Void = {},
-        onOpenAgentJob: @escaping (UUID) -> Void = { _ in },
+        onOpenAgentJob: @escaping (UUID) -> Void = { _ in }
     ) {
         self.appState = appState
         self.settingsStore = settingsStore
@@ -77,7 +77,7 @@ final class StatusBarController: NSObject {
         languageObserver = NotificationCenter.default.addObserver(
             forName: .appLanguageDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.rebuildMenu()
@@ -86,7 +86,7 @@ final class StatusBarController: NSObject {
         agentJobObserver = NotificationCenter.default.addObserver(
             forName: .agentJobStoreDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.refreshRunningAgentJobs()
@@ -95,7 +95,7 @@ final class StatusBarController: NSObject {
         agentSettingsObserver = NotificationCenter.default.addObserver(
             forName: .agentConfigurationDidChange,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.refreshRunningAgentJobs()
@@ -105,7 +105,7 @@ final class StatusBarController: NSObject {
         historyObserver = NotificationCenter.default.addObserver(
             forName: .historyStoreDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.rebuildMenu()
@@ -114,7 +114,7 @@ final class StatusBarController: NSObject {
         personaSelectionObserver = NotificationCenter.default.addObserver(
             forName: .personaSelectionDidChange,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.rebuildMenu()
@@ -123,7 +123,7 @@ final class StatusBarController: NSObject {
         autoUpdateStateObserver = NotificationCenter.default.addObserver(
             forName: .autoUpdateStateDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.rebuildMenu()
@@ -132,7 +132,7 @@ final class StatusBarController: NSObject {
         localModelDownloadProgressObserver = NotificationCenter.default.addObserver(
             forName: .localModelDownloadProgressDidChange,
             object: nil,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.rebuildMenu()
@@ -204,7 +204,7 @@ final class StatusBarController: NSObject {
         button.title = ""
         let image = NSImage(
             systemSymbolName: StudioTheme.Symbol.brand,
-            accessibilityDescription: accessibilityTitle,
+            accessibilityDescription: accessibilityTitle
         )?.withSymbolConfiguration(symbolConfig)
         image?.size = IconLayout.imageSize
         image?.isTemplate = true
@@ -276,14 +276,14 @@ final class StatusBarController: NSObject {
     private func populateTranscriptionHistoryMenu(_ menu: NSMenu) {
         let records = StatusBarMenuSupport.recentTranscriptionRecords(
             from: historyStore.list(limit: MenuLayout.recentHistoryLimit * 3, offset: 0, searchQuery: nil),
-            limit: MenuLayout.recentHistoryLimit,
+            limit: MenuLayout.recentHistoryLimit
         )
 
         if records.isEmpty {
             let emptyItem = NSMenuItem(
                 title: L("menu.transcriptionHistory.empty"),
                 action: nil,
-                keyEquivalent: "",
+                keyEquivalent: ""
             )
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
@@ -292,7 +292,7 @@ final class StatusBarController: NSObject {
                 let item = NSMenuItem(
                     title: StatusBarMenuSupport.recentHistoryTitle(for: record),
                     action: #selector(copyRecentHistoryResult(_:)),
-                    keyEquivalent: "",
+                    keyEquivalent: ""
                 )
                 item.target = self
                 item.representedObject = record.finalText
@@ -318,7 +318,7 @@ final class StatusBarController: NSObject {
         let noPersonaItem = NSMenuItem(
             title: L("persona.none.title"),
             action: #selector(selectPersonaFromMenu(_:)),
-            keyEquivalent: "",
+            keyEquivalent: ""
         )
         noPersonaItem.target = self
         noPersonaItem.representedObject = MenuValue.noPersona
@@ -329,7 +329,7 @@ final class StatusBarController: NSObject {
             let item = NSMenuItem(
                 title: persona.name,
                 action: #selector(selectPersonaFromMenu(_:)),
-                keyEquivalent: "",
+                keyEquivalent: ""
             )
             item.target = self
             item.representedObject = persona.id.uuidString
@@ -354,7 +354,7 @@ final class StatusBarController: NSObject {
                 let item = NSMenuItem(
                     title: agentTaskMenuTitle(for: job),
                     action: #selector(openAgentJob(_:)),
-                    keyEquivalent: "",
+                    keyEquivalent: ""
                 )
                 item.target = self
                 item.representedObject = job.id.uuidString
@@ -378,12 +378,12 @@ final class StatusBarController: NSObject {
     /// Returns a menu item showing local model download progress, or nil when there is nothing to display.
     private func makeLocalModelDownloadMenuItem() -> NSMenuItem? {
         if let title = StatusBarMenuSupport.localModelDownloadTitle(
-            for: LocalModelDownloadProgressCenter.shared.status,
+            for: LocalModelDownloadProgressCenter.shared.status
         ) {
             let item = NSMenuItem(
                 title: title,
                 action: nil,
-                keyEquivalent: "",
+                keyEquivalent: ""
             )
             item.isEnabled = false
             return item
@@ -426,7 +426,7 @@ final class StatusBarController: NSObject {
                 historyStore: historyStore,
                 initialSection: section,
                 notificationService: notificationService,
-                onRetryHistory: onRetryHistory,
+                onRetryHistory: onRetryHistory
             )
         }
     }
@@ -449,7 +449,7 @@ final class StatusBarController: NSObject {
             historyStore: historyStore,
             initialSection: .history,
             notificationService: notificationService,
-            onRetryHistory: onRetryHistory,
+            onRetryHistory: onRetryHistory
         )
     }
 

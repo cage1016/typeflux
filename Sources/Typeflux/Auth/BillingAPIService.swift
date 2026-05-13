@@ -47,7 +47,7 @@ struct BillingAPIService: Sendable {
         path: String,
         method: String,
         token: String,
-        body: Data?,
+        body: Data?
     ) async throws -> Response {
         let data: Data
         let httpResponse: HTTPURLResponse

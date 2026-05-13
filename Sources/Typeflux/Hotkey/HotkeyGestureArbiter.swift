@@ -44,7 +44,7 @@ struct HotkeyGestureArbiter {
         activationHotkey: HotkeyBinding?,
         askHotkey: HotkeyBinding?,
         personaHotkey: HotkeyBinding?,
-        historyHotkey: HotkeyBinding? = nil,
+        historyHotkey: HotkeyBinding? = nil
     ) -> Bool {
         switch eventType {
         case .flagsChanged:
@@ -128,7 +128,7 @@ struct HotkeyGestureArbiter {
         activationHotkey: HotkeyBinding?,
         askHotkey: HotkeyBinding?,
         personaHotkey: HotkeyBinding?,
-        historyHotkey: HotkeyBinding? = nil,
+        historyHotkey: HotkeyBinding? = nil
     ) -> [HotkeyGestureEvent] {
         guard !isRepeat else { return [] }
 
@@ -171,7 +171,7 @@ struct HotkeyGestureArbiter {
     mutating func handleKeyUp(
         keyCode: Int,
         activationHotkey: HotkeyBinding?,
-        askHotkey: HotkeyBinding?,
+        askHotkey: HotkeyBinding?
     ) -> [HotkeyGestureEvent] {
         switch phase {
         case .active(.activation):
@@ -196,13 +196,13 @@ struct HotkeyGestureArbiter {
         askHotkey: HotkeyBinding?,
         personaHotkey: HotkeyBinding? = nil,
         historyHotkey: HotkeyBinding? = nil,
-        timestamp: TimeInterval = Date().timeIntervalSinceReferenceDate,
+        timestamp: TimeInterval = Date().timeIntervalSinceReferenceDate
     ) -> [HotkeyGestureEvent] {
         if isSecondTapForDoubleTapAsk(
             keyCode: keyCode,
             modifierFlags: modifierFlags,
             askHotkey: askHotkey,
-            timestamp: timestamp,
+            timestamp: timestamp
         ) {
             lastModifierTap = nil
             guard phase == .idle || phase == .pendingModifierActivation else { return [] }
@@ -222,7 +222,7 @@ struct HotkeyGestureArbiter {
                 activationHotkey: activationHotkey,
                 askHotkey: askHotkey,
                 personaHotkey: personaHotkey,
-                historyHotkey: historyHotkey,
+                historyHotkey: historyHotkey
             ) {
                 phase = .pendingModifierActivation
                 return [.begin(.activation)]
@@ -299,7 +299,7 @@ struct HotkeyGestureArbiter {
                 keyCode: keyCode,
                 modifierFlags: activationHotkey.modifierFlags,
                 askHotkey: askHotkey,
-                timestamp: timestamp,
+                timestamp: timestamp
             )
             phase = .idle
             return [.activationTapped]
@@ -308,7 +308,7 @@ struct HotkeyGestureArbiter {
                 keyCode: keyCode,
                 modifierFlags: activationHotkey.modifierFlags,
                 askHotkey: askHotkey,
-                timestamp: timestamp,
+                timestamp: timestamp
             )
             phase = .idle
             return [.end(.activation)]
@@ -327,7 +327,7 @@ struct HotkeyGestureArbiter {
         activationHotkey: HotkeyBinding,
         askHotkey: HotkeyBinding?,
         personaHotkey: HotkeyBinding?,
-        historyHotkey: HotkeyBinding?,
+        historyHotkey: HotkeyBinding?
     ) -> Bool {
         guard activationHotkey.isModifierOnlyTrigger else { return false }
         let competingHotkeys = [askHotkey, personaHotkey, historyHotkey].compactMap(\.self)
@@ -341,7 +341,7 @@ struct HotkeyGestureArbiter {
         keyCode: Int,
         modifierFlags: UInt,
         askHotkey: HotkeyBinding?,
-        timestamp: TimeInterval,
+        timestamp: TimeInterval
     ) -> Bool {
         guard let askHotkey, askHotkey.isModifierDoubleTapTrigger else { return false }
         guard askHotkey.keyCode == keyCode, askHotkey.modifierFlags == modifierFlags else { return false }
@@ -354,7 +354,7 @@ struct HotkeyGestureArbiter {
         keyCode: Int,
         modifierFlags: UInt,
         askHotkey: HotkeyBinding?,
-        timestamp: TimeInterval,
+        timestamp: TimeInterval
     ) {
         guard let askHotkey, askHotkey.isModifierDoubleTapTrigger else {
             lastModifierTap = nil

@@ -8,7 +8,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
         let request = CreateFeedbackRequest(
             content: "App crashed",
             contact: "user@example.com",
-            imageURLs: ["https://example.com/image.png"],
+            imageURLs: ["https://example.com/image.png"]
         )
 
         let data = try JSONEncoder().encode(request)
@@ -44,7 +44,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             contact: " user@example.com ",
             imageURLs: ["https://cdn.example/image.jpg"],
             token: "token-1",
-            executor: executor,
+            executor: executor
         )
 
         XCTAssertEqual(response, FeedbackSubmissionResponse(id: "feedback-1", status: "pending"))
@@ -69,7 +69,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             content: "Anonymous report",
             contact: "   ",
             token: nil,
-            executor: executor,
+            executor: executor
         )
 
         XCTAssertEqual(response, FeedbackSubmissionResponse(id: "feedback-2", status: "pending"))
@@ -92,7 +92,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             let payload = Data(
                 """
                 {"code":"OK","data":{"type":"s3_presigned_post","method":"POST","url":"https://s3.example/upload","bucket":"bucket","region":"us-east-1","key":"feedback/screen.jpg","expires_at":1777960800,"max_size_bytes":5242880,"headers":{"x-test":"1"},"fields":{"key":"feedback/screen.jpg","policy":"abc"},"image_url":"https://cdn.example/feedback/screen.jpg","upload_id":"upload-1"}}
-                """.utf8,
+                """.utf8
             )
             return (payload, Self.httpResponse(url: request.url!, status: 200))
         }
@@ -103,7 +103,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             contentType: "image/jpeg",
             sizeBytes: 123,
             token: "token-1",
-            executor: executor,
+            executor: executor
         )
 
         XCTAssertEqual(target.url, "https://s3.example/upload")
@@ -117,7 +117,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             let payload = Data(
                 """
                 {"code":"OK","data":{"type":"s3_presigned_put","method":"PUT","url":"https://s3.example/upload?X-Amz-Signature=abc","bucket":"bucket","region":"apac","key":"feedback/screen.jpg","expires_at":1777960800,"max_size_bytes":5242880,"headers":{"Content-Type":"image/jpeg"},"fields":{},"image_url":"https://cdn.example/feedback/screen.jpg","upload_id":"upload-1"}}
-                """.utf8,
+                """.utf8
             )
             return (payload, Self.httpResponse(url: request.url!, status: 200))
         }
@@ -128,7 +128,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             contentType: "image/jpeg",
             sizeBytes: 123,
             token: "token-1",
-            executor: executor,
+            executor: executor
         )
 
         XCTAssertEqual(target.type, "s3_presigned_put")
@@ -150,7 +150,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
                 contentType: "image/jpeg",
                 sizeBytes: 123,
                 token: "token-1",
-                executor: executor,
+                executor: executor
             )
             XCTFail("Expected server error")
         } catch let error as FeedbackAPIError {
@@ -164,7 +164,8 @@ final class FeedbackAPIServiceTests: XCTestCase {
             XCTAssertEqual(request.url?.absoluteString, "https://s3.example/upload")
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "x-amz-meta-purpose"), "feedback")
-            XCTAssertTrue(request.value(forHTTPHeaderField: "Content-Type")?.contains("multipart/form-data; boundary=") == true)
+            XCTAssertTrue(request.value(forHTTPHeaderField: "Content-Type")?
+                .contains("multipart/form-data; boundary=") == true)
 
             let body = try String(data: XCTUnwrap(request.httpBody), encoding: .utf8)
             XCTAssertTrue(body?.contains("name=\"key\"") == true)
@@ -192,9 +193,9 @@ final class FeedbackAPIServiceTests: XCTestCase {
                 headers: ["x-amz-meta-purpose": "feedback"],
                 fields: ["key": "feedback/screen.jpg", "policy": "abc"],
                 imageURL: "https://cdn.example/feedback/screen.jpg",
-                uploadID: "upload-1",
+                uploadID: "upload-1"
             ),
-            session: session,
+            session: session
         )
     }
 
@@ -205,7 +206,8 @@ final class FeedbackAPIServiceTests: XCTestCase {
             XCTAssertEqual(request.httpMethod, "PUT")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "image/jpeg")
             XCTAssertEqual(request.httpBody, Data("image-data".utf8))
-            XCTAssertFalse(try String(data: XCTUnwrap(request.httpBody), encoding: .utf8)?.contains("multipart/form-data") == true)
+            XCTAssertFalse(try String(data: XCTUnwrap(request.httpBody), encoding: .utf8)?
+                .contains("multipart/form-data") == true)
 
             return (Data(), Self.httpResponse(url: request.url!, status: 200))
         }
@@ -226,9 +228,9 @@ final class FeedbackAPIServiceTests: XCTestCase {
                 headers: ["Content-Type": "image/jpeg"],
                 fields: [:],
                 imageURL: "https://cdn.example/feedback/screen.jpg",
-                uploadID: "upload-1",
+                uploadID: "upload-1"
             ),
-            session: session,
+            session: session
         )
     }
 
@@ -238,7 +240,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
             let body = Data(
                 """
                 <?xml version="1.0" encoding="UTF-8"?><Error><Code>NotImplemented</Code><Message>Presigned post requests are not yet implemented</Message></Error>
-                """.utf8,
+                """.utf8
             )
             return (body, Self.httpResponse(url: request.url!, status: 501))
         }
@@ -260,9 +262,9 @@ final class FeedbackAPIServiceTests: XCTestCase {
                     headers: [:],
                     fields: ["key": "feedback/screen.jpg", "policy": "abc"],
                     imageURL: "https://cdn.example/feedback/screen.jpg",
-                    uploadID: "upload-1",
+                    uploadID: "upload-1"
                 ),
-                session: session,
+                session: session
             )
             XCTFail("Expected upload failure")
         } catch let error as FeedbackAPIError {
@@ -270,8 +272,8 @@ final class FeedbackAPIServiceTests: XCTestCase {
                 error,
                 .serverError(
                     code: "UPLOAD_FAILED",
-                    message: #"HTTP 501: <?xml version="1.0" encoding="UTF-8"?><Error><Code>NotImplemented</Code><Message>Presigned post requests are not yet implemented</Message></Error>"#,
-                ),
+                    message: #"HTTP 501: <?xml version="1.0" encoding="UTF-8"?><Error><Code>NotImplemented</Code><Message>Presigned post requests are not yet implemented</Message></Error>"#
+                )
             )
         }
     }
@@ -300,9 +302,9 @@ final class FeedbackAPIServiceTests: XCTestCase {
                     headers: [:],
                     fields: ["key": "feedback/screen.jpg", "policy": "abc"],
                     imageURL: "https://cdn.example/feedback/screen.jpg",
-                    uploadID: "upload-1",
+                    uploadID: "upload-1"
                 ),
-                session: session,
+                session: session
             )
         }
 
@@ -421,7 +423,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
         let response = try await FeedbackAPIService.submit(
             content: "Please fix this",
             contact: nil,
-            executor: executor,
+            executor: executor
         )
 
         XCTAssertEqual(response, FeedbackSubmissionResponse(id: "feedback-3", status: "pending"))
@@ -431,7 +433,7 @@ final class FeedbackAPIServiceTests: XCTestCase {
 
     private func makeExecutor(
         session: FeedbackStubSession,
-        baseURLs: [URL]? = nil,
+        baseURLs: [URL]? = nil
     ) -> CloudRequestExecutor {
         let selector = CloudEndpointSelector(baseURLs: baseURLs ?? [baseURL], prober: FeedbackNoOpProber())
         return CloudRequestExecutor(selector: selector, session: session)
@@ -473,7 +475,7 @@ private extension FeedbackAPIServiceTests {
             url: url,
             statusCode: status,
             httpVersion: nil,
-            headerFields: nil,
+            headerFields: nil
         )!
     }
 }

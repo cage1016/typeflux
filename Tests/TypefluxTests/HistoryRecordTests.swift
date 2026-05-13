@@ -87,7 +87,7 @@ final class HistoryRecordTests: XCTestCase {
             date: Date(),
             transcriptText: "transcript",
             personaResultText: "persona",
-            selectionEditedText: "edited",
+            selectionEditedText: "edited"
         )
         XCTAssertEqual(record.text, "edited")
     }
@@ -96,7 +96,7 @@ final class HistoryRecordTests: XCTestCase {
         let record = HistoryRecord(
             date: Date(),
             transcriptText: "transcript",
-            personaResultText: "persona",
+            personaResultText: "persona"
         )
         XCTAssertEqual(record.text, "persona")
     }
@@ -104,7 +104,7 @@ final class HistoryRecordTests: XCTestCase {
     func testTextFallsBackToTranscript() {
         let record = HistoryRecord(
             date: Date(),
-            transcriptText: "transcript",
+            transcriptText: "transcript"
         )
         XCTAssertEqual(record.text, "transcript")
     }
@@ -112,7 +112,7 @@ final class HistoryRecordTests: XCTestCase {
     func testTextFallsBackToErrorMessage() {
         let record = HistoryRecord(
             date: Date(),
-            errorMessage: "something failed",
+            errorMessage: "something failed"
         )
         XCTAssertEqual(record.text, "something failed")
     }
@@ -125,7 +125,7 @@ final class HistoryRecordTests: XCTestCase {
     func testFinalTextExcludesErrorMessage() {
         let record = HistoryRecord(
             date: Date(),
-            errorMessage: "error",
+            errorMessage: "error"
         )
         XCTAssertNil(record.finalText)
     }
@@ -176,7 +176,7 @@ final class HistoryRecordTests: XCTestCase {
             recordingStatus: .succeeded,
             transcriptionStatus: .succeeded,
             processingStatus: .succeeded,
-            applyStatus: .succeeded,
+            applyStatus: .succeeded
         )
 
         let encoder = JSONEncoder()
@@ -194,7 +194,7 @@ final class HistoryRecordTests: XCTestCase {
 
     func testDecodesLegacyTextFieldAsTranscript() throws {
         let json: [String: Any] = [
-            "text": "legacy transcript",
+            "text": "legacy transcript"
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         let record = try JSONDecoder().decode(HistoryRecord.self, from: data)
@@ -221,12 +221,12 @@ final class HistoryRecordTests: XCTestCase {
         let timing = HistoryPipelineTiming(
             recordingStoppedAt: base,
             transcriptionStartedAt: base.addingTimeInterval(0.1),
-            transcriptionCompletedAt: base.addingTimeInterval(1.1),
+            transcriptionCompletedAt: base.addingTimeInterval(1.1)
         )
 
         let record = HistoryRecord(
             date: base,
-            pipelineTiming: timing,
+            pipelineTiming: timing
         )
 
         XCTAssertNotNil(record.pipelineStats)
@@ -262,7 +262,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
         let record = HistoryRecord(
             date: Date(),
             mode: .dictation,
-            transcriptText: "transcript",
+            transcriptText: "transcript"
         )
         XCTAssertEqual(record.text, "transcript")
     }
@@ -272,7 +272,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
             date: Date(),
             mode: .personaRewrite,
             transcriptText: "original",
-            personaResultText: "rewritten",
+            personaResultText: "rewritten"
         )
         XCTAssertEqual(record.text, "rewritten")
     }
@@ -283,7 +283,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
             mode: .editSelection,
             transcriptText: "original",
             personaResultText: "persona",
-            selectionEditedText: "edited",
+            selectionEditedText: "edited"
         )
         XCTAssertEqual(record.text, "edited")
     }
@@ -292,7 +292,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
         let record = HistoryRecord(
             date: Date(),
             mode: .dictation,
-            errorMessage: "Something failed",
+            errorMessage: "Something failed"
         )
         XCTAssertEqual(record.text, "Something failed")
     }
@@ -318,7 +318,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
         let record = HistoryRecord(
             date: Date(),
             transcriptText: "original",
-            selectionEditedText: "edited",
+            selectionEditedText: "edited"
         )
         XCTAssertEqual(record.finalText, "edited")
     }
@@ -331,7 +331,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
             recordingStatus: .succeeded,
             transcriptionStatus: .succeeded,
             processingStatus: .succeeded,
-            applyStatus: .succeeded,
+            applyStatus: .succeeded
         )
         XCTAssertFalse(record.hasFailure)
     }
@@ -339,7 +339,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
     func testHasFailureIsTrueWhenRecordingFailed() {
         let record = HistoryRecord(
             date: Date(),
-            recordingStatus: .failed,
+            recordingStatus: .failed
         )
         XCTAssertTrue(record.hasFailure)
     }
@@ -347,7 +347,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
     func testHasFailureIsTrueWhenTranscriptionFailed() {
         let record = HistoryRecord(
             date: Date(),
-            transcriptionStatus: .failed,
+            transcriptionStatus: .failed
         )
         XCTAssertTrue(record.hasFailure)
     }
@@ -355,7 +355,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
     func testHasFailureIsTrueWhenErrorMessageIsSet() {
         let record = HistoryRecord(
             date: Date(),
-            errorMessage: "unexpected error",
+            errorMessage: "unexpected error"
         )
         XCTAssertTrue(record.hasFailure)
     }
@@ -367,7 +367,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
             recordingStatus: .succeeded,
             transcriptionStatus: .succeeded,
             processingStatus: .succeeded,
-            applyStatus: .succeeded,
+            applyStatus: .succeeded
         )
         XCTAssertFalse(record.hasFailure)
     }
@@ -417,7 +417,7 @@ final class HistoryRecordExtendedTests: XCTestCase {
             recordingStatus: .succeeded,
             transcriptionStatus: .succeeded,
             processingStatus: .succeeded,
-            applyStatus: .succeeded,
+            applyStatus: .succeeded
         )
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(HistoryRecord.self, from: data)

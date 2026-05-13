@@ -8,13 +8,19 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
     }
 
     func testValidateInputFormatRejectsZeroChannelFormat() throws {
-        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 0, sampleRate: 44100)) { error in
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(
+            channelCount: 0,
+            sampleRate: 44100
+        )) { error in
             XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
         }
     }
 
     func testValidateInputFormatRejectsZeroSampleRate() throws {
-        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 0)) { error in
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(
+            channelCount: 1,
+            sampleRate: 0
+        )) { error in
             XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
         }
     }
@@ -56,8 +62,8 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             settingsStore: settingsStore,
             audioDeviceManager: MockAudioDeviceManager(
                 resolvedInputDeviceIDs: ["external-mic": 42],
-                defaultInputDeviceID: 7,
-            ),
+                defaultInputDeviceID: 7
+            )
         )
 
         XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 42)
@@ -72,7 +78,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         let settingsStore = SettingsStore(defaults: defaults)
         let recorder = AVFoundationAudioRecorder(
             settingsStore: settingsStore,
-            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9),
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9)
         )
 
         XCTAssertNil(recorder.explicitInputDeviceIDForRecordingForTesting())
@@ -90,8 +96,8 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             settingsStore: settingsStore,
             audioDeviceManager: MockAudioDeviceManager(
                 resolvedInputDeviceIDs: ["external-mic": 42],
-                defaultInputDeviceID: 7,
-            ),
+                defaultInputDeviceID: 7
+            )
         )
 
         XCTAssertEqual(recorder.explicitInputDeviceIDForRecordingForTesting(), 42)
@@ -107,7 +113,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         settingsStore.preferredMicrophoneID = "disconnected-mic"
         let recorder = AVFoundationAudioRecorder(
             settingsStore: settingsStore,
-            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7),
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7)
         )
 
         XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 7)
@@ -123,7 +129,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         settingsStore.preferredMicrophoneID = "disconnected-mic"
         let recorder = AVFoundationAudioRecorder(
             settingsStore: settingsStore,
-            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7),
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 7)
         )
 
         XCTAssertNil(recorder.explicitInputDeviceIDForRecordingForTesting())
@@ -138,7 +144,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         let settingsStore = SettingsStore(defaults: defaults)
         let recorder = AVFoundationAudioRecorder(
             settingsStore: settingsStore,
-            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9),
+            audioDeviceManager: MockAudioDeviceManager(defaultInputDeviceID: 9)
         )
 
         XCTAssertEqual(recorder.resolvedInputDeviceIDForTesting(), 9)
@@ -161,7 +167,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             outputMuter: muter,
             sleep: { duration in
                 await sleepController.sleep(for: duration)
-            },
+            }
         )
 
         recorder.beginMutedSessionAfterDelayForTesting()
@@ -188,7 +194,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             outputMuter: MockSystemAudioOutputMuter(),
             sleep: { duration in
                 await sleepController.sleep(for: duration)
-            },
+            }
         )
 
         recorder.beginMutedSessionAfterDelayForTesting()
@@ -215,7 +221,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             outputMuter: MockSystemAudioOutputMuter(),
             sleep: { duration in
                 await sleepController.sleep(for: duration)
-            },
+            }
         )
 
         recorder.beginMutedSessionAfterDelayForTesting()
@@ -242,7 +248,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             outputMuter: muter,
             sleep: { duration in
                 await sleepController.sleep(for: duration)
-            },
+            }
         )
 
         recorder.beginMutedSessionAfterDelayForTesting()
@@ -294,7 +300,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             isRecording: true,
             callbackCountAtStart: 4,
             currentCallbackCount: 4,
-            peakInputPowerSinceStart: -.infinity,
+            peakInputPowerSinceStart: -.infinity
         ))
     }
 
@@ -303,7 +309,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             isRecording: true,
             callbackCountAtStart: 4,
             currentCallbackCount: 7,
-            peakInputPowerSinceStart: -60,
+            peakInputPowerSinceStart: -60
         ))
     }
 
@@ -312,7 +318,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             isRecording: true,
             callbackCountAtStart: 4,
             currentCallbackCount: 7,
-            peakInputPowerSinceStart: -30,
+            peakInputPowerSinceStart: -30
         ))
     }
 
@@ -321,7 +327,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             isRecording: true,
             callbackCountAtStart: 4,
             currentCallbackCount: 7,
-            peakInputPowerSinceStart: -56,
+            peakInputPowerSinceStart: -56
         ))
     }
 
@@ -330,7 +336,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
             isRecording: false,
             callbackCountAtStart: 4,
             currentCallbackCount: 4,
-            peakInputPowerSinceStart: -.infinity,
+            peakInputPowerSinceStart: -.infinity
         ))
     }
 }
@@ -343,7 +349,7 @@ private final class MockAudioDeviceManager: AudioDeviceManaging {
     init(
         devices: [AudioInputDevice] = [],
         resolvedInputDeviceIDs: [String: AudioDeviceID] = [:],
-        defaultInputDeviceID: AudioDeviceID? = nil,
+        defaultInputDeviceID: AudioDeviceID? = nil
     ) {
         self.devices = devices
         self.resolvedInputDeviceIDs = resolvedInputDeviceIDs

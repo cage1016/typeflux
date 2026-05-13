@@ -36,7 +36,7 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         let observer = NotificationCenter.default.addObserver(
             forName: .cloudAccountModelDefaultsDidApply,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { _ in
             expectation.fulfill()
         }
@@ -116,7 +116,7 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
 
         NotificationCenter.default.post(
             name: Notification.Name("SomeOtherNotification"),
-            object: nil,
+            object: nil
         )
 
         try await Task.sleep(nanoseconds: 150_000_000)
@@ -138,7 +138,7 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
 
     private func waitForPromptCount(
         _ expectedCount: Int,
-        in prompt: RecordingCloudModelDefaultsPrompt,
+        in prompt: RecordingCloudModelDefaultsPrompt
     ) async throws {
         for _ in 0 ..< 50 {
             if prompt.confirmCallCount == expectedCount {

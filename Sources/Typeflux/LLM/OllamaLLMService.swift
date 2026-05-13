@@ -29,42 +29,50 @@ final class OllamaLLMService: LLMService {
     func complete(systemPrompt: String, userPrompt: String) async throws -> String {
         try await modelManager.ensureModelReady(settingsStore: settingsStore)
         let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
-            to: systemPrompt,
+            to: systemPrompt
         )
         let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: userPrompt,
-            appLanguage: settingsStore.appLanguage,
+            appLanguage: settingsStore.appLanguage
         )
         return try await RequestRetry.perform(operationName: "Ollama completion request") { [self] in
-            try await completeInternal(systemPrompt: effectiveSystemPrompt, userPrompt: effectiveUserPrompt, schema: nil)
+            try await completeInternal(
+                systemPrompt: effectiveSystemPrompt,
+                userPrompt: effectiveUserPrompt,
+                schema: nil
+            )
         }
     }
 
     func completeJSON(systemPrompt: String, userPrompt: String, schema: LLMJSONSchema) async throws -> String {
         try await modelManager.ensureModelReady(settingsStore: settingsStore)
         let effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
-            to: systemPrompt,
+            to: systemPrompt
         )
         let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: userPrompt,
-            appLanguage: settingsStore.appLanguage,
+            appLanguage: settingsStore.appLanguage
         )
         return try await RequestRetry.perform(operationName: "Ollama JSON completion request") { [self] in
-            try await completeInternal(systemPrompt: effectiveSystemPrompt, userPrompt: effectiveUserPrompt, schema: schema)
+            try await completeInternal(
+                systemPrompt: effectiveSystemPrompt,
+                userPrompt: effectiveUserPrompt,
+                schema: schema
+            )
         }
     }
 
     private func completeInternal(
         systemPrompt: String,
         userPrompt: String,
-        schema: LLMJSONSchema?,
+        schema: LLMJSONSchema?
     ) async throws -> String {
         let base = settingsStore.ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : settingsStore.ollamaBaseURL
         guard let baseURL = URL(string: base) else {
             throw NSError(
                 domain: "OllamaLLMService",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."],
+                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."]
             )
         }
 
@@ -77,7 +85,7 @@ final class OllamaLLMService: LLMService {
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             stream: false,
-            temperature: 0.1,
+            temperature: 0.1
         )
         if let schema {
             body["format"] = schema.jsonObject
@@ -92,7 +100,7 @@ final class OllamaLLMService: LLMService {
             throw NSError(
                 domain: "OllamaLLMService",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama response."],
+                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama response."]
             )
         }
 
@@ -101,7 +109,7 @@ final class OllamaLLMService: LLMService {
             throw NSError(
                 domain: "OllamaLLMService",
                 code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: message],
+                userInfo: [NSLocalizedDescriptionKey: message]
             )
         }
 
@@ -111,14 +119,14 @@ final class OllamaLLMService: LLMService {
 
     private func streamRewriteInternal(
         request: LLMRewriteRequest,
-        continuation: AsyncThrowingStream<String, Error>.Continuation,
+        continuation: AsyncThrowingStream<String, Error>.Continuation
     ) async throws -> String {
         let base = settingsStore.ollamaBaseURL.isEmpty ? "http://127.0.0.1:11434" : settingsStore.ollamaBaseURL
         guard let baseURL = URL(string: base) else {
             throw NSError(
                 domain: "OllamaLLMService",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."],
+                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama base URL."]
             )
         }
 
@@ -129,33 +137,33 @@ final class OllamaLLMService: LLMService {
 
         let prompts = PromptCatalog.rewritePrompts(for: request)
         var effectiveSystemPrompt = PromptCatalog.appendLanguageResolutionPolicy(
-            to: prompts.system,
+            to: prompts.system
         )
         let effectiveUserPrompt = PromptCatalog.appendUserEnvironmentContext(
             to: prompts.user,
-            appLanguage: settingsStore.appLanguage,
+            appLanguage: settingsStore.appLanguage
         )
         if let appContext = request.appSystemContext {
             let extra = PromptCatalog.appSpecificSystemContext(appContext)
             if !extra.isEmpty {
                 effectiveSystemPrompt = PromptCatalog.appendAdditionalSystemContext(
                     extra,
-                    to: effectiveSystemPrompt,
+                    to: effectiveSystemPrompt
                 )
             }
         }
         NetworkDebugLogger.logMessage(
             PromptCatalog.rewritePromptDebugDescription(
                 system: effectiveSystemPrompt,
-                user: effectiveUserPrompt,
-            ),
+                user: effectiveUserPrompt
+            )
         )
         let body = Self.makeChatRequestBody(
             model: settingsStore.ollamaModel,
             systemPrompt: effectiveSystemPrompt,
             userPrompt: effectiveUserPrompt,
             stream: true,
-            temperature: 0.4,
+            temperature: 0.4
         )
 
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -166,7 +174,7 @@ final class OllamaLLMService: LLMService {
             throw NSError(
                 domain: "OllamaLLMService",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama response."],
+                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama response."]
             )
         }
 
@@ -180,7 +188,7 @@ final class OllamaLLMService: LLMService {
             throw NSError(
                 domain: "OllamaLLMService",
                 code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: message],
+                userInfo: [NSLocalizedDescriptionKey: message]
             )
         }
 
@@ -217,7 +225,7 @@ final class OllamaLLMService: LLMService {
         systemPrompt: String,
         userPrompt: String,
         stream: Bool,
-        temperature: Double,
+        temperature: Double
     ) -> [String: Any] {
         [
             "model": model,
@@ -225,11 +233,11 @@ final class OllamaLLMService: LLMService {
             "keep_alive": localModelKeepAlive,
             "messages": [
                 ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt],
+                ["role": "user", "content": userPrompt]
             ],
             "options": [
-                "temperature": temperature,
-            ],
+                "temperature": temperature
+            ]
         ]
     }
 }

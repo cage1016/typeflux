@@ -37,12 +37,12 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXGroup",
             isEditable: true,
             isFocused: false,
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         let result = AXTextInjector.shouldPreferEditableDescendant(
             overWindowRole: "AXWindow",
-            candidate: candidate,
+            candidate: candidate
         )
 
         XCTAssertTrue(result)
@@ -53,12 +53,12 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXGroup",
             isEditable: true,
             isFocused: false,
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         let result = AXTextInjector.shouldPreferEditableDescendant(
             overWindowRole: "AXGroup",
-            candidate: candidate,
+            candidate: candidate
         )
 
         XCTAssertFalse(result)
@@ -69,12 +69,12 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXGroup",
             isEditable: true,
             isFocused: true,
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         let result = AXTextInjector.shouldPreferEditableDescendant(
             overWindowRole: "AXWindow",
-            candidate: candidate,
+            candidate: candidate
         )
 
         XCTAssertFalse(result)
@@ -85,12 +85,12 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXGroup",
             isEditable: false,
             isFocused: false,
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         let result = AXTextInjector.shouldPreferEditableDescendant(
             overWindowRole: "AXWindow",
-            candidate: candidate,
+            candidate: candidate
         )
 
         XCTAssertFalse(result)
@@ -101,12 +101,12 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXScrollBar",
             isEditable: true,
             isFocused: false,
-            selectedRange: nil,
+            selectedRange: nil
         )
 
         let result = AXTextInjector.shouldPreferEditableDescendant(
             overWindowRole: "AXWindow",
-            candidate: candidate,
+            candidate: candidate
         )
 
         XCTAssertFalse(result)
@@ -116,7 +116,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldTreatAXValueAsUnreadable(
             role: "AXGroup",
             value: "",
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         XCTAssertTrue(result)
@@ -126,7 +126,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldTreatAXValueAsUnreadable(
             role: "AXTextField",
             value: "",
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         XCTAssertFalse(result)
@@ -147,7 +147,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testVisibleTextCandidateAttributesIncludeStaticTextValues() {
         XCTAssertEqual(
             AXTextInjector.visibleTextCandidateAttributes(for: "AXStaticText"),
-            [kAXValueAttribute as String, kAXDescriptionAttribute as String, kAXTitleAttribute as String],
+            [kAXValueAttribute as String, kAXDescriptionAttribute as String, kAXTitleAttribute as String]
         )
     }
 
@@ -160,7 +160,7 @@ final class AXTextInjectorTests: XCTestCase {
             " first line ",
             "first line",
             "second line",
-            "",
+            ""
         ])
 
         XCTAssertEqual(text, "first line\nsecond line")
@@ -172,7 +172,7 @@ final class AXTextInjectorTests: XCTestCase {
         let text = AXTextInjector.joinedVisibleTextCandidates([
             "first line",
             longLine,
-            "third line",
+            "third line"
         ])
 
         XCTAssertEqual(text, "first line")
@@ -184,11 +184,11 @@ final class AXTextInjectorTests: XCTestCase {
                 [
                     "buffers": [
                         [
-                            "contents": "before\nselected paragraph\nafter",
-                        ],
-                    ],
-                ],
-            ],
+                            "contents": "before\nselected paragraph\nafter"
+                        ]
+                    ]
+                ]
+            ]
         ]
 
         let text = AXTextInjector.firstSessionContents(containing: "selected paragraph", in: object)
@@ -200,14 +200,14 @@ final class AXTextInjectorTests: XCTestCase {
         let object: [String: Any] = [
             "buffers": [
                 [
-                    "contents": "before\n做一个“能用的原型”和做一个“可以给别人用的产品”之间\nafter",
-                ],
-            ],
+                    "contents": "before\n做一个“能用的原型”和做一个“可以给别人用的产品”之间\nafter"
+                ]
+            ]
         ]
 
         let text = AXTextInjector.firstSessionContents(
             containing: "做一个\"能用的原型\" 和做一个\"可以给别人用的产品\"之间",
-            in: object,
+            in: object
         )
 
         XCTAssertEqual(text, "before\n做一个“能用的原型”和做一个“可以给别人用的产品”之间\nafter")
@@ -217,14 +217,14 @@ final class AXTextInjectorTests: XCTestCase {
         let object: [String: Any] = [
             "buffers": [
                 [
-                    "contents": "最初我以为花一两天就能跑通。结果发现，做一个\"能用的原型\"和做一个\"可以给别人用的产品\"之间，差的是一个月的废寝忘食寝食难安。",
-                ],
-            ],
+                    "contents": "最初我以为花一两天就能跑通。结果发现，做一个\"能用的原型\"和做一个\"可以给别人用的产品\"之间，差的是一个月的废寝忘食寝食难安。"
+                ]
+            ]
         ]
 
         let text = AXTextInjector.firstSessionContents(
             containing: "最初我以为花一两天就能跑通。结果发现，做一个\"能用的原型\"和做一个\"可以给别人用的产品\"之间，差的是一个月的废寝忘食。",
-            in: object,
+            in: object
         )
 
         XCTAssertNotNil(text)
@@ -236,8 +236,8 @@ final class AXTextInjectorTests: XCTestCase {
                 [
                     "buffers": [
                         [
-                            "contents": "before cursor.after cursor",
-                        ],
+                            "contents": "before cursor.after cursor"
+                        ]
                     ],
                     "groups": [
                         [
@@ -247,24 +247,24 @@ final class AXTextInjectorTests: XCTestCase {
                                     "selected": true,
                                     "settings": [
                                         "selection": [
-                                            [13, 13],
+                                            [13, 13]
                                         ],
                                         "settings": [
-                                            "auto_name": "draft",
-                                        ],
-                                    ],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-            ],
+                                            "auto_name": "draft"
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
         ]
 
         let context = AXTextInjector.firstSublimeSessionContext(
             selectedText: "before cursor",
             windowTitle: "draft",
-            in: object,
+            in: object
         )
 
         XCTAssertEqual(context?.text, "before cursor.after cursor")
@@ -280,7 +280,7 @@ final class AXTextInjectorTests: XCTestCase {
             bufferPath: "/tmp/example.md",
             selectedRange: nil,
             selectedText: "selected paragraph",
-            windowTitle: "project - example.md",
+            windowTitle: "project - example.md"
         )
 
         XCTAssertEqual(context?.text, "before\nselected paragraph\nafter")
@@ -299,7 +299,7 @@ final class AXTextInjectorTests: XCTestCase {
             bufferPath: fileURL.path,
             selectedRange: CFRange(location: 7, length: 18),
             selectedText: "selected paragraph",
-            windowTitle: "project - draft.md",
+            windowTitle: "project - draft.md"
         )
 
         XCTAssertEqual(context?.text, "before\nselected paragraph\nafter")
@@ -310,15 +310,15 @@ final class AXTextInjectorTests: XCTestCase {
     func testBrowserAutomationKindDetectsCommonBrowsers() {
         XCTAssertEqual(
             AXTextInjector.browserAutomationKind(for: "com.google.Chrome"),
-            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.google.Chrome", command: .chromium),
+            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.google.Chrome", command: .chromium)
         )
         XCTAssertEqual(
             AXTextInjector.browserAutomationKind(for: "com.microsoft.edgemac"),
-            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.microsoft.edgemac", command: .chromium),
+            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.microsoft.edgemac", command: .chromium)
         )
         XCTAssertEqual(
             AXTextInjector.browserAutomationKind(for: "com.apple.Safari"),
-            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.apple.Safari", command: .safari),
+            AXTextInjector.BrowserAutomationKind(bundleIdentifier: "com.apple.Safari", command: .safari)
         )
         XCTAssertNil(AXTextInjector.browserAutomationKind(for: "com.openai.atlas"))
     }
@@ -327,7 +327,7 @@ final class AXTextInjectorTests: XCTestCase {
         let script = AXTextInjector.browserDOMContextAppleScript(
             bundleIdentifier: "com.google.Chrome",
             javascript: "return \"hello\";",
-            command: .chromium,
+            command: .chromium
         )
 
         XCTAssertTrue(script.contains("tell application id \"com.google.Chrome\""))
@@ -370,12 +370,12 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertTrue(AXTextInjector.shouldPreferApplicationStateContextBeforeAXValue(
             bundleIdentifier: "com.google.Chrome",
             role: "AXTextField",
-            isFocusedTarget: false,
+            isFocusedTarget: false
         ))
         XCTAssertTrue(AXTextInjector.shouldSuppressAXValueContext(
             bundleIdentifier: "com.google.Chrome",
             role: "AXTextField",
-            isFocusedTarget: false,
+            isFocusedTarget: false
         ))
     }
 
@@ -383,14 +383,14 @@ final class AXTextInjectorTests: XCTestCase {
         XCTAssertFalse(AXTextInjector.shouldSuppressAXValueContext(
             bundleIdentifier: "com.google.Chrome",
             role: "AXTextArea",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         ))
     }
 
     func testAppleScriptFailureReasonDetectsChromeJavaScriptDisabled() {
         let reason = AXTextInjector.appleScriptFailureReason(from: [
             NSAppleScript.errorNumber: NSNumber(value: 12),
-            NSAppleScript.errorMessage: "Executing JavaScript through AppleScript is turned off.",
+            NSAppleScript.errorMessage: "Executing JavaScript through AppleScript is turned off."
         ])
 
         XCTAssertEqual(reason, "browser-dom-javascript-from-apple-events-disabled")
@@ -403,7 +403,7 @@ final class AXTextInjectorTests: XCTestCase {
         let reason = injector.inputContextFailureReason(
             defaultReason: "focused-element-not-editable",
             contextReason: "focused-element-not-editable-context",
-            contextText: nil,
+            contextText: nil
         )
 
         XCTAssertEqual(reason, "focused-element-not-editable-browser-dom-javascript-from-apple-events-disabled")
@@ -414,17 +414,17 @@ final class AXTextInjectorTests: XCTestCase {
             AXTextInjector.contextTextSource(
                 documentText: "document",
                 applicationStateText: "state",
-                visibleText: "visible",
+                visibleText: "visible"
             ),
-            "document",
+            "document"
         )
         XCTAssertEqual(
             AXTextInjector.contextTextSource(
                 documentText: nil,
                 applicationStateText: "state",
-                visibleText: "visible",
+                visibleText: "visible"
             ),
-            "application-state",
+            "application-state"
         )
     }
 
@@ -433,7 +433,7 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXScrollBar",
             isEditable: true,
             isFocused: false,
-            selectedRange: nil,
+            selectedRange: nil
         )
 
         XCTAssertEqual(AXTextInjector.editableCandidateScore(for: candidate), 0)
@@ -444,7 +444,7 @@ final class AXTextInjectorTests: XCTestCase {
             role: "AXGroup",
             isEditable: true,
             isFocused: false,
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         XCTAssertGreaterThan(AXTextInjector.editableCandidateScore(for: candidate), 0)
@@ -455,7 +455,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: true,
             selectionSource: "clipboard-copy",
             focusMatched: true,
-            baselineAvailable: false,
+            baselineAvailable: false
         )
 
         XCTAssertTrue(result)
@@ -466,7 +466,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: true,
             selectionSource: "clipboard-copy",
             focusMatched: false,
-            baselineAvailable: false,
+            baselineAvailable: false
         )
 
         XCTAssertFalse(result)
@@ -476,7 +476,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldTreatAXValueAsUnreadable(
             role: "AXGroup",
             value: "hello",
-            selectedRange: CFRange(location: 0, length: 0),
+            selectedRange: CFRange(location: 0, length: 0)
         )
 
         XCTAssertFalse(result)
@@ -490,7 +490,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "Hello",
             isEditable: true,
             isFocusedTarget: true,
-            failureReason: nil,
+            failureReason: nil
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -499,7 +499,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "Hello world",
             isEditable: true,
             isFocusedTarget: true,
-            failureReason: nil,
+            failureReason: nil
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -507,7 +507,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .success)
@@ -521,7 +521,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "Hello",
             isEditable: true,
             isFocusedTarget: true,
-            failureReason: nil,
+            failureReason: nil
         )
         let after = CurrentInputTextSnapshot(
             processID: 99,
@@ -530,7 +530,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "Hello",
             isEditable: true,
             isFocusedTarget: true,
-            failureReason: nil,
+            failureReason: nil
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -538,7 +538,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .failure("focused-process-changed"))
@@ -554,7 +554,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -565,7 +565,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -573,7 +573,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .indeterminate)
@@ -589,7 +589,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -600,7 +600,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -608,7 +608,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: true,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .failure("input-text-unchanged"))
@@ -624,7 +624,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -635,7 +635,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -643,7 +643,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .indeterminate)
@@ -659,7 +659,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -670,7 +670,7 @@ final class AXTextInjectorTests: XCTestCase {
             isEditable: true,
             isFocusedTarget: true,
             failureReason: nil,
-            textSource: "ax-value",
+            textSource: "ax-value"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -678,7 +678,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .indeterminate)
@@ -692,7 +692,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "Hello",
             isEditable: true,
             isFocusedTarget: true,
-            failureReason: nil,
+            failureReason: nil
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -701,7 +701,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: nil,
             isEditable: true,
             isFocusedTarget: true,
-            failureReason: "missing-ax-value",
+            failureReason: "missing-ax-value"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -709,7 +709,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .indeterminate)
@@ -723,7 +723,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: nil,
             isEditable: false,
             isFocusedTarget: false,
-            failureReason: "focused-element-not-editable",
+            failureReason: "focused-element-not-editable"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -731,7 +731,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: nil,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .indeterminate)
@@ -745,7 +745,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: nil,
             isEditable: false,
             isFocusedTarget: false,
-            failureReason: "focused-element-not-editable",
+            failureReason: "focused-element-not-editable"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -753,7 +753,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: true,
             targetProcessID: 42,
             before: nil,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .failure("focused-element-not-editable"))
@@ -767,7 +767,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: nil,
             isEditable: false,
             isFocusedTarget: false,
-            failureReason: "accessibility-not-trusted",
+            failureReason: "accessibility-not-trusted"
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -775,7 +775,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: nil,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .failure("accessibility-not-trusted"))
@@ -785,7 +785,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldActivateTargetBeforePaste(
             flagEnabled: false,
             targetProcessID: 42,
-            frontmostProcessID: 99,
+            frontmostProcessID: 99
         )
 
         XCTAssertFalse(result)
@@ -795,7 +795,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldActivateTargetBeforePaste(
             flagEnabled: true,
             targetProcessID: 42,
-            frontmostProcessID: 42,
+            frontmostProcessID: 42
         )
 
         XCTAssertFalse(result)
@@ -805,7 +805,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldActivateTargetBeforePaste(
             flagEnabled: true,
             targetProcessID: nil,
-            frontmostProcessID: 42,
+            frontmostProcessID: 42
         )
 
         XCTAssertFalse(result)
@@ -815,7 +815,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldActivateTargetBeforePaste(
             flagEnabled: true,
             targetProcessID: 42,
-            frontmostProcessID: 99,
+            frontmostProcessID: 99
         )
 
         XCTAssertTrue(result)
@@ -825,7 +825,7 @@ final class AXTextInjectorTests: XCTestCase {
         let result = AXTextInjector.shouldActivateTargetBeforePaste(
             flagEnabled: true,
             targetProcessID: 42,
-            frontmostProcessID: nil,
+            frontmostProcessID: nil
         )
 
         XCTAssertTrue(result)
@@ -836,7 +836,7 @@ final class AXTextInjectorTests: XCTestCase {
         // already frontmost; the caller must not issue a redundant activate().
         let result = AXTextInjector.shouldReactivateProcessForSelectionRestore(
             targetProcessID: 42,
-            frontmostProcessID: 42,
+            frontmostProcessID: 42
         )
 
         XCTAssertFalse(result)
@@ -845,7 +845,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldReactivateProcessForSelectionRestoreActivatesWhenTargetDiffers() {
         let result = AXTextInjector.shouldReactivateProcessForSelectionRestore(
             targetProcessID: 42,
-            frontmostProcessID: 99,
+            frontmostProcessID: 99
         )
 
         XCTAssertTrue(result)
@@ -854,7 +854,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldReactivateProcessForSelectionRestoreActivatesWhenFrontmostUnknown() {
         let result = AXTextInjector.shouldReactivateProcessForSelectionRestore(
             targetProcessID: 42,
-            frontmostProcessID: nil,
+            frontmostProcessID: nil
         )
 
         XCTAssertTrue(result)
@@ -863,7 +863,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldReactivateProcessForSelectionRestoreSkipsWhenTargetUnknown() {
         let result = AXTextInjector.shouldReactivateProcessForSelectionRestore(
             targetProcessID: nil,
-            frontmostProcessID: 42,
+            frontmostProcessID: 42
         )
 
         XCTAssertFalse(result)
@@ -872,7 +872,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testPasteEventDispatchMethodUsesHIDTapWhenFlagEnabled() {
         let result = AXTextInjector.pasteEventDispatchMethod(
             flagEnabled: true,
-            targetProcessID: 42,
+            targetProcessID: 42
         )
 
         XCTAssertEqual(result, .hidTap)
@@ -881,7 +881,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testPasteEventDispatchMethodUsesHIDTapWhenFlagEnabledAndTargetMissing() {
         let result = AXTextInjector.pasteEventDispatchMethod(
             flagEnabled: true,
-            targetProcessID: nil,
+            targetProcessID: nil
         )
 
         XCTAssertEqual(result, .hidTap)
@@ -890,7 +890,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testPasteEventDispatchMethodUsesPostToPidWhenFlagDisabledAndTargetAvailable() {
         let result = AXTextInjector.pasteEventDispatchMethod(
             flagEnabled: false,
-            targetProcessID: 42,
+            targetProcessID: 42
         )
 
         XCTAssertEqual(result, .postToPid)
@@ -899,7 +899,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testPasteEventDispatchMethodFallsBackToHIDTapWhenFlagDisabledAndTargetMissing() {
         let result = AXTextInjector.pasteEventDispatchMethod(
             flagEnabled: false,
-            targetProcessID: nil,
+            targetProcessID: nil
         )
 
         XCTAssertEqual(result, .hidTap)
@@ -908,7 +908,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldPerformStrictPasteVerificationReturnsFalseForInsertEvenWhenFlagEnabled() {
         let result = AXTextInjector.shouldPerformStrictPasteVerification(
             replaceSelection: false,
-            strictFallbackEnabled: true,
+            strictFallbackEnabled: true
         )
 
         XCTAssertFalse(result)
@@ -917,7 +917,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldPerformStrictPasteVerificationReturnsFalseForReplaceWhenFlagDisabled() {
         let result = AXTextInjector.shouldPerformStrictPasteVerification(
             replaceSelection: true,
-            strictFallbackEnabled: false,
+            strictFallbackEnabled: false
         )
 
         XCTAssertFalse(result)
@@ -926,7 +926,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldPerformStrictPasteVerificationReturnsTrueForReplaceWhenFlagEnabled() {
         let result = AXTextInjector.shouldPerformStrictPasteVerification(
             replaceSelection: true,
-            strictFallbackEnabled: true,
+            strictFallbackEnabled: true
         )
 
         XCTAssertTrue(result)
@@ -935,7 +935,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldPerformStrictPasteVerificationReturnsFalseForInsertWhenFlagDisabled() {
         let result = AXTextInjector.shouldPerformStrictPasteVerification(
             replaceSelection: false,
-            strictFallbackEnabled: false,
+            strictFallbackEnabled: false
         )
 
         XCTAssertFalse(result)
@@ -944,7 +944,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldAttemptPasteVerificationReturnsTrueForInsertWhenFlagDisabled() {
         let result = AXTextInjector.shouldAttemptPasteVerification(
             replaceSelection: false,
-            strictFallbackEnabled: false,
+            strictFallbackEnabled: false
         )
 
         XCTAssertTrue(result)
@@ -953,7 +953,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldAttemptPasteVerificationReturnsTrueForInsertWhenFlagEnabled() {
         let result = AXTextInjector.shouldAttemptPasteVerification(
             replaceSelection: false,
-            strictFallbackEnabled: true,
+            strictFallbackEnabled: true
         )
 
         XCTAssertTrue(result)
@@ -962,7 +962,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldAttemptPasteVerificationReturnsFalseForReplaceWhenFlagDisabled() {
         let result = AXTextInjector.shouldAttemptPasteVerification(
             replaceSelection: true,
-            strictFallbackEnabled: false,
+            strictFallbackEnabled: false
         )
 
         XCTAssertFalse(result)
@@ -971,7 +971,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldAttemptPasteVerificationReturnsTrueForReplaceWhenFlagEnabled() {
         let result = AXTextInjector.shouldAttemptPasteVerification(
             replaceSelection: true,
-            strictFallbackEnabled: true,
+            strictFallbackEnabled: true
         )
 
         XCTAssertTrue(result)
@@ -980,7 +980,7 @@ final class AXTextInjectorTests: XCTestCase {
     func testShouldRestoreCapturedPasteboardReturnsTrueWhenChangeCountMatches() {
         let result = AXTextInjector.shouldRestoreCapturedPasteboard(
             capturedChangeCount: 42,
-            currentChangeCount: 42,
+            currentChangeCount: 42
         )
 
         XCTAssertTrue(result)
@@ -992,7 +992,7 @@ final class AXTextInjectorTests: XCTestCase {
         // their fresh content, so we must skip.
         let result = AXTextInjector.shouldRestoreCapturedPasteboard(
             capturedChangeCount: 42,
-            currentChangeCount: 43,
+            currentChangeCount: 43
         )
 
         XCTAssertFalse(result)
@@ -1005,11 +1005,11 @@ final class AXTextInjectorTests: XCTestCase {
         // avoid racing the consumer's read.
         XCTAssertGreaterThan(
             AXTextInjector.unverifiedPasteRestoreDelayNanoseconds,
-            AXTextInjector.verifiedPasteRestoreDelayNanoseconds,
+            AXTextInjector.verifiedPasteRestoreDelayNanoseconds
         )
         XCTAssertGreaterThan(
             AXTextInjector.unverifiedPasteRestoreDelayNanoseconds,
-            AXTextInjector.legacyPasteRestoreDelayNanoseconds,
+            AXTextInjector.legacyPasteRestoreDelayNanoseconds
         )
     }
 
@@ -1021,7 +1021,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "x.com/home",
             isEditable: true,
             isFocusedTarget: false,
-            failureReason: nil,
+            failureReason: nil
         )
         let after = CurrentInputTextSnapshot(
             processID: 42,
@@ -1030,7 +1030,7 @@ final class AXTextInjectorTests: XCTestCase {
             text: "x.com/home",
             isEditable: true,
             isFocusedTarget: false,
-            failureReason: nil,
+            failureReason: nil
         )
 
         let result = AXTextInjector.evaluatePasteVerification(
@@ -1038,7 +1038,7 @@ final class AXTextInjectorTests: XCTestCase {
             replaceSelection: false,
             targetProcessID: 42,
             before: before,
-            after: after,
+            after: after
         )
 
         XCTAssertEqual(result, .indeterminate)

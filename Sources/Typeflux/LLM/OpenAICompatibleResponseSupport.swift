@@ -94,7 +94,7 @@ enum OpenAICompatibleResponseSupport {
         body: inout [String: Any],
         baseURL: URL,
         model: String,
-        provider: LLMRemoteProvider? = nil,
+        provider: LLMRemoteProvider? = nil
     ) {
         guard provider != .custom else { return }
         guard shouldDisableThinking(baseURL: baseURL, model: model, provider: provider) else { return }
@@ -107,7 +107,7 @@ enum OpenAICompatibleResponseSupport {
         if shouldSendOpenRouterReasoningToggle(baseURL: baseURL) {
             body["reasoning"] = [
                 "effort": "none",
-                "exclude": true,
+                "exclude": true
             ]
             body["include_reasoning"] = false
         } else if let effort = reasoningEffort(baseURL: baseURL, model: model) {
@@ -151,7 +151,7 @@ enum OpenAICompatibleResponseSupport {
             "extra_forbidden",
             "extra inputs are not permitted",
             "not permitted",
-            "unexpected",
+            "unexpected"
         ]
 
         return tuningKeys.contains(where: { message.contains($0) })
@@ -226,14 +226,14 @@ enum OpenAICompatibleResponseSupport {
         return NSError(
             domain: "SSE",
             code: status,
-            userInfo: [NSLocalizedDescriptionKey: "HTTP \(status): \(message)"],
+            userInfo: [NSLocalizedDescriptionKey: "HTTP \(status): \(message)"]
         )
     }
 
     static func shouldDisableThinking(
         baseURL: URL,
         model: String,
-        provider: LLMRemoteProvider? = nil,
+        provider: LLMRemoteProvider? = nil
     ) -> Bool {
         if provider == .custom { return false }
         let host = baseURL.host?.lowercased() ?? ""
@@ -256,7 +256,7 @@ enum OpenAICompatibleResponseSupport {
             "modelscope.cn",
             "siliconflow.cn",
             "together.xyz",
-            "fireworks.ai",
+            "fireworks.ai"
         ]
         let disabledModelKeywords = [
             "doubao",
@@ -268,7 +268,7 @@ enum OpenAICompatibleResponseSupport {
             "qwq",
             "kimi",
             "minimax",
-            "mimo",
+            "mimo"
         ]
         return disabledHosts.contains(where: { host.contains($0) })
             || disabledModelKeywords.contains(where: { normalizedModel.contains($0) })
@@ -281,11 +281,11 @@ enum OpenAICompatibleResponseSupport {
             "volces.com",
             "bytedance.net",
             "deepseek.com",
-            "opencode.ai",
+            "opencode.ai"
         ]
         let thinkingModelKeywords = [
             "doubao",
-            "deepseek",
+            "deepseek"
         ]
         return thinkingHosts.contains(where: { host.contains($0) })
             || thinkingModelKeywords.contains(where: { normalizedModel.contains($0) })

@@ -119,7 +119,7 @@ final class OnboardingViewModel: ObservableObject {
         globeKeyReader: GlobeKeyPreferenceReading = SystemGlobeKeyPreferenceReader(),
         localModelManager: (any LocalSTTModelManaging)? = nil,
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
-        onComplete: @escaping () -> Void,
+        onComplete: @escaping () -> Void
     ) {
         self.settingsStore = settingsStore
         let resolvedAuthState = authState ?? .shared
@@ -187,13 +187,13 @@ final class OnboardingViewModel: ObservableObject {
         historyHotkey = storedHistoryHotkey
         externalKeyboardShortcutReplacement = Self.detectExternalKeyboardShortcutReplacement(
             activationHotkey: storedActivationHotkey,
-            askHotkey: storedAskHotkey,
+            askHotkey: storedAskHotkey
         )
 
         cloudAccountModelDefaultsObserver = NotificationCenter.default.addObserver(
             forName: .cloudAccountModelDefaultsDidApply,
             object: settingsStore,
-            queue: .main,
+            queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncCloudAccountModelsFromStore()
@@ -414,13 +414,13 @@ final class OnboardingViewModel: ObservableObject {
                         preview = try await WhisperAPITranscriber.testConnection(
                             baseURL: baseURL,
                             model: model,
-                            apiKey: apiKey,
+                            apiKey: apiKey
                         )
                     case .multimodalLLM:
                         preview = try await MultimodalLLMTranscriber.testConnection(
                             baseURL: multimodalBaseURL,
                             model: multimodalModel,
-                            apiKey: multimodalAPIKey,
+                            apiKey: multimodalAPIKey
                         )
                     case .aliCloud:
                         preview = try await AliCloudRealtimeTranscriber.testConnection(apiKey: aliKey)
@@ -428,14 +428,14 @@ final class OnboardingViewModel: ObservableObject {
                         preview = try await DoubaoRealtimeTranscriber.testConnection(
                             appID: doubaoID,
                             accessToken: doubaoToken,
-                            resourceID: doubaoResource,
+                            resourceID: doubaoResource
                         )
                     case .googleCloud:
                         preview = try await GoogleCloudSpeechTranscriber.testConnection(
                             projectID: googleProjectID,
                             apiKey: googleAPIKey,
                             model: googleModel,
-                            appLanguage: language,
+                            appLanguage: language
                         )
                     case .groq:
                         let effectiveModel = groqModel.isEmpty
@@ -443,7 +443,7 @@ final class OnboardingViewModel: ObservableObject {
                         preview = try await WhisperAPITranscriber.testConnection(
                             baseURL: "https://api.groq.com/openai/v1",
                             model: effectiveModel,
-                            apiKey: groqKey,
+                            apiKey: groqKey
                         )
                     case .freeModel:
                         preview = try await FreeSTTTranscriber.testConnection(modelName: freeModel)
@@ -483,13 +483,13 @@ final class OnboardingViewModel: ObservableObject {
                             throw NSError(
                                 domain: "LLMTest",
                                 code: 1,
-                                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama URL."],
+                                userInfo: [NSLocalizedDescriptionKey: "Invalid Ollama URL."]
                             )
                         }
                         let url = base.appendingPathComponent("api/chat")
                         var req = URLRequest(
                             url: url,
-                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds),
+                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds)
                         )
                         req.httpMethod = "POST"
                         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -497,7 +497,7 @@ final class OnboardingViewModel: ObservableObject {
                             "model": ollamaModel,
                             "stream": false,
                             "messages": [["role": "user", "content": "Reply with exactly: ok"]],
-                            "options": ["num_predict": 10],
+                            "options": ["num_predict": 10]
                         ])
                         let (data, response) = try await URLSession.shared.data(for: req)
                         guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
@@ -513,14 +513,14 @@ final class OnboardingViewModel: ObservableObject {
                             provider: remoteProvider,
                             baseURL: baseURL,
                             model: model,
-                            apiKey: apiKey,
+                            apiKey: apiKey
                         )
                         return try await RemoteLLMClient.previewConnection(
                             provider: connection.provider,
                             baseURL: connection.baseURL,
                             model: connection.model,
                             apiKey: connection.apiKey,
-                            additionalHeaders: connection.headers(for: .modelSetup),
+                            additionalHeaders: connection.headers(for: .modelSetup)
                         )
                     }
                 }
@@ -528,7 +528,7 @@ final class OnboardingViewModel: ObservableObject {
                 let ms = Int(Date().timeIntervalSince(start) * 1000)
                 llmConnectionTestState = .success(
                     totalMs: ms,
-                    preview: String(preview.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+                    preview: String(preview.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
                 )
             } catch {
                 guard !Task.isCancelled else { return }
@@ -570,7 +570,7 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     static let keyboardSystemSettingsURL = URL(
-        string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension"
     )!
 
     func openKeyboardSystemSettings() {
@@ -714,7 +714,7 @@ final class OnboardingViewModel: ObservableObject {
                 try await localModelManager.prepareModel(configuration: configuration) { update in
                     LocalModelDownloadProgressCenter.shared.reportDownloading(
                         model: targetModel,
-                        progress: update.progress,
+                        progress: update.progress
                     )
                 }
                 guard !Task.isCancelled else { return }
@@ -722,7 +722,7 @@ final class OnboardingViewModel: ObservableObject {
                 await notificationService.sendLocalNotification(
                     title: L("notification.localModelReady.title"),
                     body: L("notification.localModelReady.body"),
-                    identifier: "ai.gulu.app.typeflux.local-model-ready",
+                    identifier: "ai.gulu.app.typeflux.local-model-ready"
                 )
             } catch {
                 guard !Task.isCancelled else {
@@ -732,7 +732,7 @@ final class OnboardingViewModel: ObservableObject {
                 NetworkDebugLogger.logError(context: "Onboarding local STT model download failed", error: error)
                 LocalModelDownloadProgressCenter.shared.reportFailed(
                     model: targetModel,
-                    message: error.localizedDescription,
+                    message: error.localizedDescription
                 )
             }
             await MainActor.run {
@@ -755,7 +755,7 @@ final class OnboardingViewModel: ObservableObject {
             model: model,
             modelIdentifier: model.defaultModelIdentifier,
             downloadSource: model.recommendedDownloadSource,
-            autoSetup: true,
+            autoSetup: true
         )
     }
 
@@ -779,7 +779,7 @@ final class OnboardingViewModel: ObservableObject {
 
     private static func detectExternalKeyboardShortcutReplacement(
         activationHotkey: HotkeyBinding,
-        askHotkey: HotkeyBinding?,
+        askHotkey: HotkeyBinding?
     ) -> ExternalKeyboardShortcutReplacement? {
         ExternalKeyboardShortcutReplacement.allCases.first { replacement in
             activationHotkey.signature == replacement.activationHotkey.signature

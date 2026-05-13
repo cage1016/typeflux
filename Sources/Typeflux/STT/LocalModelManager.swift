@@ -27,7 +27,7 @@ struct LocalSTTPreparationUpdate {
         storagePath: String,
         source: String?,
         downloadedBytes: Int64? = nil,
-        totalBytes: Int64? = nil,
+        totalBytes: Int64? = nil
     ) {
         self.message = message
         self.progress = progress
@@ -83,12 +83,12 @@ struct LocalSTTConfiguration: Equatable {
 protocol LocalSTTModelManaging {
     func prepareModel(
         settingsStore: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws
 
     func prepareModel(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws
 
     func preparedModelInfo(settingsStore: SettingsStore) -> LocalSTTPreparedModelInfo?
@@ -100,7 +100,7 @@ protocol LocalSTTModelManaging {
 extension LocalSTTModelManaging {
     func prepareModel(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         let suiteName = "LocalSTTPreparation-\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -147,21 +147,23 @@ final class LocalModelManager: LocalSTTModelManaging {
         fileManager: FileManager = .default,
         sherpaOnnxInstaller: SherpaOnnxModelInstalling? = nil,
         applicationSupportURL: URL? = nil,
-        whisperKitPreparerFactory: @escaping WhisperKitPreparerFactory = { modelName, downloadBase, modelRepo, modelEndpoint in
-            WhisperKitTranscriber(
-                modelName: modelName,
-                downloadBase: downloadBase,
-                modelRepo: modelRepo,
-                modelEndpoint: modelEndpoint,
-            )
-        },
-        localWhisperKitPreparerFactory: @escaping LocalWhisperKitPreparerFactory = { modelName, modelFolder, tokenizerFolder in
-            WhisperKitTranscriber(
-                modelName: modelName,
-                modelFolder: modelFolder,
-                tokenizerFolder: tokenizerFolder,
-            )
-        },
+        whisperKitPreparerFactory: @escaping WhisperKitPreparerFactory =
+            { modelName, downloadBase, modelRepo, modelEndpoint in
+                WhisperKitTranscriber(
+                    modelName: modelName,
+                    downloadBase: downloadBase,
+                    modelRepo: modelRepo,
+                    modelEndpoint: modelEndpoint
+                )
+            },
+        localWhisperKitPreparerFactory: @escaping LocalWhisperKitPreparerFactory =
+            { modelName, modelFolder, tokenizerFolder in
+                WhisperKitTranscriber(
+                    modelName: modelName,
+                    modelFolder: modelFolder,
+                    tokenizerFolder: tokenizerFolder
+                )
+            },
         remoteFileLoader: @escaping RemoteFileLoader = { url in
             try await LocalModelManager.defaultRemoteFileLoader(from: url)
         },
@@ -172,11 +174,11 @@ final class LocalModelManager: LocalSTTModelManaging {
             try await LocalModelManager.defaultRemoteFileDownloader(
                 from: sourceURL,
                 to: destinationURL,
-                onProgress: onProgress,
+                onProgress: onProgress
             )
         },
         downloadSourceResolver: LocalModelDownloadSourceResolving = NetworkLocalModelDownloadSourceResolver(),
-        bundledModelsRootURL: URL? = nil,
+        bundledModelsRootURL: URL? = nil
     ) {
         self.fileManager = fileManager
         self.whisperKitPreparerFactory = whisperKitPreparerFactory
@@ -189,13 +191,16 @@ final class LocalModelManager: LocalSTTModelManaging {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let base = applicationSupportURL
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(
+                "Library/Application Support",
+                isDirectory: true
+            )
         _modelsRootURL = base.appendingPathComponent("Typeflux/LocalModels", isDirectory: true)
         _runtimesRootURL = base.appendingPathComponent("Typeflux/LocalRuntimes", isDirectory: true)
         _legacyRuntimeURL = base.appendingPathComponent("Typeflux/STT/Runtime", isDirectory: true)
         self.sherpaOnnxInstaller = sherpaOnnxInstaller ?? SherpaOnnxModelInstaller(
             fileManager: fileManager,
-            sharedRuntimeStorageURL: _runtimesRootURL,
+            sharedRuntimeStorageURL: _runtimesRootURL
         )
     }
 
@@ -205,19 +210,19 @@ final class LocalModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil
     ) async throws {
         try await prepareModel(configuration: LocalSTTConfiguration(settingsStore: settingsStore), onUpdate: onUpdate)
     }
 
     func prepareModel(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil
     ) async throws {
         if let bundled = bundledModelInfo(for: configuration) {
             let installedPath = try installBundledModelIntoAppSupport(
                 configuration: configuration,
-                bundledPath: bundled.storagePath,
+                bundledPath: bundled.storagePath
             )
             let record = LocalModelPreparedRecord(
                 model: configuration.model.rawValue,
@@ -225,14 +230,14 @@ final class LocalModelManager: LocalSTTModelManaging {
                 storagePath: installedPath,
                 runtimePath: runtimePath(for: configuration.model),
                 source: Self.bundledPreparedSource,
-                preparedAt: Date(),
+                preparedAt: Date()
             )
             try savePreparedRecord(record, for: configuration.model)
             onUpdate?(LocalSTTPreparationUpdate(
                 message: L("localSTT.prepare.runtimeReady", configuration.model.displayName),
                 progress: 1,
                 storagePath: installedPath,
-                source: L("common.bundled"),
+                source: L("common.bundled")
             ))
             return
         }
@@ -244,7 +249,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             storagePath: result.storagePath,
             runtimePath: runtimePath(for: configuration.model),
             source: result.source.rawValue,
-            preparedAt: Date(),
+            preparedAt: Date()
         )
         try savePreparedRecord(record, for: configuration.model)
     }
@@ -254,14 +259,14 @@ final class LocalModelManager: LocalSTTModelManaging {
     @discardableResult
     func downloadModelFilesOnly(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil
     ) async throws -> String {
         try await downloadModelFiles(configuration: configuration, onUpdate: onUpdate).storagePath
     }
 
     private func downloadModelFiles(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)? = nil
     ) async throws -> LocalModelDownloadResult {
         let sources = await downloadSourceResolver.rankedSources(for: configuration)
         var lastError: Error?
@@ -272,25 +277,25 @@ final class LocalModelManager: LocalSTTModelManaging {
                     model: configuration.model,
                     modelIdentifier: configuration.modelIdentifier,
                     downloadSource: source,
-                    autoSetup: configuration.autoSetup,
+                    autoSetup: configuration.autoSetup
                 )
                 let storagePath = try await downloadModelFilesOnly(
                     configuration: sourceConfiguration,
                     selectedSource: source,
-                    onUpdate: onUpdate,
+                    onUpdate: onUpdate
                 )
                 return LocalModelDownloadResult(storagePath: storagePath, source: source)
             } catch {
                 lastError = error
                 NetworkDebugLogger.logError(
                     context: "[Local Model Download] source failed: \(source.displayName)",
-                    error: error,
+                    error: error
                 )
                 let attemptedPath = storagePath(for: LocalSTTConfiguration(
                     model: configuration.model,
                     modelIdentifier: configuration.modelIdentifier,
                     downloadSource: source,
-                    autoSetup: configuration.autoSetup,
+                    autoSetup: configuration.autoSetup
                 ))
                 if !isPreparedStoragePathValid(attemptedPath, for: configuration.model) {
                     try? fileManager.removeItem(at: URL(fileURLWithPath: attemptedPath, isDirectory: true))
@@ -301,14 +306,14 @@ final class LocalModelManager: LocalSTTModelManaging {
         throw lastError ?? NSError(
             domain: "LocalModelManager",
             code: 8,
-            userInfo: [NSLocalizedDescriptionKey: "All local model download sources failed."],
+            userInfo: [NSLocalizedDescriptionKey: "All local model download sources failed."]
         )
     }
 
     private func downloadModelFilesOnly(
         configuration: LocalSTTConfiguration,
         selectedSource: ModelDownloadSource,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws -> String {
         let downloadBasePath = storagePath(for: configuration)
         var resultPath = downloadBasePath
@@ -317,7 +322,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             message: L("localSTT.prepare.cleaningLegacyRuntime"),
             progress: 0.05,
             storagePath: resultPath,
-            source: selectedSource.displayName,
+            source: selectedSource.displayName
         ))
         try? cleanupLegacyPythonRuntime()
 
@@ -330,19 +335,19 @@ final class LocalModelManager: LocalSTTModelManaging {
             resultPath = try await prepareWhisperKit(
                 configuration: configuration,
                 downloadBasePath: downloadBasePath,
-                onUpdate: onUpdate,
+                onUpdate: onUpdate
             )
         case .senseVoiceSmall, .qwen3ASR, .funASR:
             resultPath = try await sherpaOnnxInstaller.prepareModel(
                 configuration.model,
                 at: URL(fileURLWithPath: downloadBasePath, isDirectory: true),
-                downloadSource: configuration.downloadSource,
+                downloadSource: configuration.downloadSource
             ) { update in
                 onUpdate?(LocalSTTPreparationUpdate(
                     message: update.message,
                     progress: update.progress,
                     storagePath: update.storagePath,
-                    source: selectedSource.displayName,
+                    source: selectedSource.displayName
                 ))
             }
         }
@@ -350,14 +355,14 @@ final class LocalModelManager: LocalSTTModelManaging {
         // Create the storagePath directory so file-existence checks pass.
         try fileManager.createDirectory(
             at: URL(fileURLWithPath: resultPath, isDirectory: true),
-            withIntermediateDirectories: true,
+            withIntermediateDirectories: true
         )
 
         onUpdate?(LocalSTTPreparationUpdate(
             message: L("localSTT.prepare.runtimeReady", configuration.model.displayName),
             progress: 1,
             storagePath: resultPath,
-            source: selectedSource.displayName,
+            source: selectedSource.displayName
         ))
 
         return resultPath
@@ -387,7 +392,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             model: .senseVoiceSmall,
             modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
             downloadSource: .huggingFace,
-            autoSetup: true,
+            autoSetup: true
         )
 
         guard let bundled = bundledModelInfo(for: configuration) else {
@@ -396,7 +401,7 @@ final class LocalModelManager: LocalSTTModelManaging {
 
         let installedPath = try installBundledModelIntoAppSupport(
             configuration: configuration,
-            bundledPath: bundled.storagePath,
+            bundledPath: bundled.storagePath
         )
         let record = LocalModelPreparedRecord(
             model: configuration.model.rawValue,
@@ -404,7 +409,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             storagePath: installedPath,
             runtimePath: runtimePath(for: configuration.model),
             source: Self.bundledPreparedSource,
-            preparedAt: Date(),
+            preparedAt: Date()
         )
         try savePreparedRecord(record, for: configuration.model)
         return true
@@ -413,7 +418,7 @@ final class LocalModelManager: LocalSTTModelManaging {
     private func prepareWhisperKit(
         configuration: LocalSTTConfiguration,
         downloadBasePath: String,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws -> String {
         let identifier = configuration.modelIdentifier
         let modelName = identifier.hasPrefix("whisperkit-")
@@ -424,28 +429,28 @@ final class LocalModelManager: LocalSTTModelManaging {
             message: L("localSTT.prepare.whisperDownloading", modelName),
             progress: 0.2,
             storagePath: downloadBasePath,
-            source: configuration.downloadSource.displayName,
+            source: configuration.downloadSource.displayName
         ))
 
         try await prepareWhisperTokenizerIfNeeded(
             modelName: modelName,
             downloadSource: configuration.downloadSource,
-            downloadBasePath: downloadBasePath,
+            downloadBasePath: downloadBasePath
         )
 
         if let localModelFolderPath = try await prepareWhisperModelFilesIfNeeded(
             modelName: modelName,
             downloadSource: configuration.downloadSource,
             downloadBasePath: downloadBasePath,
-            onUpdate: onUpdate,
+            onUpdate: onUpdate
         ) {
             let transcriber = localWhisperKitPreparerFactory(
                 modelName,
                 localModelFolderPath,
-                URL(fileURLWithPath: downloadBasePath, isDirectory: true),
+                URL(fileURLWithPath: downloadBasePath, isDirectory: true)
             )
             NetworkDebugLogger.logMessage(
-                "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit-local modelFolder=\(localModelFolderPath)",
+                "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit-local modelFolder=\(localModelFolderPath)"
             )
             try await transcriber.prepare { progress, message in
                 let mapped = 0.2 + progress * 0.75
@@ -453,7 +458,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                     message: message,
                     progress: mapped,
                     storagePath: transcriber.resolvedModelFolderPath ?? localModelFolderPath,
-                    source: configuration.downloadSource.displayName,
+                    source: configuration.downloadSource.displayName
                 ))
             }
 
@@ -464,7 +469,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                 throw NSError(
                     domain: "LocalModelManager",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+                    userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")]
                 )
             }
 
@@ -478,10 +483,10 @@ final class LocalModelManager: LocalSTTModelManaging {
             modelName,
             downloadBaseURL,
             modelRepo,
-            modelEndpoint,
+            modelEndpoint
         )
         NetworkDebugLogger.logMessage(
-            "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit endpoint=\(modelEndpoint) repository=\(LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: configuration.downloadSource).absoluteString)",
+            "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit endpoint=\(modelEndpoint) repository=\(LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: configuration.downloadSource).absoluteString)"
         )
         try await transcriber.prepare { progress, message in
             let mapped = 0.2 + progress * 0.75
@@ -489,7 +494,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                 message: message,
                 progress: mapped,
                 storagePath: transcriber.resolvedModelFolderPath ?? downloadBasePath,
-                source: configuration.downloadSource.displayName,
+                source: configuration.downloadSource.displayName
             ))
         }
 
@@ -500,7 +505,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")]
             )
         }
 
@@ -516,7 +521,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             model: model,
             modelIdentifier: model.defaultModelIdentifier,
             downloadSource: model.recommendedDownloadSource,
-            autoSetup: true,
+            autoSetup: true
         )
         if bundledModelInfo(for: defaultConfiguration) != nil {
             return true
@@ -541,8 +546,8 @@ final class LocalModelManager: LocalSTTModelManaging {
             storagePath: record.storagePath,
             sourceDisplayName: preparedSourceDisplayName(
                 rawValue: record.source,
-                configuration: configuration,
-            ),
+                configuration: configuration
+            )
         )
     }
 
@@ -560,7 +565,10 @@ final class LocalModelManager: LocalSTTModelManaging {
 
     func storagePath(for configuration: LocalSTTConfiguration) -> String {
         resourceDirectoryURL(for: configuration.model)
-            .appendingPathComponent(configuration.modelIdentifier.replacingOccurrences(of: "/", with: "--"), isDirectory: true)
+            .appendingPathComponent(
+                configuration.modelIdentifier.replacingOccurrences(of: "/", with: "--"),
+                isDirectory: true
+            )
             .path
     }
 
@@ -611,7 +619,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         {
             return LocalSTTPreparedModelInfo(
                 storagePath: candidateURL.path,
-                sourceDisplayName: L("common.bundled"),
+                sourceDisplayName: L("common.bundled")
             )
         }
 
@@ -630,13 +638,15 @@ final class LocalModelManager: LocalSTTModelManaging {
     /// is replaced during auto-update, so durable state must not point back into the bundle.
     private func installBundledModelIntoAppSupport(
         configuration: LocalSTTConfiguration,
-        bundledPath: String,
+        bundledPath: String
     ) throws -> String {
         guard let layout = SherpaOnnxModelLayout.layout(for: configuration.model) else {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 10,
-                userInfo: [NSLocalizedDescriptionKey: "Bundled local model copy is only supported for Sherpa-ONNX models."],
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Bundled local model copy is only supported for Sherpa-ONNX models."
+                ]
             )
         }
 
@@ -650,11 +660,21 @@ final class LocalModelManager: LocalSTTModelManaging {
         try ensurePath(targetURL, isInside: modelsRootURL)
 
         let runtimeRootURL = try installBundledRuntimeIntoAppSupport(layout: layout, bundledStorageURL: bundledURL)
-        if bundledModelMatchesInstalledCopy(layout: layout, bundledStorageURL: bundledURL, targetURL: targetURL, runtimeRootURL: runtimeRootURL) {
+        if bundledModelMatchesInstalledCopy(
+            layout: layout,
+            bundledStorageURL: bundledURL,
+            targetURL: targetURL,
+            runtimeRootURL: runtimeRootURL
+        ) {
             return targetURL.path
         }
 
-        if fileManager.fileExists(atPath: targetURL.path) || (try? fileManager.destinationOfSymbolicLink(atPath: targetURL.path)) != nil {
+        if fileManager
+            .fileExists(atPath: targetURL.path) || (
+                try? fileManager.destinationOfSymbolicLink(atPath: targetURL.path)
+            ) !=
+            nil
+        {
             try fileManager.removeItem(at: targetURL)
         }
 
@@ -668,7 +688,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 11,
-                userInfo: [NSLocalizedDescriptionKey: "Bundled local model copy failed validation at \(targetURL.path)"],
+                userInfo: [NSLocalizedDescriptionKey: "Bundled local model copy failed validation at \(targetURL.path)"]
             )
         }
         return targetURL.path
@@ -676,10 +696,10 @@ final class LocalModelManager: LocalSTTModelManaging {
 
     private func installBundledRuntimeIntoAppSupport(
         layout: SherpaOnnxModelLayout,
-        bundledStorageURL: URL,
+        bundledStorageURL: URL
     ) throws -> URL {
         let bundledRuntimeURL = try resolvedURLFollowingSymlink(
-            bundledStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true),
+            bundledStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
         )
         let targetRuntimeURL = runtimesRootURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
         try ensurePath(targetRuntimeURL, isInside: runtimesRootURL)
@@ -690,10 +710,16 @@ final class LocalModelManager: LocalSTTModelManaging {
             return targetRuntimeURL
         }
 
-        if fileManager.fileExists(atPath: targetRuntimeURL.path) || (try? fileManager.destinationOfSymbolicLink(atPath: targetRuntimeURL.path)) != nil {
+        if fileManager
+            .fileExists(atPath: targetRuntimeURL.path) ||
+            (try? fileManager.destinationOfSymbolicLink(atPath: targetRuntimeURL.path)) != nil
+        {
             try fileManager.removeItem(at: targetRuntimeURL)
         }
-        try fileManager.createDirectory(at: targetRuntimeURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try fileManager.createDirectory(
+            at: targetRuntimeURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         try fileManager.copyItem(at: bundledRuntimeURL, to: targetRuntimeURL)
         return targetRuntimeURL
     }
@@ -702,7 +728,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         layout: SherpaOnnxModelLayout,
         bundledStorageURL: URL,
         targetURL: URL,
-        runtimeRootURL: URL,
+        runtimeRootURL: URL
     ) -> Bool {
         let bundledModelRootURL = bundledStorageURL.appendingPathComponent(layout.modelRootDirectory, isDirectory: true)
         let targetModelRootURL = targetURL.appendingPathComponent(layout.modelRootDirectory, isDirectory: true)
@@ -712,14 +738,14 @@ final class LocalModelManager: LocalSTTModelManaging {
             return false
         }
         return (try? fileManager.destinationOfSymbolicLink(
-            atPath: targetURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true).path,
+            atPath: targetURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true).path
         )) == runtimeRootURL.path
     }
 
     private func linkRuntime(
         layout: SherpaOnnxModelLayout,
         modelStorageURL: URL,
-        runtimeRootURL: URL,
+        runtimeRootURL: URL
     ) throws {
         let linkURL = modelStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
         if let existingDestination = try? fileManager.destinationOfSymbolicLink(atPath: linkURL.path) {
@@ -750,7 +776,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 9,
-                userInfo: [NSLocalizedDescriptionKey: "Resolved local model asset path escapes storage root: \(path)"],
+                userInfo: [NSLocalizedDescriptionKey: "Resolved local model asset path escapes storage root: \(path)"]
             )
         }
     }
@@ -759,13 +785,13 @@ final class LocalModelManager: LocalSTTModelManaging {
         DirectoryContentMatcher.contentsMatch(
             sourceURL: sourceURL,
             targetURL: targetURL,
-            fileManager: fileManager,
+            fileManager: fileManager
         )
     }
 
     private func preparedSourceDisplayName(
         rawValue: String,
-        configuration: LocalSTTConfiguration,
+        configuration: LocalSTTConfiguration
     ) -> String {
         if rawValue == Self.bundledPreparedSource {
             return L("common.bundled")
@@ -777,7 +803,7 @@ final class LocalModelManager: LocalSTTModelManaging {
     private func prepareWhisperTokenizerIfNeeded(
         modelName: String,
         downloadSource: ModelDownloadSource,
-        downloadBasePath: String,
+        downloadBasePath: String
     ) async throws {
         guard downloadSource != .huggingFace else {
             return
@@ -797,18 +823,18 @@ final class LocalModelManager: LocalSTTModelManaging {
             guard let sourceURL = LocalModelDownloadCatalog.whisperTokenizerFileURL(
                 for: modelName,
                 fileName: fileName,
-                source: downloadSource,
+                source: downloadSource
             ) else {
                 continue
             }
 
             NetworkDebugLogger.logMessage(
-                "[Local Model Download] kind=whisper-tokenizer source=\(downloadSource.displayName) model=\(modelName) url=\(sourceURL.absoluteString)",
+                "[Local Model Download] kind=whisper-tokenizer source=\(downloadSource.displayName) model=\(modelName) url=\(sourceURL.absoluteString)"
             )
             let data = try await loadRemoteFileWithRetry(sourceURL, operationName: "WhisperKit tokenizer file download")
             try data.write(
                 to: tokenizerFolderURL.appendingPathComponent(fileName, isDirectory: false),
-                options: .atomic,
+                options: .atomic
             )
         }
     }
@@ -817,7 +843,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         modelName: String,
         downloadSource: ModelDownloadSource,
         downloadBasePath: String,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws -> String? {
         guard downloadSource != .huggingFace else {
             return nil
@@ -832,7 +858,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         let expectedPrefix = whisperModelDirectoryName(for: modelName) + "/"
         let remoteFiles = try await loadRemoteRepositoryFileListWithRetry(
             repositoryFilesURL,
-            operationName: "WhisperKit repository file list download",
+            operationName: "WhisperKit repository file list download"
         )
         .filter { $0.hasPrefix(expectedPrefix) }
         .sorted()
@@ -841,7 +867,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 4,
-                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")]
             )
         }
 
@@ -869,7 +895,7 @@ final class LocalModelManager: LocalSTTModelManaging {
 
             try fileManager.createDirectory(
                 at: destinationFileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true,
+                withIntermediateDirectories: true
             )
 
             let progressBase = Double(index) / Double(max(remoteFiles.count, 1))
@@ -878,15 +904,15 @@ final class LocalModelManager: LocalSTTModelManaging {
                 message: L("localSTT.prepare.whisperDownloading", modelName),
                 progress: 0.2 + progressBase * 0.6,
                 storagePath: modelFolderURL.path,
-                source: downloadSource.displayName,
+                source: downloadSource.displayName
             ))
             NetworkDebugLogger.logMessage(
-                "[Local Model Download] kind=whisper-model-file source=\(downloadSource.displayName) model=\(modelName) path=\(relativePath) url=\(sourceURL.absoluteString)",
+                "[Local Model Download] kind=whisper-model-file source=\(downloadSource.displayName) model=\(modelName) path=\(relativePath) url=\(sourceURL.absoluteString)"
             )
             try await downloadRemoteFileWithRetry(
                 sourceURL,
                 to: destinationFileURL,
-                operationName: "WhisperKit model file download",
+                operationName: "WhisperKit model file download"
             ) { receivedBytes, totalBytes in
                 guard let totalBytes, totalBytes > 0 else { return }
                 let fileProgress = min(max(Double(receivedBytes) / Double(totalBytes), 0), 1)
@@ -896,7 +922,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                     storagePath: modelFolderURL.path,
                     source: downloadSource.displayName,
                     downloadedBytes: receivedBytes,
-                    totalBytes: totalBytes,
+                    totalBytes: totalBytes
                 ))
             }
         }
@@ -905,7 +931,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 5,
-                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")],
+                userInfo: [NSLocalizedDescriptionKey: L("localSTT.error.whisperModelMissing")]
             )
         }
 
@@ -926,7 +952,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             }
             return layout.isInstalled(
                 storageURL: URL(fileURLWithPath: storagePath, isDirectory: true),
-                fileManager: fileManager,
+                fileManager: fileManager
             )
         }
     }
@@ -988,7 +1014,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             fileManager.fileExists(
                 atPath: URL(fileURLWithPath: storagePath, isDirectory: true)
                     .appendingPathComponent(fileName, isDirectory: false)
-                    .path,
+                    .path
             )
         }
     }
@@ -1019,7 +1045,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         _ sourceURL: URL,
         to destinationURL: URL,
         operationName: String,
-        onProgress: (@Sendable (Int64, Int64?) -> Void)? = nil,
+        onProgress: (@Sendable (Int64, Int64?) -> Void)? = nil
     ) async throws {
         try await RequestRetry.perform(operationName: "\(operationName) \(sourceURL.absoluteString)") { [self] in
             try await remoteFileDownloader(sourceURL, destinationURL, onProgress)
@@ -1032,14 +1058,14 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Tokenizer download returned a non-HTTP response."],
+                userInfo: [NSLocalizedDescriptionKey: "Tokenizer download returned a non-HTTP response."]
             )
         }
         guard (200 ..< 300).contains(http.statusCode) else {
             throw NSError(
                 domain: "LocalModelManager",
                 code: http.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: "Tokenizer download failed with status \(http.statusCode)."],
+                userInfo: [NSLocalizedDescriptionKey: "Tokenizer download failed with status \(http.statusCode)."]
             )
         }
         return data
@@ -1051,7 +1077,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 6,
-                userInfo: [NSLocalizedDescriptionKey: "WhisperKit repository listing request failed."],
+                userInfo: [NSLocalizedDescriptionKey: "WhisperKit repository listing request failed."]
             )
         }
 
@@ -1062,16 +1088,19 @@ final class LocalModelManager: LocalSTTModelManaging {
     private static func defaultRemoteFileDownloader(
         from sourceURL: URL,
         to destinationURL: URL,
-        onProgress: (@Sendable (Int64, Int64?) -> Void)? = nil,
+        onProgress: (@Sendable (Int64, Int64?) -> Void)? = nil
     ) async throws {
         var request = URLRequest(url: sourceURL)
         request.timeoutInterval = 300
-        let (temporaryURL, response) = try await DownloadProgressReporter.download(request: request, onProgress: onProgress)
+        let (temporaryURL, response) = try await DownloadProgressReporter.download(
+            request: request,
+            onProgress: onProgress
+        )
         guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
             throw NSError(
                 domain: "LocalModelManager",
                 code: 7,
-                userInfo: [NSLocalizedDescriptionKey: "WhisperKit model file download failed."],
+                userInfo: [NSLocalizedDescriptionKey: "WhisperKit model file download failed."]
             )
         }
 

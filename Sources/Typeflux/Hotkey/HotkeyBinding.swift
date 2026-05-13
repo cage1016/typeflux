@@ -49,7 +49,7 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
         guard pressCount == 2 else { return false }
         return (
             keyCode == Self.rightCommandKeyCode
-                && modifierFlags == UInt(NSEvent.ModifierFlags.command.rawValue),
+                && modifierFlags == UInt(NSEvent.ModifierFlags.command.rawValue)
         ) || (
             keyCode == Self.rightOptionKeyCode
                 && modifierFlags == UInt(NSEvent.ModifierFlags.option.rawValue)
@@ -65,35 +65,35 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
 
     static let defaultActivation = HotkeyBinding(
         keyCode: functionKeyCode,
-        modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
+        modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue)
     )
     static let defaultAsk = HotkeyBinding(
         keyCode: functionKeyCode,
         modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
-        pressCount: 2,
+        pressCount: 2
     )
     static let defaultPersona = HotkeyBinding(keyCode: 35, modifierFlags: 1_572_864)
     static let defaultHistory = HotkeyBinding(
         keyCode: oKeyCode,
-        modifierFlags: UInt(NSEvent.ModifierFlags.command.union(.option).rawValue),
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.union(.option).rawValue)
     )
 
     static let rightCommandActivation = HotkeyBinding(
         keyCode: rightCommandKeyCode,
-        modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+        modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
     )
     static let rightCommandAsk = HotkeyBinding(
         keyCode: rightCommandKeyCode,
         modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
-        pressCount: 2,
+        pressCount: 2
     )
     static let rightOptionActivation = HotkeyBinding(
         keyCode: rightOptionKeyCode,
-        modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+        modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue)
     )
     static let rightOptionAsk = HotkeyBinding(
         keyCode: rightOptionKeyCode,
         modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
-        pressCount: 2,
+        pressCount: 2
     )
 }

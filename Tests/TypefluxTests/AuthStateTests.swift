@@ -18,7 +18,7 @@ final class AuthStateTests: XCTestCase {
                 fetchExpectation.fulfill()
                 return profile
             },
-            fetchSubscription: { _ in .none },
+            fetchSubscription: { _ in .none }
         )
 
         await fulfillment(of: [fetchExpectation], timeout: 1.0)
@@ -45,7 +45,7 @@ final class AuthStateTests: XCTestCase {
             fetchProfile: { _ in
                 fetchExpectation.fulfill()
                 throw AuthError.unauthorized
-            },
+            }
         )
 
         await fulfillment(of: [fetchExpectation], timeout: 1.0)
@@ -71,7 +71,7 @@ final class AuthStateTests: XCTestCase {
             fetchProfile: { _ in
                 fetchExpectation.fulfill()
                 throw AuthError.networkError(NSError(domain: "test", code: -1))
-            },
+            }
         )
 
         await fulfillment(of: [fetchExpectation], timeout: 1.0)
@@ -109,7 +109,7 @@ final class AuthStateTests: XCTestCase {
                 XCTAssertEqual(refreshToken, "refresh-token")
                 return LoginResponse(accessToken: "new-token", expiresAt: refreshedExpiry, refreshToken: nil)
             },
-            fetchSubscription: { _ in .none },
+            fetchSubscription: { _ in .none }
         )
 
         await fulfillment(of: [fetchExpectation], timeout: 1.0)
@@ -134,7 +134,7 @@ final class AuthStateTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true,
+            entitled: true
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -147,7 +147,7 @@ final class AuthStateTests: XCTestCase {
                 subscriptionFetchCount += 1
                 fetchedSubscriptionToken = token
                 return activeSubscription
-            },
+            }
         )
 
         await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
@@ -176,7 +176,7 @@ final class AuthStateTests: XCTestCase {
             fetchProfile: { _ in profile },
             fetchSubscription: { _ in
                 throw AuthError.unauthorized
-            },
+            }
         )
 
         await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
@@ -203,7 +203,7 @@ final class AuthStateTests: XCTestCase {
                 fetchedProfileToken = token
                 return profile
             },
-            fetchSubscription: { _ in .none },
+            fetchSubscription: { _ in .none }
         )
 
         await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
@@ -248,7 +248,7 @@ final class AuthStateTests: XCTestCase {
                 XCTAssertEqual(refreshToken, "refresh-token")
                 return LoginResponse(accessToken: "new-token", expiresAt: refreshedExpiry, refreshToken: nil)
             },
-            fetchSubscription: { _ in .none },
+            fetchSubscription: { _ in .none }
         )
 
         await state.handleLoginSuccess(
@@ -275,7 +275,7 @@ final class AuthStateTests: XCTestCase {
             saveStoredUserProfile: { _ in },
             clearStoredSession: { storedToken = nil },
             fetchProfile: { _ in self.makeProfile(email: "relative-expiry@test.com") },
-            fetchSubscription: { _ in .none },
+            fetchSubscription: { _ in .none }
         )
 
         await state.handleLoginSuccess(token: "token-1", expiresAt: 3600)
@@ -295,7 +295,7 @@ final class AuthStateTests: XCTestCase {
             saveStoredUserProfile: { _ in },
             clearStoredSession: { storedToken = nil },
             fetchProfile: { _ in self.makeProfile(email: "millisecond-expiry@test.com") },
-            fetchSubscription: { _ in .none },
+            fetchSubscription: { _ in .none }
         )
 
         await state.handleLoginSuccess(token: "token-1", expiresAt: expiresAt * 1000)
@@ -315,7 +315,7 @@ final class AuthStateTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true,
+            entitled: true
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -332,9 +332,9 @@ final class AuthStateTests: XCTestCase {
                 requestedPlanCode = planCode
                 return BillingCheckoutSession(
                     sessionID: "cs_test_1",
-                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!,
+                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!
                 )
-            },
+            }
         )
 
         let url = try await state.startCheckout()
@@ -354,7 +354,7 @@ final class AuthStateTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true,
+            entitled: true
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -368,9 +368,9 @@ final class AuthStateTests: XCTestCase {
                 checkoutStarted = true
                 return BillingCheckoutSession(
                     sessionID: "cs_test_1",
-                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!,
+                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!
                 )
-            },
+            }
         )
         await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
         XCTAssertFalse(state.subscription.entitled)
@@ -379,7 +379,7 @@ final class AuthStateTests: XCTestCase {
         let observer = NotificationCenter.default.addObserver(
             forName: .authCheckoutSubscriptionDidBecomeEntitled,
             object: state,
-            queue: .main,
+            queue: .main
         ) { _ in
             expectation.fulfill()
         }
@@ -406,9 +406,9 @@ final class AuthStateTests: XCTestCase {
                     currentPeriodStart: nil,
                     currentPeriodEnd: nil,
                     cancelAtPeriodEnd: false,
-                    entitled: true,
+                    entitled: true
                 )
-            },
+            }
         )
         await waitForRefreshCompletion(state)
         await state.refreshSubscription()
@@ -430,7 +430,7 @@ final class AuthStateTests: XCTestCase {
             chatOutputChars: 100,
             chatInputTokens: 200,
             chatOutputTokens: 50,
-            chatTotalTokens: 250,
+            chatTotalTokens: 250
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -446,7 +446,7 @@ final class AuthStateTests: XCTestCase {
                     currentPeriodStart: "2026-05-01T00:00:00Z",
                     currentPeriodEnd: "2026-06-01T00:00:00Z",
                     cancelAtPeriodEnd: false,
-                    entitled: true,
+                    entitled: true
                 )
             },
             fetchCurrentPeriodUsageStats: { _ in
@@ -454,9 +454,9 @@ final class AuthStateTests: XCTestCase {
                 return CloudUsageCurrentPeriodStats(
                     periodStart: "2026-05-01T00:00:00Z",
                     periodEnd: "2026-06-01T00:00:00Z",
-                    stats: stats,
+                    stats: stats
                 )
-            },
+            }
         )
 
         await state.refreshSubscription()
@@ -479,8 +479,11 @@ final class AuthStateTests: XCTestCase {
             fetchProfile: { _ in self.makeProfile(email: "usage@test.com") },
             fetchSubscription: { _ in .none },
             fetchCurrentPeriodUsageStats: { _ in
-                throw AuthError.serverError(code: "USAGE_PERIOD_UNAVAILABLE", message: "current billing period is unavailable")
-            },
+                throw AuthError.serverError(
+                    code: "USAGE_PERIOD_UNAVAILABLE",
+                    message: "current billing period is unavailable"
+                )
+            }
         )
 
         await state.refreshSubscription()
@@ -508,7 +511,7 @@ final class AuthStateTests: XCTestCase {
             fetchSubscription: { _ in .none },
             fetchCurrentPeriodUsageStats: { _ in
                 throw AuthError.unauthorized
-            },
+            }
         )
 
         await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
@@ -529,7 +532,7 @@ final class AuthStateTests: XCTestCase {
             status: 1,
             provider: "password",
             createdAt: "2024-04-09T12:00:00Z",
-            updatedAt: "2024-04-09T12:00:00Z",
+            updatedAt: "2024-04-09T12:00:00Z"
         )
     }
 

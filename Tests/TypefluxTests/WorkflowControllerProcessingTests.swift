@@ -15,7 +15,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isEditable: true,
             role: "AXTextArea",
             windowTitle: "Draft",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         )
 
         let outcome = controller.applyDetachedAgentEditResult("Draft reply", selectionSnapshot: snapshot)
@@ -37,7 +37,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isEditable: true,
             role: "AXTextArea",
             windowTitle: "Draft",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         )
 
         let outcome = controller.applyDetachedAgentEditResult("updated", selectionSnapshot: snapshot)
@@ -52,8 +52,8 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             insertError: NSError(
                 domain: "AXTextInjector",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Paste insertion could not be verified"],
-            ),
+                userInfo: [NSLocalizedDescriptionKey: "Paste insertion could not be verified"]
+            )
         )
         let controller = makeWorkflowController(textInjector: textInjector)
 
@@ -77,7 +77,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     func testAskWithoutSelectionAgentDispositionMapsAnswerToAnswer() {
         let result = WorkflowController.askWithoutSelectionAgentDisposition(
-            for: .answer("Here is the answer"),
+            for: .answer("Here is the answer")
         )
 
         XCTAssertEqual(result, .answer("Here is the answer"))
@@ -85,7 +85,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     func testAskWithoutSelectionAgentDispositionMapsEditToInsert() {
         let result = WorkflowController.askWithoutSelectionAgentDisposition(
-            for: .edit("Draft to insert"),
+            for: .edit("Draft to insert")
         )
 
         XCTAssertEqual(result, .insert("Draft to insert"))
@@ -97,7 +97,13 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     }
 
     func testIsServiceOverloadedErrorReturnsTrueFor529FromLLMDomain() {
-        let error = NSError(domain: "LLM", code: 529, userInfo: [NSLocalizedDescriptionKey: "HTTP 529: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\"}}"])
+        let error = NSError(
+            domain: "LLM",
+            code: 529,
+            userInfo: [
+                NSLocalizedDescriptionKey: "HTTP 529: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\"}}"
+            ]
+        )
         XCTAssertTrue(WorkflowController.isServiceOverloadedError(error))
     }
 
@@ -124,7 +130,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isFocusedTarget: true,
             prefix: "",
             suffix: "",
-            selectedText: "Selected markdown paragraph",
+            selectedText: "Selected markdown paragraph"
         )
 
         XCTAssertTrue(WorkflowController.shouldRewriteTranscript(personaPrompt: nil, inputContext: inputContext))
@@ -140,7 +146,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             settingsStore.personas = settingsStore.personas + [customPersona]
             settingsStore.savePersonaAppBinding(
                 appIdentifier: "com.tinyspeck.slackmacgap",
-                personaID: customPersona.id,
+                personaID: customPersona.id
             )
         })
         let selectionSnapshot = TextSelectionSnapshot(
@@ -153,12 +159,12 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isEditable: true,
             role: "AXTextArea",
             windowTitle: "DM",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         )
 
         let personaPrompt = controller.activePersonaPrompt(
             selectionSnapshot: selectionSnapshot,
-            inputContext: nil,
+            inputContext: nil
         )
 
         XCTAssertEqual(personaPrompt, customPersona.prompt)
@@ -172,7 +178,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             settingsStore.applyPersonaSelection(globalPersona.id)
             settingsStore.savePersonaAppBinding(
                 appIdentifier: "com.tinyspeck.slackmacgap",
-                personaID: appPersona.id,
+                personaID: appPersona.id
             )
         })
         let selectionSnapshot = TextSelectionSnapshot(
@@ -185,12 +191,12 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isEditable: true,
             role: "AXTextArea",
             windowTitle: "DM",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         )
 
         let persona = controller.activePersona(
             selectionSnapshot: selectionSnapshot,
-            inputContext: nil,
+            inputContext: nil
         )
 
         XCTAssertEqual(persona?.id, appPersona.id)
@@ -202,7 +208,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             settingsStore.applyPersonaSelection(defaultPersona.id)
             settingsStore.savePersonaAppBinding(
                 appIdentifier: "com.apple.Notes",
-                personaID: nil,
+                personaID: nil
             )
         })
         let selectionSnapshot = TextSelectionSnapshot(
@@ -215,12 +221,12 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isEditable: true,
             role: "AXTextArea",
             windowTitle: "Note",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         )
 
         let personaPrompt = controller.activePersonaPrompt(
             selectionSnapshot: selectionSnapshot,
-            inputContext: nil,
+            inputContext: nil
         )
 
         XCTAssertNil(personaPrompt)
@@ -228,11 +234,14 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     func testApplicationPersonaPickerTitleUsesApplicationScope() {
         let controller = makeWorkflowController()
-        let binding = PersonaAppBinding(appIdentifier: "com.apple.Notes", personaID: controller.settingsStore.personas[0].id)
+        let binding = PersonaAppBinding(
+            appIdentifier: "com.apple.Notes",
+            personaID: controller.settingsStore.personas[0].id
+        )
 
         XCTAssertEqual(
             controller.personaPickerTitle(for: .switchApplication(binding)),
-            L("overlay.personaPicker.switchApplicationTitle"),
+            L("overlay.personaPicker.switchApplicationTitle")
         )
         if case .application = controller.personaPickerIcon(for: .switchApplication(binding)) {
             // Expected application-scoped icon.
@@ -250,7 +259,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
         XCTAssertEqual(
             controller.personaPickerTitle(for: .switchDefault),
-            L("overlay.personaPicker.switchTitle"),
+            L("overlay.personaPicker.switchTitle")
         )
         XCTAssertEqual(L("overlay.personaPicker.switchTitle"), "Switch Global Persona")
         XCTAssertEqual(controller.personaPickerIcon(for: .switchDefault), .global)
@@ -265,14 +274,14 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             settingsStore.applyPersonaSelection(globalPersona.id)
             settingsStore.savePersonaAppBinding(
                 appIdentifier: "com.apple.Notes",
-                personaID: appPersona.id,
+                personaID: appPersona.id
             )
         })
         let binding = try XCTUnwrap(controller.settingsStore.personaAppBindings.first)
         controller.personaPickerMode = .switchApplication(binding)
         controller.personaPickerItems = controller.personaPickerEntries(includeNoneOption: true)
         controller.personaPickerSelectedIndex = try XCTUnwrap(
-            controller.personaPickerItems.firstIndex(where: { $0.id == targetPersona.id }),
+            controller.personaPickerItems.firstIndex(where: { $0.id == targetPersona.id })
         )
         controller.isPersonaPickerPresented = true
 
@@ -286,7 +295,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     func testOpeningPersonaPickerDoesNotPlayCue() async {
         let eventRecorder = ThreadSafeEventRecorder()
         let controller = makeWorkflowController(
-            soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
+            soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder)
         )
 
         controller.handlePersonaPickerRequested()
@@ -301,8 +310,8 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let controller = makeWorkflowController(
             soundEffectPlayer: makeRecordingSoundEffectPlayer(
                 eventRecorder: eventRecorder,
-                soundEffectsEnabled: false,
-            ),
+                soundEffectsEnabled: false
+            )
         )
 
         controller.handlePersonaPickerRequested()
@@ -323,7 +332,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let controller = makeWorkflowController(
             textInjector: textInjector,
             historyStore: historyStore,
-            clipboard: clipboard,
+            clipboard: clipboard
         )
 
         controller.handleHistoryPickerRequested()
@@ -346,7 +355,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let controller = makeWorkflowController(
             textInjector: textInjector,
             historyStore: historyStore,
-            clipboard: clipboard,
+            clipboard: clipboard
         )
 
         controller.handleHistoryPickerRequested()
@@ -364,7 +373,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         for index in 0 ..< 25 {
             historyStore.save(record: HistoryRecord(
                 date: baseDate.addingTimeInterval(TimeInterval(index)),
-                transcriptText: "result \(index)",
+                transcriptText: "result \(index)"
             ))
         }
 
@@ -381,7 +390,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let historyStore = MockProcessingHistoryStore()
         historyStore.save(record: HistoryRecord(
             date: Date(timeIntervalSince1970: 1000),
-            transcriptText: "retry me",
+            transcriptText: "retry me"
         ))
         let controller = makeWorkflowController(historyStore: historyStore)
 
@@ -395,12 +404,12 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     func testConfirmingPersonaSelectionPlaysTipCue() async throws {
         let eventRecorder = ThreadSafeEventRecorder()
         let controller = makeWorkflowController(
-            soundEffectPlayer: makeNamedSoundEffectPlayer(eventRecorder: eventRecorder),
+            soundEffectPlayer: makeNamedSoundEffectPlayer(eventRecorder: eventRecorder)
         )
         controller.personaPickerMode = .switchDefault
         controller.personaPickerItems = controller.personaPickerEntries(includeNoneOption: true)
         controller.personaPickerSelectedIndex = try XCTUnwrap(
-            controller.personaPickerItems.firstIndex { $0.id != nil },
+            controller.personaPickerItems.firstIndex { $0.id != nil }
         )
         controller.isPersonaPickerPresented = true
 
@@ -416,13 +425,13 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let controller = makeWorkflowController(
             soundEffectPlayer: makeNamedSoundEffectPlayer(
                 eventRecorder: eventRecorder,
-                soundEffectsEnabled: false,
-            ),
+                soundEffectsEnabled: false
+            )
         )
         controller.personaPickerMode = .switchDefault
         controller.personaPickerItems = controller.personaPickerEntries(includeNoneOption: true)
         controller.personaPickerSelectedIndex = try XCTUnwrap(
-            controller.personaPickerItems.firstIndex { $0.id != nil },
+            controller.personaPickerItems.firstIndex { $0.id != nil }
         )
         controller.isPersonaPickerPresented = true
 
@@ -442,14 +451,14 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                     mode: .rewriteTranscript,
                     sourceText: "hello",
                     spokenInstruction: nil,
-                    personaPrompt: "Rewrite this",
+                    personaPrompt: "Rewrite this"
                 ),
-                sessionID: UUID(),
+                sessionID: UUID()
             )
         }) { error in
             XCTAssertEqual(
                 error as? LLMConfigurationError,
-                .notConfigured(reason: .missingAPIKey),
+                .notConfigured(reason: .missingAPIKey)
             )
         }
     }
@@ -461,7 +470,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     func testGenerateRewriteThrowsTimeoutWhenStreamDoesNotFinish() async {
         let controller = makeWorkflowController(
             llmService: SlowProcessingLLMService(delay: .milliseconds(200)),
-            configureSettings: configureReadyLLM,
+            configureSettings: configureReadyLLM
         )
 
         await XCTAssertThrowsErrorAsync({
@@ -470,10 +479,10 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                     mode: .rewriteTranscript,
                     sourceText: "hello",
                     spokenInstruction: nil,
-                    personaPrompt: "Rewrite this",
+                    personaPrompt: "Rewrite this"
                 ),
                 sessionID: controller.processingSessionID,
-                timeout: 0.01,
+                timeout: 0.01
             )
         }) { error in
             XCTAssertTrue(error is WorkflowController.LLMRequestTimeoutError)
@@ -489,7 +498,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             sttTranscriber: MockProcessingTranscriber(transcript: transcript),
             llmService: SlowProcessingLLMService(delay: .milliseconds(200)),
             historyStore: historyStore,
-            configureSettings: configureReadyLLM,
+            configureSettings: configureReadyLLM
         )
         controller.llmTimeoutAfterTranscription = 0.01
         let sessionID = controller.processingSessionID
@@ -499,7 +508,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             record: HistoryRecord(
                 date: Date(),
                 personaPrompt: "Clean up the transcript.",
-                recordingStatus: .succeeded,
+                recordingStatus: .succeeded
             ),
             selectionSnapshot: TextSelectionSnapshot(),
             selectedText: nil,
@@ -507,7 +516,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             inputContext: nil,
             personaPrompt: "Clean up the transcript.",
             recordingIntent: .dictation,
-            sessionID: sessionID,
+            sessionID: sessionID
         )
 
         XCTAssertEqual(textInjector.insertedTexts, [transcript])
@@ -529,12 +538,12 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 spokenInstruction: "improve this",
                 personaPrompt: nil,
                 editableTarget: true,
-                sessionID: UUID(),
+                sessionID: UUID()
             )
         }) { error in
             XCTAssertEqual(
                 error as? LLMConfigurationError,
-                .notConfigured(reason: .missingAPIKey),
+                .notConfigured(reason: .missingAPIKey)
             )
         }
     }
@@ -553,7 +562,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             sleep: { duration in
                 eventRecorder.append("unexpected-sleep")
                 eventRecorder.append(duration: duration)
-            },
+            }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -577,7 +586,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
             soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         let recordingTask = Task {
@@ -594,10 +603,11 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     }
 
     func testBeginRecordingResetsStateWhenAudioStartFails() async {
-        let audioRecorder = ThrowingStartAudioRecorder(error: AVFoundationAudioRecorder.RecorderError.inputStartupTimedOut)
+        let audioRecorder = ThrowingStartAudioRecorder(error: AVFoundationAudioRecorder.RecorderError
+            .inputStartupTimedOut)
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -620,7 +630,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let audioRecorder = TransientTimeoutAudioRecorder(timeoutCount: 2)
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -643,7 +653,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
             soundEffectPlayer: makeRecordingSoundEffectPlayer(eventRecorder: eventRecorder),
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -669,7 +679,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isEditable: true,
             role: "AXGroup",
             windowTitle: "Chat",
-            isFocusedTarget: true,
+            isFocusedTarget: true
         )
         let inputSnapshot = CurrentInputTextSnapshot(
             processID: 1,
@@ -680,15 +690,15 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             selectedRange: CFRange(location: 7, length: 21),
             isEditable: true,
             isFocusedTarget: true,
-            textSource: "visible-text",
+            textSource: "visible-text"
         )
         let controller = makeWorkflowController(
             textInjector: MockProcessingTextInjector(
                 selectionSnapshot: selectionSnapshot,
-                inputSnapshot: inputSnapshot,
+                inputSnapshot: inputSnapshot
             ),
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -718,12 +728,12 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isFocusedTarget: true,
             prefix: "Before",
             suffix: "After",
-            selectedText: "Selected from input context",
+            selectedText: "Selected from input context"
         )
 
         let askContextText = controller.askContextText(
             from: TextSelectionSnapshot(source: "ask-promoted-isolated"),
-            inputContext: inputContext,
+            inputContext: inputContext
         )
 
         XCTAssertEqual(askContextText, "Selected from input context")
@@ -733,7 +743,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let audioRecorder = MockProcessingAudioRecorder()
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .askSelection, startLocked: true)
@@ -753,7 +763,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let audioRecorder = MockProcessingAudioRecorder()
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -771,7 +781,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let audioRecorder = BlockingStartAudioRecorder()
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         let recordingTask = Task {
@@ -800,7 +810,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let audioRecorder = BlockingStopAudioRecorder()
         let controller = makeWorkflowController(
             audioRecorder: audioRecorder,
-            sleep: { _ in },
+            sleep: { _ in }
         )
 
         await controller.beginRecording(intent: .dictation, startLocked: false)
@@ -825,7 +835,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             textInjector: textInjector,
             audioRecorder: audioRecorder,
             sttTranscriber: MockProcessingTranscriber(transcript: "final transcript"),
-            sleep: { _ in },
+            sleep: { _ in }
         )
         controller.latestRecordingPreviewText = "preview transcript"
         controller.isAudioRecorderStarted = true
@@ -852,7 +862,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             audioRecorder: audioRecorder,
             sttTranscriber: MockProcessingTranscriber(transcript: ""),
             historyStore: historyStore,
-            sleep: { _ in },
+            sleep: { _ in }
         )
         controller.latestRecordingPreviewText = "preview transcript"
         controller.isAudioRecorderStarted = true
@@ -877,7 +887,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             textInjector: textInjector,
             audioRecorder: audioRecorder,
             sttTranscriber: MockProcessingTranscriber(transcript: "should not transcribe"),
-            sleep: { _ in },
+            sleep: { _ in }
         )
         controller.isAudioRecorderStarted = true
 
@@ -903,7 +913,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             configureSettings: { settingsStore in
                 settingsStore.sttProvider = .localModel
                 settingsStore.localSTTModel = .senseVoiceSmall
-            },
+            }
         )
         LocalModelDownloadProgressCenter.shared.reportDownloading(model: .senseVoiceSmall, progress: 0.42)
 
@@ -945,7 +955,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             configureSettings: { settingsStore in
                 settingsStore.sttProvider = .localModel
                 settingsStore.localSTTModel = .senseVoiceSmall
-            },
+            }
         )
 
         controller.handlePressBegan(intent: .dictation, startLocked: false)
@@ -967,7 +977,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         localModelManager.prepareError = NSError(
             domain: "WorkflowControllerProcessingTests",
             code: 1,
-            userInfo: [NSLocalizedDescriptionKey: "Network unavailable"],
+            userInfo: [NSLocalizedDescriptionKey: "Network unavailable"]
         )
         let prepared = expectation(description: "selected local model preparation attempted")
         localModelManager.onPrepare = {
@@ -978,7 +988,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             configureSettings: { settingsStore in
                 settingsStore.sttProvider = .localModel
                 settingsStore.localSTTModel = .senseVoiceSmall
-            },
+            }
         )
 
         controller.handlePressBegan(intent: .dictation, startLocked: false)
@@ -1008,7 +1018,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting =
             MockLocalModelDownloadAlertPresenter(),
         sleep: @escaping @Sendable (Duration) async -> Void = { _ in },
-        configureSettings: ((SettingsStore) -> Void)? = nil,
+        configureSettings: ((SettingsStore) -> Void)? = nil
     ) -> WorkflowController {
         let suiteName = "WorkflowControllerProcessingTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -1034,7 +1044,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 doubaoRealtime: sttTranscriber,
                 googleCloud: sttTranscriber,
                 groq: sttTranscriber,
-                typefluxOfficial: sttTranscriber,
+                typefluxOfficial: sttTranscriber
             ),
             llmService: llmService,
             llmAgentService: MockProcessingLLMAgentService(),
@@ -1047,15 +1057,15 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             overlayController: overlayController,
             askAnswerWindowController: AskAnswerWindowController(
                 clipboard: MockClipboardService(),
-                settingsStore: settingsStore,
+                settingsStore: settingsStore
             ),
             agentClarificationWindowController: AgentClarificationWindowController(
-                settingsStore: settingsStore,
+                settingsStore: settingsStore
             ),
             soundEffectPlayer: soundEffectPlayer ?? SoundEffectPlayer(settingsStore: settingsStore),
             localModelManager: localModelManager,
             localModelDownloadAlertPresenter: localModelDownloadAlertPresenter,
-            sleep: sleep,
+            sleep: sleep
         )
     }
 
@@ -1068,7 +1078,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     private func makeRecordingSoundEffectPlayer(
         eventRecorder: ThreadSafeEventRecorder,
-        soundEffectsEnabled: Bool = true,
+        soundEffectsEnabled: Bool = true
     ) -> SoundEffectPlayer {
         let suiteName = "WorkflowControllerProcessingSoundTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -1082,7 +1092,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     private func makeNamedSoundEffectPlayer(
         eventRecorder: ThreadSafeEventRecorder,
-        soundEffectsEnabled: Bool = true,
+        soundEffectsEnabled: Bool = true
     ) -> SoundEffectPlayer {
         let suiteName = "WorkflowControllerProcessingNamedSoundTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -1102,7 +1112,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     private func waitUntil(
         timeout: TimeInterval = 1,
-        condition: @escaping () -> Bool,
+        condition: @escaping () -> Bool
     ) async {
         let deadline = Date().addingTimeInterval(timeout)
         while !condition(), Date() < deadline {
@@ -1115,7 +1125,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate,
             channels: 1,
-            interleaved: false,
+            interleaved: false
         ) else {
             throw NSError(domain: "WorkflowControllerProcessingTests", code: 1)
         }
@@ -1127,7 +1137,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let audioFile = try AVAudioFile(forWriting: url, settings: format.settings)
         guard let buffer = AVAudioPCMBuffer(
             pcmFormat: format,
-            frameCapacity: AVAudioFrameCount(frameCount),
+            frameCapacity: AVAudioFrameCount(frameCount)
         ) else {
             throw NSError(domain: "WorkflowControllerProcessingTests", code: 2)
         }
@@ -1141,7 +1151,7 @@ private func XCTAssertThrowsErrorAsync(
     _ expression: () async throws -> some Any,
     _ errorHandler: (Error) -> Void,
     file: StaticString = #filePath,
-    line: UInt = #line,
+    line: UInt = #line
 ) async {
     do {
         _ = try await expression()
@@ -1163,7 +1173,7 @@ private final class MockProcessingTextInjector: TextInjector {
         selectionSnapshot: TextSelectionSnapshot = TextSelectionSnapshot(),
         inputSnapshot: CurrentInputTextSnapshot = CurrentInputTextSnapshot(),
         insertError: Error? = nil,
-        replaceError: Error? = nil,
+        replaceError: Error? = nil
     ) {
         self.selectionSnapshot = selectionSnapshot
         self.inputSnapshot = inputSnapshot
@@ -1326,7 +1336,7 @@ private final class MockProcessingAudioRecorder: AudioRecorder {
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
-        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?
     ) throws {
         lock.lock()
         starts += 1
@@ -1359,7 +1369,7 @@ private final class FileReturningAudioRecorder: AudioRecorder {
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
-        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?
     ) throws {}
 
     func stop() throws -> AudioFile {
@@ -1391,7 +1401,7 @@ private final class BlockingStartAudioRecorder: AudioRecorder, @unchecked Sendab
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
-        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?
     ) throws {
         lock.lock()
         starts += 1
@@ -1460,7 +1470,7 @@ private final class ThrowingStartAudioRecorder: AudioRecorder {
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
-        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?
     ) throws {
         lock.lock()
         starts += 1
@@ -1494,7 +1504,7 @@ private final class TransientTimeoutAudioRecorder: AudioRecorder {
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
-        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?
     ) throws {
         lock.lock()
         starts += 1
@@ -1528,7 +1538,7 @@ private final class BlockingStopAudioRecorder: AudioRecorder, @unchecked Sendabl
 
     func start(
         levelHandler _: @escaping (Float) -> Void,
-        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?,
+        audioBufferHandler _: ((AVAudioPCMBuffer) -> Void)?
     ) throws {
         lock.lock()
         starts += 1
@@ -1650,14 +1660,14 @@ private final class MockWorkflowLocalModelManager: LocalSTTModelManaging {
 
     func prepareModel(
         settingsStore: SettingsStore,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         try await prepareModel(configuration: LocalSTTConfiguration(settingsStore: settingsStore), onUpdate: onUpdate)
     }
 
     func prepareModel(
         configuration: LocalSTTConfiguration,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?
     ) async throws {
         lock.withLock {
             _preparedConfigurations.append(configuration)
@@ -1666,7 +1676,7 @@ private final class MockWorkflowLocalModelManager: LocalSTTModelManaging {
             message: "Preparing",
             progress: 0.5,
             storagePath: storagePath(for: configuration),
-            source: "Test",
+            source: "Test"
         ))
         onPrepare?()
         if let prepareError {

@@ -26,14 +26,14 @@ final class SQLiteHistoryStoreTests: XCTestCase {
         date: Date = Date(),
         transcriptText: String? = nil,
         mode: HistoryRecord.Mode = .dictation,
-        audioFilePath: String? = nil,
+        audioFilePath: String? = nil
     ) -> HistoryRecord {
         HistoryRecord(
             id: id,
             date: date,
             mode: mode,
             audioFilePath: audioFilePath,
-            transcriptText: transcriptText,
+            transcriptText: transcriptText
         )
     }
 
@@ -227,7 +227,7 @@ final class SQLiteHistoryStoreTests: XCTestCase {
     func testExportMarkdownGeneratesFile() throws {
         store.save(record: makeRecord(
             transcriptText: "hello world",
-            mode: .dictation,
+            mode: .dictation
         ))
         flush()
 

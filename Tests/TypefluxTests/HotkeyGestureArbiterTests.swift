@@ -6,7 +6,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
     private let activation = HotkeyBinding.defaultActivation
     private let ask = HotkeyBinding(
         keyCode: 49,
-        modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue),
+        modifierFlags: UInt(NSEvent.ModifierFlags.function.rawValue)
     )
     private let persona = HotkeyBinding.defaultPersona
 
@@ -20,7 +20,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             activationHotkey: activation,
             askHotkey: ask,
             personaHotkey: persona,
-            historyHotkey: HotkeyBinding.defaultHistory,
+            historyHotkey: HotkeyBinding.defaultHistory
         )
 
         XCTAssertEqual(events, [.historyRequested])
@@ -34,7 +34,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         XCTAssertEqual(events, [.begin(.activation)])
@@ -51,14 +51,14 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         let releaseEvents = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: 0,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         XCTAssertEqual(releaseEvents, [.activationTapped])
@@ -72,7 +72,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         let askEvents = arbiter.handleKeyDown(
@@ -81,7 +81,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertEqual(askEvents, [.begin(.ask)])
@@ -92,18 +92,18 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         var arbiter = HotkeyGestureArbiter()
         let rightCommandActivation = HotkeyBinding(
             keyCode: HotkeyBinding.rightCommandKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
         )
         let commandPersona = HotkeyBinding(
             keyCode: 35,
-            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
         )
         _ = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.rightCommandKeyCode,
             modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
             activationHotkey: rightCommandActivation,
             askHotkey: nil,
-            personaHotkey: commandPersona,
+            personaHotkey: commandPersona
         )
 
         let personaEvents = arbiter.handleKeyDown(
@@ -112,7 +112,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             isRepeat: false,
             activationHotkey: rightCommandActivation,
             askHotkey: nil,
-            personaHotkey: commandPersona,
+            personaHotkey: commandPersona
         )
 
         XCTAssertEqual(personaEvents, [.cancel(.activation), .personaRequested])
@@ -124,11 +124,11 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         var arbiter = HotkeyGestureArbiter()
         let rightCommandActivation = HotkeyBinding(
             keyCode: HotkeyBinding.rightCommandKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
         )
         let commandPersona = HotkeyBinding(
             keyCode: 35,
-            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
         )
 
         let events = arbiter.handleFlagsChanged(
@@ -136,7 +136,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
             activationHotkey: rightCommandActivation,
             askHotkey: nil,
-            personaHotkey: commandPersona,
+            personaHotkey: commandPersona
         )
 
         XCTAssertEqual(events, [.begin(.activation)])
@@ -149,7 +149,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
         _ = arbiter.handleKeyDown(
             keyCode: ask.keyCode,
@@ -157,13 +157,13 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         let askEnded = arbiter.handleKeyUp(
             keyCode: ask.keyCode,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         XCTAssertEqual(askEnded, [.end(.ask)])
@@ -179,7 +179,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertEqual(events, [.begin(.activation)])
@@ -195,7 +195,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: ask.modifierFlags,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertTrue(shouldConsume)
@@ -207,7 +207,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
         _ = arbiter.handleKeyDown(
             keyCode: ask.keyCode,
@@ -215,7 +215,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         let shouldConsume = arbiter.shouldConsume(
@@ -224,7 +224,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: ask.modifierFlags,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertTrue(shouldConsume)
@@ -239,7 +239,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertTrue(shouldConsume)
@@ -251,14 +251,14 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         let events = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: 0,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
 
         XCTAssertEqual(events, [.activationTapped])
@@ -273,14 +273,14 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.0,
+            timestamp: 1.0
         )
         _ = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.1,
+            timestamp: 1.1
         )
 
         let events = arbiter.handleFlagsChanged(
@@ -288,7 +288,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.3,
+            timestamp: 1.3
         )
 
         XCTAssertEqual(events, [.begin(.ask)])
@@ -303,21 +303,21 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.0,
+            timestamp: 1.0
         )
         _ = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.1,
+            timestamp: 1.1
         )
         _ = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.3,
+            timestamp: 1.3
         )
 
         let events = arbiter.handleFlagsChanged(
@@ -325,7 +325,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.4,
+            timestamp: 1.4
         )
 
         XCTAssertEqual(events, [.end(.ask)])
@@ -341,14 +341,14 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.0,
+            timestamp: 1.0
         )
         _ = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.1,
+            timestamp: 1.1
         )
 
         let events = arbiter.handleFlagsChanged(
@@ -356,7 +356,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: doubleFnAsk,
-            timestamp: 1.7,
+            timestamp: 1.7
         )
 
         XCTAssertEqual(events, [.begin(.activation)])
@@ -373,14 +373,14 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: ask,
-            timestamp: 1.0,
+            timestamp: 1.0
         )
         _ = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.rightCommandKeyCode,
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: ask,
-            timestamp: 1.1,
+            timestamp: 1.1
         )
 
         let events = arbiter.handleFlagsChanged(
@@ -388,7 +388,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: activation.modifierFlags,
             activationHotkey: activation,
             askHotkey: ask,
-            timestamp: 1.3,
+            timestamp: 1.3
         )
 
         XCTAssertEqual(events, [.begin(.ask)])
@@ -399,14 +399,14 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         var arbiter = HotkeyGestureArbiter()
         let rightOptionActivation = HotkeyBinding(
             keyCode: HotkeyBinding.rightOptionKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue)
         )
 
         let beginEvents = arbiter.handleFlagsChanged(
             keyCode: HotkeyBinding.rightOptionKeyCode,
             modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
             activationHotkey: rightOptionActivation,
-            askHotkey: nil,
+            askHotkey: nil
         )
 
         XCTAssertEqual(beginEvents, [.begin(.activation)])
@@ -416,7 +416,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             keyCode: HotkeyBinding.rightOptionKeyCode,
             modifierFlags: 0,
             activationHotkey: rightOptionActivation,
-            askHotkey: nil,
+            askHotkey: nil
         )
 
         XCTAssertEqual(endEvents, [.end(.activation)])
@@ -427,7 +427,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         var arbiter = HotkeyGestureArbiter()
         let rightCommandAsk = HotkeyBinding(
             keyCode: HotkeyBinding.rightCommandKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
         )
 
         let beginEvents = arbiter.handleFlagsChanged(
@@ -435,7 +435,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
             activationHotkey: activation,
             askHotkey: rightCommandAsk,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertEqual(beginEvents, [.begin(.ask)])
@@ -446,7 +446,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: rightCommandAsk,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertEqual(endEvents, [.end(.ask)])
@@ -457,7 +457,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         var arbiter = HotkeyGestureArbiter()
         let rightOptionPersona = HotkeyBinding(
             keyCode: HotkeyBinding.rightOptionKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue)
         )
 
         let events = arbiter.handleFlagsChanged(
@@ -465,7 +465,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: rightOptionPersona,
+            personaHotkey: rightOptionPersona
         )
 
         XCTAssertEqual(events, [.personaRequested])
@@ -476,7 +476,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         let arbiter = HotkeyGestureArbiter()
         let rightCommandAsk = HotkeyBinding(
             keyCode: HotkeyBinding.rightCommandKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue)
         )
 
         let shouldConsume = arbiter.shouldConsume(
@@ -485,7 +485,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: UInt(NSEvent.ModifierFlags.command.rawValue),
             activationHotkey: activation,
             askHotkey: rightCommandAsk,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
 
         XCTAssertTrue(shouldConsume)
@@ -495,7 +495,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
         let arbiter = HotkeyGestureArbiter()
         let rightOptionPersona = HotkeyBinding(
             keyCode: HotkeyBinding.rightOptionKeyCode,
-            modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
+            modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue)
         )
 
         let shouldConsume = arbiter.shouldConsume(
@@ -504,7 +504,7 @@ final class HotkeyGestureArbiterTests: XCTestCase {
             modifierFlags: UInt(NSEvent.ModifierFlags.option.rawValue),
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: rightOptionPersona,
+            personaHotkey: rightOptionPersona
         )
 
         XCTAssertTrue(shouldConsume)
@@ -537,7 +537,7 @@ extension HotkeyGestureArbiterTests {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         // Ask hotkey while idle should emit some event
         XCTAssertFalse(events.isEmpty)
@@ -551,7 +551,7 @@ extension HotkeyGestureArbiterTests {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         // Persona hotkey while idle should emit personaRequested
         XCTAssertFalse(events.isEmpty)
@@ -565,7 +565,7 @@ extension HotkeyGestureArbiterTests {
             isRepeat: true, // repeat = true
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         XCTAssertTrue(events.isEmpty)
     }
@@ -575,7 +575,7 @@ extension HotkeyGestureArbiterTests {
         let events = arbiter.handleKeyUp(
             keyCode: ask.keyCode,
             activationHotkey: activation,
-            askHotkey: ask,
+            askHotkey: ask
         )
         // Key up when not in active phase returns no events
         XCTAssertTrue(events.isEmpty)
@@ -591,7 +591,7 @@ extension HotkeyGestureArbiterTests {
             modifierFlags: 0,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         XCTAssertFalse(shouldConsume)
     }
@@ -605,7 +605,7 @@ extension HotkeyGestureArbiterTests {
             modifierFlags: ask.modifierFlags,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         XCTAssertTrue(shouldConsume)
     }
@@ -629,7 +629,7 @@ extension HotkeyGestureArbiterTests {
             keyCode: HotkeyBinding.functionKeyCode,
             modifierFlags: activation.modifierFlags,
             activationHotkey: nil,
-            askHotkey: ask,
+            askHotkey: ask
         )
         XCTAssertTrue(events.isEmpty)
         XCTAssertFalse(arbiter.hasPendingModifierActivation)
@@ -643,7 +643,7 @@ extension HotkeyGestureArbiterTests {
             modifierFlags: activation.modifierFlags,
             activationHotkey: nil,
             askHotkey: ask,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         XCTAssertFalse(shouldConsume)
     }
@@ -656,7 +656,7 @@ extension HotkeyGestureArbiterTests {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: nil,
-            personaHotkey: persona,
+            personaHotkey: persona
         )
         XCTAssertTrue(events.isEmpty)
     }
@@ -669,7 +669,7 @@ extension HotkeyGestureArbiterTests {
             isRepeat: false,
             activationHotkey: activation,
             askHotkey: ask,
-            personaHotkey: nil,
+            personaHotkey: nil
         )
         XCTAssertFalse(events.contains(.personaRequested))
     }
@@ -683,7 +683,7 @@ extension HotkeyGestureArbiterTests {
                 modifierFlags: activation.modifierFlags,
                 activationHotkey: nil,
                 askHotkey: nil,
-                personaHotkey: nil,
+                personaHotkey: nil
             )
             XCTAssertFalse(shouldConsume, "Should not consume \(eventType) when all hotkeys are nil")
         }

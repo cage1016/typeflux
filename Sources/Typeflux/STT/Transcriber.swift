@@ -9,7 +9,7 @@ protocol Transcriber {
     func transcribe(audioFile: AudioFile) async throws -> String
     func transcribeStream(
         audioFile: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String
 }
 
@@ -21,7 +21,7 @@ protocol RecordingPrewarmingTranscriber: Transcriber {
 protocol RealtimeTranscriptionSessionFactory: Transcriber {
     func makeRealtimeTranscriptionSession(
         scenario: TypefluxCloudScenario,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> any RealtimeTranscriptionSession
 }
 
@@ -30,14 +30,14 @@ protocol TypefluxCloudScenarioAwareTranscriber: Transcriber {
     func transcribeStream(
         audioFile: AudioFile,
         scenario: TypefluxCloudScenario,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String
 }
 
 extension Transcriber {
     func transcribeStream(
         audioFile: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         let text = try await transcribe(audioFile: audioFile)
         await onUpdate(TranscriptionSnapshot(text: text, isFinal: true))
@@ -56,12 +56,12 @@ extension TypefluxCloudScenarioAwareTranscriber {
 
     func transcribeStream(
         audioFile: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         try await transcribeStream(
             audioFile: audioFile,
             scenario: .voiceInput,
-            onUpdate: onUpdate,
+            onUpdate: onUpdate
         )
     }
 }
@@ -96,7 +96,7 @@ final class STTRouter {
         autoModelDownloadService: AutoModelDownloadService? = nil,
         isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = {
             await MainActor.run { AuthState.shared.isLoggedIn }
-        },
+        }
     ) {
         self.settingsStore = settingsStore
         self.whisper = whisper
@@ -115,7 +115,7 @@ final class STTRouter {
 
     func transcribe(
         audioFile: AudioFile,
-        scenario: TypefluxCloudScenario = .voiceInput,
+        scenario: TypefluxCloudScenario = .voiceInput
     ) async throws -> String {
         try await transcribeStream(audioFile: audioFile, scenario: scenario) { _ in }
     }
@@ -127,7 +127,7 @@ final class STTRouter {
     /// continue to the next fallback without special-casing the "not available" state.
     private func transcribeWithAutoModelIfReady(
         audioFile: AudioFile,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async -> String? {
         guard
             settingsStore.localOptimizationEnabled,
@@ -141,14 +141,14 @@ final class STTRouter {
     private func transcribeWithTypefluxOfficial(
         audioFile: AudioFile,
         scenario: TypefluxCloudScenario,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         try await RequestRetry.perform(operationName: "Typeflux Official STT request") { [self] in
             if let scenarioAware = typefluxOfficial as? TypefluxCloudScenarioAwareTranscriber {
                 return try await scenarioAware.transcribeStream(
                     audioFile: audioFile,
                     scenario: scenario,
-                    onUpdate: onUpdate,
+                    onUpdate: onUpdate
                 )
             }
             return try await typefluxOfficial.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
@@ -189,7 +189,7 @@ final class STTRouter {
 
     func makeRealtimeTranscriptionSession(
         scenario: TypefluxCloudScenario = .voiceInput,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async -> (any RealtimeTranscriptionSession)? {
         switch settingsStore.sttProvider {
         case .aliCloud:
@@ -197,21 +197,21 @@ final class STTRouter {
                 provider: aliCloud,
                 scenario: scenario,
                 onUpdate: onUpdate,
-                failureContext: "Alibaba Cloud realtime session setup failed",
+                failureContext: "Alibaba Cloud realtime session setup failed"
             )
         case .doubaoRealtime:
             return await makeRealtimeTranscriptionSession(
                 provider: doubaoRealtime,
                 scenario: scenario,
                 onUpdate: onUpdate,
-                failureContext: "Doubao realtime session setup failed",
+                failureContext: "Doubao realtime session setup failed"
             )
         case .googleCloud:
             return await makeRealtimeTranscriptionSession(
                 provider: googleCloud,
                 scenario: scenario,
                 onUpdate: onUpdate,
-                failureContext: "Google Cloud realtime session setup failed",
+                failureContext: "Google Cloud realtime session setup failed"
             )
         case .typefluxOfficial:
             if settingsStore.localOptimizationEnabled,
@@ -223,7 +223,7 @@ final class STTRouter {
                 provider: typefluxOfficial,
                 scenario: scenario,
                 onUpdate: onUpdate,
-                failureContext: "Typeflux Cloud realtime session setup failed",
+                failureContext: "Typeflux Cloud realtime session setup failed"
             )
         default:
             return nil
@@ -234,7 +234,7 @@ final class STTRouter {
         provider: Transcriber,
         scenario: TypefluxCloudScenario,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
-        failureContext: String,
+        failureContext: String
     ) async -> (any RealtimeTranscriptionSession)? {
         guard let factory = provider as? RealtimeTranscriptionSessionFactory else {
             return nil
@@ -242,7 +242,7 @@ final class STTRouter {
         do {
             return try await factory.makeRealtimeTranscriptionSession(
                 scenario: scenario,
-                onUpdate: onUpdate,
+                onUpdate: onUpdate
             )
         } catch {
             NetworkDebugLogger.logError(context: failureContext, error: error)
@@ -253,7 +253,7 @@ final class STTRouter {
     func transcribeStream(
         audioFile: AudioFile,
         scenario: TypefluxCloudScenario = .voiceInput,
-        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
     ) async throws -> String {
         switch settingsStore.sttProvider {
         case .freeModel:
@@ -307,12 +307,12 @@ final class STTRouter {
                 if await shouldUseTypefluxCloudForUnavailableLocalModel(error: error) {
                     do {
                         NetworkDebugLogger.logMessage(
-                            "Falling back to Typeflux Cloud while local STT model downloads",
+                            "Falling back to Typeflux Cloud while local STT model downloads"
                         )
                         return try await transcribeWithTypefluxOfficial(
                             audioFile: audioFile,
                             scenario: scenario,
-                            onUpdate: onUpdate,
+                            onUpdate: onUpdate
                         )
                     } catch {
                         NetworkDebugLogger.logError(context: "Typeflux Cloud fallback failed", error: error)
@@ -321,7 +321,7 @@ final class STTRouter {
                         }
                         if settingsStore.useAppleSpeechFallback {
                             NetworkDebugLogger.logMessage(
-                                "Falling back to Apple Speech after Typeflux Cloud fallback failure",
+                                "Falling back to Apple Speech after Typeflux Cloud fallback failure"
                             )
                             return try await appleSpeech.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
                         }
@@ -402,7 +402,9 @@ final class STTRouter {
                     }
                 } catch {
                     NetworkDebugLogger.logError(context: "Groq STT failed", error: error)
-                    if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
+                    if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile,
+                                                                              onUpdate: onUpdate)
+                    {
                         NetworkDebugLogger.logMessage("Auto local model succeeded after Groq STT failure")
                         return localResult
                     }
@@ -424,7 +426,7 @@ final class STTRouter {
             throw NSError(
                 domain: "STTRouter",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Groq transcription is not configured yet."],
+                userInfo: [NSLocalizedDescriptionKey: "Groq transcription is not configured yet."]
             )
 
         case .typefluxOfficial:
@@ -438,7 +440,7 @@ final class STTRouter {
                 return try await transcribeWithTypefluxOfficial(
                     audioFile: audioFile,
                     scenario: scenario,
-                    onUpdate: onUpdate,
+                    onUpdate: onUpdate
                 )
             } catch {
                 NetworkDebugLogger.logError(context: "Typeflux Official STT failed", error: error)
@@ -468,7 +470,7 @@ final class STTRouter {
         scenario: TypefluxCloudScenario,
         onASRUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
         onLLMStart: @escaping @Sendable () async -> Void,
-        onLLMChunk: @escaping @Sendable (String) async -> Void,
+        onLLMChunk: @escaping @Sendable (String) async -> Void
     ) async throws -> (transcript: String, rewritten: String?) {
         // When local optimization is enabled and the model is ready, handle transcription
         // locally and let the caller run a separate LLM rewrite. This bypasses the merged
@@ -491,13 +493,13 @@ final class STTRouter {
                 scenario: scenario,
                 onASRUpdate: onASRUpdate,
                 onLLMStart: onLLMStart,
-                onLLMChunk: onLLMChunk,
+                onLLMChunk: onLLMChunk
             )
         } catch {
             NetworkDebugLogger.logError(context: "Typeflux Official integrated STT+LLM failed", error: error)
             if let integratedError = error as? TypefluxCloudIntegratedRewriteError {
                 NetworkDebugLogger.logMessage(
-                    "Integrated Typeflux Cloud LLM failed after ASR completed; using transcript fallback",
+                    "Integrated Typeflux Cloud LLM failed after ASR completed; using transcript fallback"
                 )
                 return (transcript: integratedError.transcript, rewritten: nil)
             }

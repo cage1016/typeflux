@@ -69,7 +69,7 @@ private func vocabularySourceLogoImage(for source: VocabularySource) -> NSImage?
     guard let resourceName = logoResourceName(for: source) else { return nil }
     guard let url = vocabularySourceLogoURL(for: resourceName) else {
         ErrorLogStore.shared.log(
-            "Missing vocabulary source logo resource for \(source.rawValue): \(resourceName)",
+            "Missing vocabulary source logo resource for \(source.rawValue): \(resourceName)"
         )
         return nil
     }
@@ -84,7 +84,7 @@ private func vocabularySourceMenuIconImage(for source: VocabularySource) -> NSIm
             in: destinationRect,
             from: NSRect(origin: .zero, size: image.size),
             operation: .sourceOver,
-            fraction: 1,
+            fraction: 1
         )
         return true
     }
@@ -95,14 +95,14 @@ private func vocabularySourceLogoURL(for resourceName: String) -> URL? {
     let candidatePaths: [(String?, String)] = [
         ("Resources/Providers", imageExtension),
         ("Providers", imageExtension),
-        (nil, imageExtension),
+        (nil, imageExtension)
     ]
 
     for (subdirectory, pathExtension) in candidatePaths {
         if let url = Bundle.appResources.url(
             forResource: resourceName,
             withExtension: pathExtension,
-            subdirectory: subdirectory,
+            subdirectory: subdirectory
         ) {
             return url
         }
@@ -143,7 +143,7 @@ private extension View {
     func studioAutoHidingScrollIndicators() -> some View {
         background(
             StudioAutoHidingScrollIndicatorConfigurator()
-                .frame(width: 0, height: 0),
+                .frame(width: 0, height: 0)
         )
     }
 }
@@ -261,7 +261,7 @@ struct StudioView: View {
             searchText: $viewModel.searchQuery,
             searchPlaceholder: viewModel.currentSection.searchPlaceholder,
             agentEnabled: viewModel.agentFrameworkEnabled,
-            isLoggedIn: authState.isLoggedIn,
+            isLoggedIn: authState.isLoggedIn
         ) { viewportSize in
             let viewportHeight = viewportContentHeight(from: viewportSize)
 
@@ -277,11 +277,11 @@ struct StudioView: View {
                 }
             }
             .frame(
-                height: viewModel.currentSection == .models ? viewportHeight : nil, alignment: .top,
+                height: viewModel.currentSection == .models ? viewportHeight : nil, alignment: .top
             )
             .frame(
                 minHeight: viewModel.currentSection == .vocabulary ? viewportHeight : nil,
-                alignment: .topLeading,
+                alignment: .topLeading
             )
             .background(vocabularyOutsideTapTarget)
             .id(viewModel.currentSection)
@@ -295,7 +295,7 @@ struct StudioView: View {
         .preferredColorScheme(viewModel.preferredColorScheme)
         .environment(\.locale, viewModel.locale)
         .onReceive(
-            NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification),
+            NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
         ) { _ in
             viewModel.schedulePermissionRefresh()
             authState.refreshSubscriptionIfNeeded()
@@ -309,12 +309,12 @@ struct StudioView: View {
                     .padding(.vertical, StudioTheme.Insets.toastVertical)
                     .background(
                         Capsule()
-                            .fill(StudioTheme.surface),
+                            .fill(StudioTheme.surface)
                     )
                     .overlay(
                         Capsule().stroke(
-                            StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin,
-                        ),
+                            StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin
+                        )
                     )
                     .padding(.bottom, StudioTheme.Insets.toastBottom)
             }
@@ -327,8 +327,8 @@ struct StudioView: View {
                     isAddingVocabulary = false
                     editingVocabularyEntry = nil
                     newVocabularyTerm = ""
-                },
-            ),
+                }
+            )
         ) {
             vocabularyAddSheet
         }
@@ -336,9 +336,9 @@ struct StudioView: View {
             L("settings.personas.deleteDialog.title"),
             isPresented: Binding(
                 get: { personaPendingDeletion != nil },
-                set: { if !$0 { personaPendingDeletion = nil } },
+                set: { if !$0 { personaPendingDeletion = nil } }
             ),
-            titleVisibility: .visible,
+            titleVisibility: .visible
         ) {
             Button(L("common.delete"), role: .destructive) {
                 guard let personaPendingDeletion else { return }
@@ -357,7 +357,7 @@ struct StudioView: View {
             L("settings.models.activationMissingAPIKey.title"),
             isPresented: Binding(
                 get: { llmActivationMissingAPIKeyProviderName != nil },
-                set: { if !$0 { llmActivationMissingAPIKeyProviderName = nil } },
+                set: { if !$0 { llmActivationMissingAPIKeyProviderName = nil } }
             ),
             actions: {
                 Button(L("common.ok"), role: .cancel) {
@@ -368,7 +368,7 @@ struct StudioView: View {
                 if let providerName = llmActivationMissingAPIKeyProviderName {
                     Text(L("settings.models.activationMissingAPIKey.message", providerName))
                 }
-            },
+            }
         )
         .sheet(isPresented: $isMCPServerDialogPresented) {
             mcpServerDialog
@@ -380,9 +380,9 @@ struct StudioView: View {
             L("agent.mcp.deleteDialog.title"),
             isPresented: Binding(
                 get: { mcpServerPendingDeletion != nil },
-                set: { if !$0 { mcpServerPendingDeletion = nil } },
+                set: { if !$0 { mcpServerPendingDeletion = nil } }
             ),
-            titleVisibility: .visible,
+            titleVisibility: .visible
         ) {
             Button(L("common.delete"), role: .destructive) {
                 guard let server = mcpServerPendingDeletion else { return }
@@ -400,7 +400,7 @@ struct StudioView: View {
         .confirmationDialog(
             L("history.clearDialog.title"),
             isPresented: $showingClearHistoryConfirmation,
-            titleVisibility: .visible,
+            titleVisibility: .visible
         ) {
             Button(L("common.clear"), role: .destructive) {
                 viewModel.clearHistory()
@@ -414,7 +414,7 @@ struct StudioView: View {
         }
         .sheet(
             isPresented: $isDirectFeedbackPresented,
-            onDismiss: cancelAllFeedbackImageUploads,
+            onDismiss: cancelAllFeedbackImageUploads
         ) {
             directFeedbackSheet
         }
@@ -433,7 +433,7 @@ struct StudioView: View {
                 cancelAllFeedbackImageUploads()
                 isDirectFeedbackPresented = false
             },
-            onSubmit: submitDirectFeedback,
+            onSubmit: submitDirectFeedback
         )
     }
 
@@ -455,8 +455,8 @@ struct StudioView: View {
         components.queryItems = [
             URLQueryItem(name: "subject", value: "Typeflux Feedback"),
             URLQueryItem(
-                name: "body", value: "Hi,\n\nI want to share some feedback about Typeflux:\n",
-            ),
+                name: "body", value: "Hi,\n\nI want to share some feedback about Typeflux:\n"
+            )
         ]
 
         guard let url = components.url else { return }
@@ -482,7 +482,7 @@ struct StudioView: View {
                     content: content,
                     contact: contact,
                     imageURLs: imageURLs,
-                    token: token,
+                    token: token
                 )
                 isSubmittingFeedback = false
                 isDirectFeedbackPresented = false
@@ -525,8 +525,8 @@ struct StudioView: View {
             FeedbackImageAttachment(
                 id: id,
                 filename: url.lastPathComponent,
-                state: .preparing,
-            ),
+                state: .preparing
+            )
         )
 
         let token = authState.accessToken
@@ -546,14 +546,14 @@ struct StudioView: View {
                     filename: prepared.filename,
                     contentType: prepared.contentType,
                     sizeBytes: Int64(prepared.data.count),
-                    token: token,
+                    token: token
                 )
                 try Task.checkCancellation()
                 try await FeedbackAPIService.uploadImage(
                     data: prepared.data,
                     filename: prepared.filename,
                     contentType: prepared.contentType,
-                    to: target,
+                    to: target
                 )
                 try Task.checkCancellation()
 
@@ -580,7 +580,7 @@ struct StudioView: View {
     @MainActor
     private func updateFeedbackImage(
         id: FeedbackImageAttachment.ID,
-        mutate: (inout FeedbackImageAttachment) -> Void,
+        mutate: (inout FeedbackImageAttachment) -> Void
     ) {
         guard let index = feedbackImages.firstIndex(where: { $0.id == id }) else {
             return
@@ -621,7 +621,7 @@ struct StudioView: View {
                 eyebrow: viewModel.currentSection.eyebrow,
                 title: viewModel.currentSection.heading,
                 subtitle: viewModel.currentSection.subheading,
-                badge: viewModel.currentSection == .agent ? "Beta" : nil,
+                badge: viewModel.currentSection == .agent ? "Beta" : nil
             )
 
             if viewModel.currentSection == .vocabulary {
@@ -629,7 +629,7 @@ struct StudioView: View {
 
                 HStack(spacing: StudioTheme.Spacing.small) {
                     StudioButton(
-                        title: L("vocabulary.action.newWord"), systemImage: "plus", variant: .primary,
+                        title: L("vocabulary.action.newWord"), systemImage: "plus", variant: .primary
                     ) {
                         editingVocabularyEntry = nil
                         newVocabularyTerm = ""
@@ -647,13 +647,13 @@ struct StudioView: View {
                         Button(action: viewModel.importClaudeVocabulary) {
                             vocabularyMenuItemLabel(
                                 title: L("vocabulary.action.importClaude"),
-                                source: .claude,
+                                source: .claude
                             )
                         }
                         Button(action: viewModel.importCodexVocabulary) {
                             vocabularyMenuItemLabel(
                                 title: L("vocabulary.action.importCodex"),
-                                source: .codex,
+                                source: .codex
                             )
                         }
                     } label: {
@@ -668,7 +668,7 @@ struct StudioView: View {
                 Spacer()
 
                 StudioButton(
-                    title: L("agent.jobs.title"), systemImage: "list.bullet.rectangle", variant: .secondary,
+                    title: L("agent.jobs.title"), systemImage: "list.bullet.rectangle", variant: .secondary
                 ) {
                     viewModel.openJobsPage()
                 }
@@ -678,7 +678,7 @@ struct StudioView: View {
                 HStack(spacing: StudioTheme.Spacing.medium) {
                     StudioIconButton(
                         systemImage: "square.and.arrow.up",
-                        variant: .ghost,
+                        variant: .ghost
                     ) {
                         viewModel.exportHistory()
                     }
@@ -686,7 +686,7 @@ struct StudioView: View {
 
                     StudioIconButton(
                         systemImage: "trash",
-                        variant: .ghost,
+                        variant: .ghost
                     ) {
                         showingClearHistoryConfirmation = true
                     }
@@ -699,7 +699,7 @@ struct StudioView: View {
                     StudioButton(
                         title: L("settings.personaAppBindings.openButton"),
                         systemImage: "app.badge",
-                        variant: .secondary,
+                        variant: .secondary
                     ) {
                         isPersonaAppBindingsSheetPresented = true
                     }
@@ -707,7 +707,7 @@ struct StudioView: View {
                     StudioButton(
                         title: L("settings.personas.newButton"),
                         systemImage: "plus",
-                        variant: .secondary,
+                        variant: .secondary
                     ) {
                         viewModel.beginCreatingPersona()
                     }
@@ -786,8 +786,8 @@ struct StudioView: View {
 
             sessionStream(
                 records: Array(
-                    viewModel.displayedHistory.prefix(StudioTheme.Count.homeRecentRecords),
-                ),
+                    viewModel.displayedHistory.prefix(StudioTheme.Count.homeRecentRecords)
+                )
             )
         }
     }
@@ -798,8 +798,8 @@ struct StudioView: View {
                 options: StudioModelDomain.allCases.map { (label: modelDomainTabTitle(for: $0), value: $0) },
                 selection: Binding(
                     get: { viewModel.modelDomain },
-                    set: viewModel.setModelDomain,
-                ),
+                    set: viewModel.setModelDomain
+                )
             )
 
             GeometryReader { proxy in
@@ -817,7 +817,7 @@ struct StudioView: View {
                     .background(Color.clear)
                     .frame(
                         width: StudioTheme.Layout.modelProviderListWidth, height: proxy.size.height,
-                        alignment: .leading,
+                        alignment: .leading
                     )
                     .frame(maxHeight: .infinity, alignment: .top)
 
@@ -839,7 +839,7 @@ struct StudioView: View {
         max(
             viewportSize.height - StudioTheme.Layout.shellContentTopInset
                 - StudioTheme.Layout.shellContentBottomInset,
-            0,
+            0
         )
     }
 
@@ -863,7 +863,7 @@ struct StudioView: View {
                         systemImage: "slash.circle",
                         metadata: L("persona.none.title"),
                         isSelected: !viewModel.isCreatingPersonaDraft && viewModel.selectedPersonaID == nil,
-                        isActive: viewModel.activePersonaID.isEmpty,
+                        isActive: viewModel.activePersonaID.isEmpty
                     ) {
                         viewModel.selectPersona(nil)
                     }
@@ -873,12 +873,12 @@ struct StudioView: View {
                             title: persona.name,
                             subtitle: viewModel.personaDisplayPrompt(for: persona),
                             initials: String(
-                                persona.name.prefix(StudioTheme.Count.personaInitials),
+                                persona.name.prefix(StudioTheme.Count.personaInitials)
                             ).uppercased(),
                             systemImage: nil,
                             metadata: persona.isSystem ? L("settings.personas.tag.system") : nil,
                             isSelected: viewModel.selectedPersonaID == persona.id,
-                            isActive: persona.id.uuidString == viewModel.activePersonaID,
+                            isActive: persona.id.uuidString == viewModel.activePersonaID
                         ) {
                             viewModel.selectPersona(persona.id)
                         }
@@ -905,8 +905,8 @@ struct StudioView: View {
                         Text(L("settings.personas.editTitle"))
                             .font(
                                 .studioDisplay(
-                                    StudioTheme.Typography.sectionTitle, weight: .semibold,
-                                ),
+                                    StudioTheme.Typography.sectionTitle, weight: .semibold
+                                )
                             )
                             .foregroundStyle(StudioTheme.textPrimary)
 
@@ -917,13 +917,13 @@ struct StudioView: View {
                                 StudioPill(
                                     title: L("settings.models.active"),
                                     tone: StudioTheme.success,
-                                    fill: StudioTheme.success.opacity(0.12),
+                                    fill: StudioTheme.success.opacity(0.12)
                                 )
                             } else {
                                 StudioButton(
                                     title: L("settings.models.useAsDefault"),
                                     systemImage: "checkmark.circle.fill",
-                                    variant: .secondary,
+                                    variant: .secondary
                                 ) {
                                     viewModel.deactivatePersonaRewrite()
                                 }
@@ -935,13 +935,13 @@ struct StudioView: View {
                             StudioPill(
                                 title: L("settings.models.active"),
                                 tone: StudioTheme.success,
-                                fill: StudioTheme.success.opacity(0.12),
+                                fill: StudioTheme.success.opacity(0.12)
                             )
                         } else {
                             StudioButton(
                                 title: L("settings.models.useAsDefault"),
                                 systemImage: "checkmark.circle.fill",
-                                variant: .secondary,
+                                variant: .secondary
                             ) {
                                 viewModel.activateSelectedPersona()
                             }
@@ -957,7 +957,11 @@ struct StudioView: View {
                             .font(.studioBody(StudioTheme.Typography.body))
                             .foregroundStyle(StudioTheme.textSecondary)
                     }
-                    .frame(maxWidth: .infinity, minHeight: StudioTheme.Layout.textEditorMinHeight, alignment: .topLeading)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: StudioTheme.Layout.textEditorMinHeight,
+                        alignment: .topLeading
+                    )
                 } else {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                         StudioTextInputCard(
@@ -965,15 +969,15 @@ struct StudioView: View {
                             placeholder: L("settings.personas.namePlaceholder"),
                             text: Binding(
                                 get: { viewModel.personaDraftName },
-                                set: { viewModel.personaDraftName = $0 },
-                            ),
+                                set: { viewModel.personaDraftName = $0 }
+                            )
                         )
                         .disabled(
-                            viewModel.selectedPersonaIsSystem && !viewModel.isCreatingPersonaDraft,
+                            viewModel.selectedPersonaIsSystem && !viewModel.isCreatingPersonaDraft
                         )
                         .opacity(
                             viewModel.selectedPersonaIsSystem && !viewModel.isCreatingPersonaDraft
-                                ? 0.6 : 1,
+                                ? 0.6 : 1
                         )
                     }
 
@@ -983,32 +987,32 @@ struct StudioView: View {
                         TextEditor(
                             text: Binding(
                                 get: { viewModel.personaDraftPrompt },
-                                set: { viewModel.personaDraftPrompt = $0 },
-                            ),
+                                set: { viewModel.personaDraftPrompt = $0 }
+                            )
                         )
                         .font(.studioMono(StudioTheme.Typography.body))
                         .foregroundStyle(StudioTheme.textPrimary)
                         .scrollContentBackground(.hidden)
                         .disabled(
-                            viewModel.selectedPersonaIsSystem && !viewModel.isCreatingPersonaDraft,
+                            viewModel.selectedPersonaIsSystem && !viewModel.isCreatingPersonaDraft
                         )
                         .frame(minHeight: StudioTheme.Layout.textEditorMinHeight)
                         .padding(StudioTheme.Insets.textEditor)
                         .background(
                             RoundedRectangle(
-                                cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
+                                cornerRadius: StudioTheme.CornerRadius.large, style: .continuous
                             )
-                            .fill(StudioTheme.controlSurface),
+                            .fill(StudioTheme.controlSurface)
                         )
                         .overlay(
                             RoundedRectangle(
-                                cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
+                                cornerRadius: StudioTheme.CornerRadius.large, style: .continuous
                             )
-                            .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+                            .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin)
                         )
                         .opacity(
                             viewModel.selectedPersonaIsSystem && !viewModel.isCreatingPersonaDraft
-                                ? 0.6 : 1,
+                                ? 0.6 : 1
                         )
                     }
 
@@ -1016,7 +1020,7 @@ struct StudioView: View {
                         HStack {
                             Spacer()
                             StudioButton(
-                                title: L("common.cancel"), systemImage: nil, variant: .secondary,
+                                title: L("common.cancel"), systemImage: nil, variant: .secondary
                             ) {
                                 viewModel.cancelPersonaEditing()
                             }
@@ -1025,7 +1029,7 @@ struct StudioView: View {
                                 systemImage: nil,
                                 variant: .primary,
                                 isDisabled: !viewModel.canSavePersonaDraft
-                                    || !viewModel.hasPersonaDraftChanges,
+                                    || !viewModel.hasPersonaDraftChanges
                             ) {
                                 viewModel.savePersonaDraft()
                             }
@@ -1041,7 +1045,7 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                 StudioSettingRow(
                     title: L("settings.personas.providers.stt"),
-                    subtitle: L("settings.personas.providers.stt.subtitle"),
+                    subtitle: L("settings.personas.providers.stt.subtitle")
                 ) {
                     StudioMenuPicker(
                         options: STTProvider.settingsDisplayOrder
@@ -1049,9 +1053,9 @@ struct StudioView: View {
                             .map { (label: $0.displayName, value: $0) },
                         selection: Binding(
                             get: { viewModel.sttProvider },
-                            set: { viewModel.setSTTProvider($0) },
+                            set: { viewModel.setSTTProvider($0) }
                         ),
-                        width: 200,
+                        width: 200
                     )
                 }
 
@@ -1059,7 +1063,7 @@ struct StudioView: View {
 
                 StudioSettingRow(
                     title: L("settings.personas.providers.llm"),
-                    subtitle: L("settings.personas.providers.llm.subtitle"),
+                    subtitle: L("settings.personas.providers.llm.subtitle")
                 ) {
                     StudioMenuPicker(
                         options: personaLLMProviderOptions,
@@ -1073,13 +1077,13 @@ struct StudioView: View {
                                 if providerID == .ollama {
                                     viewModel.setLLMProvider(.ollama)
                                 } else if let remoteProvider = LLMRemoteProvider.from(
-                                    providerID: providerID,
+                                    providerID: providerID
                                 ) {
                                     viewModel.setLLMRemoteProvider(remoteProvider)
                                 }
-                            },
+                            }
                         ),
-                        width: 200,
+                        width: 200
                     )
                 }
             }
@@ -1110,14 +1114,14 @@ struct StudioView: View {
                     StudioCard {
                         StudioSettingRow(
                             title: L("settings.personaAppBindings.enabled.title"),
-                            subtitle: L("settings.personaAppBindings.enabled.subtitle"),
+                            subtitle: L("settings.personaAppBindings.enabled.subtitle")
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.personaAppBindingsEnabled },
-                                    set: { viewModel.setPersonaAppBindingsEnabled($0) },
-                                ),
+                                    set: { viewModel.setPersonaAppBindingsEnabled($0) }
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -1149,8 +1153,8 @@ struct StudioView: View {
                                                 get: { viewModel.personaAppBindingDraftIdentifier },
                                                 set: {
                                                     viewModel.personaAppBindingDraftIdentifier = $0
-                                                },
-                                            ),
+                                                }
+                                            )
                                         )
                                         .textFieldStyle(.plain)
                                         .font(.studioBody(StudioTheme.Typography.bodyLarge))
@@ -1159,7 +1163,7 @@ struct StudioView: View {
                                         StudioIconButton(
                                             systemImage: "magnifyingglass",
                                             variant: .ghost,
-                                            frame: 28,
+                                            frame: 28
                                         ) {
                                             personaAppPickerScope = .running
                                             personaAppPickerSearchQuery = ""
@@ -1173,22 +1177,22 @@ struct StudioView: View {
                                     .padding(.vertical, personaAppBindingFieldVerticalPadding)
                                     .frame(
                                         width: personaAppIdentifierFieldWidth,
-                                        height: personaAppBindingControlHeight,
+                                        height: personaAppBindingControlHeight
                                     )
                                     .background(
                                         RoundedRectangle(
-                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous
                                         )
-                                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
                                     )
                                     .overlay(
                                         RoundedRectangle(
-                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                                            cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous
                                         )
                                         .stroke(
                                             StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                                            lineWidth: StudioTheme.BorderWidth.thin,
-                                        ),
+                                            lineWidth: StudioTheme.BorderWidth.thin
+                                        )
                                     )
 
                                     StudioMenuPicker(
@@ -1198,10 +1202,10 @@ struct StudioView: View {
                                             },
                                         selection: Binding(
                                             get: { viewModel.personaAppBindingDraftPersonaID },
-                                            set: { viewModel.personaAppBindingDraftPersonaID = $0 },
+                                            set: { viewModel.personaAppBindingDraftPersonaID = $0 }
                                         ),
                                         width: personaAppPickerFieldWidth,
-                                        height: personaAppBindingControlHeight,
+                                        height: personaAppBindingControlHeight
                                     )
 
                                     Spacer(minLength: 0)
@@ -1210,7 +1214,7 @@ struct StudioView: View {
                                         title: L("settings.personaAppBindings.add"),
                                         systemImage: "plus",
                                         variant: .primary,
-                                        isDisabled: !viewModel.canSavePersonaAppBinding,
+                                        isDisabled: !viewModel.canSavePersonaAppBinding
                                     ) {
                                         viewModel.savePersonaAppBinding()
                                     }
@@ -1231,7 +1235,7 @@ struct StudioView: View {
                             VStack(alignment: .leading, spacing: 0) {
                                 personaAppBindingsCardHeader(
                                     title: L("settings.personaAppBindings.listTitle"),
-                                    padding: StudioTheme.Insets.cardDefault,
+                                    padding: StudioTheme.Insets.cardDefault
                                 )
 
                                 Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
@@ -1256,7 +1260,7 @@ struct StudioView: View {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 StudioTheme.modalSurface
-            },
+            }
         )
         .task {
             refreshPersonaAppRunningLookup()
@@ -1269,9 +1273,9 @@ struct StudioView: View {
             L("settings.personaAppBindings.deleteDialog.title"),
             isPresented: Binding(
                 get: { personaAppBindingPendingDeletion != nil },
-                set: { if !$0 { personaAppBindingPendingDeletion = nil } },
+                set: { if !$0 { personaAppBindingPendingDeletion = nil } }
             ),
-            titleVisibility: .visible,
+            titleVisibility: .visible
         ) {
             Button(L("common.delete"), role: .destructive) {
                 guard let binding = personaAppBindingPendingDeletion else { return }
@@ -1313,7 +1317,7 @@ struct StudioView: View {
                 .frame(width: 36, height: 36)
                 .background(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                        .fill(StudioTheme.iconTileSurface),
+                        .fill(StudioTheme.iconTileSurface)
                 )
 
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -1338,16 +1342,16 @@ struct StudioView: View {
                     get: { hasMatchingPersona ? binding.personaID : nil },
                     set: { newPersonaID in
                         viewModel.updatePersonaAppBindingPersona(id: binding.id, personaID: newPersonaID)
-                    },
+                    }
                 ),
-                width: 240,
+                width: 240
             )
             .frame(width: 240, alignment: .center)
 
             HStack(spacing: StudioTheme.Spacing.xSmall) {
                 StudioIconButton(
                     systemImage: binding.isEnabled ? "pause.fill" : "play.fill",
-                    variant: .ghost,
+                    variant: .ghost
                 ) {
                     viewModel.setPersonaAppBindingEnabled(id: binding.id, isEnabled: !binding.isEnabled)
                 }
@@ -1355,12 +1359,12 @@ struct StudioView: View {
                     binding.isEnabled
                         ? L("settings.personaAppBindings.binding.pause")
                         : L("settings.personaAppBindings.binding.enable"),
-                    yOffset: 34,
+                    yOffset: 34
                 )
 
                 StudioIconButton(
                     systemImage: "trash",
-                    variant: .ghost,
+                    variant: .ghost
                 ) {
                     personaAppBindingPendingDeletion = binding
                 }
@@ -1400,12 +1404,12 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.medium) {
                 StudioSegmentedPicker(
                     options: PersonaAppPickerScope.allCases.map { (label: $0.title, value: $0) },
-                    selection: $personaAppPickerScope,
+                    selection: $personaAppPickerScope
                 )
 
                 TextField(
                     L("settings.personaAppBindings.picker.searchPlaceholder"),
-                    text: $personaAppPickerSearchQuery,
+                    text: $personaAppPickerSearchQuery
                 )
                 .textFieldStyle(.plain)
                 .font(.studioBody(StudioTheme.Typography.bodyLarge))
@@ -1414,14 +1418,14 @@ struct StudioView: View {
                 .padding(.vertical, StudioTheme.Insets.textFieldVertical)
                 .background(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                        .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
                         .stroke(
                             StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                            lineWidth: StudioTheme.BorderWidth.thin,
-                        ),
+                            lineWidth: StudioTheme.BorderWidth.thin
+                        )
                 )
             }
             .padding(StudioTheme.Spacing.large)
@@ -1459,7 +1463,7 @@ struct StudioView: View {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 StudioTheme.modalSurface
-            },
+            }
         )
         .onAppear {
             if personaAppCandidates.isEmpty {
@@ -1500,7 +1504,7 @@ struct StudioView: View {
             .frame(width: 40, height: 40)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(StudioTheme.iconTileSurface),
+                    .fill(StudioTheme.iconTileSurface)
             )
 
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -1539,21 +1543,21 @@ struct StudioView: View {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmedIdentifier) {
             return (
                 displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
-                icon: NSWorkspace.shared.icon(forFile: url.path),
+                icon: NSWorkspace.shared.icon(forFile: url.path)
             )
         }
 
         if let url = personaAppRunningLookup[cacheKey] {
             return (
                 displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
-                icon: NSWorkspace.shared.icon(forFile: url.path),
+                icon: NSWorkspace.shared.icon(forFile: url.path)
             )
         }
 
         if let url = personaAppInstalledLookup[cacheKey] {
             return (
                 displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
-                icon: NSWorkspace.shared.icon(forFile: url.path),
+                icon: NSWorkspace.shared.icon(forFile: url.path)
             )
         }
 
@@ -1654,7 +1658,7 @@ struct StudioView: View {
     private func personaAppBindingsCardHeader(
         title: String,
         subtitle: String? = nil,
-        padding: CGFloat = 0,
+        padding: CGFloat = 0
     ) -> some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
             Text(title)
@@ -1684,15 +1688,17 @@ struct StudioView: View {
             let preferredIdentifier = bundleIdentifier?.isEmpty == false ? bundleIdentifier! : (displayName ?? "")
             guard !preferredIdentifier.isEmpty else { return nil }
 
-            let candidateID = (bundleIdentifier?.isEmpty == false ? bundleIdentifier : appURL?.path) ?? preferredIdentifier
+            let candidateID = (bundleIdentifier?.isEmpty == false ? bundleIdentifier : appURL?.path) ??
+                preferredIdentifier
             guard seen.insert(candidateID.lowercased()).inserted else { return nil }
 
             return PersonaAppCandidate(
                 id: candidateID,
-                displayName: (displayName?.isEmpty == false ? displayName : appDisplayName(for: appURL)) ?? preferredIdentifier,
+                displayName: (displayName?.isEmpty == false ? displayName : appDisplayName(for: appURL)) ??
+                    preferredIdentifier,
                 bundleIdentifier: bundleIdentifier,
                 appURL: appURL,
-                isRunning: true,
+                isRunning: true
             )
         }
         .sorted { lhs, rhs in
@@ -1710,9 +1716,9 @@ struct StudioView: View {
                     + [
                         URL(fileURLWithPath: "/Applications"),
                         URL(fileURLWithPath: "/System/Applications"),
-                        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Applications"),
-                    ],
-            ),
+                        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
+                    ]
+            )
         )
 
         var candidates: [PersonaAppCandidate] = []
@@ -1722,7 +1728,7 @@ struct StudioView: View {
             guard let enumerator = fileManager.enumerator(
                 at: root,
                 includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles],
+                options: [.skipsHiddenFiles]
             ) else {
                 continue
             }
@@ -1731,7 +1737,8 @@ struct StudioView: View {
                 guard url.pathExtension.caseInsensitiveCompare("app") == .orderedSame else { continue }
                 enumerator.skipDescendants()
 
-                let bundleIdentifier = Bundle(url: url)?.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let bundleIdentifier = Bundle(url: url)?.bundleIdentifier?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 let displayName = appDisplayName(for: url) ?? url.deletingPathExtension().lastPathComponent
                 let candidateID = bundleIdentifier ?? url.path
                 guard seen.insert(candidateID.lowercased()).inserted else { continue }
@@ -1742,8 +1749,8 @@ struct StudioView: View {
                         displayName: displayName,
                         bundleIdentifier: bundleIdentifier,
                         appURL: url,
-                        isRunning: false,
-                    ),
+                        isRunning: false
+                    )
                 )
             }
         }
@@ -1755,7 +1762,7 @@ struct StudioView: View {
 
     private nonisolated static func mergePersonaAppCandidates(
         _ first: [PersonaAppCandidate],
-        _ second: [PersonaAppCandidate],
+        _ second: [PersonaAppCandidate]
     ) -> [PersonaAppCandidate] {
         var merged: [PersonaAppCandidate] = []
         var seen = Set<String>()
@@ -1809,7 +1816,8 @@ struct StudioView: View {
             lhs.label.localizedCaseInsensitiveCompare(rhs.label) == .orderedAscending
         }
 
-        return [(label: LLMRemoteProvider.typefluxCloud.displayName, value: .typefluxCloud)] + remoteOptions + customOptions
+        return [(label: LLMRemoteProvider.typefluxCloud.displayName, value: .typefluxCloud)] + remoteOptions +
+            customOptions
     }
 
     private func personaRosterCard(
@@ -1820,7 +1828,7 @@ struct StudioView: View {
         metadata: String?,
         isSelected: Bool,
         isActive: Bool,
-        action: @escaping () -> Void,
+        action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             StudioCard(
@@ -1828,18 +1836,18 @@ struct StudioView: View {
                 showsShadow: true,
                 isHighlighted: isSelected,
                 isDimmed: !isSelected,
-                texture: .softWaves,
+                texture: .softWaves
             ) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
                         RoundedRectangle(
                             cornerRadius: StudioTheme.CornerRadius.large,
-                            style: .continuous,
+                            style: .continuous
                         )
                         .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted)
                         .frame(
                             width: StudioTheme.ControlSize.modelProviderBadge,
-                            height: StudioTheme.ControlSize.modelProviderBadge,
+                            height: StudioTheme.ControlSize.modelProviderBadge
                         )
                         .overlay(
                             Group {
@@ -1847,22 +1855,22 @@ struct StudioView: View {
                                     Image(systemName: systemImage)
                                         .font(.system(
                                             size: StudioTheme.Typography.bodySmall,
-                                            weight: .bold,
+                                            weight: .bold
                                         ))
                                         .foregroundStyle(
-                                            isSelected ? StudioTheme.accent : StudioTheme.textSecondary,
+                                            isSelected ? StudioTheme.accent : StudioTheme.textSecondary
                                         )
                                 } else {
                                     Text(initials)
                                         .font(.studioBody(
                                             StudioTheme.Typography.bodySmall,
-                                            weight: .bold,
+                                            weight: .bold
                                         ))
                                         .foregroundStyle(
-                                            isSelected ? StudioTheme.accent : StudioTheme.textSecondary,
+                                            isSelected ? StudioTheme.accent : StudioTheme.textSecondary
                                         )
                                 }
-                            },
+                            }
                         )
 
                         Text(title)
@@ -1876,7 +1884,7 @@ struct StudioView: View {
                             .fill(isActive ? StudioTheme.success : StudioTheme.border)
                             .frame(
                                 width: StudioTheme.ControlSize.modelProviderStatusDot,
-                                height: StudioTheme.ControlSize.modelProviderStatusDot,
+                                height: StudioTheme.ControlSize.modelProviderStatusDot
                             )
                     }
 
@@ -1901,7 +1909,7 @@ struct StudioView: View {
                                 StudioPill(
                                     title: L("settings.models.active"),
                                     tone: StudioTheme.success,
-                                    fill: StudioTheme.success.opacity(0.12),
+                                    fill: StudioTheme.success.opacity(0.12)
                                 )
                             }
                         }
@@ -1912,8 +1920,8 @@ struct StudioView: View {
             .contentShape(
                 RoundedRectangle(
                     cornerRadius: StudioTheme.CornerRadius.hero,
-                    style: .continuous,
-                ),
+                    style: .continuous
+                )
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
@@ -1925,7 +1933,7 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("history.keep.title"),
-                        subtitle: L("history.keep.subtitle"),
+                        subtitle: L("history.keep.subtitle")
                     ) {
                         StudioMenuPicker(
                             options: HistoryRetentionPolicy.allCases.map {
@@ -1933,9 +1941,9 @@ struct StudioView: View {
                             },
                             selection: Binding(
                                 get: { viewModel.historyRetentionPolicy },
-                                set: viewModel.setHistoryRetentionPolicy,
+                                set: viewModel.setHistoryRetentionPolicy
                             ),
-                            width: 140,
+                            width: 140
                         )
                     }
 
@@ -1943,7 +1951,7 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("history.privacy.title"),
-                        subtitle: L("history.privacy.subtitle"),
+                        subtitle: L("history.privacy.subtitle")
                     ) {
                         Image(systemName: "lock.fill")
                             .foregroundStyle(StudioTheme.success)
@@ -1996,13 +2004,13 @@ struct StudioView: View {
                                         },
                                         onRetry: {
                                             viewModel.retryHistoryRecord(id: record.id)
-                                        },
+                                        }
                                     )
                                     if record.id != section.records.last?.id {
                                         Divider().overlay(
                                             StudioTheme.border.opacity(
-                                                StudioTheme.Opacity.listDivider,
-                                            ),
+                                                StudioTheme.Opacity.listDivider
+                                            )
                                         )
                                     }
                                 }
@@ -2052,7 +2060,7 @@ struct StudioView: View {
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                             Text(L("vocabulary.empty.title"))
                                 .font(
-                                    .studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold),
+                                    .studioDisplay(StudioTheme.Typography.cardTitle, weight: .semibold)
                                 )
                                 .foregroundStyle(StudioTheme.textPrimary)
                             Text(L("vocabulary.empty.subtitle"))
@@ -2066,10 +2074,10 @@ struct StudioView: View {
                             columns: [
                                 GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
                                 GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
-                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge),
+                                GridItem(.flexible(), spacing: StudioTheme.Spacing.xLarge)
                             ],
                             alignment: .leading,
-                            spacing: StudioTheme.Spacing.mediumLarge,
+                            spacing: StudioTheme.Spacing.mediumLarge
                         ) {
                             ForEach(filteredVocabularyEntries) { entry in
                                 vocabularyTermCard(entry)
@@ -2090,14 +2098,14 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("settings.launchAtLogin.title"),
-                        subtitle: L("settings.launchAtLogin.subtitle"),
+                        subtitle: L("settings.launchAtLogin.subtitle")
                     ) {
                         Toggle(
                             "",
                             isOn: Binding(
                                 get: { viewModel.launchAtLogin },
-                                set: viewModel.setLaunchAtLogin,
-                            ),
+                                set: viewModel.setLaunchAtLogin
+                            )
                         )
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -2107,7 +2115,7 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("settings.appearance.title"),
-                        subtitle: L("settings.appearance.subtitle"),
+                        subtitle: L("settings.appearance.subtitle")
                     ) {
                         StudioSegmentedPicker(
                             options: AppearanceMode.allCases.map {
@@ -2115,8 +2123,8 @@ struct StudioView: View {
                             },
                             selection: Binding(
                                 get: { viewModel.appearanceMode },
-                                set: viewModel.setAppearanceMode,
-                            ),
+                                set: viewModel.setAppearanceMode
+                            )
                         )
                         .frame(width: StudioTheme.Layout.appearancePickerWidth)
                     }
@@ -2125,7 +2133,7 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("settings.language.title"),
-                        subtitle: L("settings.language.subtitle"),
+                        subtitle: L("settings.language.subtitle")
                     ) {
                         StudioMenuPicker(
                             options: AppLanguage.allCases.map {
@@ -2133,9 +2141,9 @@ struct StudioView: View {
                             },
                             selection: Binding(
                                 get: { viewModel.appLanguage },
-                                set: viewModel.setAppLanguage,
+                                set: viewModel.setAppLanguage
                             ),
-                            width: StudioTheme.Layout.appearancePickerWidth,
+                            width: StudioTheme.Layout.appearancePickerWidth
                         )
                     }
                 }
@@ -2155,7 +2163,7 @@ struct StudioView: View {
                             binding: viewModel.activationHotkey,
                             isDefault: viewModel.activationHotkey?.signature
                                 == HotkeyBinding.defaultActivation.signature,
-                            isThisRecording: recordingTarget == .activation,
+                            isThisRecording: recordingTarget == .activation
                         ),
                         onStartRecording: {
                             recordingTarget = .activation
@@ -2169,7 +2177,7 @@ struct StudioView: View {
                         },
                         onUnset: {
                             viewModel.unsetActivationHotkey()
-                        },
+                        }
                     )
 
                     shortcutConfigurationRow(
@@ -2182,7 +2190,7 @@ struct StudioView: View {
                             binding: viewModel.askHotkey,
                             isDefault: viewModel.askHotkey?.signature
                                 == HotkeyBinding.defaultAsk.signature,
-                            isThisRecording: recordingTarget == .ask,
+                            isThisRecording: recordingTarget == .ask
                         ),
                         onStartRecording: {
                             recordingTarget = .ask
@@ -2196,7 +2204,7 @@ struct StudioView: View {
                         },
                         onUnset: {
                             viewModel.unsetAskHotkey()
-                        },
+                        }
                     )
 
                     shortcutConfigurationRow(
@@ -2209,7 +2217,7 @@ struct StudioView: View {
                             binding: viewModel.personaHotkey,
                             isDefault: viewModel.personaHotkey?.signature
                                 == HotkeyBinding.defaultPersona.signature,
-                            isThisRecording: recordingTarget == .persona,
+                            isThisRecording: recordingTarget == .persona
                         ),
                         onStartRecording: {
                             recordingTarget = .persona
@@ -2223,7 +2231,7 @@ struct StudioView: View {
                         },
                         onUnset: {
                             viewModel.unsetPersonaHotkey()
-                        },
+                        }
                     )
 
                     shortcutConfigurationRow(
@@ -2236,7 +2244,7 @@ struct StudioView: View {
                             binding: viewModel.historyHotkey,
                             isDefault: viewModel.historyHotkey?.signature
                                 == HotkeyBinding.defaultHistory.signature,
-                            isThisRecording: recordingTarget == .history,
+                            isThisRecording: recordingTarget == .history
                         ),
                         onStartRecording: {
                             recordingTarget = .history
@@ -2250,7 +2258,7 @@ struct StudioView: View {
                         },
                         onUnset: {
                             viewModel.unsetHistoryHotkey()
-                        },
+                        }
                     )
                 }
 
@@ -2270,7 +2278,7 @@ struct StudioView: View {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                         StudioSettingRow(
                             title: L("settings.personaDefault.title"),
-                            subtitle: L("settings.personaDefault.subtitle"),
+                            subtitle: L("settings.personaDefault.subtitle")
                         ) {
                             StudioMenuPicker(
                                 options: [(label: L("persona.none.title"), value: nil as UUID?)]
@@ -2279,9 +2287,9 @@ struct StudioView: View {
                                     },
                                 selection: Binding(
                                     get: { viewModel.defaultPersonaSelectionID },
-                                    set: { viewModel.setDefaultPersonaSelection($0) },
+                                    set: { viewModel.setDefaultPersonaSelection($0) }
                                 ),
-                                width: 200,
+                                width: 200
                             )
                         }
                     }
@@ -2295,29 +2303,29 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("settings.microphone.title"),
-                        subtitle: L("settings.microphone.subtitle"),
+                        subtitle: L("settings.microphone.subtitle")
                     ) {
                         HStack(spacing: StudioTheme.Spacing.small) {
                             StudioMenuPicker(
                                 options: [
                                     (
                                         label: L("settings.microphone.automatic"),
-                                        value: AudioDeviceManager.automaticDeviceID,
-                                    ),
+                                        value: AudioDeviceManager.automaticDeviceID
+                                    )
                                 ]
                                     + viewModel.availableMicrophones.map {
                                         (label: $0.name, value: $0.id)
                                     },
                                 selection: Binding(
                                     get: { viewModel.preferredMicrophoneID },
-                                    set: viewModel.setPreferredMicrophoneID,
+                                    set: viewModel.setPreferredMicrophoneID
                                 ),
-                                width: 260,
+                                width: 260
                             )
 
                             StudioButton(
                                 title: L("common.refresh"), systemImage: "arrow.clockwise",
-                                variant: .secondary,
+                                variant: .secondary
                             ) {
                                 viewModel.refreshAvailableMicrophones()
                             }
@@ -2329,14 +2337,14 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("settings.mute.title"),
-                        subtitle: L("settings.mute.subtitle"),
+                        subtitle: L("settings.mute.subtitle")
                     ) {
                         Toggle(
                             "",
                             isOn: Binding(
                                 get: { viewModel.muteSystemOutputDuringRecording },
-                                set: viewModel.setMuteSystemOutputDuringRecording,
-                            ),
+                                set: viewModel.setMuteSystemOutputDuringRecording
+                            )
                         )
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -2350,14 +2358,14 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("settings.permissionStatus.title"),
-                        subtitle: L("settings.permissionStatus.subtitle"),
+                        subtitle: L("settings.permissionStatus.subtitle")
                     ) {
                         StudioButton(
                             title: viewModel.isRefreshingPermissions
                                 ? L("common.refreshing") : L("common.refresh"),
                             systemImage: "arrow.clockwise",
                             variant: .secondary,
-                            isLoading: viewModel.isRefreshingPermissions,
+                            isLoading: viewModel.isRefreshingPermissions
                         ) {
                             viewModel.refreshPermissionRowsWithFeedback()
                         }
@@ -2371,7 +2379,7 @@ struct StudioView: View {
 
                             if permission.id != viewModel.permissionRows.last?.id {
                                 Divider().overlay(
-                                    StudioTheme.border.opacity(StudioTheme.Opacity.divider),
+                                    StudioTheme.border.opacity(StudioTheme.Opacity.divider)
                                 )
                             }
                         }
@@ -2385,14 +2393,14 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("settings.advanced.soundEffects.title"),
-                        subtitle: L("settings.advanced.soundEffects.subtitle"),
+                        subtitle: L("settings.advanced.soundEffects.subtitle")
                     ) {
                         Toggle(
                             "",
                             isOn: Binding(
                                 get: { viewModel.soundEffectsEnabled },
-                                set: viewModel.setSoundEffectsEnabled,
-                            ),
+                                set: viewModel.setSoundEffectsEnabled
+                            )
                         )
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -2402,14 +2410,14 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("settings.advanced.autoVocabulary.title"),
-                        subtitle: L("settings.advanced.autoVocabulary.subtitle"),
+                        subtitle: L("settings.advanced.autoVocabulary.subtitle")
                     ) {
                         Toggle(
                             "",
                             isOn: Binding(
                                 get: { viewModel.automaticVocabularyCollectionEnabled },
-                                set: viewModel.setAutomaticVocabularyCollectionEnabled,
-                            ),
+                                set: viewModel.setAutomaticVocabularyCollectionEnabled
+                            )
                         )
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -2419,14 +2427,14 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("settings.advanced.autoUpdate.title"),
-                        subtitle: L("settings.advanced.autoUpdate.subtitle"),
+                        subtitle: L("settings.advanced.autoUpdate.subtitle")
                     ) {
                         Toggle(
                             "",
                             isOn: Binding(
                                 get: { viewModel.autoUpdateEnabled },
-                                set: viewModel.setAutoUpdateEnabled,
-                            ),
+                                set: viewModel.setAutoUpdateEnabled
+                            )
                         )
                         .labelsHidden()
                         .toggleStyle(.switch)
@@ -2439,7 +2447,7 @@ struct StudioView: View {
                 StudioButton(
                     title: L("settings.advanced.button"),
                     systemImage: isAdvancedSettingsExpanded ? "chevron.up" : "chevron.down",
-                    variant: .ghost,
+                    variant: .ghost
                 ) {
                     withAnimation(.easeInOut(duration: 0.18)) {
                         isAdvancedSettingsExpanded.toggle()
@@ -2453,14 +2461,14 @@ struct StudioView: View {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                         StudioSettingRow(
                             title: L("settings.advanced.localOptimization.title"),
-                            subtitle: L("settings.advanced.localOptimization.subtitle"),
+                            subtitle: L("settings.advanced.localOptimization.subtitle")
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.localOptimizationEnabled },
-                                    set: viewModel.setLocalOptimizationEnabled,
-                                ),
+                                    set: viewModel.setLocalOptimizationEnabled
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2470,14 +2478,14 @@ struct StudioView: View {
 
                         StudioSettingRow(
                             title: L("settings.advanced.localSTTMemoryOptimization.title"),
-                            subtitle: L("settings.advanced.localSTTMemoryOptimization.subtitle"),
+                            subtitle: L("settings.advanced.localSTTMemoryOptimization.subtitle")
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.localSTTMemoryOptimizationEnabled },
-                                    set: viewModel.setLocalSTTMemoryOptimizationEnabled,
-                                ),
+                                    set: viewModel.setLocalSTTMemoryOptimizationEnabled
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2488,14 +2496,14 @@ struct StudioView: View {
                         StudioSettingRow(
                             title: L("settings.advanced.personaHotkeyApply.title"),
                             subtitle: L("settings.advanced.personaHotkeyApply.subtitle"),
-                            badge: "Beta",
+                            badge: "Beta"
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.personaHotkeyAppliesToSelection },
-                                    set: viewModel.setPersonaHotkeyAppliesToSelection,
-                                ),
+                                    set: viewModel.setPersonaHotkeyAppliesToSelection
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2506,14 +2514,14 @@ struct StudioView: View {
                         StudioSettingRow(
                             title: L("settings.advanced.inputContextOptimization.title"),
                             subtitle: L("settings.advanced.inputContextOptimization.subtitle"),
-                            badge: "Beta",
+                            badge: "Beta"
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.inputContextOptimizationEnabled },
-                                    set: viewModel.setInputContextOptimizationEnabled,
-                                ),
+                                    set: viewModel.setInputContextOptimizationEnabled
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2524,14 +2532,14 @@ struct StudioView: View {
                         StudioSettingRow(
                             title: L("settings.advanced.agentFramework.title"),
                             subtitle: L("settings.advanced.agentFramework.subtitle"),
-                            badge: "Beta",
+                            badge: "Beta"
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.agentFrameworkEnabled },
-                                    set: viewModel.setAgentFrameworkEnabled,
-                                ),
+                                    set: viewModel.setAgentFrameworkEnabled
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2542,14 +2550,14 @@ struct StudioView: View {
                         StudioSettingRow(
                             title: L("settings.advanced.stubbornPasteFallback.title"),
                             subtitle: L("settings.advanced.stubbornPasteFallback.subtitle"),
-                            badge: "Beta",
+                            badge: "Beta"
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.stubbornPasteFallbackEnabled },
-                                    set: viewModel.setStubbornPasteFallbackEnabled,
-                                ),
+                                    set: viewModel.setStubbornPasteFallbackEnabled
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2559,14 +2567,14 @@ struct StudioView: View {
 
                         StudioSettingRow(
                             title: L("settings.models.appleFallback"),
-                            subtitle: L("settings.models.appleFallback.detail"),
+                            subtitle: L("settings.models.appleFallback.detail")
                         ) {
                             Toggle(
                                 "",
                                 isOn: Binding(
                                     get: { viewModel.appleSpeechFallback },
-                                    set: viewModel.setAppleSpeechFallback,
-                                ),
+                                    set: viewModel.setAppleSpeechFallback
+                                )
                             )
                             .labelsHidden()
                             .toggleStyle(.switch)
@@ -2584,7 +2592,7 @@ struct StudioView: View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
             StudioSegmentedPicker(
                 options: AgentConfigurationTab.allCases.map { (label: $0.title, value: $0) },
-                selection: $agentConfigurationTab,
+                selection: $agentConfigurationTab
             )
 
             switch agentConfigurationTab {
@@ -2601,11 +2609,11 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                 StudioSettingRow(
                     title: L("agent.general.enabled.title"),
-                    subtitle: L("agent.general.enabled.subtitle"),
+                    subtitle: L("agent.general.enabled.subtitle")
                 ) {
                     Toggle("", isOn: Binding(
                         get: { viewModel.agentEnabled },
-                        set: viewModel.setAgentEnabled,
+                        set: viewModel.setAgentEnabled
                     ))
                     .labelsHidden()
                     .toggleStyle(.switch)
@@ -2639,7 +2647,7 @@ struct StudioView: View {
             StudioButton(
                 title: L("agent.mcp.addServer"),
                 systemImage: "plus.circle.fill",
-                variant: .secondary,
+                variant: .secondary
             ) {
                 viewModel.beginAddMCPServer()
                 isMCPServerDialogPresented = true
@@ -2672,14 +2680,14 @@ struct StudioView: View {
                         systemImage: viewModel.isTestingMCPServer(server.id) ? nil : "network",
                         variant: .secondary,
                         isDisabled: viewModel.isTestingMCPServer(server.id),
-                        isLoading: viewModel.isTestingMCPServer(server.id),
+                        isLoading: viewModel.isTestingMCPServer(server.id)
                     ) {
                         viewModel.testMCPConnection(for: server)
                     }
 
                     Toggle("", isOn: Binding(
                         get: { server.enabled },
-                        set: { viewModel.updateMCPServerEnabled(id: server.id, enabled: $0) },
+                        set: { viewModel.updateMCPServerEnabled(id: server.id, enabled: $0) }
                     ))
                     .labelsHidden()
                     .toggleStyle(.switch)
@@ -2725,7 +2733,7 @@ struct StudioView: View {
                     StudioTextInputCard(
                         label: L("agent.mcp.name"),
                         placeholder: L("agent.mcp.namePlaceholder"),
-                        text: $viewModel.mcpDraftName,
+                        text: $viewModel.mcpDraftName
                     )
 
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
@@ -2736,9 +2744,9 @@ struct StudioView: View {
                         StudioSegmentedPicker(
                             options: [
                                 (label: "STDIO", value: MCPTransportType.stdio),
-                                (label: "HTTP/SSE", value: MCPTransportType.http),
+                                (label: "HTTP/SSE", value: MCPTransportType.http)
                             ],
-                            selection: $viewModel.mcpDraftTransportType,
+                            selection: $viewModel.mcpDraftTransportType
                         )
                     }
 
@@ -2746,28 +2754,28 @@ struct StudioView: View {
                         StudioTextInputCard(
                             label: L("agent.mcp.stdio.command"),
                             placeholder: "/usr/local/bin/my-mcp-server",
-                            text: $viewModel.mcpDraftStdioCommand,
+                            text: $viewModel.mcpDraftStdioCommand
                         )
                         StudioTextInputCard(
                             label: L("agent.mcp.stdio.args"),
                             placeholder: "--port 3000 --verbose",
-                            text: $viewModel.mcpDraftStdioArgs,
+                            text: $viewModel.mcpDraftStdioArgs
                         )
                         mcpKeyValueEditor(
                             label: L("agent.mcp.stdio.env"),
                             hint: L("agent.mcp.stdio.envHint"),
-                            text: $viewModel.mcpDraftStdioEnv,
+                            text: $viewModel.mcpDraftStdioEnv
                         )
                     } else {
                         StudioTextInputCard(
                             label: L("agent.mcp.http.url"),
                             placeholder: "https://mcp.example.com/sse",
-                            text: $viewModel.mcpDraftHTTPURL,
+                            text: $viewModel.mcpDraftHTTPURL
                         )
                         mcpKeyValueEditor(
                             label: L("agent.mcp.http.headers"),
                             hint: L("agent.mcp.http.headersHint"),
-                            text: $viewModel.mcpDraftHTTPHeaders,
+                            text: $viewModel.mcpDraftHTTPHeaders
                         )
                     }
                 }
@@ -2777,7 +2785,7 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                     StudioSettingRow(
                         title: L("agent.mcp.enabled.title"),
-                        subtitle: L("agent.mcp.enabled.subtitle"),
+                        subtitle: L("agent.mcp.enabled.subtitle")
                     ) {
                         Toggle("", isOn: $viewModel.mcpDraftEnabled)
                             .labelsHidden()
@@ -2788,7 +2796,7 @@ struct StudioView: View {
 
                     StudioSettingRow(
                         title: L("agent.mcp.autoConnect.title"),
-                        subtitle: L("agent.mcp.autoConnect.subtitle"),
+                        subtitle: L("agent.mcp.autoConnect.subtitle")
                     ) {
                         Toggle("", isOn: $viewModel.mcpDraftAutoConnect)
                             .labelsHidden()
@@ -2812,7 +2820,7 @@ struct StudioView: View {
                     systemImage: viewModel.mcpConnectionTestState == .testing ? nil : "network",
                     variant: .secondary,
                     isDisabled: viewModel.mcpConnectionTestState == .testing,
-                    isLoading: viewModel.mcpConnectionTestState == .testing,
+                    isLoading: viewModel.mcpConnectionTestState == .testing
                 ) {
                     viewModel.testMCPDraftConnection()
                 }
@@ -2820,7 +2828,7 @@ struct StudioView: View {
                     title: L("common.save"),
                     systemImage: nil,
                     variant: .primary,
-                    isDisabled: !viewModel.canSaveMCPDraft,
+                    isDisabled: !viewModel.canSaveMCPDraft
                 ) {
                     viewModel.saveMCPDraft()
                     isMCPServerDialogPresented = false
@@ -2834,7 +2842,7 @@ struct StudioView: View {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 StudioTheme.modalSurface
-            },
+            }
         )
     }
 
@@ -2863,11 +2871,11 @@ struct StudioView: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+                    .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin)
             )
         }
     }
@@ -2921,7 +2929,7 @@ struct StudioView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                            .fill(StudioTheme.controlSurface),
+                            .fill(StudioTheme.controlSurface)
                     )
                 }
             }
@@ -2956,7 +2964,7 @@ struct StudioView: View {
         configuration: ShortcutConfiguration,
         onStartRecording: @escaping () -> Void,
         onReset: @escaping () -> Void,
-        onUnset: @escaping () -> Void,
+        onUnset: @escaping () -> Void
     ) -> some View {
         StudioCard(padding: StudioTheme.Insets.cardDense) {
             HStack(alignment: .center, spacing: StudioTheme.Spacing.large) {
@@ -2966,7 +2974,7 @@ struct StudioView: View {
                     .overlay(
                         Image(systemName: configuration.icon)
                             .font(.system(size: 21, weight: .semibold))
-                            .foregroundStyle(StudioTheme.accent),
+                            .foregroundStyle(StudioTheme.accent)
                     )
 
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxSmall) {
@@ -2995,7 +3003,7 @@ struct StudioView: View {
                     isThisRecording: configuration.isThisRecording,
                     onStart: onStartRecording,
                     onReset: onReset,
-                    onUnset: onUnset,
+                    onUnset: onUnset
                 )
             }
         }
@@ -3008,7 +3016,7 @@ struct StudioView: View {
                 .frame(width: 38, height: 38)
                 .overlay(
                     Image(systemName: "keyboard")
-                        .foregroundStyle(StudioTheme.accent),
+                        .foregroundStyle(StudioTheme.accent)
                 )
 
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
@@ -3025,11 +3033,11 @@ struct StudioView: View {
         .padding(StudioTheme.Insets.cardDense)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .fill(StudioTheme.accentSoft.opacity(0.72)),
+                .fill(StudioTheme.accentSoft.opacity(0.72))
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .stroke(StudioTheme.accent.opacity(0.28), lineWidth: StudioTheme.BorderWidth.thin),
+                .stroke(StudioTheme.accent.opacity(0.28), lineWidth: StudioTheme.BorderWidth.thin)
         )
     }
 
@@ -3041,13 +3049,13 @@ struct StudioView: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
-                    .fill(StudioTheme.rowSurface),
+                    .fill(StudioTheme.rowSurface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.large, style: .continuous)
                     .stroke(
-                        StudioTheme.border.opacity(0.75), lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
+                        StudioTheme.border.opacity(0.75), lineWidth: StudioTheme.BorderWidth.thin
+                    )
             )
     }
 
@@ -3072,12 +3080,12 @@ struct StudioView: View {
         isThisRecording: Bool,
         onStart: @escaping () -> Void,
         onReset: @escaping () -> Void,
-        onUnset: @escaping () -> Void,
+        onUnset: @escaping () -> Void
     ) -> some View {
         HStack(spacing: StudioTheme.Spacing.xSmall) {
             StudioIconButton(
                 systemImage: isThisRecording ? "stop.circle.fill" : "keyboard",
-                variant: isThisRecording ? .secondary : .primary,
+                variant: isThisRecording ? .secondary : .primary
             ) {
                 if isThisRecording {
                     recorder.stop()
@@ -3088,13 +3096,13 @@ struct StudioView: View {
             }
             .studioTooltip(
                 isThisRecording ? L("settings.shortcuts.stopRecording") : L("settings.shortcuts.record"),
-                yOffset: 38,
+                yOffset: 38
             )
 
             StudioIconButton(
                 systemImage: "arrow.counterclockwise",
                 variant: .secondary,
-                isDisabled: isDefault,
+                isDisabled: isDefault
             ) {
                 onReset()
             }
@@ -3103,7 +3111,7 @@ struct StudioView: View {
             StudioIconButton(
                 systemImage: "xmark.circle",
                 variant: .secondary,
-                isDisabled: isUnset,
+                isDisabled: isUnset
             ) {
                 onUnset()
             }
@@ -3141,13 +3149,13 @@ struct StudioView: View {
         initials: String,
         systemImage: String? = nil,
         isSelected: Bool,
-        action: @escaping () -> Void,
+        action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.smallMedium) {
                 HStack(alignment: .top, spacing: StudioTheme.Spacing.small) {
                     RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
+                        cornerRadius: StudioTheme.CornerRadius.large, style: .continuous
                     )
                     .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted)
                     .frame(width: 32, height: 32)
@@ -3157,18 +3165,18 @@ struct StudioView: View {
                                 Image(systemName: systemImage)
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(
-                                        isSelected ? StudioTheme.accent : StudioTheme.textSecondary,
+                                        isSelected ? StudioTheme.accent : StudioTheme.textSecondary
                                     )
                             } else {
                                 Text(initials)
                                     .font(
-                                        .studioBody(StudioTheme.Typography.caption, weight: .bold),
+                                        .studioBody(StudioTheme.Typography.caption, weight: .bold)
                                     )
                                     .foregroundStyle(
-                                        isSelected ? StudioTheme.accent : StudioTheme.textSecondary,
+                                        isSelected ? StudioTheme.accent : StudioTheme.textSecondary
                                     )
                             }
-                        },
+                        }
                     )
 
                     Spacer()
@@ -3179,7 +3187,7 @@ struct StudioView: View {
                         .overlay(
                             Circle()
                                 .fill(isSelected ? StudioTheme.accent : Color.clear)
-                                .frame(width: 8, height: 8),
+                                .frame(width: 8, height: 8)
                         )
                 }
 
@@ -3198,14 +3206,14 @@ struct StudioView: View {
             .padding(StudioTheme.Insets.cardCompact)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                    .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted),
+                    .fill(isSelected ? StudioTheme.selectionSurfaceRaised : StudioTheme.surfaceMuted)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                     .stroke(
                         StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                        lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
+                        lineWidth: StudioTheme.BorderWidth.thin
+                    )
             )
             .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
@@ -3219,10 +3227,10 @@ struct StudioView: View {
                 HStack(spacing: StudioTheme.Spacing.small) {
                     Image(
                         systemName: permission.isGranted
-                            ? "checkmark.circle.fill" : "exclamationmark.circle",
+                            ? "checkmark.circle.fill" : "exclamationmark.circle"
                     )
                     .foregroundStyle(
-                        permission.isGranted ? StudioTheme.success : StudioTheme.warning,
+                        permission.isGranted ? StudioTheme.success : StudioTheme.warning
                     )
 
                     Text(permission.title)
@@ -3233,7 +3241,7 @@ struct StudioView: View {
                         title: permission.badgeText,
                         tone: permission.isGranted ? StudioTheme.success : StudioTheme.warning,
                         fill: (permission.isGranted ? StudioTheme.success : StudioTheme.warning)
-                            .opacity(0.12),
+                            .opacity(0.12)
                     )
                 }
 
@@ -3251,7 +3259,7 @@ struct StudioView: View {
             StudioButton(
                 title: permission.actionTitle,
                 systemImage: permission.isGranted ? "arrow.up.right.square" : "lock.open.display",
-                variant: permission.isGranted ? .secondary : .primary,
+                variant: permission.isGranted ? .secondary : .primary
             ) {
                 viewModel.requestPermission(permission.id)
             }
@@ -3279,7 +3287,7 @@ struct StudioView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: StudioTheme.Typography.iconSmall, weight: .semibold))
                 .foregroundStyle(
-                    isVocabularySearchExpanded ? StudioTheme.textTertiary : StudioTheme.textSecondary,
+                    isVocabularySearchExpanded ? StudioTheme.textTertiary : StudioTheme.textSecondary
                 )
                 .frame(width: vocabularySearchCollapsedSize, height: vocabularySearchCollapsedSize)
 
@@ -3306,18 +3314,18 @@ struct StudioView: View {
         .frame(
             width: isVocabularySearchExpanded ? vocabularySearchExpandedWidth : vocabularySearchCollapsedSize,
             height: vocabularySearchCollapsedSize,
-            alignment: .leading,
+            alignment: .leading
         )
         .background(
             Capsule()
-                .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
         )
         .overlay(
             Capsule()
                 .stroke(
                     StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
+                    lineWidth: StudioTheme.BorderWidth.thin
+                )
         )
         .contentShape(Capsule())
         .clipped()
@@ -3337,7 +3345,7 @@ struct StudioView: View {
                     title: L("vocabulary.action.importClaude"),
                     systemImage: "arrow.down.doc",
                     variant: .secondary,
-                    isDisabled: viewModel.isSynchronizingVocabulary,
+                    isDisabled: viewModel.isSynchronizingVocabulary
                 ) {
                     viewModel.importClaudeVocabulary()
                 }
@@ -3345,7 +3353,7 @@ struct StudioView: View {
                     title: L("vocabulary.action.importCodex"),
                     systemImage: "arrow.down.doc",
                     variant: .secondary,
-                    isDisabled: viewModel.isSynchronizingVocabulary,
+                    isDisabled: viewModel.isSynchronizingVocabulary
                 ) {
                     viewModel.importCodexVocabulary()
                 }
@@ -3353,7 +3361,7 @@ struct StudioView: View {
         } else {
             StudioButton(
                 title: L("vocabulary.action.addFirst"), systemImage: "plus",
-                variant: .secondary,
+                variant: .secondary
             ) {
                 editingVocabularyEntry = nil
                 newVocabularyTerm = ""
@@ -3378,12 +3386,12 @@ struct StudioView: View {
                     .font(.studioBody(StudioTheme.Typography.caption, weight: .bold))
                     .foregroundStyle(
                         vocabularyFilter == filter
-                            ? StudioTheme.textPrimary : StudioTheme.textTertiary,
+                            ? StudioTheme.textPrimary : StudioTheme.textTertiary
                     )
                     .fixedSize()
             }
             .foregroundStyle(
-                vocabularyFilter == filter ? StudioTheme.textPrimary : StudioTheme.textSecondary,
+                vocabularyFilter == filter ? StudioTheme.textPrimary : StudioTheme.textSecondary
             )
             .lineLimit(1)
             .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
@@ -3392,15 +3400,15 @@ struct StudioView: View {
                 Capsule()
                     .fill(
                         vocabularyFilter == filter
-                            ? StudioTheme.surface : StudioTheme.surfaceMuted.opacity(0.82),
-                    ),
+                            ? StudioTheme.surface : StudioTheme.surfaceMuted.opacity(0.82)
+                    )
             )
             .overlay(
                 Capsule()
                     .stroke(
                         StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                        lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
+                        lineWidth: StudioTheme.BorderWidth.thin
+                    )
             )
         }
         .buttonStyle(StudioInteractiveButtonStyle())
@@ -3419,7 +3427,7 @@ struct StudioView: View {
             },
             onDelete: {
                 viewModel.removeVocabularyEntry(id: entry.id)
-            },
+            }
         )
     }
 
@@ -3443,15 +3451,15 @@ struct StudioView: View {
                 .padding(.vertical, StudioTheme.Insets.textFieldVertical)
                 .background(
                     RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous
                     )
-                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill)),
+                    .fill(StudioTheme.controlSurface.opacity(StudioTheme.Opacity.textFieldFill))
                 )
                 .overlay(
                     RoundedRectangle(
-                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous,
+                        cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous
                     )
-                    .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin),
+                    .stroke(StudioTheme.border, lineWidth: StudioTheme.BorderWidth.thin)
                 )
                 .onSubmit {
                     submitVocabularyTerm()
@@ -3469,7 +3477,7 @@ struct StudioView: View {
                     systemImage: nil,
                     variant: .primary,
                     isDisabled: newVocabularyTerm.trimmingCharacters(in: .whitespacesAndNewlines)
-                        .isEmpty,
+                        .isEmpty
                 ) {
                     submitVocabularyTerm()
                 }
@@ -3482,7 +3490,7 @@ struct StudioView: View {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 StudioTheme.modalSurface
-            },
+            }
         )
     }
 
@@ -3538,14 +3546,14 @@ struct StudioView: View {
         .padding(.vertical, StudioTheme.Insets.buttonVertical)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(StudioTheme.controlSurface),
+                .fill(StudioTheme.controlSurface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
                 .stroke(
                     StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
+                    lineWidth: StudioTheme.BorderWidth.thin
+                )
         )
         .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
@@ -3596,7 +3604,7 @@ struct StudioView: View {
         }
 
         return uniqueSuggestions(
-            [viewModel.llmBaseURL, provider.defaultBaseURL] + provider.endpointPresets.map(\.url),
+            [viewModel.llmBaseURL, provider.defaultBaseURL] + provider.endpointPresets.map(\.url)
         )
     }
 
@@ -3605,7 +3613,7 @@ struct StudioView: View {
             viewModel.llmModel,
             "gpt-4o-mini",
             "gpt-4.1-mini",
-            "gpt-4.1",
+            "gpt-4.1"
         ])
     }
 
@@ -3626,7 +3634,7 @@ struct StudioView: View {
         uniqueSuggestions([
             viewModel.ollamaBaseURL,
             "http://127.0.0.1:11434",
-            "http://localhost:11434",
+            "http://localhost:11434"
         ])
     }
 
@@ -3635,7 +3643,7 @@ struct StudioView: View {
             viewModel.ollamaModel,
             "qwen2.5:7b",
             "llama3.2:3b",
-            "gemma3:4b",
+            "gemma3:4b"
         ])
     }
 
@@ -3660,7 +3668,7 @@ struct StudioView: View {
                         StudioMenuPicker(
                             options: FreeLLMModelRegistry.suggestedModelNames.map { ($0, $0) },
                             selection: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
-                            width: 320,
+                            width: 320
                         )
                     }
 
@@ -3686,7 +3694,7 @@ struct StudioView: View {
                         label: L("common.apiKey"),
                         placeholder: provider == .gemini ? "AIza..." : "sk-...",
                         text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey),
-                        secure: true,
+                        secure: true
                     ) {
                         if let url = llmProviderAPIKeyURL(provider) {
                             apiKeyHelpButton(url: url)
@@ -3698,14 +3706,14 @@ struct StudioView: View {
                         placeholder: provider.defaultBaseURL.isEmpty
                             ? "https://api.openai.com/v1" : provider.defaultBaseURL,
                         text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
-                        suggestions: llmEndpointSuggestions(for: provider),
+                        suggestions: llmEndpointSuggestions(for: provider)
                     )
 
                     StudioSuggestedTextInputCard(
                         label: L("common.model"),
                         placeholder: provider.defaultModel,
                         text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
-                        suggestions: remoteLLMModelSuggestions,
+                        suggestions: remoteLLMModelSuggestions
                     )
 
                     Text(L("settings.models.llm.providerEndpointHint", provider.displayName))
@@ -3724,15 +3732,15 @@ struct StudioView: View {
                     label: L("settings.models.whisper.endpoint"),
                     placeholder: OpenAIAudioModelCatalog.whisperEndpoints[0],
                     text: Binding(
-                        get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL,
+                        get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL
                     ),
-                    suggestions: whisperEndpointSuggestions,
+                    suggestions: whisperEndpointSuggestions
                 )
                 StudioSuggestedTextInputCard(
                     label: L("settings.models.whisper.model"),
                     placeholder: whisperModelSuggestions[0],
                     text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
-                    suggestions: whisperModelSuggestions,
+                    suggestions: whisperModelSuggestions
                 )
             } else {
                 if viewModel.llmProvider == .ollama {
@@ -3740,23 +3748,23 @@ struct StudioView: View {
                         label: L("settings.models.ollama.baseURL"),
                         placeholder: "http://127.0.0.1:11434",
                         text: Binding(
-                            get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL,
+                            get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL
                         ),
-                        suggestions: ollamaEndpointSuggestions,
+                        suggestions: ollamaEndpointSuggestions
                     )
                     StudioSuggestedTextInputCard(
                         label: L("settings.models.localModel"),
                         placeholder: "qwen2.5:7b",
                         text: Binding(
-                            get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel,
+                            get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel
                         ),
-                        suggestions: ollamaModelSuggestions,
+                        suggestions: ollamaModelSuggestions
                     )
                     Toggle(
                         L("settings.models.ollama.autoSetup"),
                         isOn: Binding(
-                            get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup,
-                        ),
+                            get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup
+                        )
                     )
                     .toggleStyle(.switch)
                 } else {
@@ -3764,18 +3772,18 @@ struct StudioView: View {
                         label: L("settings.models.remote.baseURL"),
                         placeholder: "https://api.openai.com/v1",
                         text: Binding(get: { viewModel.llmBaseURL }, set: viewModel.setLLMBaseURL),
-                        suggestions: llmEndpointSuggestions(for: focusedLLMRemoteProvider),
+                        suggestions: llmEndpointSuggestions(for: focusedLLMRemoteProvider)
                     )
                     StudioSuggestedTextInputCard(
                         label: L("common.model"),
                         placeholder: "gpt-4o-mini",
                         text: Binding(get: { viewModel.llmModel }, set: viewModel.setLLMModel),
-                        suggestions: llmModelSuggestions,
+                        suggestions: llmModelSuggestions
                     )
                     StudioTextInputCard(
                         label: L("common.apiKey"), placeholder: "sk-...",
                         text: Binding(get: { viewModel.llmAPIKey }, set: viewModel.setLLMAPIKey),
-                        secure: true,
+                        secure: true
                     )
                 }
             }
@@ -3809,12 +3817,12 @@ struct StudioView: View {
                         colors: [
                             StudioTheme.accentSoft,
                             StudioTheme.Colors.actionCardWarm,
-                            StudioTheme.Colors.actionCardCool,
+                            StudioTheme.Colors.actionCardCool
                         ],
                         startPoint: .leading,
-                        endPoint: .trailing,
-                    ),
-                ),
+                        endPoint: .trailing
+                    )
+                )
         )
     }
 
@@ -3825,11 +3833,11 @@ struct StudioView: View {
                     Text(L("history.table.timestamp"))
                         .frame(
                             width: StudioTheme.Layout.historyTimestampColumnWidth,
-                            alignment: .leading,
+                            alignment: .leading
                         )
                     Text(L("history.table.sourceFile"))
                         .frame(
-                            width: StudioTheme.Layout.historySourceColumnWidth, alignment: .leading,
+                            width: StudioTheme.Layout.historySourceColumnWidth, alignment: .leading
                         )
                     Text(L("history.table.recognizedText"))
                     Spacer()
@@ -3870,7 +3878,7 @@ struct StudioView: View {
                             },
                             onRetry: {
                                 viewModel.retryHistoryRecord(id: record.id)
-                            },
+                            }
                         )
                         if record.id != records.last?.id {
                             Divider().overlay(StudioTheme.border.opacity(StudioTheme.Opacity.divider))
@@ -3887,7 +3895,7 @@ struct StudioView: View {
             let availableWidth = max(proxy.size.width, 0)
             let metricsWidth = min(
                 StudioTheme.Layout.overviewSideMetricsWidth,
-                max((availableWidth - spacing) * 0.46, 0),
+                max((availableWidth - spacing) * 0.46, 0)
             )
             let activityWidth = max(availableWidth - metricsWidth - spacing, 0)
 
@@ -3909,27 +3917,27 @@ struct StudioView: View {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                         HStack(spacing: StudioTheme.Spacing.small) {
                             RoundedRectangle(
-                                cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
+                                cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous
                             )
                             .fill(StudioTheme.iconTileSurface)
                             .frame(
                                 width: StudioTheme.ControlSize.overviewBadge,
-                                height: StudioTheme.ControlSize.overviewBadge,
+                                height: StudioTheme.ControlSize.overviewBadge
                             )
                             .overlay(
                                 Image(systemName: "waveform.and.magnifyingglass")
                                     .font(
                                         .system(
                                             size: StudioTheme.Typography.iconSmall,
-                                            weight: .semibold,
-                                        ),
+                                            weight: .semibold
+                                        )
                                     )
-                                    .foregroundStyle(StudioTheme.accent),
+                                    .foregroundStyle(StudioTheme.accent)
                             )
 
                             Text(L("home.activity.title"))
                                 .font(
-                                    .studioBody(StudioTheme.Typography.bodySmall, weight: .semibold),
+                                    .studioBody(StudioTheme.Typography.bodySmall, weight: .semibold)
                                 )
                                 .foregroundStyle(StudioTheme.textSecondary)
                                 .lineLimit(1)
@@ -3950,11 +3958,11 @@ struct StudioView: View {
                     Circle()
                         .stroke(
                             StudioTheme.controlSurface,
-                            lineWidth: StudioTheme.BorderWidth.overviewDonut,
+                            lineWidth: StudioTheme.BorderWidth.overviewDonut
                         )
                         .frame(
                             width: StudioTheme.Layout.overviewDonutSize,
-                            height: StudioTheme.Layout.overviewDonutSize,
+                            height: StudioTheme.Layout.overviewDonutSize
                         )
                         .overlay(
                             Circle()
@@ -3963,17 +3971,17 @@ struct StudioView: View {
                                     LinearGradient(
                                         colors: [
                                             StudioTheme.accent.opacity(0.52),
-                                            StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress),
+                                            StudioTheme.accent.opacity(StudioTheme.Opacity.overviewProgress)
                                         ],
                                         startPoint: .bottomLeading,
-                                        endPoint: .topTrailing,
+                                        endPoint: .topTrailing
                                     ),
                                     style: StrokeStyle(
                                         lineWidth: StudioTheme.BorderWidth.overviewDonut,
-                                        lineCap: .round,
-                                    ),
+                                        lineCap: .round
+                                    )
                                 )
-                                .rotationEffect(.degrees(StudioTheme.Angles.overviewProgressStart)),
+                                .rotationEffect(.degrees(StudioTheme.Angles.overviewProgressStart))
                         )
                         .padding(.trailing, StudioTheme.Spacing.smallMedium)
                         .padding(.vertical, StudioTheme.Spacing.smallMedium)
@@ -4000,13 +4008,13 @@ struct StudioView: View {
                     icon: "clock",
                     value: "\(viewModel.transcriptionMinutesText) min",
                     title: L("home.metric.totalDictation"),
-                    size: CGSize(width: cardWidth, height: cardHeight),
+                    size: CGSize(width: cardWidth, height: cardHeight)
                 )
                 homeMiniMetric(
                     icon: "mic",
                     value: "\(viewModel.statsTotalCharacters)",
                     title: L("home.metric.charactersDictated"),
-                    size: CGSize(width: cardWidth, height: cardHeight),
+                    size: CGSize(width: cardWidth, height: cardHeight)
                 )
             }
 
@@ -4015,21 +4023,21 @@ struct StudioView: View {
                     icon: "hourglass",
                     value: "\(viewModel.statsSavedMinutes) min",
                     title: L("home.metric.timeSaved"),
-                    size: CGSize(width: cardWidth, height: cardHeight),
+                    size: CGSize(width: cardWidth, height: cardHeight)
                 )
                 homeMiniMetric(
                     icon: "bolt",
                     value: viewModel.statsAveragePaceWPM > 0
                         ? "\(viewModel.statsAveragePaceWPM) wpm" : "--",
                     title: L("home.metric.averagePace"),
-                    size: CGSize(width: cardWidth, height: cardHeight),
+                    size: CGSize(width: cardWidth, height: cardHeight)
                 )
             }
         }
         .frame(
             width: width,
             height: StudioTheme.Layout.overviewPrimaryMinHeight,
-            alignment: .top,
+            alignment: .top
         )
     }
 
@@ -4039,17 +4047,17 @@ struct StudioView: View {
         StudioCard(padding: StudioTheme.Insets.cardCompact) {
             VStack(alignment: .center, spacing: StudioTheme.Spacing.smallMedium) {
                 RoundedRectangle(
-                    cornerRadius: StudioTheme.CornerRadius.miniMetricIcon, style: .continuous,
+                    cornerRadius: StudioTheme.CornerRadius.miniMetricIcon, style: .continuous
                 )
                 .fill(StudioTheme.iconTileSurface)
                 .frame(
                     width: StudioTheme.ControlSize.overviewMiniIcon,
-                    height: StudioTheme.ControlSize.overviewMiniIcon,
+                    height: StudioTheme.ControlSize.overviewMiniIcon
                 )
                 .overlay(
                     Image(systemName: icon)
                         .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
-                        .foregroundStyle(StudioTheme.accent),
+                        .foregroundStyle(StudioTheme.accent)
                 )
 
                 Text(value)
@@ -4072,7 +4080,7 @@ struct StudioView: View {
         secondaryButtonTitle: String,
         secondaryAction: @escaping () -> Void,
         primaryButtonTitle: String,
-        primaryAction: @escaping () -> Void,
+        primaryAction: @escaping () -> Void
     ) -> some View {
         HStack {
             Text(title)
@@ -4081,11 +4089,11 @@ struct StudioView: View {
             Spacer()
             StudioButton(
                 title: secondaryButtonTitle, systemImage: nil, variant: .secondary,
-                action: secondaryAction,
+                action: secondaryAction
             )
             StudioButton(
                 title: primaryButtonTitle, systemImage: nil, variant: .primary,
-                action: primaryAction,
+                action: primaryAction
             )
         }
     }
@@ -4121,11 +4129,11 @@ struct StudioView: View {
                             },
                             onRetry: {
                                 viewModel.retryHistoryRecord(id: record.id)
-                            },
+                            }
                         )
                         if record.id != records.last?.id {
                             Divider().overlay(
-                                StudioTheme.border.opacity(StudioTheme.Opacity.listDivider),
+                                StudioTheme.border.opacity(StudioTheme.Opacity.listDivider)
                             )
                         }
                     }
@@ -4162,7 +4170,7 @@ struct StudioView: View {
                 Spacer()
                 StudioButton(
                     title: card.actionTitle, systemImage: nil,
-                    variant: card.isSelected ? .secondary : .primary,
+                    variant: card.isSelected ? .secondary : .primary
                 ) {
                     handleModelSelection(card)
                 }
@@ -4189,11 +4197,11 @@ struct StudioView: View {
                 .fill(isActive ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
                 .frame(
                     width: StudioTheme.ControlSize.architectureBadge,
-                    height: StudioTheme.ControlSize.architectureBadge,
+                    height: StudioTheme.ControlSize.architectureBadge
                 )
                 .overlay(
                     Image(systemName: title.contains("Local") ? "cpu.fill" : "cloud.fill")
-                        .foregroundStyle(isActive ? StudioTheme.accent : StudioTheme.textSecondary),
+                        .foregroundStyle(isActive ? StudioTheme.accent : StudioTheme.textSecondary)
                 )
 
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
@@ -4208,27 +4216,27 @@ struct StudioView: View {
             Circle()
                 .stroke(
                     isActive ? StudioTheme.accent : StudioTheme.border,
-                    lineWidth: StudioTheme.BorderWidth.emphasis,
+                    lineWidth: StudioTheme.BorderWidth.emphasis
                 )
                 .frame(
                     width: StudioTheme.ControlSize.selectionIndicator,
-                    height: StudioTheme.ControlSize.selectionIndicator,
+                    height: StudioTheme.ControlSize.selectionIndicator
                 )
                 .overlay(
                     Circle()
                         .fill(isActive ? StudioTheme.accent : Color.clear)
                         .frame(
                             width: StudioTheme.ControlSize.selectionIndicatorInner,
-                            height: StudioTheme.ControlSize.selectionIndicatorInner,
-                        ),
+                            height: StudioTheme.ControlSize.selectionIndicatorInner
+                        )
                 )
         }
         .padding(StudioTheme.Insets.cardCompact)
         .background(
             RoundedRectangle(
-                cornerRadius: StudioTheme.CornerRadius.architectureOption, style: .continuous,
+                cornerRadius: StudioTheme.CornerRadius.architectureOption, style: .continuous
             )
-            .fill(isActive ? StudioTheme.surface : StudioTheme.surfaceMuted),
+            .fill(isActive ? StudioTheme.surface : StudioTheme.surfaceMuted)
         )
     }
 
@@ -4243,8 +4251,8 @@ struct StudioView: View {
                 .whisperAPI,
                 suggestedModel: viewModel.whisperModel.isEmpty
                     ? OpenAIAudioModelCatalog.defaultWhisperModel(
-                        forEndpoint: viewModel.whisperBaseURL,
-                    ) : viewModel.whisperModel,
+                        forEndpoint: viewModel.whisperBaseURL
+                    ) : viewModel.whisperModel
             )
         case StudioModelProviderID.typefluxOfficial.rawValue:
             viewModel.setSTTProvider(.typefluxOfficial)
@@ -4255,7 +4263,7 @@ struct StudioView: View {
         case "ollama-local":
             viewModel.setLLMModelSelection(
                 .ollama,
-                suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel,
+                suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
             )
         default:
             if let providerID = StudioModelProviderID(rawValue: card.id),
@@ -4316,8 +4324,8 @@ struct StudioView: View {
                 metadata: L("settings.models.builtInDefaultModel"),
                 isSelected: viewModel.sttProvider == .typefluxOfficial,
                 isMuted: false,
-                actionTitle: L("settings.models.useTypefluxOfficial"),
-            ),
+                actionTitle: L("settings.models.useTypefluxOfficial")
+            )
         ]
 
         if !FreeSTTModelRegistry.suggestedModelNames.isEmpty {
@@ -4331,8 +4339,8 @@ struct StudioView: View {
                         ? L("settings.models.modelNotConfigured") : viewModel.freeSTTModel,
                     isSelected: viewModel.sttProvider == .freeModel,
                     isMuted: false,
-                    actionTitle: L("settings.models.useRemote"),
-                ),
+                    actionTitle: L("settings.models.useRemote")
+                )
             )
         }
 
@@ -4346,7 +4354,7 @@ struct StudioView: View {
                     metadata: viewModel.localSTTModel.displayName,
                     isSelected: viewModel.sttProvider == .localModel,
                     isMuted: false,
-                    actionTitle: L("settings.models.useLocal"),
+                    actionTitle: L("settings.models.useLocal")
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.aliCloud.rawValue,
@@ -4356,7 +4364,7 @@ struct StudioView: View {
                     metadata: L("settings.models.builtInDefaultModel"),
                     isSelected: viewModel.sttProvider == .aliCloud,
                     isMuted: false,
-                    actionTitle: L("settings.models.useAliCloud"),
+                    actionTitle: L("settings.models.useAliCloud")
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.doubaoRealtime.rawValue,
@@ -4366,7 +4374,7 @@ struct StudioView: View {
                     metadata: L("settings.models.builtInDefaultProfile"),
                     isSelected: viewModel.sttProvider == .doubaoRealtime,
                     isMuted: false,
-                    actionTitle: L("settings.models.useDoubao"),
+                    actionTitle: L("settings.models.useDoubao")
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.googleCloud.rawValue,
@@ -4376,7 +4384,7 @@ struct StudioView: View {
                     metadata: L("settings.models.googleCloud.streaming"),
                     isSelected: viewModel.sttProvider == .googleCloud,
                     isMuted: false,
-                    actionTitle: L("settings.models.useGoogleCloud"),
+                    actionTitle: L("settings.models.useGoogleCloud")
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.whisperAPI.rawValue,
@@ -4387,7 +4395,7 @@ struct StudioView: View {
                         ? L("settings.models.modelNotConfigured") : viewModel.whisperModel,
                     isSelected: viewModel.sttProvider == .whisperAPI,
                     isMuted: false,
-                    actionTitle: L("settings.models.useRemote"),
+                    actionTitle: L("settings.models.useRemote")
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.multimodalLLM.rawValue,
@@ -4398,7 +4406,7 @@ struct StudioView: View {
                         ? L("settings.models.modelNotConfigured") : viewModel.multimodalLLMModel,
                     isSelected: viewModel.sttProvider == .multimodalLLM,
                     isMuted: false,
-                    actionTitle: L("settings.models.useMultimodal"),
+                    actionTitle: L("settings.models.useMultimodal")
                 ),
                 StudioModelCard(
                     id: StudioModelProviderID.groqSTT.rawValue,
@@ -4409,9 +4417,9 @@ struct StudioView: View {
                         ? L("settings.models.modelNotConfigured") : viewModel.groqSTTModel,
                     isSelected: viewModel.sttProvider == .groq,
                     isMuted: false,
-                    actionTitle: L("settings.models.useGroq"),
-                ),
-            ],
+                    actionTitle: L("settings.models.useGroq")
+                )
+            ]
         )
 
         return cards
@@ -4428,8 +4436,8 @@ struct StudioView: View {
                 isSelected: viewModel.llmProvider == .openAICompatible
                     && viewModel.llmRemoteProvider == .typefluxCloud,
                 isMuted: false,
-                actionTitle: L("settings.models.useTypefluxCloud"),
-            ),
+                actionTitle: L("settings.models.useTypefluxCloud")
+            )
         ]
 
         var standardCards = LLMRemoteProvider.settingsDisplayOrder
@@ -4440,8 +4448,8 @@ struct StudioView: View {
                     name: provider.displayName,
                     card: makeLLMRemoteProviderCard(
                         provider,
-                        badge: provider == .freeModel ? L("settings.models.badge.free") : nil,
-                    ),
+                        badge: provider == .freeModel ? L("settings.models.badge.free") : nil
+                    )
                 )
             }
 
@@ -4456,8 +4464,8 @@ struct StudioView: View {
                     ? L("settings.models.modelNotConfigured") : viewModel.ollamaModel,
                 isSelected: viewModel.llmProvider == .ollama,
                 isMuted: false,
-                actionTitle: L("settings.models.useLocal"),
-            ),
+                actionTitle: L("settings.models.useLocal")
+            )
         ))
         standardCards.sort { lhs, rhs in
             lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
@@ -4472,7 +4480,7 @@ struct StudioView: View {
 
     private func makeLLMRemoteProviderCard(
         _ provider: LLMRemoteProvider,
-        badge: String? = nil,
+        badge: String? = nil
     ) -> StudioModelCard {
         let resolvedBadge = badge ?? (
             provider.apiStyle == .openAICompatible
@@ -4488,7 +4496,7 @@ struct StudioView: View {
             isSelected: viewModel.llmProvider == .openAICompatible
                 && viewModel.llmRemoteProvider == provider,
             isMuted: false,
-            actionTitle: L("settings.models.useRemote"),
+            actionTitle: L("settings.models.useRemote")
         )
     }
 
@@ -4498,24 +4506,24 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                     HStack(spacing: StudioTheme.Spacing.small) {
                         RoundedRectangle(
-                            cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
+                            cornerRadius: StudioTheme.CornerRadius.large, style: .continuous
                         )
                         .fill(StudioTheme.accentSoft)
                         .frame(width: 46, height: 46)
                         .overlay(
                             Image(
                                 systemName: viewModel.modelDomain == .stt
-                                    ? "waveform.and.mic" : "sparkles.rectangle.stack",
+                                    ? "waveform.and.mic" : "sparkles.rectangle.stack"
                             )
-                            .foregroundStyle(StudioTheme.accent),
+                            .foregroundStyle(StudioTheme.accent)
                         )
 
                         VStack(alignment: .leading, spacing: StudioTheme.Spacing.xxxSmall) {
                             Text(modelOverviewTitle)
                                 .font(
                                     .studioDisplay(
-                                        StudioTheme.Typography.sectionTitle, weight: .semibold,
-                                    ),
+                                        StudioTheme.Typography.sectionTitle, weight: .semibold
+                                    )
                                 )
                                 .foregroundStyle(StudioTheme.textPrimary)
                             Text(modelOverviewSubtitle)
@@ -4527,7 +4535,7 @@ struct StudioView: View {
                     HStack(spacing: StudioTheme.Spacing.xSmall) {
                         StudioPill(
                             title: modelOverviewModePill, tone: modelOverviewModeTone,
-                            fill: modelOverviewModeFill,
+                            fill: modelOverviewModeFill
                         )
                         StudioPill(title: modelOverviewProviderPill)
                         if let extraPill = modelOverviewExtraPill {
@@ -4547,7 +4555,7 @@ struct StudioView: View {
                         .foregroundStyle(StudioTheme.textSecondary)
                     StudioButton(
                         title: L("settings.models.editCurrentProvider"), systemImage: nil,
-                        variant: .secondary,
+                        variant: .secondary
                     ) {
                         viewModel.focusModelProvider(activeModelProviderID)
                     }
@@ -4565,8 +4573,8 @@ struct StudioView: View {
                             Text(focusedProviderTitle)
                                 .font(
                                     .studioDisplay(
-                                        StudioTheme.Typography.sectionTitle, weight: .semibold,
-                                    ),
+                                        StudioTheme.Typography.sectionTitle, weight: .semibold
+                                    )
                                 )
                                 .foregroundStyle(StudioTheme.textPrimary)
                             Text(focusedProviderSubtitle)
@@ -4580,12 +4588,12 @@ struct StudioView: View {
                             StudioPill(
                                 title: L("settings.models.active"),
                                 tone: StudioTheme.success,
-                                fill: StudioTheme.success.opacity(0.12),
+                                fill: StudioTheme.success.opacity(0.12)
                             )
                         } else {
                             StudioButton(
                                 title: L("settings.models.useAsDefault"),
-                                systemImage: "checkmark.circle.fill", variant: .secondary,
+                                systemImage: "checkmark.circle.fill", variant: .secondary
                             ) {
                                 applyFocusedProviderAsDefault()
                             }
@@ -4597,7 +4605,7 @@ struct StudioView: View {
 
                 if [
                     StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .ollama, .aliCloud,
-                    .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial,
+                    .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial
                 ].contains(viewModel.focusedModelProvider) || focusedLLMRemoteProvider != nil {
                     HStack(spacing: StudioTheme.Spacing.small) {
                         Spacer()
@@ -4610,13 +4618,13 @@ struct StudioView: View {
                                     ? nil : "network",
                                 variant: .secondary,
                                 isDisabled: viewModel.llmConnectionTestState == .testing,
-                                isLoading: viewModel.llmConnectionTestState == .testing,
+                                isLoading: viewModel.llmConnectionTestState == .testing
                             ) {
                                 viewModel.testLLMConnection()
                             }
                         } else if [
                             StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .aliCloud,
-                            .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial,
+                            .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial
                         ].contains(viewModel.focusedModelProvider),
                             !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
                         {
@@ -4627,7 +4635,7 @@ struct StudioView: View {
                                     ? nil : "network",
                                 variant: .secondary,
                                 isDisabled: viewModel.sttConnectionTestState == .testing,
-                                isLoading: viewModel.sttConnectionTestState == .testing,
+                                isLoading: viewModel.sttConnectionTestState == .testing
                             ) {
                                 viewModel.testSTTConnection()
                             }
@@ -4635,7 +4643,7 @@ struct StudioView: View {
 
                         if viewModel.focusedModelProvider.showsManualSaveButton {
                             StudioButton(
-                                title: L("common.save"), systemImage: "checkmark", variant: .primary,
+                                title: L("common.save"), systemImage: "checkmark", variant: .primary
                             ) {
                                 viewModel.applyModelConfiguration()
                             }
@@ -4646,7 +4654,7 @@ struct StudioView: View {
                         connectionTestResultView(viewModel.llmConnectionTestState)
                     } else if [
                         StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .aliCloud,
-                        .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial,
+                        .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial
                     ].contains(viewModel.focusedModelProvider),
                         !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
                     {
@@ -4665,7 +4673,7 @@ struct StudioView: View {
                                 ? nil
                                 : (viewModel.isOllamaFailed
                                     ? "arrow.clockwise" : "arrow.down.circle"),
-                            variant: .primary,
+                            variant: .primary
                         ) {
                             viewModel.prepareOllamaModel()
                         }
@@ -4683,8 +4691,8 @@ struct StudioView: View {
                                 Text(L("settings.models.storagePath"))
                                     .font(
                                         .studioBody(
-                                            StudioTheme.Typography.caption, weight: .semibold,
-                                        ),
+                                            StudioTheme.Typography.caption, weight: .semibold
+                                        )
                                     )
                                     .foregroundStyle(StudioTheme.textSecondary)
 
@@ -4697,17 +4705,17 @@ struct StudioView: View {
                                         .font(
                                             .system(
                                                 size: StudioTheme.Typography.iconXSmall,
-                                                weight: .semibold,
-                                            ),
+                                                weight: .semibold
+                                            )
                                         )
                                         .foregroundStyle(StudioTheme.textSecondary)
                                         .frame(width: 28, height: 28)
                                         .background(
                                             RoundedRectangle(
                                                 cornerRadius: StudioTheme.CornerRadius.medium,
-                                                style: .continuous,
+                                                style: .continuous
                                             )
-                                            .fill(StudioTheme.iconTileSurface),
+                                            .fill(StudioTheme.iconTileSurface)
                                         )
                                 }
                                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -4719,17 +4727,17 @@ struct StudioView: View {
                                         .font(
                                             .system(
                                                 size: StudioTheme.Typography.iconXSmall,
-                                                weight: .semibold,
-                                            ),
+                                                weight: .semibold
+                                            )
                                         )
                                         .foregroundStyle(StudioTheme.textSecondary)
                                         .frame(width: 28, height: 28)
                                         .background(
                                             RoundedRectangle(
                                                 cornerRadius: StudioTheme.CornerRadius.medium,
-                                                style: .continuous,
+                                                style: .continuous
                                             )
-                                            .fill(StudioTheme.iconTileSurface),
+                                            .fill(StudioTheme.iconTileSurface)
                                         )
                                 }
                                 .buttonStyle(StudioInteractiveButtonStyle())
@@ -4773,9 +4781,9 @@ struct StudioView: View {
                             options: FreeSTTModelRegistry.suggestedModelNames.map { ($0, $0) },
                             selection: Binding(
                                 get: { viewModel.freeSTTModel },
-                                set: viewModel.setFreeSTTModel,
+                                set: viewModel.setFreeSTTModel
                             ),
-                            width: 320,
+                            width: 320
                         )
                     }
 
@@ -4813,9 +4821,9 @@ struct StudioView: View {
                     } ?? "",
                     isPresented: Binding(
                         get: { localSTTPendingDownload != nil },
-                        set: { if !$0 { localSTTPendingDownload = nil } },
+                        set: { if !$0 { localSTTPendingDownload = nil } }
                     ),
-                    titleVisibility: .visible,
+                    titleVisibility: .visible
                 ) {
                     Button(L("settings.models.prepareLocalModel")) {
                         if let model = localSTTPendingDownload {
@@ -4835,9 +4843,9 @@ struct StudioView: View {
                     } ?? "",
                     isPresented: Binding(
                         get: { localSTTPendingRedownload != nil },
-                        set: { if !$0 { localSTTPendingRedownload = nil } },
+                        set: { if !$0 { localSTTPendingRedownload = nil } }
                     ),
-                    titleVisibility: .visible,
+                    titleVisibility: .visible
                 ) {
                     Button(L("settings.models.redownload"), role: .destructive) {
                         if let model = localSTTPendingRedownload {
@@ -4857,9 +4865,9 @@ struct StudioView: View {
                     } ?? "",
                     isPresented: Binding(
                         get: { localSTTPendingDelete != nil },
-                        set: { if !$0 { localSTTPendingDelete = nil } },
+                        set: { if !$0 { localSTTPendingDelete = nil } }
                     ),
-                    titleVisibility: .visible,
+                    titleVisibility: .visible
                 ) {
                     Button(L("common.delete"), role: .destructive) {
                         if let model = localSTTPendingDelete {
@@ -4879,22 +4887,22 @@ struct StudioView: View {
                     label: L("settings.models.transcriptionEndpoint"),
                     placeholder: OpenAIAudioModelCatalog.whisperEndpoints[0],
                     text: Binding(
-                        get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL,
+                        get: { viewModel.whisperBaseURL }, set: viewModel.setWhisperBaseURL
                     ),
-                    suggestions: whisperEndpointSuggestions,
+                    suggestions: whisperEndpointSuggestions
                 )
                 StudioSuggestedTextInputCard(
                     label: L("common.model"),
                     placeholder: whisperModelSuggestions[0],
                     text: Binding(get: { viewModel.whisperModel }, set: viewModel.setWhisperModel),
-                    suggestions: whisperModelSuggestions,
+                    suggestions: whisperModelSuggestions
                 )
                 StudioTextInputCard(
                     label: L("common.apiKey"), placeholder: "sk-...",
                     text: Binding(
-                        get: { viewModel.whisperAPIKey }, set: viewModel.setWhisperAPIKey,
+                        get: { viewModel.whisperAPIKey }, set: viewModel.setWhisperAPIKey
                     ),
-                    secure: true,
+                    secure: true
                 ) {
                     if let url = sttProviderAPIKeyURL(.whisperAPI) {
                         apiKeyHelpButton(url: url)
@@ -4906,21 +4914,21 @@ struct StudioView: View {
                     label: L("settings.models.ollama.baseURL"),
                     placeholder: "http://127.0.0.1:11434",
                     text: Binding(
-                        get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL,
+                        get: { viewModel.ollamaBaseURL }, set: viewModel.setOllamaBaseURL
                     ),
-                    suggestions: ollamaEndpointSuggestions,
+                    suggestions: ollamaEndpointSuggestions
                 )
                 StudioSuggestedTextInputCard(
                     label: L("settings.models.localModel"),
                     placeholder: "qwen2.5:7b",
                     text: Binding(get: { viewModel.ollamaModel }, set: viewModel.setOllamaModel),
-                    suggestions: ollamaModelSuggestions,
+                    suggestions: ollamaModelSuggestions
                 )
                 Toggle(
                     L("settings.models.ollama.autoInstall"),
                     isOn: Binding(
-                        get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup,
-                    ),
+                        get: { viewModel.ollamaAutoSetup }, set: viewModel.setOllamaAutoSetup
+                    )
                 )
                 .toggleStyle(.switch)
 
@@ -4938,25 +4946,25 @@ struct StudioView: View {
                         placeholder: OpenAIAudioModelCatalog.multimodalEndpoints[0],
                         text: Binding(
                             get: { viewModel.multimodalLLMBaseURL },
-                            set: viewModel.setMultimodalLLMBaseURL,
+                            set: viewModel.setMultimodalLLMBaseURL
                         ),
-                        suggestions: multimodalEndpointSuggestions,
+                        suggestions: multimodalEndpointSuggestions
                     )
                     StudioSuggestedTextInputCard(
                         label: L("common.model"),
                         placeholder: OpenAIAudioModelCatalog.multimodalModels[0],
                         text: Binding(
                             get: { viewModel.multimodalLLMModel },
-                            set: viewModel.setMultimodalLLMModel,
+                            set: viewModel.setMultimodalLLMModel
                         ),
-                        suggestions: multimodalModelSuggestions,
+                        suggestions: multimodalModelSuggestions
                     )
                     StudioTextInputCard(
                         label: L("common.apiKey"), placeholder: "sk-...",
                         text: Binding(
                             get: { viewModel.multimodalLLMAPIKey },
-                            set: viewModel.setMultimodalLLMAPIKey,
-                        ), secure: true,
+                            set: viewModel.setMultimodalLLMAPIKey
+                        ), secure: true
                     ) {
                         if let url = sttProviderAPIKeyURL(.multimodalLLM) {
                             apiKeyHelpButton(url: url)
@@ -4972,9 +4980,9 @@ struct StudioView: View {
                     StudioTextInputCard(
                         label: L("common.apiKey"), placeholder: "sk-...",
                         text: Binding(
-                            get: { viewModel.aliCloudAPIKey }, set: viewModel.setAliCloudAPIKey,
+                            get: { viewModel.aliCloudAPIKey }, set: viewModel.setAliCloudAPIKey
                         ),
-                        secure: true,
+                        secure: true
                     ) {
                         if let url = sttProviderAPIKeyURL(.aliCloud) {
                             apiKeyHelpButton(url: url)
@@ -4986,18 +4994,18 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                     StudioTextInputCard(
                         label: L("settings.models.doubao.appID"), placeholder: "APPID",
-                        text: Binding(get: { viewModel.doubaoAppID }, set: viewModel.setDoubaoAppID),
+                        text: Binding(get: { viewModel.doubaoAppID }, set: viewModel.setDoubaoAppID)
                     )
                     StudioTextInputCard(
                         label: L("settings.models.doubao.accessToken"), placeholder: "access-token",
                         text: Binding(
                             get: { viewModel.doubaoAccessToken },
-                            set: viewModel.setDoubaoAccessToken,
-                        ), secure: true,
+                            set: viewModel.setDoubaoAccessToken
+                        ), secure: true
                     ) {
                         Button {
                             NSWorkspace.shared.open(
-                                URL(string: "https://www.volcengine.com/docs/6561/1354869?lang=zh")!,
+                                URL(string: "https://www.volcengine.com/docs/6561/1354869?lang=zh")!
                             )
                         } label: {
                             Text(L("settings.models.doubao.docs"))
@@ -5014,17 +5022,17 @@ struct StudioView: View {
                         label: L("settings.models.googleCloud.projectID"), placeholder: "my-gcp-project",
                         text: Binding(
                             get: { viewModel.googleCloudProjectID },
-                            set: viewModel.setGoogleCloudProjectID,
-                        ),
+                            set: viewModel.setGoogleCloudProjectID
+                        )
                     )
                     StudioSuggestedTextInputCard(
                         label: L("common.model"),
                         placeholder: GoogleCloudSpeechDefaults.model,
                         text: Binding(
                             get: { viewModel.googleCloudModel },
-                            set: viewModel.setGoogleCloudModel,
+                            set: viewModel.setGoogleCloudModel
                         ),
-                        suggestions: GoogleCloudSpeechDefaults.suggestedModels,
+                        suggestions: GoogleCloudSpeechDefaults.suggestedModels
                     )
                     HStack(spacing: StudioTheme.Spacing.small) {
                         StudioButton(
@@ -5035,7 +5043,7 @@ struct StudioView: View {
                             variant: .secondary,
                             isDisabled: AppServerConfiguration.googleCloudOAuthClientID.isEmpty
                                 || viewModel.isAuthorizingGoogleCloudOAuth,
-                            isLoading: viewModel.isAuthorizingGoogleCloudOAuth,
+                            isLoading: viewModel.isAuthorizingGoogleCloudOAuth
                         ) {
                             viewModel.authorizeGoogleCloudOAuth()
                         }
@@ -5044,7 +5052,7 @@ struct StudioView: View {
                             StudioButton(
                                 title: L("settings.models.googleCloud.oauth.disconnect"),
                                 systemImage: "xmark.circle",
-                                variant: .ghost,
+                                variant: .ghost
                             ) {
                                 viewModel.disconnectGoogleCloudOAuth()
                             }
@@ -5059,7 +5067,7 @@ struct StudioView: View {
                     StudioTextInputCard(
                         label: L("common.apiKey"), placeholder: "gsk_...",
                         text: Binding(get: { viewModel.groqSTTAPIKey }, set: viewModel.setGroqSTTAPIKey),
-                        secure: true,
+                        secure: true
                     ) {
                         if let url = sttProviderAPIKeyURL(.groq) {
                             apiKeyHelpButton(url: url)
@@ -5069,7 +5077,7 @@ struct StudioView: View {
                         label: L("common.model"),
                         placeholder: OpenAIAudioModelCatalog.groqWhisperModels[0],
                         text: Binding(get: { viewModel.groqSTTModel }, set: viewModel.setGroqSTTModel),
-                        suggestions: OpenAIAudioModelCatalog.groqWhisperModels,
+                        suggestions: OpenAIAudioModelCatalog.groqWhisperModels
                     )
                 }
             }
@@ -5107,7 +5115,7 @@ struct StudioView: View {
                         StudioButton(
                             title: L("settings.models.typefluxOfficial.signIn"),
                             systemImage: "person.circle",
-                            variant: .primary,
+                            variant: .primary
                         ) {
                             LoginWindowController.shared.show()
                         }
@@ -5149,9 +5157,9 @@ struct StudioView: View {
                         .padding(StudioTheme.Spacing.small)
                         .background(
                             RoundedRectangle(
-                                cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous,
+                                cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous
                             )
-                            .fill(StudioTheme.controlSurface),
+                            .fill(StudioTheme.controlSurface)
                         )
                 }
             }
@@ -5180,14 +5188,14 @@ struct StudioView: View {
                 HStack {
                     StudioButton(
                         title: L("settings.models.applyConfiguration"), systemImage: "bolt.fill",
-                        variant: .primary,
+                        variant: .primary
                     ) {
                         viewModel.applyModelConfiguration()
                     }
                     if viewModel.modelDomain == .llm, viewModel.llmProvider == .ollama {
                         StudioButton(
                             title: L("settings.models.prepareOllama"), systemImage: nil,
-                            variant: .secondary,
+                            variant: .secondary
                         ) {
                             viewModel.prepareOllamaModel()
                         }
@@ -5210,20 +5218,20 @@ struct StudioView: View {
                 showsShadow: true,
                 isHighlighted: isFocused,
                 isDimmed: !isFocused,
-                texture: .softWaves,
+                texture: .softWaves
             ) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.xSmall) {
                     HStack(alignment: .center, spacing: StudioTheme.Spacing.xSmall) {
                         RoundedRectangle(
-                            cornerRadius: StudioTheme.CornerRadius.large, style: .continuous,
+                            cornerRadius: StudioTheme.CornerRadius.large, style: .continuous
                         )
                         .fill(providerBadgeBackground(for: providerID, isFocused: isFocused))
                         .frame(
                             width: StudioTheme.ControlSize.modelProviderBadge,
-                            height: StudioTheme.ControlSize.modelProviderBadge,
+                            height: StudioTheme.ControlSize.modelProviderBadge
                         )
                         .overlay(
-                            providerIconView(for: providerID, isFocused: isFocused),
+                            providerIconView(for: providerID, isFocused: isFocused)
                         )
 
                         Text(card.name)
@@ -5237,7 +5245,7 @@ struct StudioView: View {
                             .fill(card.isSelected ? StudioTheme.success : StudioTheme.border)
                             .frame(
                                 width: StudioTheme.ControlSize.modelProviderStatusDot,
-                                height: StudioTheme.ControlSize.modelProviderStatusDot,
+                                height: StudioTheme.ControlSize.modelProviderStatusDot
                             )
                     }
 
@@ -5259,7 +5267,7 @@ struct StudioView: View {
                             StudioPill(
                                 title: L("settings.models.active"),
                                 tone: StudioTheme.success,
-                                fill: StudioTheme.success.opacity(0.12),
+                                fill: StudioTheme.success.opacity(0.12)
                             )
                         }
                     }
@@ -5314,7 +5322,7 @@ struct StudioView: View {
                 size: 28,
                 symbolSize: 14,
                 backgroundShape: .circle,
-                showsBorder: true,
+                showsBorder: true
             )
         } else if let image = providerLogoImage(for: provider) {
             Image(nsImage: image)
@@ -5326,8 +5334,8 @@ struct StudioView: View {
             Image(systemName: iconName(for: provider))
                 .font(
                     .system(
-                        size: StudioTheme.ControlSize.modelProviderBadgeSymbol, weight: .semibold,
-                    ),
+                        size: StudioTheme.ControlSize.modelProviderBadgeSymbol, weight: .semibold
+                    )
                 )
                 .foregroundStyle(isFocused ? StudioTheme.accent : StudioTheme.textSecondary)
         }
@@ -5338,10 +5346,10 @@ struct StudioView: View {
 
         let url =
             Bundle.appResources.url(
-                forResource: resourceName, withExtension: "png", subdirectory: "Resources/Providers",
+                forResource: resourceName, withExtension: "png", subdirectory: "Resources/Providers"
             )
             ?? Bundle.appResources.url(
-                forResource: resourceName, withExtension: "png", subdirectory: "Providers",
+                forResource: resourceName, withExtension: "png", subdirectory: "Providers"
             )
             ?? Bundle.appResources.url(forResource: resourceName, withExtension: "png")
             ?? Bundle.appResources.url(forResource: resourceName, withExtension: "svg", subdirectory: "Resources")
@@ -5431,7 +5439,7 @@ struct StudioView: View {
                     StudioPill(
                         title: L("settings.models.selected"),
                         tone: StudioTheme.accent,
-                        fill: StudioTheme.accentSoft,
+                        fill: StudioTheme.accentSoft
                     )
                 }
             }
@@ -5461,14 +5469,14 @@ struct StudioView: View {
         .padding(StudioTheme.Insets.cardCompact)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .fill(isFocused ? StudioTheme.selectionSurfaceRaised : StudioTheme.localModelOptionSurface),
+                .fill(isFocused ? StudioTheme.selectionSurfaceRaised : StudioTheme.localModelOptionSurface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                 .stroke(
                     StudioTheme.border.opacity(0.75),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
+                    lineWidth: StudioTheme.BorderWidth.thin
+                )
         )
         .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
         .onTapGesture {
@@ -5487,7 +5495,7 @@ struct StudioView: View {
                 let isAvailable = viewModel.isModelAvailable(model)
                 Label(
                     isAvailable ? L("settings.models.redownload") : L("settings.models.prepareLocalModel"),
-                    systemImage: isAvailable ? "arrow.clockwise" : "arrow.down",
+                    systemImage: isAvailable ? "arrow.clockwise" : "arrow.down"
                 )
             }
 
@@ -5560,7 +5568,7 @@ struct StudioView: View {
             .padding(.vertical, StudioTheme.Insets.pillVertical)
             .background(
                 Capsule(style: .continuous)
-                    .fill(StudioTheme.surface),
+                    .fill(StudioTheme.surface)
             )
     }
 
@@ -5572,7 +5580,7 @@ struct StudioView: View {
             .padding(.vertical, StudioTheme.Insets.pillVertical)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.green.opacity(0.16)),
+                    .fill(Color.green.opacity(0.16))
             )
     }
 
@@ -5632,14 +5640,14 @@ struct StudioView: View {
                 .whisperAPI,
                 suggestedModel: viewModel.whisperModel.isEmpty
                     ? OpenAIAudioModelCatalog.defaultWhisperModel(
-                        forEndpoint: viewModel.whisperBaseURL,
-                    ) : viewModel.whisperModel,
+                        forEndpoint: viewModel.whisperBaseURL
+                    ) : viewModel.whisperModel
             )
         case .ollama:
             viewModel.applyModelConfiguration(shouldShowToast: false)
             viewModel.setLLMModelSelection(
                 .ollama,
-                suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel,
+                suggestedModel: viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
             )
             viewModel.prepareOllamaModel()
         case .freeModel, .customLLM, .openRouter, .openAI, .anthropic, .gemini, .deepSeek, .kimi,
@@ -5655,7 +5663,7 @@ struct StudioView: View {
             viewModel.setSTTModelSelection(
                 .multimodalLLM,
                 suggestedModel: viewModel.multimodalLLMModel.isEmpty
-                    ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel,
+                    ? OpenAIAudioModelCatalog.multimodalModels[0] : viewModel.multimodalLLMModel
             )
         case .aliCloud:
             viewModel.setSTTProvider(.aliCloud)
@@ -5937,7 +5945,7 @@ struct StudioView: View {
         case .whisperAPI:
             viewModel.whisperModel.isEmpty
                 ? OpenAIAudioModelCatalog.defaultWhisperModel(
-                    forEndpoint: viewModel.whisperBaseURL,
+                    forEndpoint: viewModel.whisperBaseURL
                 ) : viewModel.whisperModel
         case .ollama:
             viewModel.ollamaModel.isEmpty ? "qwen2.5:7b" : viewModel.ollamaModel
@@ -6017,7 +6025,7 @@ struct StudioView: View {
              .qwen, .zhipu, .minimax, .grok, .groq, .xiaomi, .openCodeZen, .openCodeGo:
             L(
                 "settings.models.focused.remoteProvider",
-                focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName,
+                focusedLLMRemoteProvider?.displayName ?? LLMProvider.openAICompatible.displayName
             )
         case .multimodalLLM:
             L("settings.models.focused.multimodal")
@@ -6117,12 +6125,12 @@ struct StudioView: View {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 StudioTheme.modalSurface
-            },
+            }
         )
         .confirmationDialog(
             L("agent.jobs.clearAllDialog.title"),
             isPresented: $showingClearAllJobsConfirmation,
-            titleVisibility: .visible,
+            titleVisibility: .visible
         ) {
             Button(L("common.delete"), role: .destructive) {
                 viewModel.clearAllAgentJobs()
@@ -6135,9 +6143,9 @@ struct StudioView: View {
             L("agent.jobs.deleteDialog.title"),
             isPresented: Binding(
                 get: { agentJobPendingDeletion != nil },
-                set: { if !$0 { agentJobPendingDeletion = nil } },
+                set: { if !$0 { agentJobPendingDeletion = nil } }
             ),
-            titleVisibility: .visible,
+            titleVisibility: .visible
         ) {
             Button(L("common.delete"), role: .destructive) {
                 guard let job = agentJobPendingDeletion else { return }
@@ -6168,7 +6176,7 @@ struct StudioView: View {
                     StudioButton(
                         title: L("agent.jobs.clearAll"),
                         systemImage: "trash",
-                        variant: .secondary,
+                        variant: .secondary
                     ) {
                         showingClearAllJobsConfirmation = true
                     }
@@ -6250,7 +6258,7 @@ struct StudioView: View {
                             .foregroundStyle(StudioTheme.textTertiary)
                         Label(
                             L("agent.jobs.toolCalls", job.totalToolCalls),
-                            systemImage: "wrench",
+                            systemImage: "wrench"
                         )
                         .font(.studioBody(StudioTheme.Typography.bodySmall))
                         .foregroundStyle(StudioTheme.textTertiary)
@@ -6386,7 +6394,11 @@ struct StudioView: View {
                     }
 
                     if let error = job.errorMessage, !error.isEmpty {
-                        jobSection(title: L("agent.jobs.detail.error"), icon: "exclamationmark.triangle.fill", cardPadding: 12) {
+                        jobSection(
+                            title: L("agent.jobs.detail.error"),
+                            icon: "exclamationmark.triangle.fill",
+                            cardPadding: 12
+                        ) {
                             Text(error)
                                 .font(.studioBody(StudioTheme.Typography.body))
                                 .foregroundStyle(StudioTheme.danger)
@@ -6403,7 +6415,7 @@ struct StudioView: View {
         title: String,
         icon: String,
         cardPadding: CGFloat = StudioTheme.Insets.cardDefault,
-        @ViewBuilder content: () -> some View,
+        @ViewBuilder content: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
             HStack(spacing: StudioTheme.Spacing.xSmall) {
@@ -6546,7 +6558,7 @@ private struct VocabularyTermCard: View {
                     .frame(width: 24, height: 24)
                     .background(
                         Circle()
-                            .fill(StudioTheme.controlSurface),
+                            .fill(StudioTheme.controlSurface)
                     )
             }
             .buttonStyle(.plain)
@@ -6559,14 +6571,14 @@ private struct VocabularyTermCard: View {
         .frame(minHeight: 48)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
-                .fill(StudioTheme.surface),
+                .fill(StudioTheme.surface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous)
                 .stroke(
                     StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                    lineWidth: StudioTheme.BorderWidth.thin,
-                ),
+                    lineWidth: StudioTheme.BorderWidth.thin
+                )
         )
         .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.hero, style: .continuous))
         .onHover { isHovered = $0 }
@@ -6623,10 +6635,10 @@ private struct ExpandableContextView: View {
                                     Color.clear.onAppear {
                                         isTruncated = truncGeo.size.height < fullGeo.size.height
                                     }
-                                },
+                                }
                             )
                             .hidden()
-                    },
+                    }
                 )
 
             if isTruncated {
