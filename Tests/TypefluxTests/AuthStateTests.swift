@@ -85,6 +85,7 @@ final class AuthStateTests: XCTestCase {
         var storedToken: (token: String, expiresAt: Int)?
         var savedProfile: UserProfile?
         var fetchedSubscriptionToken: String?
+        var subscriptionFetchCount = 0
         let profile = makeProfile(email: "billing@test.com")
         let activeSubscription = BillingSubscriptionSnapshot(
             planCode: BillingPlan.defaultPlanCode,
@@ -102,6 +103,7 @@ final class AuthStateTests: XCTestCase {
             clearStoredSession: {},
             fetchProfile: { _ in profile },
             fetchSubscription: { token in
+                subscriptionFetchCount += 1
                 fetchedSubscriptionToken = token
                 return activeSubscription
             },
@@ -112,7 +114,78 @@ final class AuthStateTests: XCTestCase {
         XCTAssertTrue(state.isLoggedIn)
         XCTAssertEqual(savedProfile, profile)
         XCTAssertEqual(fetchedSubscriptionToken, "token-1")
+        XCTAssertEqual(subscriptionFetchCount, 1)
         XCTAssertEqual(state.subscription, activeSubscription)
+    }
+
+    func testLoginSuccessKeepsSessionWhenSubscriptionRefreshIsUnauthorized() async {
+        var storedToken: (token: String, expiresAt: Int)?
+        var savedProfile: UserProfile?
+        var clearedSession = false
+        let profile = makeProfile(email: "billing-auth@test.com")
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredUserProfile: { savedProfile = $0 },
+            clearStoredSession: {
+                clearedSession = true
+                storedToken = nil
+            },
+            fetchProfile: { _ in profile },
+            fetchSubscription: { _ in
+                throw AuthError.unauthorized
+            },
+        )
+
+        await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
+
+        XCTAssertFalse(clearedSession)
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(storedToken?.token, "token-1")
+        XCTAssertEqual(savedProfile, profile)
+        XCTAssertEqual(state.subscription, .none)
+        XCTAssertNotNil(state.subscriptionError)
+    }
+
+    func testLoginSuccessAcceptsRelativeExpirySeconds() async {
+        var storedToken: (token: String, expiresAt: Int)?
+        let now = Int(Date().timeIntervalSince1970)
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { _ in self.makeProfile(email: "relative-expiry@test.com") },
+            fetchSubscription: { _ in .none },
+        )
+
+        await state.handleLoginSuccess(token: "token-1", expiresAt: 3600)
+
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(storedToken?.token, "token-1")
+        XCTAssertGreaterThanOrEqual(storedToken?.expiresAt ?? 0, now + 3600)
+    }
+
+    func testLoginSuccessNormalizesMillisecondExpiryTimestamp() async {
+        var storedToken: (token: String, expiresAt: Int)?
+        let expiresAt = Int(Date().timeIntervalSince1970) + 3600
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { _ in self.makeProfile(email: "millisecond-expiry@test.com") },
+            fetchSubscription: { _ in .none },
+        )
+
+        await state.handleLoginSuccess(token: "token-1", expiresAt: expiresAt * 1000)
+
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(storedToken?.token, "token-1")
+        XCTAssertEqual(storedToken?.expiresAt, expiresAt)
     }
 
     func testStartCheckoutCreatesSessionAndRefreshesSubscriptionDuringPolling() async throws {
@@ -300,6 +373,35 @@ final class AuthStateTests: XCTestCase {
         XCTAssertNil(state.usagePeriodStart)
         XCTAssertNil(state.usagePeriodEnd)
         XCTAssertNil(state.usageError)
+    }
+
+    func testRefreshUsageKeepsSessionWhenUnauthorized() async {
+        var storedToken: (token: String, expiresAt: Int)?
+        var clearedSession = false
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: {
+                clearedSession = true
+                storedToken = nil
+            },
+            fetchProfile: { _ in self.makeProfile(email: "usage-auth@test.com") },
+            fetchSubscription: { _ in .none },
+            fetchCurrentPeriodUsageStats: { _ in
+                throw AuthError.unauthorized
+            },
+        )
+
+        await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
+        await state.refreshUsage()
+
+        XCTAssertFalse(clearedSession)
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(storedToken?.token, "token-1")
+        XCTAssertEqual(state.usageStats, .empty)
+        XCTAssertNotNil(state.usageError)
     }
 
     private func makeProfile(email: String) -> UserProfile {

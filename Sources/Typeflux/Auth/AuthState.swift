@@ -130,14 +130,14 @@ final class AuthState: ObservableObject {
     // MARK: - Login
 
     func handleLoginSuccess(token: String, expiresAt: Int, refreshToken: String? = nil) async {
+        let normalizedExpiresAt = normalizeLoginExpiry(expiresAt)
         if let refreshToken {
-            KeychainTokenStore.saveToken(token, expiresAt: expiresAt, refreshToken: refreshToken)
+            KeychainTokenStore.saveToken(token, expiresAt: normalizedExpiresAt, refreshToken: refreshToken)
         } else {
-            saveStoredToken(token, expiresAt)
+            saveStoredToken(token, normalizedExpiresAt)
         }
         isLoggedIn = true
         await refreshProfile()
-        await refreshSubscription()
         NotificationCenter.default.post(name: .authDidLogin, object: self)
     }
 
@@ -262,11 +262,7 @@ final class AuthState: ObservableObject {
             }
             return snapshot
         } catch let error as AuthError {
-            if shouldInvalidateSession(for: error) {
-                logout()
-            } else {
-                subscriptionError = error.localizedDescription
-            }
+            subscriptionError = error.localizedDescription
             return nil
         } catch {
             subscriptionError = error.localizedDescription
@@ -292,9 +288,7 @@ final class AuthState: ObservableObject {
             usageError = nil
             return snapshot.stats
         } catch let error as AuthError {
-            if shouldInvalidateSession(for: error) {
-                logout()
-            } else if error.authErrorCode == "USAGE_PERIOD_UNAVAILABLE" {
+            if error.authErrorCode == "USAGE_PERIOD_UNAVAILABLE" {
                 usageStats = .empty
                 usagePeriodStart = nil
                 usagePeriodEnd = nil
@@ -371,6 +365,21 @@ final class AuthState: ObservableObject {
         case .networkError, .invalidResponse:
             false
         }
+    }
+
+    private func normalizeLoginExpiry(_ expiresAt: Int) -> Int {
+        let now = Int(Date().timeIntervalSince1970)
+        // Accept common server variants: Unix milliseconds and expires-in seconds.
+        if expiresAt > 10_000_000_000 {
+            return expiresAt / 1000
+        }
+        if expiresAt > now {
+            return expiresAt
+        }
+        if expiresAt > 0, expiresAt <= 31_536_000 {
+            return now + expiresAt
+        }
+        return expiresAt
     }
 
 }
