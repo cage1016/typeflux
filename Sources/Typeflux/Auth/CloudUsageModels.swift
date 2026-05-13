@@ -29,7 +29,7 @@ struct CloudUsageStats: Decodable, Equatable {
         chatOutputChars: 0,
         chatInputTokens: 0,
         chatOutputTokens: 0,
-        chatTotalTokens: 0
+        chatTotalTokens: 0,
     )
 
     var totalRequests: Int64 {

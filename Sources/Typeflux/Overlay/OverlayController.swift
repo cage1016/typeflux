@@ -91,26 +91,26 @@ private struct LiquidGlassShapeBackground<S: InsettableShape>: View {
     var body: some View {
         Group {
             #if compiler(>=6.2)
-            if #available(macOS 26.0, *) {
-                ZStack {
-                    shape
-                        .fill(Color.clear)
-                        .glassEffect(
-                            Glass.clear
-                                .interactive(interactive)
-                                .tint(Color.white.opacity(tintOpacity)),
-                            in: shape,
-                        )
+                if #available(macOS 26.0, *) {
+                    ZStack {
+                        shape
+                            .fill(Color.clear)
+                            .glassEffect(
+                                Glass.clear
+                                    .interactive(interactive)
+                                    .tint(Color.white.opacity(tintOpacity)),
+                                in: shape,
+                            )
 
-                    shape
-                        .fill(Color.black.opacity(scrimOpacity))
-                        .allowsHitTesting(false)
+                        shape
+                            .fill(Color.black.opacity(scrimOpacity))
+                            .allowsHitTesting(false)
+                    }
+                } else {
+                    fallbackBackground
                 }
-            } else {
-                fallbackBackground
-            }
             #else
-            fallbackBackground
+                fallbackBackground
             #endif
         }
         .overlay(
@@ -897,9 +897,9 @@ final class OverlayController {
         if isShrinkingAfterPreview {
             let presentation = model.presentation
             let workItem = DispatchWorkItem { [weak self, weak window] in
-                guard let self, let window, self.model.presentation == presentation else { return }
-                self.animateWindow(window, to: targetFrame, duration: 0.30)
-                self.lastPositionedFrame = targetFrame
+                guard let self, let window, model.presentation == presentation else { return }
+                animateWindow(window, to: targetFrame, duration: 0.30)
+                lastPositionedFrame = targetFrame
             }
             pendingFrameAnimationWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: workItem)
@@ -1773,11 +1773,11 @@ private struct OverlayView: View {
             shape
                 .fill(.ultraThinMaterial)
         }
-            .overlay(
-                shape
-                    .fill(Color.black.opacity(0.28))
-                    .allowsHitTesting(false),
-            )
+        .overlay(
+            shape
+                .fill(Color.black.opacity(0.28))
+                .allowsHitTesting(false),
+        )
         .overlay(
             shape
                 .fill(
@@ -1833,11 +1833,11 @@ private struct OverlayView: View {
         case .none:
             EmptyView()
         case .global:
-                Image(systemName: "globe")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
-                    .frame(width: 42, height: 42)
-                    .shadow(color: Color.black.opacity(0.35), radius: 4, x: 0, y: 2)
+            Image(systemName: "globe")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .frame(width: 42, height: 42)
+                .shadow(color: Color.black.opacity(0.35), radius: 4, x: 0, y: 2)
         case let .application(icon):
             if let icon {
                 Image(nsImage: icon)

@@ -12,7 +12,7 @@ final class LLMThinkingTuningAdaptationTests: XCTestCase {
         suiteName = "LLMThinkingTuningAdaptationTests-\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
-        now = Date(timeIntervalSince1970: 1_000)
+        now = Date(timeIntervalSince1970: 1000)
         store = LLMThinkingTuningAdaptationStore(defaults: defaults, now: { self.now })
     }
 
@@ -61,7 +61,7 @@ final class LLMThinkingTuningAdaptationTests: XCTestCase {
         XCTAssertEqual(store.state(for: baseURL).failures.first?.reason, .regressed)
     }
 
-    func testUnsupportedStateCoolsDownForTwentyFourHours() throws {
+    func testUnsupportedStateCoolsDownForTwentyFourHours() {
         for candidate in LLMThinkingTuningCandidate.all {
             store.recordUnsupportedParameter(baseURL: baseURL, candidate: candidate)
         }
@@ -120,5 +120,4 @@ final class LLMThinkingTuningAdaptationTests: XCTestCase {
     private var baseURL: URL {
         URL(string: "https://llm.example.com/v1")!
     }
-
 }

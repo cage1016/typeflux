@@ -119,7 +119,7 @@ final class OnboardingViewModel: ObservableObject {
         globeKeyReader: GlobeKeyPreferenceReading = SystemGlobeKeyPreferenceReader(),
         localModelManager: (any LocalSTTModelManaging)? = nil,
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
-        onComplete: @escaping () -> Void
+        onComplete: @escaping () -> Void,
     ) {
         self.settingsStore = settingsStore
         let resolvedAuthState = authState ?? .shared
@@ -291,7 +291,7 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     func advance() {
-        if currentStep == .stt && !isSTTConfigurationComplete {
+        if currentStep == .stt, !isSTTConfigurationComplete {
             showIncompleteSTTConfigurationAlert = true
             return
         }
@@ -299,7 +299,7 @@ final class OnboardingViewModel: ObservableObject {
             showIncompleteSTTConfigurationAlert = false
         }
 
-        if currentStep == .llm && !isLLMConfigurationComplete {
+        if currentStep == .llm, !isLLMConfigurationComplete {
             showIncompleteLLMConfigurationAlert = true
             return
         }
@@ -307,7 +307,7 @@ final class OnboardingViewModel: ObservableObject {
             showIncompleteLLMConfigurationAlert = false
         }
 
-        if currentStep == .permissions && !allRequiredPermissionsGranted {
+        if currentStep == .permissions, !allRequiredPermissionsGranted {
             showIncompletePermissionsAlert = true
             return
         }
@@ -489,7 +489,7 @@ final class OnboardingViewModel: ObservableObject {
                         let url = base.appendingPathComponent("api/chat")
                         var req = URLRequest(
                             url: url,
-                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds)
+                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds),
                         )
                         req.httpMethod = "POST"
                         req.setValue("application/json", forHTTPHeaderField: "Content-Type")

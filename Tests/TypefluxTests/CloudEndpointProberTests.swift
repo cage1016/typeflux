@@ -25,9 +25,9 @@ final class CloudEndpointProberTests: XCTestCase {
 
         let prober = HTTPCloudEndpointProber(session: stubSession())
         let result = try await prober.probe(
-            baseURL: URL(string: "https://example.com")!,
+            baseURL: XCTUnwrap(URL(string: "https://example.com")),
             nonce: "abc-123",
-            timeout: 1
+            timeout: 1,
         )
 
         XCTAssertTrue(result.nonceMatches)
@@ -47,9 +47,9 @@ final class CloudEndpointProberTests: XCTestCase {
 
         let prober = HTTPCloudEndpointProber(session: stubSession())
         _ = try await prober.probe(
-            baseURL: URL(string: "https://example.com/edge/")!,
+            baseURL: XCTUnwrap(URL(string: "https://example.com/edge/")),
             nonce: "n",
-            timeout: 1
+            timeout: 1,
         )
     }
 
@@ -62,9 +62,9 @@ final class CloudEndpointProberTests: XCTestCase {
         let prober = HTTPCloudEndpointProber(session: stubSession())
         do {
             _ = try await prober.probe(
-                baseURL: URL(string: "https://example.com")!,
+                baseURL: XCTUnwrap(URL(string: "https://example.com")),
                 nonce: "expected",
-                timeout: 1
+                timeout: 1,
             )
             XCTFail("Expected nonceMismatch")
         } catch CloudEndpointProbeError.nonceMismatch {
@@ -82,12 +82,12 @@ final class CloudEndpointProberTests: XCTestCase {
         let prober = HTTPCloudEndpointProber(session: stubSession())
         do {
             _ = try await prober.probe(
-                baseURL: URL(string: "https://example.com")!,
+                baseURL: XCTUnwrap(URL(string: "https://example.com")),
                 nonce: "n",
-                timeout: 1
+                timeout: 1,
             )
             XCTFail("Expected httpStatus")
-        } catch CloudEndpointProbeError.httpStatus(let code) {
+        } catch let CloudEndpointProbeError.httpStatus(code) {
             XCTAssertEqual(code, 503)
         } catch {
             XCTFail("Unexpected error: \(error)")
@@ -102,9 +102,9 @@ final class CloudEndpointProberTests: XCTestCase {
         let prober = HTTPCloudEndpointProber(session: stubSession())
         do {
             _ = try await prober.probe(
-                baseURL: URL(string: "https://example.com")!,
+                baseURL: XCTUnwrap(URL(string: "https://example.com")),
                 nonce: "n",
-                timeout: 1
+                timeout: 1,
             )
             XCTFail("Expected decoding")
         } catch CloudEndpointProbeError.decoding {
@@ -127,7 +127,7 @@ final class CloudEndpointProberTests: XCTestCase {
             url: url,
             statusCode: status,
             httpVersion: "HTTP/1.1",
-            headerFields: ["Content-Type": "application/json"]
+            headerFields: ["Content-Type": "application/json"],
         )!
         return (response, Data(body.utf8))
     }
@@ -144,8 +144,13 @@ final class ProberURLProtocol: URLProtocol, @unchecked Sendable {
         requestInspector = nil
     }
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override class func canInit(with _: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
 
     override func startLoading() {
         Self.requestInspector?(request)

@@ -9,7 +9,7 @@ enum AppServerConfiguration {
     private static func configuredValue(
         environmentKey: String,
         infoPlistKey: String,
-        default defaultValue: String
+        default defaultValue: String,
     ) -> String {
         if let value = ProcessInfo.processInfo.environment[environmentKey], !value.isEmpty {
             return value
@@ -93,7 +93,7 @@ enum AppServerConfiguration {
         configuredValue(
             environmentKey: "GOOGLE_OAUTH_CLIENT_ID",
             infoPlistKey: "GOOGLE_OAUTH_CLIENT_ID",
-            default: defaultGoogleOAuthClientID
+            default: defaultGoogleOAuthClientID,
         )
     }
 
@@ -104,7 +104,7 @@ enum AppServerConfiguration {
         configuredValue(
             environmentKey: "GOOGLE_OAUTH_CLIENT_SECRET",
             infoPlistKey: "GOOGLE_OAUTH_CLIENT_SECRET",
-            default: ""
+            default: "",
         )
     }
 
@@ -115,7 +115,7 @@ enum AppServerConfiguration {
         configuredValue(
             environmentKey: "GOOGLE_CLOUD_OAUTH_CLIENT_ID",
             infoPlistKey: "GOOGLE_CLOUD_OAUTH_CLIENT_ID",
-            default: defaultGoogleCloudOAuthClientID
+            default: defaultGoogleCloudOAuthClientID,
         )
     }
 
@@ -125,7 +125,7 @@ enum AppServerConfiguration {
         configuredValue(
             environmentKey: "GOOGLE_CLOUD_OAUTH_CLIENT_SECRET",
             infoPlistKey: "GOOGLE_CLOUD_OAUTH_CLIENT_SECRET",
-            default: googleOAuthClientSecret
+            default: googleOAuthClientSecret,
         )
     }
 
@@ -135,8 +135,7 @@ enum AppServerConfiguration {
         configuredValue(
             environmentKey: "GITHUB_OAUTH_CLIENT_ID",
             infoPlistKey: "GITHUB_OAUTH_CLIENT_ID",
-            default: defaultGithubOAuthClientID
+            default: defaultGithubOAuthClientID,
         )
     }
-
 }

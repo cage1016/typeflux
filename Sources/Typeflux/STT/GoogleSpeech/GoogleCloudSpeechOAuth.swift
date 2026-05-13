@@ -15,11 +15,26 @@ struct GoogleCloudSpeechOAuthToken: Codable, Equatable {
     }
 }
 
-struct GoogleCloudSpeechOAuthTokenStore {
+enum GoogleCloudSpeechOAuthTokenStore {
     private static let service = "\(Bundle.main.bundleIdentifier ?? "ai.gulu.app.typeflux").google-cloud-speech"
     private static let account = "oauth-token"
+    private static let inMemoryLock = NSLock()
+    private static var inMemoryToken: GoogleCloudSpeechOAuthToken?
+
+    private static var usesInMemoryStore: Bool {
+        NSClassFromString("XCTest.XCTestCase") != nil
+            || NSClassFromString("XCTestCase") != nil
+            || Bundle.allBundles.contains { $0.bundlePath.hasSuffix(".xctest") }
+    }
 
     static func save(_ token: GoogleCloudSpeechOAuthToken) {
+        if usesInMemoryStore {
+            inMemoryLock.lock()
+            inMemoryToken = token
+            inMemoryLock.unlock()
+            return
+        }
+
         guard let data = try? JSONEncoder().encode(token) else { return }
 
         let query: [String: Any] = [
@@ -37,6 +52,13 @@ struct GoogleCloudSpeechOAuthTokenStore {
     }
 
     static func load() -> GoogleCloudSpeechOAuthToken? {
+        if usesInMemoryStore {
+            inMemoryLock.lock()
+            let token = inMemoryToken
+            inMemoryLock.unlock()
+            return token
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -58,6 +80,13 @@ struct GoogleCloudSpeechOAuthTokenStore {
     }
 
     static func clear() {
+        if usesInMemoryStore {
+            inMemoryLock.lock()
+            inMemoryToken = nil
+            inMemoryLock.unlock()
+            return
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

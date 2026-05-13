@@ -20,7 +20,7 @@ struct CloudUsageAPIService: Sendable {
 
     private func execute<Response: Decodable>(
         path: String,
-        token: String
+        token: String,
     ) async throws -> Response {
         let data: Data
         let httpResponse: HTTPURLResponse
@@ -36,7 +36,7 @@ struct CloudUsageAPIService: Sendable {
             }
         } catch is CancellationError {
             throw CancellationError()
-        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+        } catch let CloudRequestExecutorError.allEndpointsFailed(lastError) {
             Self.logger.error("All usage endpoints failed: \(lastError.localizedDescription)")
             throw AuthError.networkError(lastError)
         } catch {
@@ -51,7 +51,8 @@ struct CloudUsageAPIService: Sendable {
         if httpResponse.statusCode >= 200, httpResponse.statusCode < 300 {
             if let envelope = try? JSONDecoder().decode(APIResponse<Response>.self, from: data),
                envelope.code == "OK",
-               let responseData = envelope.data {
+               let responseData = envelope.data
+            {
                 return responseData
             }
             do {

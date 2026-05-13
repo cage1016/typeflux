@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct AccountView: View {
     @ObservedObject var authState: AuthState
@@ -68,7 +68,7 @@ struct AccountView: View {
                                 helpText: L("auth.account.refreshSubscription"),
                                 isVisible: isHoveringSubscriptionCard,
                                 isDisabled: authState.isLoadingSubscription || isOpeningBilling,
-                                isLoading: authState.isLoadingSubscription
+                                isLoading: authState.isLoadingSubscription,
                             ) {
                                 Task { await authState.refreshSubscription() }
                             }
@@ -80,7 +80,7 @@ struct AccountView: View {
                                 systemImage: "arrow.up.forward.app",
                                 variant: .primary,
                                 isDisabled: isOpeningBilling,
-                                isLoading: isOpeningBilling
+                                isLoading: isOpeningBilling,
                             ) {
                                 openBillingFlow()
                             }
@@ -98,19 +98,19 @@ struct AccountView: View {
                     accountSummaryItem(
                         label: L("auth.account.subscriptionPlan"),
                         value: localized(subscriptionPresentation.plan),
-                        systemImage: "creditcard"
+                        systemImage: "creditcard",
                     )
 
                     accountSummaryItem(
                         label: L("auth.account.subscriptionStatus"),
                         value: localized(subscriptionPresentation.status),
-                        systemImage: "checkmark.seal"
+                        systemImage: "checkmark.seal",
                     )
 
                     accountSummaryItem(
                         label: L(subscriptionPresentation.periodLabelKey),
                         value: localized(subscriptionPresentation.period),
-                        systemImage: "calendar.badge.clock"
+                        systemImage: "calendar.badge.clock",
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,7 +145,7 @@ struct AccountView: View {
                             helpText: L("auth.account.refreshUsage"),
                             isVisible: isHoveringUsageCard,
                             isDisabled: authState.isLoadingUsage,
-                            isLoading: authState.isLoadingUsage
+                            isLoading: authState.isLoadingUsage,
                         ) {
                             Task { await authState.refreshUsage() }
                         }
@@ -162,19 +162,19 @@ struct AccountView: View {
                     accountSummaryItem(
                         label: L("auth.account.usageAudio"),
                         value: formattedAudioDuration(authState.usageStats.asrAudioDurationMs),
-                        systemImage: "waveform"
+                        systemImage: "waveform",
                     )
 
                     accountSummaryItem(
                         label: L("auth.account.usageTokens"),
                         value: formattedCount(authState.usageStats.chatTotalTokens),
-                        systemImage: "text.bubble"
+                        systemImage: "text.bubble",
                     )
 
                     accountSummaryItem(
                         label: L("auth.account.usageRequests"),
                         value: formattedCount(authState.usageStats.totalRequests),
-                        systemImage: "bolt.horizontal"
+                        systemImage: "bolt.horizontal",
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -183,13 +183,13 @@ struct AccountView: View {
                     accountSummaryItem(
                         label: L("auth.account.usageTranscripts"),
                         value: formattedCount(authState.usageStats.asrOutputChars),
-                        systemImage: "character.cursor.ibeam"
+                        systemImage: "character.cursor.ibeam",
                     )
 
                     accountSummaryItem(
                         label: L("auth.account.usageAnswers"),
                         value: formattedCount(authState.usageStats.chatOutputChars),
-                        systemImage: "quote.bubble"
+                        systemImage: "quote.bubble",
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -207,9 +207,9 @@ struct AccountView: View {
 
     private func localized(_ value: AccountSubscriptionPresentation.TextValue) -> String {
         switch value {
-        case .localized(let key):
+        case let .localized(key):
             L(key)
-        case .literal(let text):
+        case let .literal(text):
             text
         }
     }
@@ -218,16 +218,16 @@ struct AccountView: View {
         switch period {
         case .unavailable:
             L("auth.account.subscriptionPeriodUnavailable")
-        case .endsOn(let dateString):
+        case let .endsOn(dateString):
             String(format: L("auth.account.subscriptionEndsOn"), formattedDate(dateString))
-        case .renewsOn(let dateString):
+        case let .renewsOn(dateString):
             String(format: L("auth.account.subscriptionRenewsOn"), formattedDate(dateString))
-        case .cycle(let startString, let endString):
+        case let .cycle(startString, endString):
             if let startString {
                 String(
                     format: L("auth.account.subscriptionPeriodRange"),
                     formattedDate(startString),
-                    formattedDate(endString)
+                    formattedDate(endString),
                 )
             } else {
                 String(format: L("auth.account.subscriptionPeriodUntil"), formattedDate(endString))
@@ -267,13 +267,13 @@ struct AccountView: View {
                     accountSummaryItem(
                         label: L("auth.account.provider"),
                         value: providerDisplayName(profile.provider),
-                        systemImage: "person.crop.circle.badge.checkmark"
+                        systemImage: "person.crop.circle.badge.checkmark",
                     )
 
                     accountSummaryItem(
                         label: L("auth.account.memberSince"),
                         value: formattedDate(profile.createdAt),
-                        systemImage: "calendar"
+                        systemImage: "calendar",
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -304,7 +304,7 @@ struct AccountView: View {
                 StudioButton(
                     title: L("auth.account.changePassword"),
                     systemImage: "key",
-                    variant: .secondary
+                    variant: .secondary,
                 ) {
                     passwordChangeFlow.presentForm()
                 }
@@ -343,7 +343,7 @@ struct AccountView: View {
                 StudioButton(
                     title: L("auth.account.signIn"),
                     systemImage: "person.crop.circle.badge.plus",
-                    variant: .primary
+                    variant: .primary,
                 ) {
                     handlePrimaryAction()
                 }
@@ -374,11 +374,11 @@ struct AccountView: View {
         .padding(StudioTheme.Spacing.medium)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill))
+                .fill(StudioTheme.surfaceMuted.opacity(StudioTheme.Opacity.textFieldFill)),
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin)
+                .stroke(StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder), lineWidth: StudioTheme.BorderWidth.thin),
         )
     }
 
@@ -422,13 +422,14 @@ struct AccountView: View {
 
     private var usageRangeDescription: String {
         guard let start = authState.usagePeriodStart,
-              let end = authState.usagePeriodEnd else {
+              let end = authState.usagePeriodEnd
+        else {
             return L("auth.account.usageCycleUnavailable")
         }
         return String(
             format: L("auth.account.usagePeriodHint"),
             formattedDate(start),
-            formattedDate(end)
+            formattedDate(end),
         )
     }
 
@@ -516,7 +517,7 @@ private struct ChangePasswordSheet: View {
                         label: L("auth.account.currentPassword"),
                         placeholder: L("auth.account.currentPassword"),
                         text: $currentPassword,
-                        secure: true
+                        secure: true,
                     )
                 }
 
@@ -524,14 +525,14 @@ private struct ChangePasswordSheet: View {
                     label: L("auth.account.newPassword"),
                     placeholder: L("auth.account.newPassword"),
                     text: $newPassword,
-                    secure: true
+                    secure: true,
                 )
 
                 StudioTextInputCard(
                     label: L("auth.account.confirmNewPassword"),
                     placeholder: L("auth.account.confirmNewPassword"),
                     text: $confirmNewPassword,
-                    secure: true
+                    secure: true,
                 )
             }
 
@@ -552,7 +553,7 @@ private struct ChangePasswordSheet: View {
                 StudioButton(
                     title: L("common.cancel"),
                     systemImage: nil,
-                    variant: .secondary
+                    variant: .secondary,
                 ) {
                     dismiss()
                 }
@@ -562,7 +563,7 @@ private struct ChangePasswordSheet: View {
                     systemImage: isChangingPassword ? nil : "checkmark",
                     variant: .primary,
                     isDisabled: isChangingPassword,
-                    isLoading: isChangingPassword
+                    isLoading: isChangingPassword,
                 ) {
                     changePassword()
                 }
@@ -602,7 +603,7 @@ private struct ChangePasswordSheet: View {
                 _ = try await AuthAPIService.changePassword(
                     token: token,
                     oldPassword: currentPassword,
-                    newPassword: newPassword
+                    newPassword: newPassword,
                 )
                 await MainActor.run {
                     isChangingPassword = false
@@ -689,7 +690,7 @@ private struct PasswordChangeSuccessSheet: View {
                 StudioButton(
                     title: L("auth.account.relogin"),
                     systemImage: "arrow.clockwise.circle",
-                    variant: .primary
+                    variant: .primary,
                 ) {
                     onRelogin()
                 }

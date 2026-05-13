@@ -5,7 +5,7 @@ import XCTest
 final class SettingsViewModelHotkeyTests: XCTestCase {
     func testHotkeysRefreshWhenSettingsStoreChangesExternally() async throws {
         let suiteName = "SettingsViewModelHotkeyTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let viewModel = StudioViewModel(
             settingsStore: settingsStore,
@@ -39,7 +39,8 @@ final class SettingsViewModelHotkeyTests: XCTestCase {
     ) async throws {
         for _ in 0 ..< 50 {
             if viewModel.activationHotkey?.signature == activation.signature,
-               viewModel.askHotkey?.signature == ask.signature {
+               viewModel.askHotkey?.signature == ask.signature
+            {
                 return
             }
             try await Task.sleep(nanoseconds: 20_000_000)
@@ -50,9 +51,18 @@ final class SettingsViewModelHotkeyTests: XCTestCase {
 
 private final class HotkeyTestHistoryStore: HistoryStore {
     func save(record _: HistoryRecord) {}
-    func list() -> [HistoryRecord] { [] }
-    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] { [] }
-    func record(id _: UUID) -> HistoryRecord? { nil }
+    func list() -> [HistoryRecord] {
+        []
+    }
+
+    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] {
+        []
+    }
+
+    func record(id _: UUID) -> HistoryRecord? {
+        nil
+    }
+
     func delete(id _: UUID) {}
     func purge(olderThanDays _: Int) {}
     func clear() {}

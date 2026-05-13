@@ -41,13 +41,14 @@ private struct AutoModelState: Codable {
 /// - On every app launch: retry immediately if not completed.
 /// - Within a session after failure: exponential backoff (1 min → 3 min → 9 min … capped at 3 h).
 final class AutoModelDownloadService {
-
     // MARK: - Threading
-    // All mutable state is protected by stateLock.
-    // UI notifications are always dispatched to the main queue.
+
+    /// All mutable state is protected by stateLock.
+    /// UI notifications are always dispatched to the main queue.
     private let stateLock = NSLock()
 
     // MARK: - Public observable state (read on any thread; assigned under stateLock, notified on main)
+
     private var _status: AutoModelDownloadStatus = .notStarted
     var status: AutoModelDownloadStatus {
         stateLock.withLock { _status }
@@ -114,7 +115,8 @@ final class AutoModelDownloadService {
            let path = state.completedStoragePath,
            state.completedModelType == config.model.rawValue,
            state.completedModelIdentifier == config.modelIdentifier,
-           modelManager.isStoragePathReady(path, for: config.model) {
+           modelManager.isStoragePathReady(path, for: config.model)
+        {
             markReady(config: config, storagePath: path)
             return
         }
@@ -151,7 +153,7 @@ final class AutoModelDownloadService {
     // MARK: - Device Detection
 
     static func recommendedConfiguration() -> LocalSTTConfiguration {
-        return LocalSTTConfiguration(
+        LocalSTTConfiguration(
             model: .senseVoiceSmall,
             modelIdentifier: LocalSTTModel.senseVoiceSmall.defaultModelIdentifier,
             downloadSource: .huggingFace,

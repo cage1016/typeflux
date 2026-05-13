@@ -16,7 +16,7 @@ final class AudioDeviceManager: AudioDeviceManaging {
     static let automaticDeviceID = ""
 
     func availableInputDevices() -> [AudioInputDevice] {
-        return allAudioDeviceIDs()
+        allAudioDeviceIDs()
             .compactMap { deviceID in
                 guard
                     deviceSupportsInput(deviceID),

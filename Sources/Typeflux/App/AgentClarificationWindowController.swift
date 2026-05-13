@@ -137,7 +137,7 @@ final class AgentClarificationWindowController: NSObject {
         applyAppearance(to: win)
 
         hostingView = hosting
-        self.window = win
+        window = win
     }
 
     private func applyAppearance(to window: NSWindow) {
@@ -300,22 +300,22 @@ private struct AgentClarificationWindowView: View {
     private var hintText: String {
         switch model.recordingState {
         case .waitingForReply:
-            return L("agent.clarification.hotkeyHint")
+            L("agent.clarification.hotkeyHint")
         case .recording:
-            return L("agent.clarification.recordingHint")
+            L("agent.clarification.recordingHint")
         case .transcribing:
-            return L("agent.clarification.transcribingHint")
+            L("agent.clarification.transcribingHint")
         }
     }
 
     private var hintColor: Color {
         switch model.recordingState {
         case .waitingForReply:
-            return StudioTheme.textSecondary
+            StudioTheme.textSecondary
         case .recording:
-            return .red
+            .red
         case .transcribing:
-            return StudioTheme.textSecondary
+            StudioTheme.textSecondary
         }
     }
 }

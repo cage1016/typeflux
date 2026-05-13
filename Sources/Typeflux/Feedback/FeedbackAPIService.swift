@@ -69,13 +69,13 @@ enum FeedbackAPIError: LocalizedError, Equatable {
         switch self {
         case .emptyContent:
             L("feedback.error.emptyContent")
-        case .networkError(let message):
+        case let .networkError(message):
             message
-        case .serverError(let code, let message):
+        case let .serverError(code, message):
             TypefluxCloudServerErrorMessage.userMessage(
                 code: code,
                 message: message,
-                fallback: L("feedback.error.server")
+                fallback: L("feedback.error.server"),
             )
         case .invalidResponse:
             L("feedback.error.invalidResponse")
@@ -85,7 +85,7 @@ enum FeedbackAPIError: LocalizedError, Equatable {
     }
 }
 
-struct FeedbackAPIService {
+enum FeedbackAPIService {
     private static let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "FeedbackAPIService")
 
     static func submit(
@@ -93,7 +93,7 @@ struct FeedbackAPIService {
         contact: String?,
         imageURLs: [String] = [],
         token: String? = nil,
-        executor: CloudRequestExecutor = CloudRequestExecutor()
+        executor: CloudRequestExecutor = CloudRequestExecutor(),
     ) async throws -> FeedbackSubmissionResponse {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedContent.isEmpty else {
@@ -104,7 +104,7 @@ struct FeedbackAPIService {
         let request = CreateFeedbackRequest(
             content: trimmedContent,
             contact: trimmedContact?.isEmpty == false ? trimmedContact : nil,
-            imageURLs: imageURLs
+            imageURLs: imageURLs,
         )
         let payload: Data
         do {
@@ -130,7 +130,7 @@ struct FeedbackAPIService {
             }
         } catch is CancellationError {
             throw CancellationError()
-        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+        } catch let CloudRequestExecutorError.allEndpointsFailed(lastError) {
             logger.error("Feedback submission failed on all endpoints: \(lastError.localizedDescription)")
             throw FeedbackAPIError.networkError(lastError.localizedDescription)
         } catch {
@@ -147,9 +147,9 @@ struct FeedbackAPIService {
             envelope = try JSONDecoder().decode(APIResponse<FeedbackSubmissionResponse>.self, from: data)
         } catch {
             logger.error(
-                "Feedback response decoding error for HTTP \(httpResponse.statusCode, privacy: .public): \(String(describing: error), privacy: .public)"
+                "Feedback response decoding error for HTTP \(httpResponse.statusCode, privacy: .public): \(String(describing: error), privacy: .public)",
             )
-            if !(200..<300).contains(httpResponse.statusCode) {
+            if !(200 ..< 300).contains(httpResponse.statusCode) {
                 throw FeedbackAPIError.serverError(code: "HTTP_\(httpResponse.statusCode)", message: nil)
             }
             throw FeedbackAPIError.invalidResponse
@@ -171,12 +171,12 @@ struct FeedbackAPIService {
         contentType: String,
         sizeBytes: Int64,
         token: String? = nil,
-        executor: CloudRequestExecutor = CloudRequestExecutor()
+        executor: CloudRequestExecutor = CloudRequestExecutor(),
     ) async throws -> FeedbackUploadTarget {
         let request = FeedbackUploadPresignRequest(
             filename: filename,
             contentType: contentType,
-            sizeBytes: sizeBytes
+            sizeBytes: sizeBytes,
         )
 
         let payload: Data
@@ -203,7 +203,7 @@ struct FeedbackAPIService {
             }
         } catch is CancellationError {
             throw CancellationError()
-        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+        } catch let CloudRequestExecutorError.allEndpointsFailed(lastError) {
             logger.error("Feedback upload presign failed on all endpoints: \(lastError.localizedDescription)")
             throw FeedbackAPIError.networkError(lastError.localizedDescription)
         } catch {
@@ -220,9 +220,9 @@ struct FeedbackAPIService {
             envelope = try JSONDecoder().decode(APIResponse<FeedbackUploadTarget>.self, from: data)
         } catch {
             logger.error(
-                "Feedback upload presign decoding error for HTTP \(httpResponse.statusCode, privacy: .public): \(String(describing: error), privacy: .public)"
+                "Feedback upload presign decoding error for HTTP \(httpResponse.statusCode, privacy: .public): \(String(describing: error), privacy: .public)",
             )
-            if !(200..<300).contains(httpResponse.statusCode) {
+            if !(200 ..< 300).contains(httpResponse.statusCode) {
                 throw FeedbackAPIError.serverError(code: "HTTP_\(httpResponse.statusCode)", message: nil)
             }
             throw FeedbackAPIError.invalidResponse
@@ -244,7 +244,7 @@ struct FeedbackAPIService {
         filename: String,
         contentType: String,
         to target: FeedbackUploadTarget,
-        session: CloudHTTPSession = URLSession.shared
+        session: CloudHTTPSession = URLSession.shared,
     ) async throws {
         guard let url = URL(string: target.url) else {
             throw FeedbackAPIError.invalidResponse
@@ -269,7 +269,7 @@ struct FeedbackAPIService {
                 .map { MultipartPart.text(name: $0.key, value: $0.value) }
             request.httpBody = try MultipartFormData.build(
                 boundary: boundary,
-                parts: fieldParts + [.fileData(name: "file", filename: filename, mimeType: contentType, data: data)]
+                parts: fieldParts + [.fileData(name: "file", filename: filename, mimeType: contentType, data: data)],
             )
         }
         try Task.checkCancellation()
@@ -285,7 +285,7 @@ struct FeedbackAPIService {
                     ? "HTTP \(httpResponse.statusCode)"
                     : "HTTP \(httpResponse.statusCode): \(responseBody)"
                 logger.error(
-                    "Feedback image upload failed with HTTP \(httpResponse.statusCode, privacy: .public): \(responseBody, privacy: .public)"
+                    "Feedback image upload failed with HTTP \(httpResponse.statusCode, privacy: .public): \(responseBody, privacy: .public)",
                 )
                 throw FeedbackAPIError.serverError(code: "UPLOAD_FAILED", message: message)
             }

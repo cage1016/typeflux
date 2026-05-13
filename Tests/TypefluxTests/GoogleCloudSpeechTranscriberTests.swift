@@ -1,6 +1,6 @@
 import GRPC
-import XCTest
 @testable import Typeflux
+import XCTest
 
 final class GoogleCloudSpeechTranscriberTests: XCTestCase {
     func testConfigurationTrimsCredentialsAndBuildsUnderscoreRecognizer() throws {

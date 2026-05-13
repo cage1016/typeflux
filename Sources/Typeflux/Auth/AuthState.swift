@@ -23,15 +23,25 @@ final class AuthState: ObservableObject {
         case failed
     }
 
+    private enum AccessTokenRefreshResult: Equatable {
+        case refreshed
+        case unavailable
+        case failed
+        case invalidated
+    }
+
     static let shared = AuthState()
 
     private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "AuthState")
     private let loadStoredToken: () -> (token: String, expiresAt: Int)?
+    private let loadStoredRefreshToken: () -> String?
     private let loadStoredUserProfile: () -> UserProfile?
     private let saveStoredToken: (String, Int) -> Void
+    private let saveStoredSession: (String, Int, String?) -> Void
     private let saveStoredUserProfile: (UserProfile) -> Void
     private let clearStoredSession: () -> Void
     private let fetchProfile: (String) async throws -> UserProfile
+    private let refreshAccessToken: (String) async throws -> LoginResponse
     private let fetchSubscription: (String) async throws -> BillingSubscriptionSnapshot
     private let fetchCurrentPeriodUsageStats: (String) async throws -> CloudUsageCurrentPeriodStats
     private let createCheckoutSession: (String, String) async throws -> BillingCheckoutSession
@@ -61,13 +71,16 @@ final class AuthState: ObservableObject {
     private var checkoutPollingTask: Task<Void, Never>?
     private var pendingCheckoutSubscriptionEntitlement = false
     private var inMemorySessionToken: (token: String, expiresAt: Int)?
+    private var cachedStoredToken: (token: String, expiresAt: Int)?
+    private var cachedRefreshToken: String?
 
     var accessToken: String? {
         if let inMemorySessionToken,
-           inMemorySessionToken.expiresAt > Int(Date().timeIntervalSince1970) {
+           inMemorySessionToken.expiresAt > Int(Date().timeIntervalSince1970)
+        {
             return inMemorySessionToken.token
         }
-        guard let stored = loadStoredToken(),
+        guard let stored = cachedStoredToken,
               stored.expiresAt > Int(Date().timeIntervalSince1970)
         else {
             return nil
@@ -79,12 +92,16 @@ final class AuthState: ObservableObject {
         loadStoredToken: @escaping () -> (token: String, expiresAt: Int)? = {
             KeychainTokenStore.loadToken()
         },
+        loadStoredRefreshToken: @escaping () -> String? = {
+            KeychainTokenStore.loadRefreshToken()
+        },
         loadStoredUserProfile: @escaping () -> UserProfile? = {
             KeychainTokenStore.loadUserProfile()
         },
         saveStoredToken: @escaping (String, Int) -> Void = { token, expiresAt in
             KeychainTokenStore.saveToken(token, expiresAt: expiresAt)
         },
+        saveStoredSession: ((String, Int, String?) -> Void)? = nil,
         saveStoredUserProfile: @escaping (UserProfile) -> Void = { profile in
             KeychainTokenStore.saveUserProfile(profile)
         },
@@ -93,6 +110,9 @@ final class AuthState: ObservableObject {
         },
         fetchProfile: @escaping (String) async throws -> UserProfile = { token in
             try await AuthAPIService.fetchProfile(token: token)
+        },
+        refreshAccessToken: @escaping (String) async throws -> LoginResponse = { refreshToken in
+            try await AuthAPIService.refreshToken(refreshToken)
         },
         fetchSubscription: @escaping (String) async throws -> BillingSubscriptionSnapshot = { token in
             try await BillingAPIService.fetchSubscription(token: token)
@@ -108,11 +128,20 @@ final class AuthState: ObservableObject {
         },
     ) {
         self.loadStoredToken = loadStoredToken
+        self.loadStoredRefreshToken = loadStoredRefreshToken
         self.loadStoredUserProfile = loadStoredUserProfile
         self.saveStoredToken = saveStoredToken
+        self.saveStoredSession = saveStoredSession ?? { token, expiresAt, refreshToken in
+            if let refreshToken {
+                KeychainTokenStore.saveToken(token, expiresAt: expiresAt, refreshToken: refreshToken)
+            } else {
+                saveStoredToken(token, expiresAt)
+            }
+        }
         self.saveStoredUserProfile = saveStoredUserProfile
         self.clearStoredSession = clearStoredSession
         self.fetchProfile = fetchProfile
+        self.refreshAccessToken = refreshAccessToken
         self.fetchSubscription = fetchSubscription
         self.fetchCurrentPeriodUsageStats = fetchCurrentPeriodUsageStats
         self.createCheckoutSession = createCheckoutSession
@@ -123,11 +152,32 @@ final class AuthState: ObservableObject {
     // MARK: - Session Restore
 
     private func restoreSession() {
-        if accessToken != nil {
+        let storedToken = loadStoredToken()
+        cachedStoredToken = storedToken
+        cachedRefreshToken = loadStoredRefreshToken()
+        let hasValidAccessToken = accessToken != nil
+        let hasRefreshToken = hasStoredRefreshToken
+        logger.info(
+            "Session restore: storedAccessToken=\(storedToken != nil, privacy: .public), validAccessToken=\(hasValidAccessToken, privacy: .public), storedRefreshToken=\(hasRefreshToken, privacy: .public)"
+        )
+        if hasValidAccessToken {
             userProfile = loadStoredUserProfile()
             isLoggedIn = true
             Task { await refreshProfile() }
             Task { await refreshTokenIfNeeded() }
+        } else if hasRefreshToken {
+            userProfile = loadStoredUserProfile()
+            isLoggedIn = true
+            Task {
+                switch await refreshStoredAccessToken(force: true) {
+                case .refreshed:
+                    await refreshProfile()
+                case .invalidated:
+                    logout()
+                case .failed, .unavailable:
+                    logger.error("Session restore could not refresh access token")
+                }
+            }
         }
         startRefreshTimer()
     }
@@ -137,11 +187,12 @@ final class AuthState: ObservableObject {
     func handleLoginSuccess(token: String, expiresAt: Int, refreshToken: String? = nil) async {
         let normalizedExpiresAt = normalizeLoginExpiry(expiresAt)
         inMemorySessionToken = (token, normalizedExpiresAt)
-        if let refreshToken {
-            KeychainTokenStore.saveToken(token, expiresAt: normalizedExpiresAt, refreshToken: refreshToken)
-        } else {
-            saveStoredToken(token, normalizedExpiresAt)
-        }
+        cachedStoredToken = (token, normalizedExpiresAt)
+        cachedRefreshToken = refreshToken
+        saveStoredSession(token, normalizedExpiresAt, refreshToken)
+        logger.info(
+            "Login session saved: expiresAt=\(normalizedExpiresAt, privacy: .public), refreshTokenProvided=\((refreshToken?.isEmpty == false), privacy: .public)"
+        )
         isLoggedIn = true
         await refreshProfile()
         NotificationCenter.default.post(name: .authDidLogin, object: self)
@@ -150,12 +201,14 @@ final class AuthState: ObservableObject {
     // MARK: - Logout
 
     func logout() {
-        if let refreshToken = KeychainTokenStore.loadRefreshToken() {
+        if let refreshToken = cachedRefreshToken {
             Task {
                 try? await AuthAPIService.logout(refreshToken: refreshToken)
             }
         }
         inMemorySessionToken = nil
+        cachedStoredToken = nil
+        cachedRefreshToken = nil
         clearStoredSession()
         isLoggedIn = false
         userProfile = nil
@@ -177,31 +230,9 @@ final class AuthState: ObservableObject {
     /// Safe to call from multiple trigger points; skips silently when not needed.
     func refreshTokenIfNeeded() async {
         guard isLoggedIn else { return }
-        guard KeychainTokenStore.isTokenExpiringSoon(within: Self.refreshEarlyInterval) else { return }
-
-        guard let refreshToken = KeychainTokenStore.loadRefreshToken(), !refreshToken.isEmpty else {
-            logger.debug("Token expiring soon but no refresh token stored")
-            return
-        }
-
-        logger.info("Access token expiring soon, refreshing...")
-        do {
-            let response = try await AuthAPIService.refreshToken(refreshToken)
-            let normalizedExpiresAt = normalizeLoginExpiry(response.expiresAt)
-            KeychainTokenStore.saveToken(
-                response.accessToken,
-                expiresAt: normalizedExpiresAt,
-                refreshToken: response.refreshToken
-            )
-            inMemorySessionToken = (response.accessToken, normalizedExpiresAt)
-            logger.info("Token refreshed successfully")
-        } catch let error as AuthError {
-            logger.error("Token refresh failed: \(error.localizedDescription)")
-            if shouldInvalidateSession(for: error) {
-                logout()
-            }
-        } catch {
-            logger.error("Token refresh error: \(error.localizedDescription)")
+        let result = await refreshStoredAccessToken(force: false)
+        if result == .invalidated {
+            logout()
         }
     }
 
@@ -214,6 +245,11 @@ final class AuthState: ObservableObject {
 
     @discardableResult
     func refreshProfile() async -> SessionRefreshResult {
+        await refreshProfile(allowTokenRefresh: true)
+    }
+
+    @discardableResult
+    private func refreshProfile(allowTokenRefresh: Bool) async -> SessionRefreshResult {
         guard let token = accessToken else {
             logger.error("Profile refresh found no valid access token; clearing session")
             logout()
@@ -232,6 +268,17 @@ final class AuthState: ObservableObject {
             return .authenticated
         } catch let error as AuthError {
             if shouldInvalidateSession(for: error) {
+                if allowTokenRefresh {
+                    switch await refreshStoredAccessToken(force: true) {
+                    case .refreshed:
+                        return await refreshProfile(allowTokenRefresh: false)
+                    case .failed:
+                        logger.error("Profile refresh could not refresh access token: \(error.localizedDescription)")
+                        return .failed
+                    case .invalidated, .unavailable:
+                        break
+                    }
+                }
                 logout()
                 logger.error("Profile refresh invalidated session: \(error.localizedDescription)")
                 return .unauthenticated
@@ -337,17 +384,17 @@ final class AuthState: ObservableObject {
         checkoutPollingTask?.cancel()
         checkoutPollingTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            for attempt in 0..<Self.checkoutPollingAttempts {
+            for attempt in 0 ..< Self.checkoutPollingAttempts {
                 if attempt > 0 {
                     try? await Task.sleep(for: Self.checkoutPollingInterval)
                 }
                 guard !Task.isCancelled else { return }
-                _ = await self.refreshSubscription()
-                if self.subscription.entitled {
+                _ = await refreshSubscription()
+                if subscription.entitled {
                     return
                 }
             }
-            self.pendingCheckoutSubscriptionEntitlement = false
+            pendingCheckoutSubscriptionEntitlement = false
         }
     }
 
@@ -368,13 +415,61 @@ final class AuthState: ObservableObject {
         switch error {
         case .unauthorized:
             true
-        case .serverError(let code, _):
+        case let .serverError(code, _):
             code == "USER_NOT_FOUND"
                 || code == "AUTH_REFRESH_TOKEN_INVALID"
                 || code == "AUTH_REFRESH_TOKEN_REUSED"
         case .networkError, .invalidResponse:
             false
         }
+    }
+
+    private var hasStoredRefreshToken: Bool {
+        guard let refreshToken = cachedRefreshToken else { return false }
+        return !refreshToken.isEmpty
+    }
+
+    private func refreshStoredAccessToken(force: Bool) async -> AccessTokenRefreshResult {
+        if !force, !isAccessTokenExpiringSoon() {
+            return .unavailable
+        }
+
+        guard let refreshToken = cachedRefreshToken, !refreshToken.isEmpty else {
+            logger.debug("Access token refresh needed but no refresh token is stored")
+            return .unavailable
+        }
+
+        logger.info("Refreshing access token...")
+        do {
+            let response = try await refreshAccessToken(refreshToken)
+            let normalizedExpiresAt = normalizeLoginExpiry(response.expiresAt)
+            saveStoredSession(
+                response.accessToken,
+                normalizedExpiresAt,
+                response.refreshToken ?? refreshToken
+            )
+            inMemorySessionToken = (response.accessToken, normalizedExpiresAt)
+            cachedStoredToken = (response.accessToken, normalizedExpiresAt)
+            cachedRefreshToken = response.refreshToken ?? refreshToken
+            logger.info("Token refreshed successfully")
+            return .refreshed
+        } catch let error as AuthError {
+            logger.error("Token refresh failed: \(error.localizedDescription)")
+            return shouldInvalidateSession(for: error) ? .invalidated : .failed
+        } catch {
+            logger.error("Token refresh error: \(error.localizedDescription)")
+            return .failed
+        }
+    }
+
+    private func isAccessTokenExpiringSoon() -> Bool {
+        let now = Int(Date().timeIntervalSince1970)
+        let threshold = Int(Date().timeIntervalSince1970 + Self.refreshEarlyInterval)
+        if let inMemorySessionToken, inMemorySessionToken.expiresAt > now {
+            return inMemorySessionToken.expiresAt < threshold
+        }
+        guard let stored = cachedStoredToken else { return true }
+        return stored.expiresAt < threshold
     }
 
     private func normalizeLoginExpiry(_ expiresAt: Int) -> Int {
@@ -391,5 +486,4 @@ final class AuthState: ObservableObject {
         }
         return expiresAt
     }
-
 }

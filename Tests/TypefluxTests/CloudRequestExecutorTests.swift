@@ -143,7 +143,7 @@ final class CloudRequestExecutorTests: XCTestCase {
                 URLRequest(url: base.appendingPathComponent("api/v1/me"))
             }
             XCTFail("Expected allEndpointsFailed")
-        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+        } catch let CloudRequestExecutorError.allEndpointsFailed(lastError) {
             // Last error should reference an HTTP 5xx failure.
             let nsErr = lastError as NSError
             XCTAssertEqual(nsErr.domain, "CloudRequestExecutor")
@@ -246,6 +246,7 @@ private actor StubSession: CloudHTTPSession {
     private var handler: Handler = { _ in
         (Data(), URLResponse())
     }
+
     private(set) var callOrder: [URL] = []
 
     func setHandler(_ handler: @escaping Handler) {
@@ -268,7 +269,7 @@ private actor StubSession: CloudHTTPSession {
 }
 
 private struct NoOpProber: CloudEndpointProbing {
-    func probe(baseURL: URL, nonce: String, timeout: TimeInterval) async throws -> CloudEndpointProbeResult {
+    func probe(baseURL _: URL, nonce _: String, timeout _: TimeInterval) async throws -> CloudEndpointProbeResult {
         throw CloudEndpointProbeError.timedOut
     }
 }

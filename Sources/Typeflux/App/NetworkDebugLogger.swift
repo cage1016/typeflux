@@ -65,7 +65,8 @@ enum NetworkDebugLogger {
         var redacted = headers
         for key in headers.keys {
             if key.caseInsensitiveCompare("Authorization") == .orderedSame
-                || key.caseInsensitiveCompare(TypefluxCloudRequestHeaders.clientIDField) == .orderedSame {
+                || key.caseInsensitiveCompare(TypefluxCloudRequestHeaders.clientIDField) == .orderedSame
+            {
                 redacted[key] = "<redacted>"
             }
         }

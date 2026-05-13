@@ -1044,14 +1044,14 @@ extension AXTextInjector {
 
         for start in stride(from: 0, to: max(characters.count - preferredLength + 1, 1), by: max(preferredLength / 2, 1)) {
             let end = min(start + preferredLength, characters.count)
-            let fragment = String(characters[start..<end])
+            let fragment = String(characters[start ..< end])
             if fragment.count >= minimumLength {
                 fragments.append(fragment)
             }
         }
 
         if characters.count > preferredLength {
-            let fragment = String(characters[(characters.count - preferredLength)..<characters.count])
+            let fragment = String(characters[(characters.count - preferredLength) ..< characters.count])
             fragments.append(fragment)
         }
 

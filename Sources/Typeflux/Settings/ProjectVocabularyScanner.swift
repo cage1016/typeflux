@@ -9,7 +9,7 @@ enum ProjectVocabularyScanner {
     /// Caps per-file reads at 32 KB so a single prompt/log dump cannot dominate
     /// sync time or memory while still leaving enough content to capture repeated
     /// project terms near the top of configuration and context files.
-    private static let contentCharacterLimit = 32_768
+    private static let contentCharacterLimit = 32768
     /// Limits recursive scanning to a few hundred files per sync. `.codex` and
     /// `.claude` trees can accumulate large histories; this keeps sync responsive
     /// while still covering the most relevant project/context artifacts.
@@ -119,13 +119,12 @@ enum ProjectVocabularyScanner {
     static func candidateTerms(in text: String, allowPlainLowercase: Bool) -> [String] {
         var terms: [String] = []
 
-        let segments: [String]
-        if allowPlainLowercase {
-            segments = text
+        let segments: [String] = if allowPlainLowercase {
+            text
                 .components(separatedBy: CharacterSet(charactersIn: "/\\"))
                 .filter { !$0.isEmpty }
         } else {
-            segments = [text]
+            [text]
         }
 
         for segment in segments {
@@ -161,7 +160,7 @@ enum ProjectVocabularyScanner {
         guard let existing else { return candidate }
         let existingDecorated = existing.hasVocabularyDecoration
         let candidateDecorated = candidate.hasVocabularyDecoration
-        if candidateDecorated && !existingDecorated {
+        if candidateDecorated, !existingDecorated {
             return candidate
         }
         if candidate.count > existing.count, candidateDecorated == existingDecorated {

@@ -283,7 +283,7 @@ extension WorkflowController {
                         return false
                     }
                     if shouldPresentBilling {
-                        await self.presentCloudBillingError(billingError)
+                        await presentCloudBillingError(billingError)
                     }
                     cancelProcessingTimeout()
                     return

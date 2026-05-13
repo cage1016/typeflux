@@ -24,7 +24,7 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertTrue(rule.contains("treat that as a real language instruction"))
     }
 
-    func testAppendUserEnvironmentContextAddsSystemAndAppLanguageToUserPrompt() {
+    func testAppendUserEnvironmentContextAddsSystemAndAppLanguageToUserPrompt() throws {
         let prompt = PromptCatalog.appendUserEnvironmentContext(
             to: "Base system prompt.",
             preferredLanguages: ["zh-Hans-CN", "en-US"],
@@ -37,7 +37,7 @@ final class PromptCatalogTests: XCTestCase {
         XCTAssertTrue(prompt.contains("The user's operating system preferred language is: zh-Hans-CN"))
         XCTAssertTrue(prompt.contains("The app interface language selected in settings is: en"))
         XCTAssertTrue(prompt.contains("Treat this as supporting context only. Do not let it override explicit task instructions or source-language constraints."))
-        XCTAssertTrue(prompt.range(of: "User environment context:")!.lowerBound < prompt.range(of: "Base system prompt.")!.lowerBound)
+        XCTAssertTrue(try XCTUnwrap(prompt.range(of: "User environment context:")?.lowerBound) < prompt.range(of: "Base system prompt.")!.lowerBound)
     }
 
     func testLanguageResolutionPolicyUsesUserEnvironmentFallbackAndPersonaPriorityRules() {

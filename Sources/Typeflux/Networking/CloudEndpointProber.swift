@@ -20,17 +20,17 @@ enum CloudEndpointProbeError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid endpoint URL."
+            "Invalid endpoint URL."
         case .timedOut:
-            return "Probe timed out."
-        case .transport(let error):
-            return "Probe transport error: \(error.localizedDescription)"
-        case .httpStatus(let code):
-            return "Probe returned HTTP \(code)."
-        case .decoding(let error):
-            return "Probe response could not be decoded: \(error.localizedDescription)"
+            "Probe timed out."
+        case let .transport(error):
+            "Probe transport error: \(error.localizedDescription)"
+        case let .httpStatus(code):
+            "Probe returned HTTP \(code)."
+        case let .decoding(error):
+            "Probe response could not be decoded: \(error.localizedDescription)"
         case .nonceMismatch:
-            return "Probe response did not echo the expected nonce."
+            "Probe response did not echo the expected nonce."
         }
     }
 }
@@ -83,7 +83,7 @@ struct HTTPCloudEndpointProber: CloudEndpointProbing {
         guard let http = response as? HTTPURLResponse else {
             throw CloudEndpointProbeError.invalidURL
         }
-        guard (200..<300).contains(http.statusCode) else {
+        guard (200 ..< 300).contains(http.statusCode) else {
             throw CloudEndpointProbeError.httpStatus(http.statusCode)
         }
 
@@ -104,7 +104,7 @@ struct HTTPCloudEndpointProber: CloudEndpointProbing {
             latencyMs: durationToMilliseconds(elapsed),
             serverID: payload?.serverID,
             serverVersion: payload?.version,
-            nonceMatches: true
+            nonceMatches: true,
         )
     }
 

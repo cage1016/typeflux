@@ -40,7 +40,7 @@ struct GitHubOAuthService {
         let url = makeAuthorizationURL(
             clientID: clientID,
             state: state,
-            codeChallenge: codeChallenge
+            codeChallenge: codeChallenge,
         )
 
         logger.debug("[GitHub OAuth] auth URL: \(url.absoluteString, privacy: .public)")
@@ -54,7 +54,7 @@ struct GitHubOAuthService {
     static func makeAuthorizationURL(
         clientID: String,
         state: String,
-        codeChallenge: String
+        codeChallenge: String,
     ) -> URL {
         var components = URLComponents(string: "https://github.com/login/oauth/authorize")!
         components.queryItems = [
@@ -72,7 +72,7 @@ struct GitHubOAuthService {
         try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(
                 url: url,
-                callbackURLScheme: callbackScheme
+                callbackURLScheme: callbackScheme,
             ) { callbackURL, error in
                 if let error {
                     continuation.resume(throwing: error)

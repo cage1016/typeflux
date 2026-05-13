@@ -63,8 +63,8 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
 
         return try await RequestRetry.perform(operationName: "LLM agent tool call") { [weak self] in
             guard let self else { throw CancellationError() }
-            let connection = try await self.resolveConnection(for: llmConfig)
-            let additionalHeaders = self.headers(for: connection, scenario: .askAnything)
+            let connection = try await resolveConnection(for: llmConfig)
+            let additionalHeaders = headers(for: connection, scenario: .askAnything)
             let cloudBaseURL: URL? = (llmConfig.provider == .typefluxCloud)
                 ? await CloudEndpointRegistry.shared.latencyOptimizedEndpoint()
                 : nil
@@ -115,8 +115,8 @@ final class OpenAICompatibleAgentService: LLMAgentService, @unchecked Sendable {
 
         return try await RequestRetry.perform(operationName: "LLM phase 1 router call") { [weak self] in
             guard let self else { throw CancellationError() }
-            let connection = try await self.resolveConnection(for: llmConfig)
-            let additionalHeaders = self.headers(for: connection, scenario: .askAnything)
+            let connection = try await resolveConnection(for: llmConfig)
+            let additionalHeaders = headers(for: connection, scenario: .askAnything)
             let cloudBaseURL: URL? = (llmConfig.provider == .typefluxCloud)
                 ? await CloudEndpointRegistry.shared.latencyOptimizedEndpoint()
                 : nil

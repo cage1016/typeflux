@@ -48,7 +48,7 @@ enum CodingAppDetector {
     /// JetBrains IDE shares `com.jetbrains.` and shipping a new one shouldn't
     /// require an update here).
     private static let bundlePrefixes: [String] = [
-        "com.jetbrains.",       // IntelliJ, GoLand, PyCharm, WebStorm, RustRover, Fleet, ...
+        "com.jetbrains.", // IntelliJ, GoLand, PyCharm, WebStorm, RustRover, Fleet, ...
         "com.google.android.studio", // Android Studio variants
     ]
 

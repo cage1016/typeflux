@@ -46,7 +46,7 @@ extension WorkflowController {
         let configStatus = await validateLLMConfiguration()
         guard case .ready = configStatus else {
             await presentLLMNotConfigured(configStatus)
-            if case .notConfigured(let reason) = configStatus {
+            if case let .notConfigured(reason) = configStatus {
                 throw LLMConfigurationError.notConfigured(reason: reason)
             }
             throw CancellationError()
@@ -75,7 +75,7 @@ extension WorkflowController {
             } catch is CancellationError {
                 await jobRecorder.markCancelled(message: L("workflow.cancel.userCancelled"))
                 throw CancellationError()
-            } catch LLMAgentError.textResponse(let modelText) {
+            } catch let LLMAgentError.textResponse(modelText) {
                 // The model returned a clarification question instead of a tool call.
                 // Show the clarification dialog and wait for the user's voice reply.
                 let userReply: String
@@ -143,7 +143,7 @@ extension WorkflowController {
         question: String,
         selectedText: String?,
     ) async throws -> String {
-        return try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { continuation in
             pendingClarificationContinuation = continuation
             Task { @MainActor in
                 self.overlayController.dismissProcessingImmediatelyIfVisible()
@@ -227,7 +227,7 @@ extension WorkflowController {
         spokenInstruction: String,
         detailedInstruction: String,
         personaPrompt: String?,
-        appSystemContext: AppSystemContext?,
+        appSystemContext _: AppSystemContext?,
         llmService: OpenAICompatibleAgentService,
         jobRecorder: AgentJobRecorder,
     ) async throws -> AskAgentResult {

@@ -1,5 +1,5 @@
-import AVFoundation
 import AppKit
+import AVFoundation
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
@@ -514,8 +514,9 @@ final class StudioViewModel: ObservableObject {
     }
 
     var localSTTDisplayedPreparationProgress: Double {
-        if case .downloading(let model, let progress) = LocalModelDownloadProgressCenter.shared.status,
-           model == localSTTFocusedModel {
+        if case let .downloading(model, progress) = LocalModelDownloadProgressCenter.shared.status,
+           model == localSTTFocusedModel
+        {
             return progress
         }
         return localSTTPreparationProgress
@@ -1090,7 +1091,7 @@ final class StudioViewModel: ObservableObject {
 
     private func syncLocalModelDownloadProgress() {
         switch LocalModelDownloadProgressCenter.shared.status {
-        case .downloading(let model, let progress) where model == localSTTFocusedModel:
+        case let .downloading(model, progress) where model == localSTTFocusedModel:
             localSTTPreparationProgress = progress
             localSTTStatus = L("settings.models.localSTT.preparing")
             isLocalSTTPrepared = false
@@ -1100,7 +1101,7 @@ final class StudioViewModel: ObservableObject {
                 localSTTPreparedSource = L("common.automatic")
                 localSTTStoragePath = localModelManager.storagePath(for: localSTTConfiguration(for: model))
             }
-        case .failed(let model, let message) where model == localSTTFocusedModel:
+        case let .failed(model, message) where model == localSTTFocusedModel:
             localSTTStatus = L("common.failedWithReason", message)
             localSTTPreparationDetail = L("settings.models.localSTT.prepareFailed")
             localSTTTransferDetail = ""
@@ -2423,7 +2424,7 @@ final class StudioViewModel: ObservableObject {
                         let url = baseURL.appendingPathComponent("api/chat")
                         var urlRequest = URLRequest(
                             url: url,
-                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds)
+                            timeoutInterval: TimeInterval(ConnectionTestSupport.timeoutSeconds),
                         )
                         urlRequest.httpMethod = "POST"
                         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -2523,48 +2524,47 @@ final class StudioViewModel: ObservableObject {
 
             do {
                 let preview = try await ConnectionTestSupport.runWithTimeout {
-                    let preview: String
-                    switch capturedProvider {
+                    let preview: String = switch capturedProvider {
                     case .freeSTT:
-                        preview = try await FreeSTTTranscriber.testConnection(modelName: capturedFreeSTTModel)
+                        try await FreeSTTTranscriber.testConnection(modelName: capturedFreeSTTModel)
                     case .whisperAPI:
-                        preview = try await WhisperAPITranscriber.testConnection(
+                        try await WhisperAPITranscriber.testConnection(
                             baseURL: capturedWhisperBaseURL,
                             model: capturedWhisperModel,
                             apiKey: capturedWhisperAPIKey,
                         )
                     case .multimodalLLM:
-                        preview = try await MultimodalLLMTranscriber.testConnection(
+                        try await MultimodalLLMTranscriber.testConnection(
                             baseURL: capturedMultimodalBaseURL,
                             model: capturedMultimodalModel,
                             apiKey: capturedMultimodalAPIKey,
                         )
                     case .aliCloud:
-                        preview = try await AliCloudRealtimeTranscriber.testConnection(apiKey: capturedAliCloudAPIKey)
+                        try await AliCloudRealtimeTranscriber.testConnection(apiKey: capturedAliCloudAPIKey)
                     case .doubaoRealtime:
-                        preview = try await DoubaoRealtimeTranscriber.testConnection(
+                        try await DoubaoRealtimeTranscriber.testConnection(
                             appID: capturedDoubaoAppID,
                             accessToken: capturedDoubaoAccessToken,
                             resourceID: capturedDoubaoResourceID,
                         )
                     case .googleCloud:
-                        preview = try await GoogleCloudSpeechTranscriber.testConnection(
+                        try await GoogleCloudSpeechTranscriber.testConnection(
                             projectID: capturedGoogleProjectID,
                             apiKey: capturedGoogleAPIKey,
                             model: capturedGoogleModel,
                             appLanguage: capturedAppLanguage,
                         )
                     case .groqSTT:
-                        preview = try await WhisperAPITranscriber.testConnection(
+                        try await WhisperAPITranscriber.testConnection(
                             baseURL: "https://api.groq.com/openai/v1",
                             model: capturedGroqSTTModel.isEmpty
                                 ? OpenAIAudioModelCatalog.groqWhisperModels[0] : capturedGroqSTTModel,
                             apiKey: capturedGroqSTTAPIKey,
                         )
                     case .typefluxOfficial:
-                        preview = try await TypefluxOfficialTranscriber.testConnection()
+                        try await TypefluxOfficialTranscriber.testConnection()
                     default:
-                        preview = ""
+                        ""
                     }
                     return preview
                 }

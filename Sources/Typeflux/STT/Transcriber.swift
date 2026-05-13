@@ -215,7 +215,8 @@ final class STTRouter {
             )
         case .typefluxOfficial:
             if settingsStore.localOptimizationEnabled,
-               autoModelDownloadService?.makeTranscriberIfReady() != nil {
+               autoModelDownloadService?.makeTranscriberIfReady() != nil
+            {
                 return nil
             }
             return await makeRealtimeTranscriptionSession(
@@ -473,7 +474,8 @@ final class STTRouter {
         // locally and let the caller run a separate LLM rewrite. This bypasses the merged
         // cloud session intentionally — saving the Cloud STT quota is the priority.
         if settingsStore.sttProvider == .typefluxOfficial,
-           let localTranscript = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onASRUpdate) {
+           let localTranscript = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onASRUpdate)
+        {
             NetworkDebugLogger.logMessage("Auto local model used for Typeflux Official LLM-integrated request")
             return (transcript: localTranscript, rewritten: nil)
         }

@@ -165,7 +165,7 @@ final class NetworkLocalModelDownloadSourceResolver: LocalModelDownloadSourceRes
         .joined(separator: " | ")
 
         NetworkDebugLogger.logMessage(
-            "[Local Model Download] source-resolution model=\(configuration.model.displayName) selected=\(selectedSource) ranking=\(ranking) probes=\(details)"
+            "[Local Model Download] source-resolution model=\(configuration.model.displayName) selected=\(selectedSource) ranking=\(ranking) probes=\(details)",
         )
     }
 
@@ -177,7 +177,7 @@ final class NetworkLocalModelDownloadSourceResolver: LocalModelDownloadSourceRes
         guard let latency else {
             return "n/a"
         }
-        return "\(Int((latency * 1_000).rounded()))ms"
+        return "\(Int((latency * 1000).rounded()))ms"
     }
 
     private static func probe(url: URL, urlSession: URLSession) async -> LocalModelDownloadSourceCandidate? {

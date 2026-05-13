@@ -25,7 +25,7 @@ final class CloudLoginSyncCoordinatorTests: XCTestCase {
         withExtendedLifetime(coordinator) {}
     }
 
-    func testPostsModelDefaultsNotificationAfterApplyingCloudDefaults() async throws {
+    func testPostsModelDefaultsNotificationAfterApplyingCloudDefaults() async {
         let settingsStore = makeSettingsStore()
         settingsStore.sttProvider = .localModel
         settingsStore.llmProvider = .ollama

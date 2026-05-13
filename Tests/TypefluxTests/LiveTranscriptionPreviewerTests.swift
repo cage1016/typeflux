@@ -90,7 +90,7 @@ final class LiveTranscriptionPreviewerTests: XCTestCase {
             updateReceived.fulfill()
         }
 
-        let buffer = try makeTestBuffer(sampleCount: 40_000)
+        let buffer = try makeTestBuffer(sampleCount: 40000)
         await backend.append(buffer)
 
         await fulfillment(of: [updateReceived], timeout: 1.0)

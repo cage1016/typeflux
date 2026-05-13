@@ -1,5 +1,5 @@
-import XCTest
 @testable import Typeflux
+import XCTest
 
 @MainActor
 final class GitHubOAuthServiceTests: XCTestCase {
@@ -7,7 +7,7 @@ final class GitHubOAuthServiceTests: XCTestCase {
         let url = GitHubOAuthService.makeAuthorizationURL(
             clientID: "client-id",
             state: "state-123",
-            codeChallenge: "challenge-456"
+            codeChallenge: "challenge-456",
         )
 
         let components = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))

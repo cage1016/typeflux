@@ -330,7 +330,7 @@ struct HotkeyGestureArbiter {
         historyHotkey: HotkeyBinding?,
     ) -> Bool {
         guard activationHotkey.isModifierOnlyTrigger else { return false }
-        let competingHotkeys = [askHotkey, personaHotkey, historyHotkey].compactMap { $0 }
+        let competingHotkeys = [askHotkey, personaHotkey, historyHotkey].compactMap(\.self)
         return competingHotkeys.contains { hotkey in
             hotkey.modifierFlags == activationHotkey.modifierFlags
                 && (hotkey.keyCode != activationHotkey.keyCode || hotkey.isModifierDoubleTapTrigger)

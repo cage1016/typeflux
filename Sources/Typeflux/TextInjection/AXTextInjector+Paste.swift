@@ -494,7 +494,7 @@ extension AXTextInjector {
 
         let deadline = Date().addingTimeInterval(0.6)
         while Date() < deadline {
-            usleep(50_000)
+            usleep(50000)
             if NSWorkspace.shared.frontmostApplication?.processIdentifier == processID {
                 return
             }

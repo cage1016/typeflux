@@ -32,14 +32,14 @@ final class AppServerConfigurationTests: XCTestCase {
     func testResolveAPIBaseURLsUsesBuiltInDefaultListWhenNoConfigurationIsProvided() {
         XCTAssertEqual(
             AppServerConfiguration.resolveAPIBaseURLs(rawMulti: nil, rawSingle: nil),
-            ["https://api.typeflux.app", "https://typeflux-api.aicode.cc"]
+            ["https://api.typeflux.app", "https://typeflux-api.aicode.cc"],
         )
     }
 
     func testResolveAPIBaseURLsUsesLegacySingleEndpointBeforeBuiltInDefaults() {
         XCTAssertEqual(
             AppServerConfiguration.resolveAPIBaseURLs(rawMulti: nil, rawSingle: "https://legacy.example"),
-            ["https://legacy.example"]
+            ["https://legacy.example"],
         )
     }
 
@@ -47,9 +47,9 @@ final class AppServerConfigurationTests: XCTestCase {
         XCTAssertEqual(
             AppServerConfiguration.resolveAPIBaseURLs(
                 rawMulti: "https://a.example, https://b.example",
-                rawSingle: "https://legacy.example"
+                rawSingle: "https://legacy.example",
             ),
-            ["https://a.example", "https://b.example"]
+            ["https://a.example", "https://b.example"],
         )
     }
 }

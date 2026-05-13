@@ -41,7 +41,7 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
         planName: String? = nil,
         active: Bool? = nil,
         paid: Bool? = nil,
-        periodSource: String? = nil
+        periodSource: String? = nil,
     ) {
         self.planCode = planCode
         self.planName = planName
@@ -69,20 +69,20 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
             ?? active
             ?? Self.defaultEntitlement(
                 for: status,
-                periodEnd: try source.decodeIfPresent(String.self, forKey: .currentPeriodEnd)
+                periodEnd: source.decodeIfPresent(String.self, forKey: .currentPeriodEnd),
             )
 
-        self.init(
+        try self.init(
             planCode: planCode,
             status: status,
-            currentPeriodStart: try source.decodeIfPresent(String.self, forKey: .currentPeriodStart),
-            currentPeriodEnd: try source.decodeIfPresent(String.self, forKey: .currentPeriodEnd),
-            cancelAtPeriodEnd: try source.decodeIfPresent(Bool.self, forKey: .cancelAtPeriodEnd) ?? false,
+            currentPeriodStart: source.decodeIfPresent(String.self, forKey: .currentPeriodStart),
+            currentPeriodEnd: source.decodeIfPresent(String.self, forKey: .currentPeriodEnd),
+            cancelAtPeriodEnd: source.decodeIfPresent(Bool.self, forKey: .cancelAtPeriodEnd) ?? false,
             entitled: entitled,
-            planName: try source.decodeIfPresent(String.self, forKey: .planName),
+            planName: source.decodeIfPresent(String.self, forKey: .planName),
             active: active,
-            paid: try source.decodeIfPresent(Bool.self, forKey: .paid),
-            periodSource: try source.decodeIfPresent(String.self, forKey: .periodSource)
+            paid: source.decodeIfPresent(Bool.self, forKey: .paid),
+            periodSource: source.decodeIfPresent(String.self, forKey: .periodSource),
         )
     }
 
@@ -113,7 +113,7 @@ struct BillingSubscriptionSnapshot: Decodable, Equatable {
             cancelAtPeriodEnd: false,
             entitled: false,
             active: false,
-            paid: false
+            paid: false,
         )
     }
 
@@ -197,7 +197,7 @@ struct AccountSubscriptionPresentation: Equatable {
             status: statusValue(for: snapshot),
             periodLabelKey: periodLabelKey(for: snapshot),
             period: periodValue(for: snapshot),
-            billingAction: snapshot.hasPaidSubscription ? .manageBilling : .subscribe
+            billingAction: snapshot.hasPaidSubscription ? .manageBilling : .subscribe,
         )
     }
 

@@ -1,15 +1,15 @@
 import Foundation
 
 enum LocalModelDownloadCatalog {
-    /// Centralized download metadata for bundled STT models.
-    ///
-    /// The public API intentionally stays small because callers only need a handful of
-    /// answers: where WhisperKit lives, where the Sherpa runtime archive lives, and how
-    /// a specific Sherpa model should be downloaded for a given source.
-    ///
-    /// The data is intentionally written in a "catalog" style: most URLs are listed here
-    /// as complete values instead of being assembled from smaller parts. This makes the
-    /// supported download locations easier to audit and update.
+    // Centralized download metadata for bundled STT models.
+    //
+    // The public API intentionally stays small because callers only need a handful of
+    // answers: where WhisperKit lives, where the Sherpa runtime archive lives, and how
+    // a specific Sherpa model should be downloaded for a given source.
+    //
+    // The data is intentionally written in a "catalog" style: most URLs are listed here
+    // as complete values instead of being assembled from smaller parts. This makes the
+    // supported download locations easier to audit and update.
 
     private struct WhisperKitSourceDescriptor {
         let repositoryID: String
@@ -38,12 +38,12 @@ enum LocalModelDownloadCatalog {
             .huggingFace: WhisperKitSourceDescriptor(
                 repositoryID: repositoryID,
                 endpointKey: .whisperKitHuggingFaceEndpoint,
-                repositoryURLKey: .whisperKitHuggingFaceRepository
+                repositoryURLKey: .whisperKitHuggingFaceRepository,
             ),
             .modelScope: WhisperKitSourceDescriptor(
                 repositoryID: repositoryID,
                 endpointKey: .whisperKitChinaMirrorEndpoint,
-                repositoryURLKey: .whisperKitChinaMirrorRepository
+                repositoryURLKey: .whisperKitChinaMirrorRepository,
             ),
         ]
     }
@@ -79,12 +79,12 @@ enum LocalModelDownloadCatalog {
         func makeArtifact() -> SherpaOnnxModelArtifact {
             switch self {
             case let .archive(urlKey, fileName):
-                return .archive(
+                .archive(
                     url: LocalModelDownloadURLCatalog.url(for: urlKey),
                     fileName: fileName,
                 )
             case let .files(files):
-                return .files(files.map { $0.makeFile() })
+                .files(files.map { $0.makeFile() })
             }
         }
     }
@@ -206,13 +206,13 @@ enum LocalModelDownloadCatalog {
     private static func sherpaOnnxModelDescriptor(for model: LocalSTTModel) -> SherpaOnnxModelDescriptor? {
         switch model {
         case .whisperLocal, .whisperLocalLarge:
-            return nil
+            nil
         case .senseVoiceSmall:
-            return senseVoiceDescriptor
+            senseVoiceDescriptor
         case .qwen3ASR:
-            return qwen3ASRDescriptor
+            qwen3ASRDescriptor
         case .funASR:
-            return funASRDescriptor
+            funASRDescriptor
         }
     }
 
@@ -247,7 +247,7 @@ enum LocalModelDownloadCatalog {
         deliveryBySource: [
             .huggingFace: .archive(
                 urlKey: .qwen3ASRHuggingFaceArchive,
-                fileName: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2"
+                fileName: "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2",
             ),
             .modelScope: .files([
                 SherpaOnnxFileDescriptor(

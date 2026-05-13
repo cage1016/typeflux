@@ -43,7 +43,7 @@ final class LoginWindowController: NSObject {
         let loginView = LoginView(
             onDismiss: { [weak self] in
                 self?.window?.close()
-            }
+            },
         )
         let hosting = NSHostingView(rootView: loginView)
         // Prevent NSHostingView from driving the window size via intrinsic content size

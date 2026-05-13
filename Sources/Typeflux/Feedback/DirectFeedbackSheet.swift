@@ -15,14 +15,14 @@ enum FeedbackImageUploadState: Equatable {
     var isInProgress: Bool {
         switch self {
         case .preparing, .uploading:
-            return true
+            true
         case .uploaded, .failed:
-            return false
+            false
         }
     }
 
     var uploadedURL: String? {
-        if case .uploaded(let url) = self { return url }
+        if case let .uploaded(url) = self { return url }
         return nil
     }
 }
@@ -37,7 +37,7 @@ struct FeedbackImageAttachment: Identifiable {
         id: UUID = UUID(),
         filename: String,
         thumbnail: NSImage? = nil,
-        state: FeedbackImageUploadState
+        state: FeedbackImageUploadState,
     ) {
         self.id = id
         self.filename = filename
@@ -125,15 +125,15 @@ struct DirectFeedbackSheet: View {
                     LazyVGrid(
                         columns: Array(
                             repeating: GridItem(.fixed(68), spacing: StudioTheme.Spacing.small),
-                            count: 4
+                            count: 4,
                         ),
                         alignment: .leading,
-                        spacing: StudioTheme.Spacing.small
+                        spacing: StudioTheme.Spacing.small,
                     ) {
                         ForEach(images) { image in
                             FeedbackImageThumbnail(
                                 image: image,
-                                onRemove: { onRemoveImage(image.id) }
+                                onRemove: { onRemoveImage(image.id) },
                             )
                         }
                     }
@@ -220,7 +220,7 @@ private struct FeedbackContentTextView: NSViewRepresentable {
         textView.autoresizingMask = [.width]
         textView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width,
-            height: CGFloat.greatestFiniteMagnitude
+            height: CGFloat.greatestFiniteMagnitude,
         )
         textView.textContainer?.widthTracksTextView = true
 
@@ -233,7 +233,7 @@ private struct FeedbackContentTextView: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    func updateNSView(_ scrollView: NSScrollView, context _: Context) {
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
 

@@ -259,16 +259,15 @@ struct MarkdownWebView: NSViewRepresentable {
 
         private func updateContentHeight(for webView: WKWebView) {
             webView.evaluateJavaScript(
-                "Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight, document.body.getBoundingClientRect().height))"
+                "Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight, document.body.getBoundingClientRect().height))",
             ) { [weak self] result, _ in
                 guard let self else { return }
-                let rawHeight: CGFloat?
-                if let number = result as? NSNumber {
-                    rawHeight = CGFloat(truncating: number)
+                let rawHeight: CGFloat? = if let number = result as? NSNumber {
+                    CGFloat(truncating: number)
                 } else if let double = result as? Double {
-                    rawHeight = CGFloat(double)
+                    CGFloat(double)
                 } else {
-                    rawHeight = nil
+                    nil
                 }
 
                 guard let rawHeight, rawHeight.isFinite, rawHeight > 0 else { return }

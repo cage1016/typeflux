@@ -11,7 +11,7 @@ enum CloudEndpointRegistry {
     private static let lock = NSLock()
     private static var override: CloudEndpointSelector?
 
-    nonisolated(unsafe) private static var cached: CloudEndpointSelector?
+    private nonisolated(unsafe) static var cached: CloudEndpointSelector?
 
     static var shared: CloudEndpointSelector {
         lock.lock()
@@ -22,7 +22,7 @@ enum CloudEndpointRegistry {
         let resolved = urls.isEmpty ? [URL(string: "https://typeflux.app")!] : urls
         let selector = CloudEndpointSelector(
             baseURLs: resolved,
-            prober: HTTPCloudEndpointProber()
+            prober: HTTPCloudEndpointProber(),
         )
         cached = selector
         return selector
@@ -50,7 +50,7 @@ final class CloudEndpointProbeScheduler {
     init(
         selector: CloudEndpointSelector = CloudEndpointRegistry.shared,
         interval: TimeInterval = CloudEndpointSelectorConfig.default.probeInterval,
-        initialDelay: TimeInterval = 1
+        initialDelay: TimeInterval = 1,
     ) {
         self.selector = selector
         self.interval = interval
@@ -59,9 +59,9 @@ final class CloudEndpointProbeScheduler {
 
     func start() {
         stop()
-        let interval = self.interval
-        let initialDelay = self.initialDelay
-        let selector = self.selector
+        let interval = interval
+        let initialDelay = initialDelay
+        let selector = selector
         task = Task.detached(priority: .utility) {
             if initialDelay > 0 {
                 try? await Task.sleep(nanoseconds: UInt64(initialDelay * 1_000_000_000))

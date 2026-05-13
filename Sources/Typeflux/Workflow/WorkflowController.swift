@@ -21,8 +21,8 @@ final class WorkflowController {
     // frequently report non-editable roles on the first AX query after insertion.
     static let automaticVocabularyInitialSnapshotRetryCount = 3
     static let automaticVocabularyInitialSnapshotRetryDelay: Duration = .milliseconds(400)
-    // Dropped from 8s to 4s so real editing sessions have a realistic chance to
-    // complete before the next dictation arrives.
+    /// Dropped from 8s to 4s so real editing sessions have a realistic chance to
+    /// complete before the next dictation arrives.
     static let automaticVocabularyIdleSettleDelay: TimeInterval = 4
     // Raised from 0.6 to 0.8 so short dictations with a delete+retype edit are
     // still considered for analysis.
@@ -454,9 +454,9 @@ final class WorkflowController {
                     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !trimmed.isEmpty else { return }
                     Task { @MainActor [weak self] in
-                        guard let self, self.isRecording else { return }
-                        self.latestRecordingPreviewText = trimmed
-                        self.overlayController.updateRecordingPreviewText(trimmed)
+                        guard let self, isRecording else { return }
+                        latestRecordingPreviewText = trimmed
+                        overlayController.updateRecordingPreviewText(trimmed)
                     }
                 }
             } catch {
@@ -619,7 +619,7 @@ final class WorkflowController {
             defer {
                 self.localModelDownloadAlertTask = nil
             }
-            self.localModelDownloadAlertPresenter.showDownloadingAlert(
+            localModelDownloadAlertPresenter.showDownloadingAlert(
                 model: model,
                 progress: progress,
             )
@@ -662,9 +662,9 @@ final class WorkflowController {
                 )
             }
             await MainActor.run { [weak self, configuration] in
-                guard let self, self.localModelPreparationConfiguration == configuration else { return }
-                self.localModelPreparationTask = nil
-                self.localModelPreparationConfiguration = nil
+                guard let self, localModelPreparationConfiguration == configuration else { return }
+                localModelPreparationTask = nil
+                localModelPreparationConfiguration = nil
             }
         }
     }
@@ -911,9 +911,9 @@ final class WorkflowController {
                         let trimmed = snapshot.text.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmed.isEmpty else { return }
                         Task { @MainActor [weak self] in
-                            guard let self, self.isRecording else { return }
-                            self.latestRecordingPreviewText = trimmed
-                            self.overlayController.updateRecordingPreviewText(trimmed)
+                            guard let self, isRecording else { return }
+                            latestRecordingPreviewText = trimmed
+                            overlayController.updateRecordingPreviewText(trimmed)
                         }
                     },
                 )
@@ -984,7 +984,7 @@ final class WorkflowController {
                 }
                 return await textInjector.getSelectionSnapshot()
             }
-            if settingsStore.inputContextOptimizationEnabled && !shouldSkipSelectionCapture {
+            if settingsStore.inputContextOptimizationEnabled, !shouldSkipSelectionCapture {
                 let selectionTask = selectionTask
                 inputContextTask = Task { [weak self] in
                     guard let self else { return nil }
@@ -1212,7 +1212,7 @@ final class WorkflowController {
     }
 
     func presentLLMNotConfigured(_ status: LLMConfigurationStatus) async {
-        guard case .notConfigured(let reason) = status else { return }
+        guard case let .notConfigured(reason) = status else { return }
         let presentation = LLMConfigurationReminderPolicy(settingsStore: settingsStore)
             .presentation(for: status)
         await MainActor.run {
@@ -1242,8 +1242,8 @@ final class WorkflowController {
                     handler: { [weak self] in
                         guard let self else { return }
                         SettingsWindowController.shared.show(
-                            settingsStore: self.settingsStore,
-                            historyStore: self.historyStore,
+                            settingsStore: settingsStore,
+                            historyStore: historyStore,
                             initialSection: .models,
                         )
                     },
@@ -1270,8 +1270,8 @@ final class WorkflowController {
                     handler: { [weak self] in
                         guard let self else { return }
                         SettingsWindowController.shared.show(
-                            settingsStore: self.settingsStore,
-                            historyStore: self.historyStore,
+                            settingsStore: settingsStore,
+                            historyStore: historyStore,
                             initialSection: .account,
                         )
                     },
@@ -1283,8 +1283,8 @@ final class WorkflowController {
                     handler: { [weak self] in
                         guard let self else { return }
                         SettingsWindowController.shared.show(
-                            settingsStore: self.settingsStore,
-                            historyStore: self.historyStore,
+                            settingsStore: settingsStore,
+                            historyStore: historyStore,
                             initialSection: .models,
                         )
                     },

@@ -1,5 +1,5 @@
-import XCTest
 @testable import Typeflux
+import XCTest
 
 @MainActor
 final class BundledModelAutoSetupTests: XCTestCase {
@@ -168,7 +168,7 @@ final class BundledModelAutoSetupTests: XCTestCase {
     private func makeBundledSenseVoiceEnvironment() throws -> (
         manager: LocalModelManager,
         bundledStorageURL: URL,
-        applicationSupportURL: URL
+        applicationSupportURL: URL,
     ) {
         let bundledModelsRootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("typeflux-bundled-setup-\(UUID().uuidString)", isDirectory: true)
@@ -252,10 +252,10 @@ private final class StubBundledSenseVoiceLinker: BundledSenseVoiceLinking {
 
 private final class NoopSherpaOnnxInstaller: SherpaOnnxModelInstalling {
     func prepareModel(
-        _ model: LocalSTTModel,
+        _: LocalSTTModel,
         at storageURL: URL,
-        downloadSource: ModelDownloadSource,
-        onUpdate: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
+        downloadSource _: ModelDownloadSource,
+        onUpdate _: (@Sendable (LocalSTTPreparationUpdate) -> Void)?,
     ) async throws -> String {
         storageURL.path
     }

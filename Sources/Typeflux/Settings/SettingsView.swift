@@ -112,11 +112,11 @@ private func vocabularySourceLogoURL(for resourceName: String) -> URL? {
 }
 
 private struct StudioAutoHidingScrollIndicatorConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
+    func makeNSView(context _: Context) -> NSView {
         NSView(frame: .zero)
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
+    func updateNSView(_ nsView: NSView, context _: Context) {
         DispatchQueue.main.async {
             guard let scrollView = enclosingScrollView(from: nsView) else { return }
             scrollView.autohidesScrollers = true
@@ -414,7 +414,7 @@ struct StudioView: View {
         }
         .sheet(
             isPresented: $isDirectFeedbackPresented,
-            onDismiss: cancelAllFeedbackImageUploads
+            onDismiss: cancelAllFeedbackImageUploads,
         ) {
             directFeedbackSheet
         }
@@ -433,7 +433,7 @@ struct StudioView: View {
                 cancelAllFeedbackImageUploads()
                 isDirectFeedbackPresented = false
             },
-            onSubmit: submitDirectFeedback
+            onSubmit: submitDirectFeedback,
         )
     }
 
@@ -482,7 +482,7 @@ struct StudioView: View {
                     content: content,
                     contact: contact,
                     imageURLs: imageURLs,
-                    token: token
+                    token: token,
                 )
                 isSubmittingFeedback = false
                 isDirectFeedbackPresented = false
@@ -525,8 +525,8 @@ struct StudioView: View {
             FeedbackImageAttachment(
                 id: id,
                 filename: url.lastPathComponent,
-                state: .preparing
-            )
+                state: .preparing,
+            ),
         )
 
         let token = authState.accessToken
@@ -546,14 +546,14 @@ struct StudioView: View {
                     filename: prepared.filename,
                     contentType: prepared.contentType,
                     sizeBytes: Int64(prepared.data.count),
-                    token: token
+                    token: token,
                 )
                 try Task.checkCancellation()
                 try await FeedbackAPIService.uploadImage(
                     data: prepared.data,
                     filename: prepared.filename,
                     contentType: prepared.contentType,
-                    to: target
+                    to: target,
                 )
                 try Task.checkCancellation()
 
@@ -580,7 +580,7 @@ struct StudioView: View {
     @MainActor
     private func updateFeedbackImage(
         id: FeedbackImageAttachment.ID,
-        mutate: (inout FeedbackImageAttachment) -> Void
+        mutate: (inout FeedbackImageAttachment) -> Void,
     ) {
         guard let index = feedbackImages.firstIndex(where: { $0.id == id }) else {
             return
@@ -928,9 +928,9 @@ struct StudioView: View {
                                     viewModel.deactivatePersonaRewrite()
                                 }
                             }
-                        } else if viewModel.personaRewriteEnabled
-                            && !viewModel.activePersonaID.isEmpty
-                            && viewModel.selectedPersonaID?.uuidString == viewModel.activePersonaID
+                        } else if viewModel.personaRewriteEnabled,
+                                  !viewModel.activePersonaID.isEmpty,
+                                  viewModel.selectedPersonaID?.uuidString == viewModel.activePersonaID
                         {
                             StudioPill(
                                 title: L("settings.models.active"),
@@ -949,7 +949,7 @@ struct StudioView: View {
                     }
                 }
 
-                if !viewModel.isCreatingPersonaDraft && viewModel.selectedPersonaID == nil {
+                if !viewModel.isCreatingPersonaDraft, viewModel.selectedPersonaID == nil {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                         StudioSectionTitle(title: L("persona.none.title"))
 
@@ -1041,7 +1041,7 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                 StudioSettingRow(
                     title: L("settings.personas.providers.stt"),
-                    subtitle: L("settings.personas.providers.stt.subtitle")
+                    subtitle: L("settings.personas.providers.stt.subtitle"),
                 ) {
                     StudioMenuPicker(
                         options: STTProvider.settingsDisplayOrder
@@ -1059,7 +1059,7 @@ struct StudioView: View {
 
                 StudioSettingRow(
                     title: L("settings.personas.providers.llm"),
-                    subtitle: L("settings.personas.providers.llm.subtitle")
+                    subtitle: L("settings.personas.providers.llm.subtitle"),
                 ) {
                     StudioMenuPicker(
                         options: personaLLMProviderOptions,
@@ -1539,21 +1539,21 @@ struct StudioView: View {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmedIdentifier) {
             return (
                 displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
-                icon: NSWorkspace.shared.icon(forFile: url.path)
+                icon: NSWorkspace.shared.icon(forFile: url.path),
             )
         }
 
         if let url = personaAppRunningLookup[cacheKey] {
             return (
                 displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
-                icon: NSWorkspace.shared.icon(forFile: url.path)
+                icon: NSWorkspace.shared.icon(forFile: url.path),
             )
         }
 
         if let url = personaAppInstalledLookup[cacheKey] {
             return (
                 displayName: Self.appDisplayName(for: url) ?? trimmedIdentifier,
-                icon: NSWorkspace.shared.icon(forFile: url.path)
+                icon: NSWorkspace.shared.icon(forFile: url.path),
             )
         }
 
@@ -1641,13 +1641,13 @@ struct StudioView: View {
             let running = await MainActor.run {
                 runningPersonaAppCandidates()
             }
-            return mergePersonaAppCandidates(await installed, running)
+            return await mergePersonaAppCandidates(installed, running)
         }
     }
 
     private nonisolated static func loadInstalledPersonaAppCandidates() async -> [PersonaAppCandidate] {
         await Task.detached(priority: .userInitiated) {
-            Self.installedPersonaAppCandidates()
+            installedPersonaAppCandidates()
         }.value
     }
 
@@ -1820,7 +1820,7 @@ struct StudioView: View {
         metadata: String?,
         isSelected: Bool,
         isActive: Bool,
-        action: @escaping () -> Void
+        action: @escaping () -> Void,
     ) -> some View {
         Button(action: action) {
             StudioCard(
@@ -2145,119 +2145,119 @@ struct StudioView: View {
 
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
                 VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
-                        shortcutConfigurationRow(
-                            configuration: ShortcutConfiguration(
-                                title: L("settings.shortcuts.activation.title"),
-                                subtitle: L("settings.shortcuts.activation.subtitle"),
-                                footnote: L("settings.shortcuts.activation.footnote"),
-                                icon: "command",
-                                badgeSymbol: "mic.fill",
-                                binding: viewModel.activationHotkey,
-                                isDefault: viewModel.activationHotkey?.signature
-                                    == HotkeyBinding.defaultActivation.signature,
-                                isThisRecording: recordingTarget == .activation,
-                            ),
-                            onStartRecording: {
-                                recordingTarget = .activation
-                                recorder.start { binding in
-                                    viewModel.setActivationHotkey(binding)
-                                    recordingTarget = nil
-                                }
-                            },
-                            onReset: {
-                                viewModel.resetActivationHotkey()
-                            },
-                            onUnset: {
-                                viewModel.unsetActivationHotkey()
-                            },
-                        )
+                    shortcutConfigurationRow(
+                        configuration: ShortcutConfiguration(
+                            title: L("settings.shortcuts.activation.title"),
+                            subtitle: L("settings.shortcuts.activation.subtitle"),
+                            footnote: L("settings.shortcuts.activation.footnote"),
+                            icon: "command",
+                            badgeSymbol: "mic.fill",
+                            binding: viewModel.activationHotkey,
+                            isDefault: viewModel.activationHotkey?.signature
+                                == HotkeyBinding.defaultActivation.signature,
+                            isThisRecording: recordingTarget == .activation,
+                        ),
+                        onStartRecording: {
+                            recordingTarget = .activation
+                            recorder.start { binding in
+                                viewModel.setActivationHotkey(binding)
+                                recordingTarget = nil
+                            }
+                        },
+                        onReset: {
+                            viewModel.resetActivationHotkey()
+                        },
+                        onUnset: {
+                            viewModel.unsetActivationHotkey()
+                        },
+                    )
 
-                        shortcutConfigurationRow(
-                            configuration: ShortcutConfiguration(
-                                title: L("settings.shortcuts.ask.title"),
-                                subtitle: L("settings.shortcuts.ask.subtitle"),
-                                footnote: L("settings.shortcuts.ask.footnote"),
-                                icon: "questionmark.bubble.fill",
-                                badgeSymbol: "text.quote",
-                                binding: viewModel.askHotkey,
-                                isDefault: viewModel.askHotkey?.signature
-                                    == HotkeyBinding.defaultAsk.signature,
-                                isThisRecording: recordingTarget == .ask,
-                            ),
-                            onStartRecording: {
-                                recordingTarget = .ask
-                                recorder.start { binding in
-                                    viewModel.setAskHotkey(binding)
-                                    recordingTarget = nil
-                                }
-                            },
-                            onReset: {
-                                viewModel.resetAskHotkey()
-                            },
-                            onUnset: {
-                                viewModel.unsetAskHotkey()
-                            },
-                        )
+                    shortcutConfigurationRow(
+                        configuration: ShortcutConfiguration(
+                            title: L("settings.shortcuts.ask.title"),
+                            subtitle: L("settings.shortcuts.ask.subtitle"),
+                            footnote: L("settings.shortcuts.ask.footnote"),
+                            icon: "questionmark.bubble.fill",
+                            badgeSymbol: "text.quote",
+                            binding: viewModel.askHotkey,
+                            isDefault: viewModel.askHotkey?.signature
+                                == HotkeyBinding.defaultAsk.signature,
+                            isThisRecording: recordingTarget == .ask,
+                        ),
+                        onStartRecording: {
+                            recordingTarget = .ask
+                            recorder.start { binding in
+                                viewModel.setAskHotkey(binding)
+                                recordingTarget = nil
+                            }
+                        },
+                        onReset: {
+                            viewModel.resetAskHotkey()
+                        },
+                        onUnset: {
+                            viewModel.unsetAskHotkey()
+                        },
+                    )
 
-                        shortcutConfigurationRow(
-                            configuration: ShortcutConfiguration(
-                                title: L("settings.shortcuts.persona.title"),
-                                subtitle: L("settings.shortcuts.persona.subtitle"),
-                                footnote: L("settings.shortcuts.persona.footnote"),
-                                icon: "person.crop.rectangle.stack.fill",
-                                badgeSymbol: "person.crop.circle.badge.checkmark",
-                                binding: viewModel.personaHotkey,
-                                isDefault: viewModel.personaHotkey?.signature
-                                    == HotkeyBinding.defaultPersona.signature,
-                                isThisRecording: recordingTarget == .persona,
-                            ),
-                            onStartRecording: {
-                                recordingTarget = .persona
-                                recorder.start { binding in
-                                    viewModel.setPersonaHotkey(binding)
-                                    recordingTarget = nil
-                                }
-                            },
-                            onReset: {
-                                viewModel.resetPersonaHotkey()
-                            },
-                            onUnset: {
-                                viewModel.unsetPersonaHotkey()
-                            },
-                        )
+                    shortcutConfigurationRow(
+                        configuration: ShortcutConfiguration(
+                            title: L("settings.shortcuts.persona.title"),
+                            subtitle: L("settings.shortcuts.persona.subtitle"),
+                            footnote: L("settings.shortcuts.persona.footnote"),
+                            icon: "person.crop.rectangle.stack.fill",
+                            badgeSymbol: "person.crop.circle.badge.checkmark",
+                            binding: viewModel.personaHotkey,
+                            isDefault: viewModel.personaHotkey?.signature
+                                == HotkeyBinding.defaultPersona.signature,
+                            isThisRecording: recordingTarget == .persona,
+                        ),
+                        onStartRecording: {
+                            recordingTarget = .persona
+                            recorder.start { binding in
+                                viewModel.setPersonaHotkey(binding)
+                                recordingTarget = nil
+                            }
+                        },
+                        onReset: {
+                            viewModel.resetPersonaHotkey()
+                        },
+                        onUnset: {
+                            viewModel.unsetPersonaHotkey()
+                        },
+                    )
 
-                        shortcutConfigurationRow(
-                            configuration: ShortcutConfiguration(
-                                title: L("settings.shortcuts.history.title"),
-                                subtitle: L("settings.shortcuts.history.subtitle"),
-                                footnote: L("settings.shortcuts.history.footnote"),
-                                icon: "clock.arrow.circlepath",
-                                badgeSymbol: "clock",
-                                binding: viewModel.historyHotkey,
-                                isDefault: viewModel.historyHotkey?.signature
-                                    == HotkeyBinding.defaultHistory.signature,
-                                isThisRecording: recordingTarget == .history,
-                            ),
-                            onStartRecording: {
-                                recordingTarget = .history
-                                recorder.start { binding in
-                                    viewModel.setHistoryHotkey(binding)
-                                    recordingTarget = nil
-                                }
-                            },
-                            onReset: {
-                                viewModel.resetHistoryHotkey()
-                            },
-                            onUnset: {
-                                viewModel.unsetHistoryHotkey()
-                            },
-                        )
-                    }
-
-                    if recorder.isRecording {
-                        recordingShortcutBanner
-                    }
+                    shortcutConfigurationRow(
+                        configuration: ShortcutConfiguration(
+                            title: L("settings.shortcuts.history.title"),
+                            subtitle: L("settings.shortcuts.history.subtitle"),
+                            footnote: L("settings.shortcuts.history.footnote"),
+                            icon: "clock.arrow.circlepath",
+                            badgeSymbol: "clock",
+                            binding: viewModel.historyHotkey,
+                            isDefault: viewModel.historyHotkey?.signature
+                                == HotkeyBinding.defaultHistory.signature,
+                            isThisRecording: recordingTarget == .history,
+                        ),
+                        onStartRecording: {
+                            recordingTarget = .history
+                            recorder.start { binding in
+                                viewModel.setHistoryHotkey(binding)
+                                recordingTarget = nil
+                            }
+                        },
+                        onReset: {
+                            viewModel.resetHistoryHotkey()
+                        },
+                        onUnset: {
+                            viewModel.unsetHistoryHotkey()
+                        },
+                    )
                 }
+
+                if recorder.isRecording {
+                    recordingShortcutBanner
+                }
+            }
 
             StudioSectionTitle(title: L("settings.providers"))
 
@@ -2270,7 +2270,7 @@ struct StudioView: View {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.cardGroup) {
                         StudioSettingRow(
                             title: L("settings.personaDefault.title"),
-                            subtitle: L("settings.personaDefault.subtitle")
+                            subtitle: L("settings.personaDefault.subtitle"),
                         ) {
                             StudioMenuPicker(
                                 options: [(label: L("persona.none.title"), value: nil as UUID?)]
@@ -3534,21 +3534,21 @@ struct StudioView: View {
                 .font(.system(size: StudioTheme.Typography.iconXSmall, weight: .semibold))
                 .foregroundStyle(StudioTheme.textSecondary)
         }
-            .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
-            .padding(.vertical, StudioTheme.Insets.buttonVertical)
-            .background(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .fill(StudioTheme.controlSurface),
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
-                    .stroke(
-                        StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
-                        lineWidth: StudioTheme.BorderWidth.thin,
-                    ),
-            )
-            .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
+        .padding(.horizontal, StudioTheme.Insets.buttonHorizontal)
+        .padding(.vertical, StudioTheme.Insets.buttonVertical)
+        .background(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                .fill(StudioTheme.controlSurface),
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous)
+                .stroke(
+                    StudioTheme.border.opacity(StudioTheme.Opacity.cardBorder),
+                    lineWidth: StudioTheme.BorderWidth.thin,
+                ),
+        )
+        .clipShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.xLarge, style: .continuous))
     }
 
     private func vocabularyMenuItemIcon(for source: VocabularySource) -> some View {
@@ -4282,12 +4282,12 @@ struct StudioView: View {
                 .multimodalLLM
             case .aliCloud:
                 .aliCloud
-        case .doubaoRealtime:
-            .doubaoRealtime
-        case .googleCloud:
-            .googleCloud
-        case .groq:
-            .groqSTT
+            case .doubaoRealtime:
+                .doubaoRealtime
+            case .googleCloud:
+                .googleCloud
+            case .groq:
+                .groqSTT
             case .typefluxOfficial:
                 .typefluxOfficial
             }
@@ -4457,7 +4457,7 @@ struct StudioView: View {
                 isSelected: viewModel.llmProvider == .ollama,
                 isMuted: false,
                 actionTitle: L("settings.models.useLocal"),
-            )
+            ),
         ))
         standardCards.sort { lhs, rhs in
             lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
@@ -5085,17 +5085,14 @@ struct StudioView: View {
         return !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
     }
 
-    @ViewBuilder
     private var typefluxOfficialProviderForm: some View {
         typefluxLoginRequiredForm(message: L("settings.models.typefluxOfficial.loginRequired"))
     }
 
-    @ViewBuilder
     private var typefluxCloudLLMProviderForm: some View {
         typefluxLoginRequiredForm(message: L("settings.models.typefluxCloud.loginRequired"))
     }
 
-    @ViewBuilder
     private func typefluxLoginRequiredForm(message: String) -> some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
             if !authState.isLoggedIn {
@@ -5849,7 +5846,6 @@ struct StudioView: View {
         }
     }
 
-    @ViewBuilder
     private func apiKeyHelpButton(url: URL) -> some View {
         Button {
             NSWorkspace.shared.open(url)

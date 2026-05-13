@@ -70,7 +70,7 @@ actor CloudEndpointSelector {
         baseURLs: [URL],
         prober: CloudEndpointProbing,
         config: CloudEndpointSelectorConfig = .default,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
     ) {
         precondition(!baseURLs.isEmpty, "CloudEndpointSelector requires at least one base URL")
         // Preserve the configured order while removing duplicates.
@@ -79,11 +79,11 @@ actor CloudEndpointSelector {
         for url in baseURLs where seen.insert(url).inserted {
             unique.append(url)
         }
-        self.orderedURLs = unique
+        orderedURLs = unique
         self.config = config
         self.prober = prober
         self.now = now
-        self.states = Dictionary(uniqueKeysWithValues: unique.map { ($0, EndpointState()) })
+        states = Dictionary(uniqueKeysWithValues: unique.map { ($0, EndpointState()) })
     }
 
     /// Returns endpoints in the order latency-sensitive callers should try them:
@@ -97,7 +97,7 @@ actor CloudEndpointSelector {
     /// Returns endpoints in latency-optimized order for APIs where the nearest
     /// responsive cloud host should handle the request.
     func latencyOptimizedEndpoints() -> [URL] {
-        let snapshot = self.now()
+        let snapshot = now()
 
         struct Ranked {
             let url: URL
@@ -115,7 +115,7 @@ actor CloudEndpointSelector {
                 inCooldown: inCooldown,
                 latency: state.latencyMs,
                 cooldownUntil: state.cooldownUntil,
-                insertionIndex: idx
+                insertionIndex: idx,
             )
         }
 
@@ -124,7 +124,7 @@ actor CloudEndpointSelector {
             if lhs.inCooldown != rhs.inCooldown {
                 return !lhs.inCooldown
             }
-            if lhs.inCooldown && rhs.inCooldown {
+            if lhs.inCooldown, rhs.inCooldown {
                 let lhsExpiry = lhs.cooldownUntil ?? .distantFuture
                 let rhsExpiry = rhs.cooldownUntil ?? .distantFuture
                 if lhsExpiry != rhsExpiry { return lhsExpiry < rhsExpiry }
@@ -142,14 +142,14 @@ actor CloudEndpointSelector {
             case (.none, .none):
                 return lhs.insertionIndex < rhs.insertionIndex
             }
-        }.map { $0.url }
+        }.map(\.url)
     }
 
     /// Returns endpoints in configured primary-first order. The first
     /// configured endpoint remains preferred unless it is currently in
     /// cooldown, in which case healthy backups are tried first.
     func primaryFirstEndpoints() -> [URL] {
-        let snapshot = self.now()
+        let snapshot = now()
 
         struct Ranked {
             let url: URL
@@ -165,7 +165,7 @@ actor CloudEndpointSelector {
                 url: url,
                 inCooldown: inCooldown,
                 cooldownUntil: state.cooldownUntil,
-                insertionIndex: idx
+                insertionIndex: idx,
             )
         }
 
@@ -173,13 +173,13 @@ actor CloudEndpointSelector {
             if lhs.inCooldown != rhs.inCooldown {
                 return !lhs.inCooldown
             }
-            if lhs.inCooldown && rhs.inCooldown {
+            if lhs.inCooldown, rhs.inCooldown {
                 let lhsExpiry = lhs.cooldownUntil ?? .distantFuture
                 let rhsExpiry = rhs.cooldownUntil ?? .distantFuture
                 if lhsExpiry != rhsExpiry { return lhsExpiry < rhsExpiry }
             }
             return lhs.insertionIndex < rhs.insertionIndex
-        }.map { $0.url }
+        }.map(\.url)
     }
 
     /// Returns the highest-priority endpoint. Always non-nil because the
@@ -208,7 +208,7 @@ actor CloudEndpointSelector {
     /// sample updates the EWMA and clears any failure / cooldown bookkeeping.
     func reportSuccess(_ url: URL, latencyMs: Double, serverID: String? = nil, serverVersion: String? = nil) {
         guard var state = states[url] else { return }
-        let now = self.now()
+        let now = now()
         state.latencyMs = blendLatency(previous: state.latencyMs, sample: latencyMs)
         state.lastProbeAt = now
         state.lastSuccessAt = now
@@ -229,7 +229,7 @@ actor CloudEndpointSelector {
     /// backoff bounded by `maxCooldown`.
     func reportFailure(_ url: URL, error: Error) {
         guard var state = states[url] else { return }
-        let now = self.now()
+        let now = now()
         state.consecutiveFailures += 1
         state.lastProbeAt = now
         state.lastError = error.localizedDescription
@@ -255,14 +255,14 @@ actor CloudEndpointSelector {
                     guard let self else { return }
                     do {
                         let result = try await prober.probe(baseURL: url, nonce: nonce, timeout: timeout)
-                        await self.reportSuccess(
+                        await reportSuccess(
                             url,
                             latencyMs: result.latencyMs,
                             serverID: result.serverID,
-                            serverVersion: result.serverVersion
+                            serverVersion: result.serverVersion,
                         )
                     } catch {
-                        await self.reportFailure(url, error: error)
+                        await reportFailure(url, error: error)
                     }
                 }
             }
@@ -283,7 +283,7 @@ actor CloudEndpointSelector {
                 cooldownUntil: state.cooldownUntil,
                 serverID: state.serverID,
                 serverVersion: state.serverVersion,
-                lastError: state.lastError
+                lastError: state.lastError,
             )
         }
     }

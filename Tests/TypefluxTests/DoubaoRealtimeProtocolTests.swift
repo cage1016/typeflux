@@ -1,5 +1,5 @@
-@testable import Typeflux
 import Darwin
+@testable import Typeflux
 import XCTest
 
 final class DoubaoRealtimeProtocolTests: XCTestCase {

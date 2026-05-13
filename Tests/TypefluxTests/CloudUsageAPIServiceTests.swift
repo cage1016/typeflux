@@ -39,7 +39,7 @@ final class CloudUsageAPIServiceTests: XCTestCase {
         XCTAssertEqual(snapshot.periodStart, "2026-05-01T00:00:00Z")
         XCTAssertEqual(snapshot.periodEnd, "2026-06-01T00:00:00Z")
         XCTAssertEqual(snapshot.stats.asrCount, 3)
-        XCTAssertEqual(snapshot.stats.asrAudioDurationMs, 125000)
+        XCTAssertEqual(snapshot.stats.asrAudioDurationMs, 125_000)
         XCTAssertEqual(snapshot.stats.chatTotalTokens, 1240)
         XCTAssertEqual(snapshot.stats.totalRequests, 5)
     }
@@ -72,7 +72,7 @@ private actor CloudUsageStubSession: CloudHTTPSession {
 }
 
 private struct CloudUsageNoOpProber: CloudEndpointProbing {
-    func probe(baseURL: URL, nonce: String, timeout: TimeInterval) async throws -> CloudEndpointProbeResult {
+    func probe(baseURL _: URL, nonce _: String, timeout _: TimeInterval) async throws -> CloudEndpointProbeResult {
         CloudEndpointProbeResult(latencyMs: 1, serverID: nil, serverVersion: nil, nonceMatches: true)
     }
 }

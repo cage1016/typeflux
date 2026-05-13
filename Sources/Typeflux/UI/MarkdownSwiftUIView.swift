@@ -31,9 +31,9 @@ struct MarkdownSwiftUIView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, heading.level <= 2 ? StudioTheme.Spacing.xSmall : 0))
         } else if let unorderedList = markup as? UnorderedList {
-            return AnyView(listView(unorderedList.children.map { $0 }, orderedStart: nil))
+            return AnyView(listView(unorderedList.children.map(\.self), orderedStart: nil))
         } else if let orderedList = markup as? OrderedList {
-            return AnyView(listView(orderedList.children.map { $0 }, orderedStart: Int(orderedList.startIndex)))
+            return AnyView(listView(orderedList.children.map(\.self), orderedStart: Int(orderedList.startIndex)))
         } else if let blockQuote = markup as? BlockQuote {
             return AnyView(VStack(alignment: .leading, spacing: StudioTheme.Spacing.textMicro) {
                 ForEach(Array(blockQuote.children.enumerated()), id: \.offset) { _, child in

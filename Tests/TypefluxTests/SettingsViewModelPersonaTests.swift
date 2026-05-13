@@ -16,9 +16,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         super.tearDown()
     }
 
-    func testInitialSelectionIsNoneWhenPersonaRewriteIsDisabled() {
+    func testInitialSelectionIsNoneWhenPersonaRewriteIsDisabled() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -32,9 +32,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertFalse(viewModel.personaRewriteEnabled)
     }
 
-    func testSelectNonePersonaClearsDraftFields() {
+    func testSelectNonePersonaClearsDraftFields() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -52,7 +52,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testSelectingPersonaDoesNotAutoActivateWhenPersonaRewriteIsDisabled() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -71,7 +71,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testSelectingSystemPersonaShowsResolvedLocalizedPrompt() throws {
         let suiteName = "SettingsViewModelPersonaTests.localizedPrompt.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.appLanguage = .simplifiedChinese
         let historyStore = InMemoryHistoryStore()
@@ -91,7 +91,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testSystemPersonaSearchUsesResolvedLocalizedPrompt() throws {
         let suiteName = "SettingsViewModelPersonaTests.localizedSearch.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.appLanguage = .simplifiedChinese
         let historyStore = InMemoryHistoryStore()
@@ -108,7 +108,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testChangingAppLanguageRefreshesSelectedSystemPersonaPrompt() throws {
         let suiteName = "SettingsViewModelPersonaTests.languageRefresh.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -126,9 +126,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertFalse(viewModel.personaDraftPrompt.contains("You are Typeflux AI"))
     }
 
-    func testDeactivatePersonaRewriteKeepsNonePersonaSelected() {
+    func testDeactivatePersonaRewriteKeepsNonePersonaSelected() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -147,7 +147,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testSavePersonaAppBindingPersistsBindingAndClearsDraft() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -168,9 +168,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertTrue(viewModel.personaAppBindingDraftIdentifier.isEmpty)
     }
 
-    func testSavePersonaAppBindingAllowsNoPersonaSelection() {
+    func testSavePersonaAppBindingAllowsNoPersonaSelection() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -190,9 +190,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertTrue(viewModel.personaAppBindingDraftIdentifier.isEmpty)
     }
 
-    func testDeletePersonaRemovesAssociatedAppBindings() {
+    func testDeletePersonaRemovesAssociatedAppBindings() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let customPersona = PersonaProfile(name: "Chat Reply", prompt: "Be casual.")
         settingsStore.personas = settingsStore.personas + [customPersona]
@@ -213,9 +213,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertTrue(viewModel.personaAppBindings.isEmpty)
     }
 
-    func testSetPersonaAppBindingsEnabledUpdatesStore() {
+    func testSetPersonaAppBindingsEnabledUpdatesStore() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -232,7 +232,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testUpdatePersonaAppBindingPersonaUpdatesStore() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let originalPersona = PersonaProfile(name: "Casual", prompt: "Casual")
@@ -254,7 +254,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testUpdatePersonaAppBindingPersonaCanDisablePersona() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let persona = PersonaProfile(name: "Casual", prompt: "Casual")
@@ -275,7 +275,7 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     func testSetPersonaAppBindingEnabledUpdatesStore() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let persona = try XCTUnwrap(settingsStore.personas.first)
@@ -295,9 +295,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
     // MARK: - Auto persona default when LLM becomes configured via Settings
 
-    func testSwitchingToTypefluxCloudAutoSelectsTypefluxPersona() {
+    func testSwitchingToTypefluxCloudAutoSelectsTypefluxPersona() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -314,9 +314,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertEqual(settingsStore.activePersonaID, SettingsStore.defaultPersonaID.uuidString)
     }
 
-    func testApplyingOpenAIAPIKeyAutoSelectsTypefluxPersona() {
+    func testApplyingOpenAIAPIKeyAutoSelectsTypefluxPersona() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -335,9 +335,9 @@ final class SettingsViewModelPersonaTests: XCTestCase {
         XCTAssertEqual(settingsStore.activePersonaID, SettingsStore.defaultPersonaID.uuidString)
     }
 
-    func testExplicitlyDisabledPersonaStaysOffWhenLLMIsConfigured() {
+    func testExplicitlyDisabledPersonaStaysOffWhenLLMIsConfigured() throws {
         let suiteName = "SettingsViewModelPersonaTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let settingsStore = SettingsStore(defaults: defaults)
         let historyStore = InMemoryHistoryStore()
         let viewModel = StudioViewModel(
@@ -358,9 +358,18 @@ final class SettingsViewModelPersonaTests: XCTestCase {
 
 private final class InMemoryHistoryStore: HistoryStore {
     func save(record _: HistoryRecord) {}
-    func list() -> [HistoryRecord] { [] }
-    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] { [] }
-    func record(id _: UUID) -> HistoryRecord? { nil }
+    func list() -> [HistoryRecord] {
+        []
+    }
+
+    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] {
+        []
+    }
+
+    func record(id _: UUID) -> HistoryRecord? {
+        nil
+    }
+
     func delete(id _: UUID) {}
     func purge(olderThanDays _: Int) {}
     func clear() {}

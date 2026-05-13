@@ -5,7 +5,7 @@ enum AccountUsageDisplayFormatter {
         let sign = value < 0 ? "-" : ""
         let absValue = value == Int64.min ? Int64.max : abs(value)
 
-        guard absValue >= 10_000 else {
+        guard absValue >= 10000 else {
             let formatter = NumberFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.numberStyle = .decimal
@@ -17,7 +17,7 @@ enum AccountUsageDisplayFormatter {
             (1_000_000_000_000, "T"),
             (1_000_000_000, "B"),
             (1_000_000, "M"),
-            (1_000, "K"),
+            (1000, "K"),
         ]
 
         for index in units.indices {
@@ -26,7 +26,7 @@ enum AccountUsageDisplayFormatter {
 
             let scaled = Double(absValue) / unit.threshold
             let rounded = roundedCompactValue(scaled)
-            if rounded >= 1_000, index > 0 {
+            if rounded >= 1000, index > 0 {
                 let biggerUnit = units[index - 1]
                 let biggerScaled = roundedCompactValue(Double(absValue) / biggerUnit.threshold)
                 return sign + compactDecimalString(biggerScaled) + biggerUnit.suffix
@@ -38,7 +38,7 @@ enum AccountUsageDisplayFormatter {
     }
 
     static func audioDuration(_ milliseconds: Int64) -> String {
-        let seconds = max(0, Double(milliseconds) / 1_000.0)
+        let seconds = max(0, Double(milliseconds) / 1000.0)
         if seconds < 60 {
             return String(format: L("auth.account.usageSeconds"), seconds)
         }

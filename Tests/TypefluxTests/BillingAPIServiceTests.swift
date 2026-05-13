@@ -130,7 +130,7 @@ final class BillingAPIServiceTests: XCTestCase {
 
         let sessionResponse = try await service.createCheckoutSession(
             token: "token-1",
-            planCode: BillingPlan.defaultPlanCode
+            planCode: BillingPlan.defaultPlanCode,
         )
 
         XCTAssertEqual(sessionResponse.sessionID, "cs_test_1")
@@ -182,7 +182,7 @@ private actor BillingStubSession: CloudHTTPSession {
 }
 
 private struct BillingNoOpProber: CloudEndpointProbing {
-    func probe(baseURL: URL, nonce: String, timeout: TimeInterval) async throws -> CloudEndpointProbeResult {
+    func probe(baseURL _: URL, nonce _: String, timeout _: TimeInterval) async throws -> CloudEndpointProbeResult {
         CloudEndpointProbeResult(latencyMs: 1, serverID: nil, serverVersion: nil, nonceMatches: true)
     }
 }

@@ -12,13 +12,13 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
         version: String,
         releaseNotes: String,
         releaseURL: URL?,
-        appearanceMode: AppearanceMode
+        appearanceMode: AppearanceMode,
     ) {
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 540, height: 440),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
-            defer: false
+            defer: false,
         )
         panel.isReleasedWhenClosed = false
         panel.titlebarAppearsTransparent = true
@@ -38,7 +38,7 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
             releaseURL: releaseURL,
             appearanceMode: appearanceMode,
             onUpdate: { [weak self] in self?.fire(.update) },
-            onSkip: { [weak self] in self?.fire(.skip) }
+            onSkip: { [weak self] in self?.fire(.skip) },
         )
         panel.contentViewController = NSHostingController(rootView: view)
         panel.delegate = self
@@ -60,7 +60,7 @@ final class UpdateAlertWindowController: NSWindowController, NSWindowDelegate {
         window?.close()
     }
 
-    func windowWillClose(_ notification: Notification) {
+    func windowWillClose(_: Notification) {
         if let window {
             DockVisibilityController.shared.windowDidHide(window)
         }
@@ -130,7 +130,7 @@ private struct UpdateAlertContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                        .stroke(Color.secondary.opacity(0.25), lineWidth: 1),
                 )
 
             if let releaseURL {

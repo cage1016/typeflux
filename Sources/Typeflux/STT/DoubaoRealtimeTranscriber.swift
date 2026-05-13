@@ -728,7 +728,6 @@ private actor DoubaoRealtimeSession: PCM16RealtimeTranscriptionSession {
 
         return "type=\(header.messageType) flags=\(header.flags) bytes=\(data.count)"
     }
-
 }
 
 enum DoubaoRealtimeCompletionPolicy {

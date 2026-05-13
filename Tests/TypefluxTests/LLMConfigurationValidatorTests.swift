@@ -1,5 +1,5 @@
-import XCTest
 @testable import Typeflux
+import XCTest
 
 final class LLMConfigurationValidatorTests: XCTestCase {
     private func makeSettingsStore() -> SettingsStore {

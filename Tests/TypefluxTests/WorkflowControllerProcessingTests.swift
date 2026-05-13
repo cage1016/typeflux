@@ -226,7 +226,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertNil(personaPrompt)
     }
 
-    func testApplicationPersonaPickerTitleUsesApplicationScope() throws {
+    func testApplicationPersonaPickerTitleUsesApplicationScope() {
         let controller = makeWorkflowController()
         let binding = PersonaAppBinding(appIdentifier: "com.apple.Notes", personaID: controller.settingsStore.personas[0].id)
 
@@ -316,7 +316,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let textInjector = MockProcessingTextInjector()
         let clipboard = MockClipboardService()
         let historyStore = MockProcessingHistoryStore()
-        let baseDate = Date(timeIntervalSince1970: 1_000)
+        let baseDate = Date(timeIntervalSince1970: 1000)
         historyStore.save(record: HistoryRecord(date: baseDate, transcriptText: "old result"))
         historyStore.save(record: HistoryRecord(date: baseDate.addingTimeInterval(10), personaResultText: "new result"))
 
@@ -342,7 +342,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         let textInjector = MockProcessingTextInjector()
         let clipboard = MockClipboardService()
         let historyStore = MockProcessingHistoryStore()
-        historyStore.save(record: HistoryRecord(date: Date(timeIntervalSince1970: 1_000), transcriptText: "copy only"))
+        historyStore.save(record: HistoryRecord(date: Date(timeIntervalSince1970: 1000), transcriptText: "copy only"))
         let controller = makeWorkflowController(
             textInjector: textInjector,
             historyStore: historyStore,
@@ -360,7 +360,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
     func testHistoryPickerShowsMostRecentTwentyRecords() {
         let historyStore = MockProcessingHistoryStore()
-        let baseDate = Date(timeIntervalSince1970: 1_000)
+        let baseDate = Date(timeIntervalSince1970: 1000)
         for index in 0 ..< 25 {
             historyStore.save(record: HistoryRecord(
                 date: baseDate.addingTimeInterval(TimeInterval(index)),
@@ -380,7 +380,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     func testHistoryPickerRetryActionStartsRetryFlow() {
         let historyStore = MockProcessingHistoryStore()
         historyStore.save(record: HistoryRecord(
-            date: Date(timeIntervalSince1970: 1_000),
+            date: Date(timeIntervalSince1970: 1000),
             transcriptText: "retry me",
         ))
         let controller = makeWorkflowController(historyStore: historyStore)
@@ -436,7 +436,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     func testGenerateRewriteThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 
-        await XCTAssertThrowsErrorAsync(
+        await XCTAssertThrowsErrorAsync({
             try await controller.generateRewrite(
                 request: LLMRewriteRequest(
                     mode: .rewriteTranscript,
@@ -446,7 +446,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 ),
                 sessionID: UUID(),
             )
-        ) { error in
+        }) { error in
             XCTAssertEqual(
                 error as? LLMConfigurationError,
                 .notConfigured(reason: .missingAPIKey),
@@ -464,7 +464,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             configureSettings: configureReadyLLM,
         )
 
-        await XCTAssertThrowsErrorAsync(
+        await XCTAssertThrowsErrorAsync({
             try await controller.generateRewrite(
                 request: LLMRewriteRequest(
                     mode: .rewriteTranscript,
@@ -475,7 +475,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 sessionID: controller.processingSessionID,
                 timeout: 0.01,
             )
-        ) { error in
+        }) { error in
             XCTAssertTrue(error is WorkflowController.LLMRequestTimeoutError)
         }
     }
@@ -523,7 +523,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     func testDecideAskSelectionThrowsConfigurationErrorWhenLLMIsNotConfigured() async {
         let controller = makeWorkflowController()
 
-        await XCTAssertThrowsErrorAsync(
+        await XCTAssertThrowsErrorAsync({
             try await controller.decideAskSelection(
                 selectedText: "draft",
                 spokenInstruction: "improve this",
@@ -531,7 +531,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
                 editableTarget: true,
                 sessionID: UUID(),
             )
-        ) { error in
+        }) { error in
             XCTAssertEqual(
                 error as? LLMConfigurationError,
                 .notConfigured(reason: .missingAPIKey),
@@ -984,7 +984,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         controller.handlePressBegan(intent: .dictation, startLocked: false)
         await fulfillment(of: [prepared], timeout: 1)
 
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             if case let .failed(model, message) = LocalModelDownloadProgressCenter.shared.status {
                 XCTAssertEqual(model, .senseVoiceSmall)
                 XCTAssertEqual(message, "Network unavailable")
@@ -1110,7 +1110,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         }
     }
 
-    private func writeSilentTestAudio(duration: TimeInterval, sampleRate: Double = 16_000) throws -> URL {
+    private func writeSilentTestAudio(duration: TimeInterval, sampleRate: Double = 16000) throws -> URL {
         guard let format = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate,
@@ -1137,8 +1137,8 @@ final class WorkflowControllerProcessingTests: XCTestCase {
     }
 }
 
-private func XCTAssertThrowsErrorAsync<T>(
-    _ expression: @autoclosure () async throws -> T,
+private func XCTAssertThrowsErrorAsync(
+    _ expression: () async throws -> some Any,
     _ errorHandler: (Error) -> Void,
     file: StaticString = #filePath,
     line: UInt = #line,
@@ -1316,7 +1316,7 @@ private final class MockProcessingAudioRecorder: AudioRecorder {
     }
 
     func waitUntilStopCount(isAtLeast expectedCount: Int) async {
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             if stopCallCount >= expectedCount {
                 return
             }
@@ -1420,7 +1420,7 @@ private final class BlockingStartAudioRecorder: AudioRecorder, @unchecked Sendab
     }
 
     func waitUntilStopCount(isAtLeast expectedCount: Int) async {
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             if stopCallCount >= expectedCount {
                 return
             }
@@ -1574,7 +1574,9 @@ private final class MockSoundEffectPlayback: SoundEffectPlayback {
         self.eventName = eventName
     }
 
-    func prepareToPlay() -> Bool { true }
+    func prepareToPlay() -> Bool {
+        true
+    }
 
     func play() -> Bool {
         eventRecorder.append(eventName)
@@ -1614,7 +1616,7 @@ private final class ThreadSafeEventRecorder: @unchecked Sendable {
     }
 
     func waitUntilContains(_ event: String) async {
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             if snapshot().contains(event) {
                 return
             }
@@ -1722,18 +1724,38 @@ private final class MockProcessingHistoryStore: HistoryStore {
     func list(limit: Int, offset: Int, searchQuery _: String?) -> [HistoryRecord] {
         Array(list().dropFirst(offset).prefix(limit))
     }
-    func record(id: UUID) -> HistoryRecord? { records[id] }
-    func delete(id: UUID) { records[id] = nil }
+
+    func record(id: UUID) -> HistoryRecord? {
+        records[id]
+    }
+
+    func delete(id: UUID) {
+        records[id] = nil
+    }
+
     func purge(olderThanDays _: Int) {}
-    func clear() { records.removeAll() }
-    func exportMarkdown() throws -> URL { URL(fileURLWithPath: "/tmp/history.md") }
+    func clear() {
+        records.removeAll()
+    }
+
+    func exportMarkdown() throws -> URL {
+        URL(fileURLWithPath: "/tmp/history.md")
+    }
 }
 
 private final class MockProcessingAgentJobStore: AgentJobStore, @unchecked Sendable {
     func save(_: AgentJob) async throws {}
-    func list(limit _: Int, offset _: Int) async throws -> [AgentJob] { [] }
-    func job(id _: UUID) async throws -> AgentJob? { nil }
+    func list(limit _: Int, offset _: Int) async throws -> [AgentJob] {
+        []
+    }
+
+    func job(id _: UUID) async throws -> AgentJob? {
+        nil
+    }
+
     func delete(id _: UUID) async throws {}
     func clear() async throws {}
-    func count() async throws -> Int { 0 }
+    func count() async throws -> Int {
+        0
+    }
 }

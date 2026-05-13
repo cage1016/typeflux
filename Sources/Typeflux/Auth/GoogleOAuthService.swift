@@ -70,7 +70,7 @@ struct GoogleOAuthService {
             codeVerifier: authorization.codeVerifier,
             clientID: clientID,
             clientSecret: clientSecret,
-            redirectURI: "\(authorization.callbackScheme):/"
+            redirectURI: "\(authorization.callbackScheme):/",
         )
         guard let idToken = response.idToken else {
             throw GoogleAuthError.missingIDToken
@@ -80,7 +80,7 @@ struct GoogleOAuthService {
 
     static func authorizeGoogleCloud(
         clientID: String,
-        clientSecret: String? = nil
+        clientSecret: String? = nil,
     ) async throws -> GoogleCloudSpeechOAuthToken {
         let authorization = makeAuthorizationRequest(
             clientID: clientID,
@@ -118,7 +118,7 @@ struct GoogleOAuthService {
     static func refreshAccessToken(
         refreshToken: String,
         clientID: String,
-        clientSecret: String? = nil
+        clientSecret: String? = nil,
     ) async throws -> GoogleCloudSpeechOAuthToken {
         var params: [String: String] = [
             "client_id": clientID,
@@ -149,7 +149,7 @@ struct GoogleOAuthService {
         clientID: String,
         scopes: [String],
         accessType: String? = nil,
-        prompt: String? = nil
+        prompt: String? = nil,
     ) -> AuthorizationRequest {
         let scheme = reverseScheme(for: clientID)
         let redirectURI = "\(scheme):/"
@@ -204,12 +204,12 @@ struct GoogleOAuthService {
     private static func openAuthSession(
         url: URL,
         scheme: String,
-        expectedState: String
+        expectedState: String,
     ) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(
                 url: url,
-                callbackURLScheme: scheme
+                callbackURLScheme: scheme,
             ) { callbackURL, error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -237,7 +237,7 @@ struct GoogleOAuthService {
         codeVerifier: String,
         clientID: String,
         clientSecret: String?,
-        redirectURI: String
+        redirectURI: String,
     ) async throws -> TokenExchangeResponse {
         var params: [String: String] = [
             "code": code,
@@ -331,7 +331,7 @@ enum GoogleAuthError: LocalizedError {
             "Failed to retrieve Google ID token."
         case .missingAccessToken:
             "Failed to retrieve Google access token."
-        case .tokenExchangeFailed(let reason):
+        case let .tokenExchangeFailed(reason):
             "Google token exchange failed: \(reason)"
         }
     }

@@ -3,14 +3,20 @@ import os
 import Security
 
 /// Stores authentication tokens in the macOS Keychain.
-struct KeychainTokenStore {
+enum KeychainTokenStore {
     private struct StoredToken: Codable {
         let token: String
         let expiresAt: Int
         let refreshToken: String?
     }
 
-    private static var service: String {
+    private static let service = "ai.gulu.app.typeflux.auth"
+    private static let legacyServices = [
+        "ai.gulu.app.typeflux.auth.v2",
+        "ai.gulu.app.typeflux.auth.v1",
+    ]
+
+    private static var runtimeDerivedService: String {
         let environmentBundleID = ProcessInfo.processInfo.environment["TYPEFLUX_BUNDLE_IDENTIFIER"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let bundleID = environmentBundleID?.isEmpty == false
@@ -18,9 +24,25 @@ struct KeychainTokenStore {
             : (Bundle.main.bundleIdentifier ?? "ai.gulu.app.typeflux")
         return "\(bundleID).auth"
     }
+
+    private static var serviceCandidates: [String] {
+        let candidates = [service] + legacyServices + [runtimeDerivedService]
+        var seen = Set<String>()
+        return candidates.filter { candidate in
+            seen.insert(candidate).inserted
+        }
+    }
+
     private static let tokenAccount = "session"
     private static let userProfileAccount = "userProfile"
     private static let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "KeychainTokenStore")
+    private static let inMemoryLock = NSLock()
+    private static var inMemoryValues: [String: Data] = [:]
+    static var useInMemoryStoreForTesting = false
+
+    private static var usesInMemoryStore: Bool {
+        useInMemoryStoreForTesting
+    }
 
     // MARK: - Token
 
@@ -83,58 +105,83 @@ struct KeychainTokenStore {
     // MARK: - Keychain Helpers
 
     @discardableResult
-    private static func setKeychainValue<Value: Encodable>(_ value: Value, account: String) -> Bool {
+    private static func setKeychainValue(_ value: some Encodable, account: String) -> Bool {
         guard let data = try? JSONEncoder().encode(value) else {
             logger.error("Failed to encode keychain value for account \(account, privacy: .public)")
             return false
         }
 
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-
-        let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-        if updateStatus == errSecSuccess {
+        if usesInMemoryStore {
+            inMemoryLock.lock()
+            inMemoryValues[account] = data
+            inMemoryLock.unlock()
             return true
         }
-        if updateStatus != errSecItemNotFound {
-            logger.error(
-                "Failed to update keychain account \(account, privacy: .public): \(describeStatus(updateStatus), privacy: .public)"
-            )
+
+        for query in writeMatchingQueries(service: service, account: account) {
+            let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+            if updateStatus == errSecSuccess {
+                return true
+            }
+            if updateStatus != errSecItemNotFound {
+                logger.error(
+                    "Failed to update keychain account \(account, privacy: .public): \(describeStatus(updateStatus), privacy: .public)",
+                )
+            }
         }
 
-        var addQuery = query
+        var addQuery = addQuery(service: service, account: account)
         addQuery[kSecValueData as String] = data
-        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
         if addStatus == errSecSuccess {
             return true
         }
+        if addStatus == errSecDuplicateItem {
+            logger.error(
+                "Keychain account \(account, privacy: .public) already exists but update did not match; replacing stale item"
+            )
+            if replaceKeychainValue(data, account: account) || updateDuplicateKeychainValue(data, account: account) {
+                return true
+            }
+            return false
+        }
         logger.error(
-            "Failed to add keychain account \(account, privacy: .public): \(describeStatus(addStatus), privacy: .public)"
+            "Failed to add keychain account \(account, privacy: .public): \(describeStatus(addStatus), privacy: .public)",
         )
         return false
     }
 
     private static func getKeychainValue<Value: Decodable>(account: String) -> Value? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
+        if usesInMemoryStore {
+            inMemoryLock.lock()
+            let data = inMemoryValues[account]
+            inMemoryLock.unlock()
+            guard let data else { return nil }
+            return try? JSONDecoder().decode(Value.self, from: data)
+        }
+
+        for candidateService in serviceCandidates {
+            if let value: Value = getKeychainValue(account: account, service: candidateService) {
+                if candidateService != service {
+                    migrateLegacyItem(account: account, from: candidateService)
+                }
+                return value
+            }
+        }
+        return nil
+    }
+
+    private static func getKeychainValue<Value: Decodable>(account: String, service candidateService: String) -> Value? {
+        let queries = readMatchingQueries(service: candidateService, account: account)
 
         var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let status = copyFirstMatching(queries, result: &result)
 
         guard status == errSecSuccess else {
             if status != errSecItemNotFound {
                 logger.error(
-                    "Failed to load keychain account \(account, privacy: .public): \(describeStatus(status), privacy: .public)"
+                    "Failed to load keychain account \(account, privacy: .public): \(describeStatus(status), privacy: .public)",
                 )
             }
             return nil
@@ -151,12 +198,129 @@ struct KeychainTokenStore {
     }
 
     private static func deleteKeychainItem(account: String) {
-        let query: [String: Any] = [
+        if usesInMemoryStore {
+            inMemoryLock.lock()
+            inMemoryValues.removeValue(forKey: account)
+            inMemoryLock.unlock()
+            return
+        }
+
+        for candidateService in serviceCandidates {
+            for query in deleteMatchingQueries(service: candidateService, account: account) {
+                let status = SecItemDelete(query as CFDictionary)
+                if status != errSecSuccess, status != errSecItemNotFound {
+                    logger.error(
+                        "Failed to delete keychain account \(account, privacy: .public): \(describeStatus(status), privacy: .public)"
+                    )
+                }
+            }
+        }
+    }
+
+    private static func migrateLegacyItem(account: String, from legacyService: String) {
+        let queries = readMatchingQueries(service: legacyService, account: account)
+
+        var result: AnyObject?
+        let status = copyFirstMatching(queries, result: &result)
+        guard status == errSecSuccess, let data = result as? Data else { return }
+
+        let primaryQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        SecItemDelete(query as CFDictionary)
+        var addQuery = primaryQuery
+        addQuery[kSecValueData as String] = data
+
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus == errSecSuccess || addStatus == errSecDuplicateItem {
+            logger.info(
+                "Migrated keychain account \(account, privacy: .public) from legacy service \(legacyService, privacy: .public)"
+            )
+        } else {
+            logger.error(
+                "Failed to migrate keychain account \(account, privacy: .public): \(describeStatus(addStatus), privacy: .public)"
+            )
+        }
+    }
+
+    private static func replaceKeychainValue(_ data: Data, account: String) -> Bool {
+        deleteKeychainItem(account: account)
+
+        var addQuery = addQuery(service: service, account: account)
+        addQuery[kSecValueData as String] = data
+
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus == errSecSuccess {
+            return true
+        }
+        logger.error(
+            "Failed to replace keychain account \(account, privacy: .public): \(describeStatus(addStatus), privacy: .public)"
+        )
+        return false
+    }
+
+    private static func updateDuplicateKeychainValue(_ data: Data, account: String) -> Bool {
+        for query in writeMatchingQueries(service: service, account: account) {
+            let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+            if status == errSecSuccess {
+                return true
+            }
+            if status != errSecItemNotFound {
+                logger.error(
+                    "Failed to update duplicate keychain account \(account, privacy: .public): \(describeStatus(status), privacy: .public)"
+                )
+            }
+        }
+        logger.error("Failed to update duplicate keychain account \(account, privacy: .public)")
+        return false
+    }
+
+    private static func copyFirstMatching(_ queries: [[String: Any]], result: inout AnyObject?) -> OSStatus {
+        var lastStatus: OSStatus = errSecItemNotFound
+        for query in queries {
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            if status == errSecSuccess {
+                return status
+            }
+            lastStatus = status
+        }
+        return lastStatus
+    }
+
+    private static func readMatchingQueries(service queryService: String, account: String) -> [[String: Any]] {
+        searchQueries(service: queryService, account: account).map { query in
+            var readQuery = query
+            readQuery[kSecReturnData as String] = true
+            readQuery[kSecMatchLimit as String] = kSecMatchLimitOne
+            return readQuery
+        }
+    }
+
+    private static func writeMatchingQueries(service queryService: String, account: String) -> [[String: Any]] {
+        searchQueries(service: queryService, account: account)
+    }
+
+    private static func deleteMatchingQueries(service queryService: String, account: String) -> [[String: Any]] {
+        searchQueries(service: queryService, account: account)
+    }
+
+    private static func searchQueries(service queryService: String, account: String) -> [[String: Any]] {
+        var nonSynchronizableQuery = addQuery(service: queryService, account: account)
+        nonSynchronizableQuery[kSecAttrSynchronizable as String] = false
+
+        return [
+            addQuery(service: queryService, account: account),
+            nonSynchronizableQuery,
+        ]
+    }
+
+    private static func addQuery(service queryService: String, account: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: queryService,
+            kSecAttrAccount as String: account,
+        ]
     }
 
     private static func describeStatus(_ status: OSStatus) -> String {

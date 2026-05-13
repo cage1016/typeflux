@@ -1,5 +1,5 @@
-@testable import Typeflux
 import AppKit
+@testable import Typeflux
 import XCTest
 
 final class StatusBarMenuSupportTests: XCTestCase {
@@ -34,9 +34,9 @@ final class StatusBarMenuSupportTests: XCTestCase {
         LocalModelDownloadProgressCenter.shared.clear()
         defer { LocalModelDownloadProgressCenter.shared.clear() }
 
-        let controller = StatusBarController(
+        let controller = try StatusBarController(
             appState: AppStateStore(),
-            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "StatusBarMenuProgressTests.\(UUID().uuidString)")!),
+            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "StatusBarMenuProgressTests.\(UUID().uuidString)"))),
             historyStore: EmptyHistoryStore(),
             agentJobStore: EmptyAgentJobStore(),
         )
@@ -57,9 +57,9 @@ final class StatusBarMenuSupportTests: XCTestCase {
             throw XCTSkip("Status bar menu test requires a GUI WindowServer session.")
         }
 
-        let controller = StatusBarController(
+        let controller = try StatusBarController(
             appState: AppStateStore(),
-            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "StatusBarMenuSupportTests.\(UUID().uuidString)")!),
+            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "StatusBarMenuSupportTests.\(UUID().uuidString)"))),
             historyStore: EmptyHistoryStore(),
             agentJobStore: EmptyAgentJobStore(),
         )
@@ -72,7 +72,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
         XCTAssertEqual(controller.menu?.showsStateColumn, false)
         XCTAssertNotEqual(settingsItem.title, "Settings")
-        XCTAssertFalse(NSStringFromSelector(try XCTUnwrap(settingsItem.action)).localizedCaseInsensitiveContains("settings"))
+        XCTAssertFalse(try NSStringFromSelector(XCTUnwrap(settingsItem.action)).localizedCaseInsensitiveContains("settings"))
         XCTAssertLessThan(
             try XCTUnwrap(titles.firstIndex(of: L("menu.appearance"))),
             try XCTUnwrap(titles.firstIndex(of: L("menu.settings"))),
@@ -84,7 +84,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
     }
 
     func testRecentTranscriptionRecordsFiltersEmptyFinalTextAndLimitsResults() {
-        let base = Date(timeIntervalSince1970: 1_000)
+        let base = Date(timeIntervalSince1970: 1000)
         let records = [
             HistoryRecord(date: base.addingTimeInterval(1), transcriptText: "old"),
             HistoryRecord(date: base.addingTimeInterval(2), transcriptText: "   "),
@@ -100,7 +100,7 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
     func testRecentHistoryTitleFlattensNewlinesAndTruncatesLongText() {
         let record = HistoryRecord(
-            date: Date(timeIntervalSince1970: 1_000),
+            date: Date(timeIntervalSince1970: 1000),
             transcriptText: "first line\nsecond line with a very long transcript body that should be shortened",
         )
 
@@ -114,20 +114,39 @@ final class StatusBarMenuSupportTests: XCTestCase {
 
 private final class EmptyHistoryStore: HistoryStore {
     func save(record _: HistoryRecord) {}
-    func list() -> [HistoryRecord] { [] }
-    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] { [] }
-    func record(id _: UUID) -> HistoryRecord? { nil }
+    func list() -> [HistoryRecord] {
+        []
+    }
+
+    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] {
+        []
+    }
+
+    func record(id _: UUID) -> HistoryRecord? {
+        nil
+    }
+
     func delete(id _: UUID) {}
     func purge(olderThanDays _: Int) {}
     func clear() {}
-    func exportMarkdown() throws -> URL { URL(fileURLWithPath: NSTemporaryDirectory()) }
+    func exportMarkdown() throws -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
+    }
 }
 
 private struct EmptyAgentJobStore: AgentJobStore {
     func save(_: AgentJob) async throws {}
-    func list(limit _: Int, offset _: Int) async throws -> [AgentJob] { [] }
-    func job(id _: UUID) async throws -> AgentJob? { nil }
+    func list(limit _: Int, offset _: Int) async throws -> [AgentJob] {
+        []
+    }
+
+    func job(id _: UUID) async throws -> AgentJob? {
+        nil
+    }
+
     func delete(id _: UUID) async throws {}
     func clear() async throws {}
-    func count() async throws -> Int { 0 }
+    func count() async throws -> Int {
+        0
+    }
 }

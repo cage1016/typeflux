@@ -46,7 +46,7 @@ final class AutoUpdateArchiveInstallerTests: XCTestCase {
             newAppURL: URL(fileURLWithPath: "/tmp/update path/Typeflux.app"),
             cleanupURL: URL(fileURLWithPath: "/tmp/update path"),
             currentProcessIdentifier: 12345,
-            relaunch: true
+            relaunch: true,
         )
 
         XCTAssertTrue(script.contains("set -e"))
@@ -67,7 +67,7 @@ final class AutoUpdateArchiveInstallerTests: XCTestCase {
         let script = AutoUpdateArchiveInstaller.relaunchScript(
             currentAppURL: URL(fileURLWithPath: "/Applications/Typeflux.app"),
             newAppURL: URL(fileURLWithPath: "/tmp/Typeflux.app"),
-            relaunch: false
+            relaunch: false,
         )
 
         XCTAssertFalse(script.contains("\nopen "))
@@ -77,13 +77,13 @@ final class AutoUpdateArchiveInstallerTests: XCTestCase {
         let script = AutoUpdateArchiveInstaller.relaunchScript(
             currentAppURL: URL(fileURLWithPath: "/Applications/Typeflux.app"),
             newAppURL: URL(fileURLWithPath: "/tmp/Typeflux.app"),
-            relaunch: false
+            relaunch: false,
         )
 
         XCTAssertFalse(script.contains("rm -rf \"$current_app\""))
         XCTAssertLessThan(
             try XCTUnwrap(script.range(of: "mv \"$current_app\" \"$backup_app\"")?.lowerBound),
-            try XCTUnwrap(script.range(of: "if ! mv \"$new_app\" \"$current_app\"; then")?.lowerBound)
+            try XCTUnwrap(script.range(of: "if ! mv \"$new_app\" \"$current_app\"; then")?.lowerBound),
         )
     }
 

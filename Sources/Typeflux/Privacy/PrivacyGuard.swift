@@ -141,11 +141,11 @@ enum PrivacyGuard {
     static func willShowInAppDialog(for id: PermissionID) -> Bool {
         switch id {
         case .microphone:
-            return AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined
+            AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined
         case .speechRecognition:
-            return SFSpeechRecognizer.authorizationStatus() == .notDetermined
+            SFSpeechRecognizer.authorizationStatus() == .notDetermined
         case .accessibility:
-            return false
+            false
         }
     }
 

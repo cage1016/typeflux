@@ -1,8 +1,8 @@
 import AppKit
 import AuthenticationServices
 import Foundation
-import Security
 import os
+import Security
 
 /// Handles Sign In with Apple using ASAuthorizationAppleIDProvider.
 ///
@@ -18,7 +18,7 @@ import os
 /// - The backend APPLE_OIDC_CLIENT_ID must match the bundle ID (or configured Services ID).
 @MainActor
 final class AppleSignInService: NSObject {
-    nonisolated private static let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "AppleSignInService")
+    private nonisolated static let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "AppleSignInService")
     private static let shared = AppleSignInService()
 
     private var continuation: CheckedContinuation<String, Error>?
@@ -45,7 +45,7 @@ final class AppleSignInService: NSObject {
                 cont.resume(throwing: AppleSignInError.internalError)
                 return
             }
-            self.continuation = cont
+            continuation = cont
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self
             controller.presentationContextProvider = self
@@ -58,8 +58,8 @@ final class AppleSignInService: NSObject {
 
 extension AppleSignInService: ASAuthorizationControllerDelegate {
     func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization
+        controller _: ASAuthorizationController,
+        didCompleteWithAuthorization authorization: ASAuthorization,
     ) {
         guard
             let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
@@ -78,15 +78,15 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
             aud=\(tokenSummary.audience ?? "<missing>", privacy: .public) \
             iss=\(tokenSummary.issuer ?? "<missing>", privacy: .public) \
             sub=\(tokenSummary.subject ?? "<missing>", privacy: .private(mask: .hash))
-            """
+            """,
         )
         continuation?.resume(returning: idToken)
         continuation = nil
     }
 
     func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithError error: Error
+        controller _: ASAuthorizationController,
+        didCompleteWithError error: Error,
     ) {
         let nsError = error as NSError
         let runtimeConfiguration = Self.currentRuntimeConfiguration()
@@ -98,7 +98,7 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
             bundleID=\(runtimeConfiguration?.bundleIdentifier ?? "<unknown>", privacy: .public) \
             teamID=\(runtimeConfiguration?.teamIdentifier ?? "<none>", privacy: .public) \
             hasEntitlement=\(runtimeConfiguration?.hasAppleSignInEntitlement == true, privacy: .public)
-            """
+            """,
         )
         continuation?.resume(throwing: Self.mapSystemError(error, runtimeConfiguration: runtimeConfiguration))
         continuation = nil
@@ -108,7 +108,7 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
 // MARK: - ASAuthorizationControllerPresentationContextProviding
 
 extension AppleSignInService: ASAuthorizationControllerPresentationContextProviding {
-    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+    func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
         NSApp.keyWindow ?? NSApp.windows.first ?? ASPresentationAnchor()
     }
 }
@@ -190,7 +190,7 @@ extension AppleSignInService {
 
     nonisolated static func mapSystemError(
         _ error: Error,
-        runtimeConfiguration: RuntimeConfiguration?
+        runtimeConfiguration: RuntimeConfiguration?,
     ) -> Error {
         let nsError = error as NSError
         guard
@@ -206,7 +206,7 @@ extension AppleSignInService {
     }
 
     nonisolated static func configurationIssueDescription(
-        for runtimeConfiguration: RuntimeConfiguration
+        for runtimeConfiguration: RuntimeConfiguration,
     ) -> String? {
         if !runtimeConfiguration.hasAppleSignInEntitlement {
             return """
@@ -248,7 +248,7 @@ extension AppleSignInService {
         let status = SecCodeCopySigningInformation(
             staticCode,
             SecCSFlags(rawValue: kSecCSSigningInformation),
-            &signingInformation
+            &signingInformation,
         )
         guard status == errSecSuccess,
               let info = signingInformation as? [String: Any]
@@ -264,7 +264,7 @@ extension AppleSignInService {
         return RuntimeConfiguration(
             bundleIdentifier: info[kSecCodeInfoIdentifier as String] as? String ?? Bundle.main.bundleIdentifier,
             teamIdentifier: info[kSecCodeInfoTeamIdentifier as String] as? String,
-            hasAppleSignInEntitlement: hasAppleSignInEntitlement
+            hasAppleSignInEntitlement: hasAppleSignInEntitlement,
         )
     }
 }
@@ -282,7 +282,7 @@ enum AppleSignInError: LocalizedError {
             "Failed to retrieve Apple ID token."
         case .internalError:
             "An internal error occurred during Apple Sign In."
-        case .configurationIssue(let description):
+        case let .configurationIssue(description):
             description
         }
     }

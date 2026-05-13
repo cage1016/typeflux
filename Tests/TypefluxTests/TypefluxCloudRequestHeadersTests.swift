@@ -2,9 +2,9 @@
 import XCTest
 
 final class TypefluxCloudRequestHeadersTests: XCTestCase {
-    func testClientIdentityStoreGeneratesAndPersistsClientID() {
+    func testClientIdentityStoreGeneratesAndPersistsClientID() throws {
         let suiteName = "TypefluxCloudRequestHeadersTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let store = TypefluxCloudClientIdentityStore(defaults: defaults, key: "client-id")
@@ -17,8 +17,8 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: "client-id"), first)
     }
 
-    func testApplyClientInfoAddsUserAgentAndClientMetadataHeaders() {
-        var request = URLRequest(url: URL(string: "https://cloud.typeflux.dev/api/v1/me")!)
+    func testApplyClientInfoAddsUserAgentAndClientMetadataHeaders() throws {
+        var request = try URLRequest(url: XCTUnwrap(URL(string: "https://cloud.typeflux.dev/api/v1/me")))
 
         TypefluxCloudRequestHeaders.applyClientInfo(to: &request, provider: .fixture)
 
@@ -37,7 +37,7 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
             .askAnything,
             to: ["x-request-id": "req-1"],
             provider: .typefluxCloud,
-            clientInfoProvider: .fixture
+            clientInfoProvider: .fixture,
         )
 
         XCTAssertEqual(headers["x-request-id"], "req-1")
@@ -51,7 +51,7 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
             .askAnything,
             to: ["x-request-id": "req-1"],
             provider: .openAI,
-            clientInfoProvider: .fixture
+            clientInfoProvider: .fixture,
         )
 
         XCTAssertEqual(headers["x-request-id"], "req-1")
@@ -60,9 +60,9 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         XCTAssertNil(headers[TypefluxCloudRequestHeaders.clientIDField])
     }
 
-    func testApplyPersonaIDAddsPersonaHeader() {
-        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
-        var request = URLRequest(url: URL(string: "https://cloud.typeflux.dev/api/v1/asr/ws/default")!)
+    func testApplyPersonaIDAddsPersonaHeader() throws {
+        let personaID = try XCTUnwrap(UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001"))
+        var request = try URLRequest(url: XCTUnwrap(URL(string: "https://cloud.typeflux.dev/api/v1/asr/ws/default")))
 
         TypefluxCloudRequestHeaders.applyPersonaID(personaID, to: &request)
 
@@ -72,16 +72,16 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         )
     }
 
-    func testApplyPersonaIDSkipsNilPersonaID() {
-        var request = URLRequest(url: URL(string: "https://cloud.typeflux.dev/api/v1/asr/ws/default")!)
+    func testApplyPersonaIDSkipsNilPersonaID() throws {
+        var request = try URLRequest(url: XCTUnwrap(URL(string: "https://cloud.typeflux.dev/api/v1/asr/ws/default")))
 
         TypefluxCloudRequestHeaders.applyPersonaID(nil, to: &request)
 
         XCTAssertNil(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.personaIDField))
     }
 
-    func testApplyingPersonaIDMergesOnlyForTypefluxCloud() {
-        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
+    func testApplyingPersonaIDMergesOnlyForTypefluxCloud() throws {
+        let personaID = try XCTUnwrap(UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001"))
 
         let cloudHeaders = TypefluxCloudRequestHeaders.applyingPersonaID(
             personaID,

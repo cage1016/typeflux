@@ -384,7 +384,7 @@ struct OnboardingView: View {
                         STTProvider.onboardingDisplayOrder.filter { provider in
                             provider != .freeModel || !FreeSTTModelRegistry.suggestedModelNames.isEmpty
                         },
-                        id: \.self
+                        id: \.self,
                     ) { provider in
                         modelProviderCard(
                             providerID: sttProviderToID(provider),
@@ -477,7 +477,7 @@ struct OnboardingView: View {
                                     providerID: StudioModelProviderID.ollama,
                                     remoteProvider: nil,
                                 ),
-                            ]
+                            ],
                     ).sorted { lhs, rhs in
                         lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
                     }
@@ -520,7 +520,7 @@ struct OnboardingView: View {
 
                     ForEach(
                         LLMRemoteProvider.onboardingDisplayOrder.filter { $0 == .custom },
-                        id: \.self
+                        id: \.self,
                     ) { provider in
                         let isSelected = viewModel.llmProvider == .openAICompatible
                             && viewModel.llmRemoteProvider == provider
@@ -1756,14 +1756,14 @@ struct OnboardingView: View {
                     String(
                         format: L("onboarding.shortcuts.replacement.active.message"),
                         replacementName,
-                        replacementName
-                    )
+                        replacementName,
+                    ),
                 )
-                    .font(.studioBody(13))
-                    .foregroundStyle(onboardingSecondaryText)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.studioBody(13))
+                .foregroundStyle(onboardingSecondaryText)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(22)
@@ -1808,7 +1808,7 @@ struct OnboardingView: View {
                     .fill(onboardingCardSurface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(StudioTheme.accent.opacity(isDarkMode ? 0.26 : 0.18), lineWidth: 1)
+                            .stroke(StudioTheme.accent.opacity(isDarkMode ? 0.26 : 0.18), lineWidth: 1),
                     ),
             )
         }
@@ -2236,5 +2236,4 @@ struct OnboardingView: View {
     private var onboardingSelectedBadgeFill: Color {
         isDarkMode ? Color.white.opacity(0.08) : StudioTheme.accentSoft
     }
-
 }

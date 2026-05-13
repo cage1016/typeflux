@@ -83,7 +83,7 @@ final class TypefluxCloudClientIdentityStore: @unchecked Sendable {
 
     init(
         defaults: UserDefaults = .standard,
-        key: String = "TypefluxCloudClientID"
+        key: String = "TypefluxCloudClientID",
     ) {
         self.defaults = defaults
         self.key = key
@@ -94,7 +94,8 @@ final class TypefluxCloudClientIdentityStore: @unchecked Sendable {
         defer { lock.unlock() }
 
         if let existing = defaults.string(forKey: key),
-           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
             return existing
         }
 
@@ -128,7 +129,7 @@ enum TypefluxCloudRequestHeaders {
 
     static func applyClientInfo(
         to request: inout URLRequest,
-        provider: TypefluxCloudClientInfoProvider = .live
+        provider: TypefluxCloudClientInfoProvider = .live,
     ) {
         let info = provider.info()
         request.setValue(info.userAgent, forHTTPHeaderField: "User-Agent")
@@ -163,7 +164,7 @@ enum TypefluxCloudRequestHeaders {
     static func applyCloudHeaders(
         scenario: TypefluxCloudScenario,
         to request: inout URLRequest,
-        provider: TypefluxCloudClientInfoProvider = .live
+        provider: TypefluxCloudClientInfoProvider = .live,
     ) {
         applyScenario(scenario, to: &request)
         applyClientInfo(to: &request, provider: provider)
@@ -171,7 +172,7 @@ enum TypefluxCloudRequestHeaders {
 
     static func applyingClientInfo(
         to headers: [String: String] = [:],
-        provider: TypefluxCloudClientInfoProvider = .live
+        provider: TypefluxCloudClientInfoProvider = .live,
     ) -> [String: String] {
         let info = provider.info()
         var merged = headers
@@ -192,7 +193,7 @@ enum TypefluxCloudRequestHeaders {
         _ scenario: TypefluxCloudScenario,
         to headers: [String: String] = [:],
         provider: LLMRemoteProvider,
-        clientInfoProvider: TypefluxCloudClientInfoProvider = .live
+        clientInfoProvider: TypefluxCloudClientInfoProvider = .live,
     ) -> [String: String] {
         guard provider == .typefluxCloud else { return headers }
 

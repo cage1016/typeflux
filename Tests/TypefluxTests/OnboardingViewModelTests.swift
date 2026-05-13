@@ -331,9 +331,9 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testCompletingOnboardingDoesNotOverwriteExplicitPersonaChoice() {
+    func testCompletingOnboardingDoesNotOverwriteExplicitPersonaChoice() throws {
         // User pre-selected the "English Translator" persona before completing onboarding.
-        let translatorID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA002")!
+        let translatorID = try XCTUnwrap(UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA002"))
         store.applyPersonaSelection(translatorID)
 
         let viewModel = OnboardingViewModel(settingsStore: store, onComplete: {})
@@ -390,7 +390,7 @@ final class OnboardingViewModelTests: XCTestCase {
     private func makeLoggedInAuthState() -> AuthState {
         let storedToken = (
             token: "token",
-            expiresAt: Int(Date().timeIntervalSince1970) + 3600
+            expiresAt: Int(Date().timeIntervalSince1970) + 3600,
         )
         let storedProfile = UserProfile(
             id: "user_123",
@@ -399,17 +399,16 @@ final class OnboardingViewModelTests: XCTestCase {
             status: 1,
             provider: "email",
             createdAt: "2026-01-01T00:00:00Z",
-            updatedAt: "2026-01-01T00:00:00Z"
+            updatedAt: "2026-01-01T00:00:00Z",
         )
-        let authState = AuthState(
+        return AuthState(
             loadStoredToken: { storedToken },
             loadStoredUserProfile: { storedProfile },
             saveStoredToken: { _, _ in },
             saveStoredUserProfile: { _ in },
             clearStoredSession: {},
-            fetchProfile: { _ in storedProfile }
+            fetchProfile: { _ in storedProfile },
         )
-        return authState
     }
 
     @MainActor

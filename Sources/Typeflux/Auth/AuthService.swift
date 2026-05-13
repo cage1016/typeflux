@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// HTTP client for the Typeflux authentication API.
-struct AuthAPIService {
+enum AuthAPIService {
     private static let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "AuthAPIService")
 
     // MARK: - Public API
@@ -75,15 +75,15 @@ struct AuthAPIService {
     static func loginWithGitHub(code: String, codeVerifier: String) async throws -> LoginResponse {
         try await post(
             path: "/api/v1/auth/oauth/github",
-            body: GitHubOAuthRequest(code: code, codeVerifier: codeVerifier)
+            body: GitHubOAuthRequest(code: code, codeVerifier: codeVerifier),
         )
     }
 
     // MARK: - Networking Helpers
 
-    private static func post<Body: Encodable, Response: Decodable>(
+    private static func post<Response: Decodable>(
         path: String,
-        body: Body,
+        body: some Encodable,
         token: String? = nil,
     ) async throws -> Response {
         let payload: Data
@@ -130,7 +130,7 @@ struct AuthAPIService {
             }
         } catch is CancellationError {
             throw CancellationError()
-        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+        } catch let CloudRequestExecutorError.allEndpointsFailed(lastError) {
             logger.error("All endpoints failed: \(lastError.localizedDescription)")
             throw AuthError.networkError(lastError)
         } catch {

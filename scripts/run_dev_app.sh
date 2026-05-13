@@ -28,6 +28,33 @@ profile_supports_apple_sign_in() {
   [[ "$entitlement_output" == *"Default"* ]]
 }
 
+identity_supports_restricted_entitlements() {
+  [[ "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" == Apple\ Development:* ]]
+}
+
+verify_stable_signature() {
+  local signature_details
+  local entitlements
+
+  signature_details="$(codesign -dvv "$APP_DIR" 2>&1)"
+  if [[ "$signature_details" == *"Signature=adhoc"* ]]; then
+    echo "Error: dev app was ad-hoc signed; Keychain-backed login state would not be stable." >&2
+    exit 1
+  fi
+
+  if [[ "$signature_details" != *"Identifier=ai.gulu.app.typeflux"* ]]; then
+    echo "Error: dev app signature identifier is not ai.gulu.app.typeflux." >&2
+    echo "$signature_details" >&2
+    exit 1
+  fi
+
+  entitlements="$(codesign -d --entitlements :- "$APP_DIR" 2>/dev/null || true)"
+  if [[ "$use_apple_sign_in_entitlements" != true ]] && [[ "$entitlements" == *"com.apple.developer.applesignin"* ]]; then
+    echo "Error: dev app still carries Sign In with Apple entitlement without an Apple Development signing identity." >&2
+    exit 1
+  fi
+}
+
 install_bundled_models() {
   local bundled_models_dir="$APP_DIR/Contents/Resources/BundledModels"
   local bundled_runtimes_dir="$APP_DIR/Contents/Resources/LocalRuntimes"
@@ -123,6 +150,13 @@ if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v security >/dev/n
   fi
 fi
 
+if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]]; then
+  echo "Error: no stable code-signing identity found for the Typeflux dev app." >&2
+  echo "Run scripts/setup_dev_cert.sh once, or set TYPEFLUX_DEV_CODESIGN_IDENTITY explicitly." >&2
+  echo "Refusing to use ad-hoc signing because it can break Keychain-backed login state." >&2
+  exit 1
+fi
+
 RUNTIME_ENTITLEMENTS="$ROOT_DIR/app/TypefluxRuntime.entitlements"
 APPLE_SIGN_IN_ENTITLEMENTS="$ROOT_DIR/app/Typeflux.entitlements"
 TYPEFLUX_DEV_PROVISIONING_PROFILE="${TYPEFLUX_DEV_PROVISIONING_PROFILE:-}"
@@ -145,7 +179,7 @@ else
   rm -f "$APP_DIR/Contents/embedded.provisionprofile"
 fi
 
-if [[ "$use_apple_sign_in_entitlements" == true ]] && [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]]; then
+if [[ "$use_apple_sign_in_entitlements" == true ]] && ! identity_supports_restricted_entitlements; then
   use_apple_sign_in_entitlements=false
   echo "Warning: provisioning profile grants Sign In with Apple, but no Apple Development signing identity was found."
   echo "Warning: signing dev app with runtime-only entitlements so it can still launch."
@@ -154,17 +188,8 @@ fi
 entitlements_to_use="$RUNTIME_ENTITLEMENTS"
 if [[ "$use_apple_sign_in_entitlements" == true ]]; then
   entitlements_to_use="$APPLE_SIGN_IN_ENTITLEMENTS"
-fi
-
-# Sign In with Apple on manually assembled macOS app bundles requires both:
-# 1. A real Apple Development identity
-# 2. A matching macOS provisioning profile embedded at Contents/embedded.provisionprofile
-# Without the provisioning profile, AMFI rejects the app at launch if restricted
-# entitlements are present. In that case we keep the app launchable and disable
-# Sign In with Apple for the dev build.
-if [[ -z "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - --identifier "ai.gulu.app.typeflux" \
-    --entitlements "$entitlements_to_use" "$APP_DIR"
+else
+  rm -f "$APP_DIR/Contents/embedded.provisionprofile"
 fi
 
 # If you want a fully stable identity across machines and clean TCC behavior,
@@ -173,12 +198,14 @@ fi
 # matching macOS provisioning profile:
 #   TYPEFLUX_DEV_PROVISIONING_PROFILE="/path/to/profile.provisionprofile" \
 #   TYPEFLUX_DEV_CODESIGN_IDENTITY="Apple Development: Your Name (...)" ./scripts/run_dev_app.sh
-if [[ -n "${TYPEFLUX_DEV_CODESIGN_IDENTITY:-}" ]] && command -v codesign >/dev/null 2>&1; then
+if command -v codesign >/dev/null 2>&1; then
   codesign --force --deep --sign "$TYPEFLUX_DEV_CODESIGN_IDENTITY" \
     --entitlements "$entitlements_to_use" "$APP_DIR"
+  verify_stable_signature
   echo "Signed with stable identity: $TYPEFLUX_DEV_CODESIGN_IDENTITY"
 else
-  echo "Warning: using ad-hoc signing. Sign In with Apple requires a real Apple Development identity and matching provisioning profile."
+  echo "Error: codesign is required to build a dev app with stable Keychain identity." >&2
+  exit 1
 fi
 
 if [[ "$use_apple_sign_in_entitlements" == true ]]; then

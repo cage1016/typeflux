@@ -1,6 +1,6 @@
 import AVFoundation
-import XCTest
 @testable import Typeflux
+import XCTest
 
 final class RealtimeTranscriptionSessionTests: XCTestCase {
     func testPCM16FrameChunkerKeepsRemainderUntilFlush() {
@@ -32,7 +32,7 @@ final class RealtimeTranscriptionSessionTests: XCTestCase {
     func testBufferedSessionQueuesAudioUntilUpstreamStartCompletes() async throws {
         let upstream = DelayedStartPCMStream(finalText: "done")
         let session = BufferedRealtimeTranscriptionSession(upstream: upstream)
-        let buffer = try makeFloatBuffer(frameCount: 1_600)
+        let buffer = try makeFloatBuffer(frameCount: 1600)
 
         await session.start()
         await session.append(buffer)
@@ -52,7 +52,7 @@ final class RealtimeTranscriptionSessionTests: XCTestCase {
     func testBufferedSessionThrowsStartErrorFromFinish() async throws {
         let upstream = FailingStartPCMStream()
         let session = BufferedRealtimeTranscriptionSession(upstream: upstream)
-        let buffer = try makeFloatBuffer(frameCount: 1_600)
+        let buffer = try makeFloatBuffer(frameCount: 1600)
 
         await session.start()
         await session.append(buffer)

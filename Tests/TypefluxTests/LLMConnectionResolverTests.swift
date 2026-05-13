@@ -210,10 +210,10 @@ extension LLMConnectionResolverTests {
         XCTAssertEqual(connection.model, "llama3")
     }
 
-    func testTypefluxCloudHeadersIncludeScenario() {
-        let connection = ResolvedLLMConnection(
+    func testTypefluxCloudHeadersIncludeScenario() throws {
+        let connection = try ResolvedLLMConnection(
             provider: .typefluxCloud,
-            baseURL: URL(string: "https://api.typeflux.dev/api/v1")!,
+            baseURL: XCTUnwrap(URL(string: "https://api.typeflux.dev/api/v1")),
             model: "default",
             apiKey: "token",
             additionalHeaders: ["x-request-id": "req-1"],
@@ -225,11 +225,11 @@ extension LLMConnectionResolverTests {
         XCTAssertEqual(headers[TypefluxCloudRequestHeaders.scenarioField], TypefluxCloudScenario.askAnything.rawValue)
     }
 
-    func testTypefluxCloudHeadersIncludePersonaIDWhenProvided() {
-        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
-        let connection = ResolvedLLMConnection(
+    func testTypefluxCloudHeadersIncludePersonaIDWhenProvided() throws {
+        let personaID = try XCTUnwrap(UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001"))
+        let connection = try ResolvedLLMConnection(
             provider: .typefluxCloud,
-            baseURL: URL(string: "https://api.typeflux.dev/api/v1")!,
+            baseURL: XCTUnwrap(URL(string: "https://api.typeflux.dev/api/v1")),
             model: "default",
             apiKey: "token",
             additionalHeaders: ["x-request-id": "req-1"],
@@ -242,10 +242,10 @@ extension LLMConnectionResolverTests {
         XCTAssertEqual(headers[TypefluxCloudRequestHeaders.personaIDField], personaID.uuidString)
     }
 
-    func testNonTypefluxCloudHeadersDoNotInjectScenario() {
-        let connection = ResolvedLLMConnection(
+    func testNonTypefluxCloudHeadersDoNotInjectScenario() throws {
+        let connection = try ResolvedLLMConnection(
             provider: .openAI,
-            baseURL: URL(string: "https://api.openai.com/v1")!,
+            baseURL: XCTUnwrap(URL(string: "https://api.openai.com/v1")),
             model: "gpt-4.1",
             apiKey: "sk-test",
             additionalHeaders: ["x-request-id": "req-1"],

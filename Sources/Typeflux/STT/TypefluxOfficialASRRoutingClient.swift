@@ -9,7 +9,7 @@ enum TypefluxOfficialASRRouteDecision: Equatable, Sendable {
         switch self {
         case .webSocket:
             nil
-        case .aliyun(_, _, let usageReportID):
+        case let .aliyun(_, _, usageReportID):
             usageReportID
         }
     }
@@ -18,7 +18,7 @@ enum TypefluxOfficialASRRouteDecision: Equatable, Sendable {
 protocol TypefluxOfficialASRRoutingClient: Sendable {
     func fetchRoute(
         accessToken: String,
-        scenario: TypefluxCloudScenario
+        scenario: TypefluxCloudScenario,
     ) async throws -> TypefluxOfficialASRRouteDecision
 
     func reportAliyunUsage(
@@ -26,7 +26,7 @@ protocol TypefluxOfficialASRRoutingClient: Sendable {
         usageReportID: String,
         audioDurationMs: Int64,
         outputChars: Int,
-        scenario: TypefluxCloudScenario
+        scenario: TypefluxCloudScenario,
     ) async throws
 }
 
@@ -44,13 +44,13 @@ enum TypefluxOfficialASRRoutingError: LocalizedError, Equatable {
             "Received an invalid Typeflux Cloud ASR routing response."
         case .unauthorized:
             "Please sign in to use Typeflux Cloud speech recognition."
-        case .serverError(let code, let message):
+        case let .serverError(code, message):
             TypefluxCloudServerErrorMessage.userMessage(
                 code: code,
                 message: message,
-                fallback: "Typeflux Cloud ASR routing request failed."
+                fallback: "Typeflux Cloud ASR routing request failed.",
             )
-        case .unknownRouteType(let type):
+        case let .unknownRouteType(type):
             "Unknown Typeflux Cloud ASR route type: \(type)"
         case .missingAliyunToken:
             "Typeflux Cloud did not return an Aliyun temporary token."
@@ -70,7 +70,7 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
 
     func fetchRoute(
         accessToken: String,
-        scenario: TypefluxCloudScenario
+        scenario: TypefluxCloudScenario,
     ) async throws -> TypefluxOfficialASRRouteDecision {
         let (data, response) = try await executor.execute(apiPath: "/api/v1/asr/aliyun/token") { baseURL in
             var request = URLRequest(url: AuthEndpointResolver.resolve(baseURL: baseURL, path: "/api/v1/asr/aliyun/token"))
@@ -87,7 +87,7 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
         if response.statusCode == 401 {
             throw TypefluxOfficialASRRoutingError.unauthorized
         }
-        guard (200..<300).contains(response.statusCode), envelope.code == "OK", let payload = envelope.data else {
+        guard (200 ..< 300).contains(response.statusCode), envelope.code == "OK", let payload = envelope.data else {
             throw TypefluxOfficialASRRoutingError.serverError(code: envelope.code, message: envelope.message)
         }
 
@@ -99,7 +99,8 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
                 throw TypefluxOfficialASRRoutingError.missingAliyunToken
             }
             guard let usageReportID = payload.usageReportID?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !usageReportID.isEmpty else {
+                  !usageReportID.isEmpty
+            else {
                 throw TypefluxOfficialASRRoutingError.missingUsageReportID
             }
             return .aliyun(token: token, expiresAt: payload.expiresAt, usageReportID: usageReportID)
@@ -113,12 +114,12 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
         usageReportID: String,
         audioDurationMs: Int64,
         outputChars: Int,
-        scenario: TypefluxCloudScenario
+        scenario: TypefluxCloudScenario,
     ) async throws {
         let body = AliyunUsageReportRequest(
             usageReportID: usageReportID,
             audioDurationMs: audioDurationMs,
-            outputChars: outputChars
+            outputChars: outputChars,
         )
         let payload = try JSONEncoder().encode(body)
         let (data, response) = try await executor.execute(apiPath: "/api/v1/asr/aliyun/usage") { baseURL in
@@ -136,13 +137,13 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
         if response.statusCode == 401 {
             throw TypefluxOfficialASRRoutingError.unauthorized
         }
-        guard (200..<300).contains(response.statusCode), envelope.code == "OK" else {
+        guard (200 ..< 300).contains(response.statusCode), envelope.code == "OK" else {
             logger.error("Aliyun usage report failed with status \(response.statusCode): \(String(data: data, encoding: .utf8) ?? "<non-utf8>")")
             throw TypefluxOfficialASRRoutingError.serverError(code: envelope.code, message: envelope.message)
         }
     }
 
-    private func decodeEnvelope<T: Decodable>(_ type: T.Type, from data: Data) throws -> APIResponse<T> {
+    private func decodeEnvelope<T: Decodable>(_: T.Type, from data: Data) throws -> APIResponse<T> {
         do {
             return try JSONDecoder().decode(APIResponse<T>.self, from: data)
         } catch {
@@ -151,10 +152,10 @@ struct TypefluxOfficialASRRoutingHTTPClient: TypefluxOfficialASRRoutingClient {
     }
 }
 
-struct TypefluxOfficialASRUsageMeter {
+enum TypefluxOfficialASRUsageMeter {
     static func audioDurationMilliseconds(
         pcm16ByteCount: Int,
-        sampleRate: Double = CloudASRAudioConverter.targetSampleRate
+        sampleRate: Double = CloudASRAudioConverter.targetSampleRate,
     ) -> Int64 {
         guard pcm16ByteCount > 0, sampleRate > 0 else { return 0 }
         let bytesPerFrame = 2.0

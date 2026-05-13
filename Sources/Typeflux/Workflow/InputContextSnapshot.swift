@@ -3,7 +3,7 @@ import Foundation
 struct InputContextSnapshot: Equatable {
     static let defaultPrefixLimit = 500
     static let defaultSuffixLimit = 200
-    static let defaultSelectionLimit = 2_000
+    static let defaultSelectionLimit = 2000
 
     let appName: String?
     let bundleIdentifier: String?
@@ -255,7 +255,7 @@ struct InputContextSnapshot: Equatable {
         else {
             return nil
         }
-        return lowerBound..<upperBound
+        return lowerBound ..< upperBound
     }
 
     private static func normalizedSelectedText(

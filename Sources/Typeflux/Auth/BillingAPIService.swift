@@ -35,7 +35,7 @@ struct BillingAPIService: Sendable {
         try await BillingAPIService().createPortalSession(token: token)
     }
 
-    private func encode<Body: Encodable>(_ body: Body) throws -> Data {
+    private func encode(_ body: some Encodable) throws -> Data {
         do {
             return try JSONEncoder().encode(body)
         } catch {
@@ -64,7 +64,7 @@ struct BillingAPIService: Sendable {
             }
         } catch is CancellationError {
             throw CancellationError()
-        } catch CloudRequestExecutorError.allEndpointsFailed(let lastError) {
+        } catch let CloudRequestExecutorError.allEndpointsFailed(lastError) {
             Self.logger.error("All billing endpoints failed: \(lastError.localizedDescription)")
             throw AuthError.networkError(lastError)
         } catch {

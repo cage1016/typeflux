@@ -88,7 +88,7 @@ enum VocabularyImportError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unsupportedFormat:
-            return "Unsupported vocabulary file format."
+            "Unsupported vocabulary file format."
         }
     }
 }
@@ -151,8 +151,8 @@ enum VocabularyStore {
         from data: Data,
         defaultSource: VocabularySource = .manual,
     ) throws -> [VocabularyTransferItem] {
-        newImportItems(
-            deduplicatedImportItems(try decodeImportedItems(from: data, defaultSource: defaultSource)),
+        try newImportItems(
+            deduplicatedImportItems(decodeImportedItems(from: data, defaultSource: defaultSource)),
         )
     }
 
@@ -449,7 +449,7 @@ enum VocabularyStore {
     private static func preferredSurface(existing: String, imported: String) -> String {
         let existingHasDecoratedCharacters = existing.hasVocabularyDecoration
         let importedHasDecoratedCharacters = imported.hasVocabularyDecoration
-        if importedHasDecoratedCharacters && !existingHasDecoratedCharacters {
+        if importedHasDecoratedCharacters, !existingHasDecoratedCharacters {
             return imported
         }
         return existing

@@ -10,8 +10,8 @@ final class LLMRewriteRequestTests: XCTestCase {
         XCTAssertFalse(editSelection == rewriteTranscript)
     }
 
-    func testCanCreateRequestWithAllParameters() {
-        let personaID = UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001")!
+    func testCanCreateRequestWithAllParameters() throws {
+        let personaID = try XCTUnwrap(UUID(uuidString: "2A7A4A74-A8AC-4F3C-9FB1-5A433EDFA001"))
         let request = LLMRewriteRequest(
             mode: .editSelection,
             sourceText: "source",

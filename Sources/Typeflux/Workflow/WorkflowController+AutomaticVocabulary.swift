@@ -531,7 +531,7 @@ extension WorkflowController {
 
         Task.detached { [weak self] in
             guard let self else { return }
-            await self.runAutomaticVocabularyAnalysis(
+            await runAutomaticVocabularyAnalysis(
                 sessionID: sessionID,
                 insertedText: insertedText,
                 baselineText: baseline,

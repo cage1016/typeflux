@@ -11,11 +11,11 @@ enum CloudRequestExecutorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noEndpointsAvailable:
-            return "No Typeflux Cloud endpoints are configured."
-        case .allEndpointsFailed(let lastError):
-            return "All Typeflux Cloud endpoints failed: \(lastError.localizedDescription)"
+            "No Typeflux Cloud endpoints are configured."
+        case let .allEndpointsFailed(lastError):
+            "All Typeflux Cloud endpoints failed: \(lastError.localizedDescription)"
         case .invalidResponse:
-            return "Received an invalid HTTP response."
+            "Received an invalid HTTP response."
         }
     }
 }
@@ -51,7 +51,7 @@ struct CloudRequestExecutor: Sendable {
 
     init(
         selector: CloudEndpointSelector = CloudEndpointRegistry.shared,
-        session: CloudHTTPSession = URLSession.shared
+        session: CloudHTTPSession = URLSession.shared,
     ) {
         self.selector = selector
         self.session = session
@@ -77,17 +77,16 @@ struct CloudRequestExecutor: Sendable {
     func execute(
         apiPath: String? = nil,
         routingStrategy: CloudEndpointRoutingStrategy = .automatic,
-        build: @Sendable (URL) -> URLRequest
+        build: @Sendable (URL) -> URLRequest,
     ) async throws -> (Data, HTTPURLResponse) {
         let resolvedStrategy = resolveRoutingStrategy(routingStrategy, apiPath: apiPath)
-        let endpoints: [URL]
-        switch resolvedStrategy {
+        let endpoints: [URL] = switch resolvedStrategy {
         case .automatic:
-            endpoints = await selector.primaryFirstEndpoints()
+            await selector.primaryFirstEndpoints()
         case .primaryFirst:
-            endpoints = await selector.primaryFirstEndpoints()
+            await selector.primaryFirstEndpoints()
         case .latencyOptimized:
-            endpoints = await selector.latencyOptimizedEndpoints()
+            await selector.latencyOptimizedEndpoints()
         }
         guard !endpoints.isEmpty else {
             throw CloudRequestExecutorError.noEndpointsAvailable
@@ -106,11 +105,11 @@ struct CloudRequestExecutor: Sendable {
                 guard let http = response as? HTTPURLResponse else {
                     throw CloudRequestExecutorError.invalidResponse
                 }
-                if (500..<600).contains(http.statusCode) {
+                if (500 ..< 600).contains(http.statusCode) {
                     let httpError = NSError(
                         domain: "CloudRequestExecutor",
                         code: http.statusCode,
-                        userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode) from \(endpoint.absoluteString)"]
+                        userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode) from \(endpoint.absoluteString)"],
                     )
                     await selector.reportFailure(endpoint, error: httpError)
                     lastError = httpError
@@ -139,7 +138,7 @@ struct CloudRequestExecutor: Sendable {
 
     private func resolveRoutingStrategy(
         _ strategy: CloudEndpointRoutingStrategy,
-        apiPath: String?
+        apiPath: String?,
     ) -> CloudEndpointRoutingStrategy {
         guard strategy == .automatic else { return strategy }
         guard let path = apiPath else { return .primaryFirst }

@@ -1,6 +1,6 @@
 import AuthenticationServices
-import XCTest
 @testable import Typeflux
+import XCTest
 
 @MainActor
 final class AppleSignInServiceTests: XCTestCase {
@@ -9,8 +9,8 @@ final class AppleSignInServiceTests: XCTestCase {
             for: .init(
                 bundleIdentifier: "ai.gulu.app.typeflux",
                 teamIdentifier: "N95437SZ2A",
-                hasAppleSignInEntitlement: false
-            )
+                hasAppleSignInEntitlement: false,
+            ),
         )
 
         XCTAssertNotNil(description)
@@ -23,8 +23,8 @@ final class AppleSignInServiceTests: XCTestCase {
             for: .init(
                 bundleIdentifier: "ai.gulu.app.typeflux",
                 teamIdentifier: nil,
-                hasAppleSignInEntitlement: true
-            )
+                hasAppleSignInEntitlement: true,
+            ),
         )
 
         XCTAssertNotNil(description)
@@ -35,7 +35,7 @@ final class AppleSignInServiceTests: XCTestCase {
     func testMapSystemErrorPromotesUnknownAuthorizationFailureToConfigurationIssue() {
         let originalError = NSError(
             domain: ASAuthorizationError.errorDomain,
-            code: ASAuthorizationError.unknown.rawValue
+            code: ASAuthorizationError.unknown.rawValue,
         )
 
         let mappedError = AppleSignInService.mapSystemError(
@@ -43,11 +43,11 @@ final class AppleSignInServiceTests: XCTestCase {
             runtimeConfiguration: .init(
                 bundleIdentifier: "ai.gulu.app.typeflux",
                 teamIdentifier: "N95437SZ2A",
-                hasAppleSignInEntitlement: false
-            )
+                hasAppleSignInEntitlement: false,
+            ),
         )
 
-        guard case .configurationIssue(let description) = mappedError as? AppleSignInError else {
+        guard case let .configurationIssue(description) = mappedError as? AppleSignInError else {
             return XCTFail("Expected a configuration issue error.")
         }
         XCTAssertTrue(description.contains("TYPEFLUX_DEV_PROVISIONING_PROFILE"))
@@ -56,7 +56,7 @@ final class AppleSignInServiceTests: XCTestCase {
     func testMapSystemErrorLeavesNonConfigurationFailuresUntouched() {
         let originalError = NSError(
             domain: ASAuthorizationError.errorDomain,
-            code: ASAuthorizationError.canceled.rawValue
+            code: ASAuthorizationError.canceled.rawValue,
         )
 
         let mappedError = AppleSignInService.mapSystemError(
@@ -64,8 +64,8 @@ final class AppleSignInServiceTests: XCTestCase {
             runtimeConfiguration: .init(
                 bundleIdentifier: "ai.gulu.app.typeflux",
                 teamIdentifier: "N95437SZ2A",
-                hasAppleSignInEntitlement: true
-            )
+                hasAppleSignInEntitlement: true,
+            ),
         ) as NSError
 
         XCTAssertEqual(mappedError.domain, ASAuthorizationError.errorDomain)

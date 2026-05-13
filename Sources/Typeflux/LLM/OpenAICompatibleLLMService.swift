@@ -197,9 +197,9 @@ final class OpenAICompatibleLLMService: LLMService {
             guard let self else { throw CancellationError() }
             // Re-resolve on each attempt so typefluxCloud retries pick up the
             // current lowest-latency endpoint when an earlier attempt failed.
-            let call = try await self.resolveConnection(for: llmConfig)
-            let additionalHeaders = self.headers(for: call.connection, scenario: .askAnything)
-            return try await self.runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
+            let call = try await resolveConnection(for: llmConfig)
+            let additionalHeaders = headers(for: call.connection, scenario: .askAnything)
+            return try await runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
                 try await RemoteLLMClient.complete(
                     provider: call.connection.provider,
                     baseURL: call.connection.baseURL,
@@ -226,9 +226,9 @@ final class OpenAICompatibleLLMService: LLMService {
         )
         return try await RequestRetry.perform(operationName: "LLM JSON completion request") { [weak self] in
             guard let self else { throw CancellationError() }
-            let call = try await self.resolveConnection(for: llmConfig)
-            let additionalHeaders = self.headers(for: call.connection, scenario: .automaticVocabulary)
-            return try await self.runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
+            let call = try await resolveConnection(for: llmConfig)
+            let additionalHeaders = headers(for: call.connection, scenario: .automaticVocabulary)
+            return try await runWithFailureReporting(cloudBaseURL: call.cloudBaseURL) {
                 try await RemoteLLMClient.complete(
                     provider: call.connection.provider,
                     baseURL: call.connection.baseURL,

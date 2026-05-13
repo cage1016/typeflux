@@ -2,9 +2,9 @@ import AVFoundation
 import Foundation
 
 final class AVFoundationAudioRecorder: AudioRecorder {
-    private static let outputMuteDelayWithStartCue: Duration = .milliseconds(1_225)
+    private static let outputMuteDelayWithStartCue: Duration = .milliseconds(1225)
     private static let outputMuteDelayWithoutStartCue: Duration = .milliseconds(180)
-    private static let silentInputRecoveryDelay: Duration = .milliseconds(1_000)
+    private static let silentInputRecoveryDelay: Duration = .milliseconds(1000)
     private static let silentInputRecoveryPeakPowerThreshold: Float = -58
     private static let audioStartupTimeout: DispatchTimeInterval = .seconds(5)
 
@@ -15,9 +15,9 @@ final class AVFoundationAudioRecorder: AudioRecorder {
         var errorDescription: String? {
             switch self {
             case .inputDeviceUnavailable:
-                return "No usable microphone input format is available."
+                "No usable microphone input format is available."
             case .inputStartupTimedOut:
-                return "Microphone input did not become ready in time."
+                "Microphone input did not become ready in time."
             }
         }
     }
@@ -75,7 +75,7 @@ final class AVFoundationAudioRecorder: AudioRecorder {
                 return
             }
             do {
-                let preparedSession = try self.prepareRecordingSession(
+                let preparedSession = try prepareRecordingSession(
                     id: startupAttempt.id,
                     startupAttempt: startupAttempt,
                 )

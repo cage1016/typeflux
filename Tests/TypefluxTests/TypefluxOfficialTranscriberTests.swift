@@ -39,7 +39,7 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertTrue(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                 completed: false,
-                finalSegments: []
+                finalSegments: [],
             ),
         )
     }
@@ -48,7 +48,7 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertFalse(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                 completed: false,
-                finalSegments: ["hello world"]
+                finalSegments: ["hello world"],
             ),
         )
     }
@@ -57,7 +57,7 @@ final class TypefluxOfficialTranscriberTests: XCTestCase {
         XCTAssertFalse(
             TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                 completed: true,
-                finalSegments: []
+                finalSegments: [],
             ),
         )
     }

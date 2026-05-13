@@ -4,11 +4,13 @@ import XCTest
 final class KeychainTokenStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
+        KeychainTokenStore.useInMemoryStoreForTesting = true
         KeychainTokenStore.clearAll()
     }
 
     override func tearDown() {
         KeychainTokenStore.clearAll()
+        KeychainTokenStore.useInMemoryStoreForTesting = false
         super.tearDown()
     }
 
@@ -93,7 +95,7 @@ final class KeychainTokenStoreTests: XCTestCase {
 
     func testOverwriteWithNilRefreshTokenClearsIt() {
         KeychainTokenStore.saveToken("first", expiresAt: 111, refreshToken: "rt_first")
-        KeychainTokenStore.saveToken("second", expiresAt: 222)  // no refreshToken
+        KeychainTokenStore.saveToken("second", expiresAt: 222) // no refreshToken
         XCTAssertNil(KeychainTokenStore.loadRefreshToken())
     }
 
@@ -141,7 +143,7 @@ final class KeychainTokenStoreTests: XCTestCase {
             status: 1,
             provider: "password",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
+            updatedAt: "2024-01-01T00:00:00Z",
         )
         KeychainTokenStore.saveUserProfile(profile)
         let loaded = KeychainTokenStore.loadUserProfile()
@@ -160,7 +162,7 @@ final class KeychainTokenStoreTests: XCTestCase {
             status: 1,
             provider: "google",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
+            updatedAt: "2024-01-01T00:00:00Z",
         )
         KeychainTokenStore.saveUserProfile(profile)
         KeychainTokenStore.deleteUserProfile()
@@ -178,7 +180,7 @@ final class KeychainTokenStoreTests: XCTestCase {
             status: 1,
             provider: "apple",
             createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
+            updatedAt: "2024-01-01T00:00:00Z",
         )
         KeychainTokenStore.saveUserProfile(profile)
 

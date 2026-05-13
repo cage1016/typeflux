@@ -49,7 +49,7 @@ struct HotkeyBinding: Codable, Equatable, Identifiable {
         guard pressCount == 2 else { return false }
         return (
             keyCode == Self.rightCommandKeyCode
-                && modifierFlags == UInt(NSEvent.ModifierFlags.command.rawValue)
+                && modifierFlags == UInt(NSEvent.ModifierFlags.command.rawValue),
         ) || (
             keyCode == Self.rightOptionKeyCode
                 && modifierFlags == UInt(NSEvent.ModifierFlags.option.rawValue)

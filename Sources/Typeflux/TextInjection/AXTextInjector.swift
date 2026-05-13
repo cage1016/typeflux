@@ -124,9 +124,9 @@ final class AXTextInjector: TextInjector {
     static let copySelectionTimeoutMilliseconds = 180
     static let documentContextMaxBytes = 2_000_000
     static let applicationStateContextMaxBytes = 2_000_000
-    static let visibleTextContextMaxNodes = 4_000
+    static let visibleTextContextMaxNodes = 4000
     static let visibleTextContextSearchDepth = 16
-    static let visibleTextContextMaxCharacters = 60_000
+    static let visibleTextContextMaxCharacters = 60000
     static let copyShortcutKeyCode: CGKeyCode = 8
     static let selectionContextLifetime: TimeInterval = 180
     static let focusedDescendantSearchDepth = 10
@@ -183,8 +183,8 @@ final class AXTextInjector: TextInjector {
     func typefluxNativeSelectionSnapshot(target: TypefluxNativeTextTarget) -> TextSelectionSnapshot {
         let selectedRange = target.textView.selectedRange()
         let selectedText: String? = if selectedRange.length > 0,
-                                      selectedRange.location != NSNotFound,
-                                      NSMaxRange(selectedRange) <= target.textView.string.utf16.count
+                                       selectedRange.location != NSNotFound,
+                                       NSMaxRange(selectedRange) <= target.textView.string.utf16.count
         {
             (target.textView.string as NSString).substring(with: selectedRange)
         } else {

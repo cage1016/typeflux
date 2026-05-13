@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import os
 
 extension Notification.Name {

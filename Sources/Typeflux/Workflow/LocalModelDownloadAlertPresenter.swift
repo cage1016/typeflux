@@ -74,7 +74,7 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
     }
 
     @MainActor
-    func windowWillClose(_ notification: Notification) {
+    func windowWillClose(_: Notification) {
         cleanupAlert()
     }
 
@@ -109,12 +109,12 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
         viewModel: LocalModelDownloadAlertViewModel?,
     ) {
         switch status {
-        case .downloading(let currentModel, let currentProgress) where currentModel == model:
+        case let .downloading(currentModel, currentProgress) where currentModel == model:
             Task { @MainActor in
                 viewModel?.failureMessage = nil
                 viewModel?.progress = currentProgress
             }
-        case .failed(let currentModel, let message) where currentModel == model:
+        case let .failed(currentModel, message) where currentModel == model:
             Task { @MainActor in
                 viewModel?.failureMessage = message
             }
@@ -143,7 +143,6 @@ final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownload
         )
         window.setFrameOrigin(origin)
     }
-
 }
 
 @MainActor
@@ -201,9 +200,9 @@ private struct LocalModelDownloadAlertContentView: View {
                     "workflow.localModelDownloadingAlert.failedMessage",
                     viewModel.failureMessage ?? "",
                 ))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

@@ -5,7 +5,7 @@ enum LoginGooglePreflight {
     static func errorMessage(
         for step: LoginView.Step,
         hasAcceptedPolicies: Bool,
-        localization: AppLocalization = .shared
+        localization: AppLocalization = .shared,
     ) -> String? {
         guard step == .enterEmail, !hasAcceptedPolicies else {
             return nil
@@ -17,9 +17,9 @@ enum LoginGooglePreflight {
 
 enum LoginApplePreflight {
     static func errorMessage(
-        availability: AppleSignInService.Availability = AppleSignInService.currentAvailability()
+        availability: AppleSignInService.Availability = AppleSignInService.currentAvailability(),
     ) -> String? {
-        guard case .unavailable(let description) = availability else {
+        guard case let .unavailable(description) = availability else {
             return nil
         }
 
@@ -37,7 +37,7 @@ enum SocialLoginLayout {
     static func enabledProviders(
         googleClientID: String,
         githubClientID: String,
-        includeApple: Bool = true
+        includeApple: Bool = true,
     ) -> [SocialLoginProvider] {
         var providers: [SocialLoginProvider] = []
 
@@ -56,7 +56,7 @@ enum SocialLoginLayout {
 
     static func rows(
         for providers: [SocialLoginProvider],
-        maxItemsPerRow: Int = 2
+        maxItemsPerRow: Int = 2,
     ) -> [[SocialLoginProvider]] {
         guard !providers.isEmpty else {
             return []
@@ -66,7 +66,7 @@ enum SocialLoginLayout {
 
         return stride(from: 0, to: providers.count, by: itemsPerRow).map { startIndex in
             let endIndex = min(startIndex + itemsPerRow, providers.count)
-            return Array(providers[startIndex..<endIndex])
+            return Array(providers[startIndex ..< endIndex])
         }
     }
 }
@@ -120,7 +120,7 @@ struct LoginView: View {
 
     init(
         presentationStyle: PresentationStyle = .card,
-        onDismiss: @escaping () -> Void
+        onDismiss: @escaping () -> Void,
     ) {
         self.presentationStyle = presentationStyle
         self.onDismiss = onDismiss
@@ -323,7 +323,7 @@ struct LoginView: View {
         SocialLoginLayout.enabledProviders(
             googleClientID: googleClientID,
             githubClientID: githubClientID,
-            includeApple: appleLoginErrorMessage == nil
+            includeApple: appleLoginErrorMessage == nil,
         )
     }
 
@@ -340,7 +340,6 @@ struct LoginView: View {
         .frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder
     private func socialLoginButton(for provider: SocialLoginProvider) -> some View {
         Button(action: action(for: provider)) {
             HStack(spacing: 10) {
@@ -363,11 +362,11 @@ struct LoginView: View {
             .padding(.horizontal, 14)
             .background(
                 RoundedRectangle(cornerRadius: socialButtonCornerRadius, style: .continuous)
-                    .fill(socialButtonFillColor(for: provider))
+                    .fill(socialButtonFillColor(for: provider)),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: socialButtonCornerRadius, style: .continuous)
-                    .stroke(socialButtonStrokeColor(for: provider), lineWidth: 1)
+                    .stroke(socialButtonStrokeColor(for: provider), lineWidth: 1),
             )
         }
         .buttonStyle(.plain)
@@ -463,17 +462,17 @@ struct LoginView: View {
         colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.10)
     }
 
-    private func socialButtonFillColor(for provider: SocialLoginProvider) -> Color {
+    private func socialButtonFillColor(for _: SocialLoginProvider) -> Color {
         colorScheme == .dark ? Color.black : Color.white
     }
 
-    private func socialButtonTextColor(for provider: SocialLoginProvider) -> Color {
+    private func socialButtonTextColor(for _: SocialLoginProvider) -> Color {
         colorScheme == .dark
             ? Color.white.opacity(0.96)
             : Color(red: 0.12, green: 0.14, blue: 0.17)
     }
 
-    private func socialButtonStrokeColor(for provider: SocialLoginProvider) -> Color {
+    private func socialButtonStrokeColor(for _: SocialLoginProvider) -> Color {
         colorScheme == .dark
             ? Color.white.opacity(0.14)
             : Color.black.opacity(0.12)
@@ -647,11 +646,11 @@ struct LoginView: View {
             .foregroundStyle(buttonTextColor)
             .background(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .fill(buttonFillColor)
+                    .fill(buttonFillColor),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                    .stroke(buttonStrokeColor, lineWidth: buttonStrokeWidth)
+                    .stroke(buttonStrokeColor, lineWidth: buttonStrokeWidth),
             )
         }
         .buttonStyle(.plain)
@@ -1034,12 +1033,12 @@ struct LoginView: View {
             do {
                 let response = try await AuthAPIService.login(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: password
+                    password: password,
                 )
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken
+                    refreshToken: response.refreshToken,
                 )
                 isLoading = false
                 onDismiss()
@@ -1077,7 +1076,7 @@ struct LoginView: View {
                 _ = try await AuthAPIService.register(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: password,
-                    name: name.isEmpty ? nil : name
+                    name: name.isEmpty ? nil : name,
                 )
                 isLoading = false
                 statusMessage = L("auth.login.activationCodeSent")
@@ -1105,16 +1104,16 @@ struct LoginView: View {
             do {
                 _ = try await AuthAPIService.activate(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    code: activationCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                    code: activationCode.trimmingCharacters(in: .whitespacesAndNewlines),
                 )
                 let loginResponse = try await AuthAPIService.login(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: password
+                    password: password,
                 )
                 await authState.handleLoginSuccess(
                     token: loginResponse.accessToken,
                     expiresAt: loginResponse.expiresAt,
-                    refreshToken: loginResponse.refreshToken
+                    refreshToken: loginResponse.refreshToken,
                 )
                 isLoading = false
                 onDismiss()
@@ -1134,7 +1133,7 @@ struct LoginView: View {
             do {
                 _ = try await AuthAPIService.resendActivation(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: password
+                    password: password,
                 )
                 isLoading = false
                 statusMessage = L("auth.login.activationCodeResent")
@@ -1193,16 +1192,16 @@ struct LoginView: View {
                 _ = try await AuthAPIService.resetPassword(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     code: resetCode.trimmingCharacters(in: .whitespacesAndNewlines),
-                    newPassword: resetPassword
+                    newPassword: resetPassword,
                 )
                 let loginResponse = try await AuthAPIService.login(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: resetPassword
+                    password: resetPassword,
                 )
                 await authState.handleLoginSuccess(
                     token: loginResponse.accessToken,
                     expiresAt: loginResponse.expiresAt,
-                    refreshToken: loginResponse.refreshToken
+                    refreshToken: loginResponse.refreshToken,
                 )
                 isLoading = false
                 onDismiss()
@@ -1239,7 +1238,7 @@ struct LoginView: View {
         guard !googleClientID.isEmpty else { return }
         if let policyError = LoginGooglePreflight.errorMessage(
             for: step,
-            hasAcceptedPolicies: hasAcceptedPolicies
+            hasAcceptedPolicies: hasAcceptedPolicies,
         ) {
             statusMessage = nil
             errorMessage = policyError
@@ -1252,13 +1251,13 @@ struct LoginView: View {
             do {
                 let idToken = try await GoogleOAuthService.signIn(
                     clientID: googleClientID,
-                    clientSecret: googleClientSecret.isEmpty ? nil : googleClientSecret
+                    clientSecret: googleClientSecret.isEmpty ? nil : googleClientSecret,
                 )
                 let response = try await AuthAPIService.loginWithGoogle(idToken: idToken)
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken
+                    refreshToken: response.refreshToken,
                 )
                 isGoogleLoading = false
                 onDismiss()
@@ -1267,7 +1266,8 @@ struct LoginView: View {
                 // ASWebAuthenticationSession cancellation produces a specific error; suppress it silently.
                 let nsError = error as NSError
                 if nsError.domain == ASWebAuthenticationSessionErrorDomain,
-                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
+                {
                     return
                 }
                 errorMessage = error.localizedDescription
@@ -1296,7 +1296,7 @@ struct LoginView: View {
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken
+                    refreshToken: response.refreshToken,
                 )
                 isAppleLoading = false
                 onDismiss()
@@ -1304,7 +1304,8 @@ struct LoginView: View {
                 isAppleLoading = false
                 let nsError = error as NSError
                 if nsError.domain == ASAuthorizationError.errorDomain,
-                   nsError.code == ASAuthorizationError.canceled.rawValue {
+                   nsError.code == ASAuthorizationError.canceled.rawValue
+                {
                     return
                 }
                 errorMessage = error.localizedDescription
@@ -1327,12 +1328,12 @@ struct LoginView: View {
                 let authorization = try await GitHubOAuthService.signIn(clientID: githubClientID)
                 let response = try await AuthAPIService.loginWithGitHub(
                     code: authorization.code,
-                    codeVerifier: authorization.codeVerifier
+                    codeVerifier: authorization.codeVerifier,
                 )
                 await authState.handleLoginSuccess(
                     token: response.accessToken,
                     expiresAt: response.expiresAt,
-                    refreshToken: response.refreshToken
+                    refreshToken: response.refreshToken,
                 )
                 isGitHubLoading = false
                 onDismiss()
@@ -1341,7 +1342,8 @@ struct LoginView: View {
                 // ASWebAuthenticationSession cancellation produces a specific error; suppress it silently.
                 let nsError = error as NSError
                 if nsError.domain == ASWebAuthenticationSessionErrorDomain,
-                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
+                {
                     return
                 }
                 errorMessage = error.localizedDescription
@@ -1404,11 +1406,11 @@ private struct LoginTextField: View {
         .frame(height: 46)
         .background(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .fill(fieldBackgroundColor)
+                .fill(fieldBackgroundColor),
         )
         .overlay(
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
-                .stroke(fieldBorderColor, lineWidth: StudioTheme.BorderWidth.thin)
+                .stroke(fieldBorderColor, lineWidth: StudioTheme.BorderWidth.thin),
         )
         .shadow(color: fieldShadowColor, radius: fieldShadowRadius, x: 0, y: fieldShadowY)
         .opacity(isDisabled ? 0.6 : 1)

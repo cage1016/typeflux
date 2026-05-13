@@ -225,7 +225,7 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         XCTAssertEqual(result.entries.first?.occurrenceCount, 2)
     }
 
-    func testImportTermsSkipsExistingExternalTermWithoutChangingSource() throws {
+    func testImportTermsSkipsExistingExternalTermWithoutChangingSource() {
         VocabularyStore.save([
             VocabularyEntry(term: "WhisperKit", source: .claude, occurrenceCount: 2),
         ])
@@ -386,7 +386,7 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         _ = VocabularyStore.add(term: "SeedASR", source: .manual)
         _ = VocabularyStore.add(term: "SeedASR", source: .automatic)
         let entries = VocabularyStore.add(term: "seedasr", source: .automatic) // case-insensitive
-        XCTAssertEqual(entries.filter { $0.term.lowercased() == "seedasr" }.count, 1)
+        XCTAssertEqual(entries.count(where: { $0.term.lowercased() == "seedasr" }), 1)
         XCTAssertEqual(entries.first(where: { $0.term.lowercased() == "seedasr" })?.occurrenceCount, 3)
     }
 
@@ -447,7 +447,7 @@ final class VocabularyStoreExtendedTests: XCTestCase {
         _ = VocabularyStore.add(term: "Middle", source: .manual)
 
         let active = VocabularyStore.activeTerms()
-        XCTAssertEqual(active.prefix(3).map { $0 }, ["Middle", "Newest", "Oldest"])
+        XCTAssertEqual(active.prefix(3).map(\.self), ["Middle", "Newest", "Oldest"])
     }
 
     func testActiveTermsCapsAt500Entries() {
@@ -482,7 +482,7 @@ final class VocabularyStoreExtendedTests: XCTestCase {
                 VocabularyEntry(
                     term: "Term\(i)",
                     source: .manual,
-                    createdAt: Date(timeIntervalSince1970: TimeInterval(1_000 + i)),
+                    createdAt: Date(timeIntervalSince1970: TimeInterval(1000 + i)),
                     occurrenceCount: 1,
                 ),
             )

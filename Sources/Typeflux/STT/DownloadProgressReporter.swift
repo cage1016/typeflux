@@ -11,8 +11,7 @@ enum DownloadProgressReporter {
         }
 
         let delegate = ProgressDelegate(onProgress: onProgress)
-        let result = try await session.download(for: request, delegate: delegate)
-        return result
+        return try await session.download(for: request, delegate: delegate)
     }
 }
 

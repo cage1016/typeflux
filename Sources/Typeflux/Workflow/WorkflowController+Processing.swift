@@ -4,7 +4,7 @@ import Foundation
 
 extension WorkflowController {
     private static func formatDurationSince(_ startDate: Date) -> String {
-        String(format: "%.1fms", Date().timeIntervalSince(startDate) * 1_000)
+        String(format: "%.1fms", Date().timeIntervalSince(startDate) * 1000)
     }
 
     enum AskWithoutSelectionAgentDisposition: Equatable {
@@ -40,7 +40,7 @@ extension WorkflowController {
         let configStatus = await validateLLMConfiguration()
         guard case .ready = configStatus else {
             await presentLLMNotConfigured(configStatus)
-            if case .notConfigured(let reason) = configStatus {
+            if case let .notConfigured(reason) = configStatus {
                 throw LLMConfigurationError.notConfigured(reason: reason)
             }
             throw CancellationError()
@@ -116,7 +116,7 @@ extension WorkflowController {
         let configStatus = await validateLLMConfiguration()
         guard case .ready = configStatus else {
             await presentLLMNotConfigured(configStatus)
-            if case .notConfigured(let reason) = configStatus {
+            if case let .notConfigured(reason) = configStatus {
                 throw LLMConfigurationError.notConfigured(reason: reason)
             }
             throw CancellationError()
@@ -432,7 +432,7 @@ extension WorkflowController {
                 )
             }
 
-            await MainActor.run { () -> Void in
+            await MainActor.run { () in
                 self.soundEffectPlayer.play(.done)
             }
             let selectedText = recordingIntent == .askSelection
@@ -1303,7 +1303,7 @@ extension WorkflowController {
         overlayController.dismissProcessingIfVisible()
     }
 
-    // Thread-safe accumulator for LLM streaming chunks captured in @Sendable closures.
+    /// Thread-safe accumulator for LLM streaming chunks captured in @Sendable closures.
     private final class LLMStreamBuffer: @unchecked Sendable {
         private var _text = ""
         private let lock = NSLock()

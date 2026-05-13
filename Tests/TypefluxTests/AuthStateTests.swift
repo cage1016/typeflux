@@ -1,5 +1,5 @@
-import XCTest
 @testable import Typeflux
+import XCTest
 
 @MainActor
 final class AuthStateTests: XCTestCase {
@@ -18,6 +18,7 @@ final class AuthStateTests: XCTestCase {
                 fetchExpectation.fulfill()
                 return profile
             },
+            fetchSubscription: { _ in .none },
         )
 
         await fulfillment(of: [fetchExpectation], timeout: 1.0)
@@ -81,6 +82,46 @@ final class AuthStateTests: XCTestCase {
         XCTAssertNil(state.userProfile)
     }
 
+    func testRestoreSessionRefreshesExpiredAccessTokenWithStoredRefreshToken() async {
+        let fetchExpectation = expectation(description: "fetch profile after token refresh")
+        var storedToken: (token: String, expiresAt: Int)? = ("old-token", Int(Date().timeIntervalSince1970) - 60)
+        var savedRefreshToken: String?
+        var fetchedProfileToken: String?
+        let profile = makeProfile(email: "restore-refresh@test.com")
+        let refreshedExpiry = Int(Date().timeIntervalSince1970) + 3600
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredRefreshToken: { "refresh-token" },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredSession: { token, expiresAt, refreshToken in
+                storedToken = (token, expiresAt)
+                savedRefreshToken = refreshToken
+            },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { token in
+                fetchedProfileToken = token
+                fetchExpectation.fulfill()
+                return profile
+            },
+            refreshAccessToken: { refreshToken in
+                XCTAssertEqual(refreshToken, "refresh-token")
+                return LoginResponse(accessToken: "new-token", expiresAt: refreshedExpiry, refreshToken: nil)
+            },
+            fetchSubscription: { _ in .none },
+        )
+
+        await fulfillment(of: [fetchExpectation], timeout: 1.0)
+        await waitForRefreshCompletion(state)
+
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(storedToken?.token, "new-token")
+        XCTAssertEqual(savedRefreshToken, "refresh-token")
+        XCTAssertEqual(fetchedProfileToken, "new-token")
+        XCTAssertEqual(state.userProfile, profile)
+    }
+
     func testLoginSuccessRefreshesSubscription() async {
         var storedToken: (token: String, expiresAt: Int)?
         var savedProfile: UserProfile?
@@ -93,7 +134,7 @@ final class AuthStateTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true
+            entitled: true,
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -172,6 +213,58 @@ final class AuthStateTests: XCTestCase {
         XCTAssertEqual(savedProfile, profile)
     }
 
+    func testProfileUnauthorizedRefreshesAccessTokenBeforeLoggingOut() async {
+        var storedToken: (token: String, expiresAt: Int)?
+        var savedRefreshToken: String?
+        var fetchProfileCallCount = 0
+        var clearedSession = false
+        let profile = makeProfile(email: "profile-refresh@test.com")
+        let refreshedExpiry = Int(Date().timeIntervalSince1970) + 3600
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredRefreshToken: { savedRefreshToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredSession: { token, expiresAt, refreshToken in
+                storedToken = (token, expiresAt)
+                savedRefreshToken = refreshToken
+            },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: {
+                clearedSession = true
+                storedToken = nil
+                savedRefreshToken = nil
+            },
+            fetchProfile: { token in
+                fetchProfileCallCount += 1
+                if fetchProfileCallCount == 1 {
+                    XCTAssertEqual(token, "old-token")
+                    throw AuthError.unauthorized
+                }
+                XCTAssertEqual(token, "new-token")
+                return profile
+            },
+            refreshAccessToken: { refreshToken in
+                XCTAssertEqual(refreshToken, "refresh-token")
+                return LoginResponse(accessToken: "new-token", expiresAt: refreshedExpiry, refreshToken: nil)
+            },
+            fetchSubscription: { _ in .none },
+        )
+
+        await state.handleLoginSuccess(
+            token: "old-token",
+            expiresAt: Int(Date().timeIntervalSince1970) + 3600,
+            refreshToken: "refresh-token"
+        )
+
+        XCTAssertFalse(clearedSession)
+        XCTAssertTrue(state.isLoggedIn)
+        XCTAssertEqual(fetchProfileCallCount, 2)
+        XCTAssertEqual(storedToken?.token, "new-token")
+        XCTAssertEqual(savedRefreshToken, "refresh-token")
+        XCTAssertEqual(state.userProfile, profile)
+    }
+
     func testLoginSuccessAcceptsRelativeExpirySeconds() async {
         var storedToken: (token: String, expiresAt: Int)?
         let now = Int(Date().timeIntervalSince1970)
@@ -222,7 +315,7 @@ final class AuthStateTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true
+            entitled: true,
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -239,7 +332,7 @@ final class AuthStateTests: XCTestCase {
                 requestedPlanCode = planCode
                 return BillingCheckoutSession(
                     sessionID: "cs_test_1",
-                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!
+                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!,
                 )
             },
         )
@@ -261,7 +354,7 @@ final class AuthStateTests: XCTestCase {
             currentPeriodStart: nil,
             currentPeriodEnd: "2026-06-01T00:00:00Z",
             cancelAtPeriodEnd: false,
-            entitled: true
+            entitled: true,
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -275,7 +368,7 @@ final class AuthStateTests: XCTestCase {
                 checkoutStarted = true
                 return BillingCheckoutSession(
                     sessionID: "cs_test_1",
-                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!
+                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!,
                 )
             },
         )
@@ -313,7 +406,7 @@ final class AuthStateTests: XCTestCase {
                     currentPeriodStart: nil,
                     currentPeriodEnd: nil,
                     cancelAtPeriodEnd: false,
-                    entitled: true
+                    entitled: true,
                 )
             },
         )
@@ -337,7 +430,7 @@ final class AuthStateTests: XCTestCase {
             chatOutputChars: 100,
             chatInputTokens: 200,
             chatOutputTokens: 50,
-            chatTotalTokens: 250
+            chatTotalTokens: 250,
         )
         let state = AuthState(
             loadStoredToken: { storedToken },
@@ -353,7 +446,7 @@ final class AuthStateTests: XCTestCase {
                     currentPeriodStart: "2026-05-01T00:00:00Z",
                     currentPeriodEnd: "2026-06-01T00:00:00Z",
                     cancelAtPeriodEnd: false,
-                    entitled: true
+                    entitled: true,
                 )
             },
             fetchCurrentPeriodUsageStats: { _ in
@@ -361,7 +454,7 @@ final class AuthStateTests: XCTestCase {
                 return CloudUsageCurrentPeriodStats(
                     periodStart: "2026-05-01T00:00:00Z",
                     periodEnd: "2026-06-01T00:00:00Z",
-                    stats: stats
+                    stats: stats,
                 )
             },
         )
@@ -452,7 +545,7 @@ final class AuthStateTests: XCTestCase {
     }
 
     private func waitForSubscriptionRefreshCount(_ count: @escaping () -> Int) async {
-        for _ in 0..<100 where count() == 0 {
+        for _ in 0 ..< 100 where count() == 0 {
             await Task.yield()
         }
     }

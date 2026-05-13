@@ -445,7 +445,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                 URL(fileURLWithPath: downloadBasePath, isDirectory: true),
             )
             NetworkDebugLogger.logMessage(
-                "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit-local modelFolder=\(localModelFolderPath)"
+                "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit-local modelFolder=\(localModelFolderPath)",
             )
             try await transcriber.prepare { progress, message in
                 let mapped = 0.2 + progress * 0.75
@@ -481,7 +481,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             modelEndpoint,
         )
         NetworkDebugLogger.logMessage(
-            "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit endpoint=\(modelEndpoint) repository=\(LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: configuration.downloadSource).absoluteString)"
+            "[Local Model Download] model=\(configuration.model.displayName) source=\(configuration.downloadSource.displayName) kind=whisperkit endpoint=\(modelEndpoint) repository=\(LocalModelDownloadCatalog.whisperKitModelRepositoryURL(source: configuration.downloadSource).absoluteString)",
         )
         try await transcriber.prepare { progress, message in
             let mapped = 0.2 + progress * 0.75
@@ -607,7 +607,8 @@ final class LocalModelManager: LocalSTTModelManaging {
 
     private func bundledModelInfo(for configuration: LocalSTTConfiguration) -> LocalSTTPreparedModelInfo? {
         for candidateURL in bundledModelLocator.storageURLs(for: configuration)
-        where isPreparedStoragePathValid(candidateURL.path, for: configuration.model) {
+            where isPreparedStoragePathValid(candidateURL.path, for: configuration.model)
+        {
             return LocalSTTPreparedModelInfo(
                 storagePath: candidateURL.path,
                 sourceDisplayName: L("common.bundled"),
@@ -678,7 +679,7 @@ final class LocalModelManager: LocalSTTModelManaging {
         bundledStorageURL: URL,
     ) throws -> URL {
         let bundledRuntimeURL = try resolvedURLFollowingSymlink(
-            bundledStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
+            bundledStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true),
         )
         let targetRuntimeURL = runtimesRootURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
         try ensurePath(targetRuntimeURL, isInside: runtimesRootURL)
@@ -711,7 +712,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             return false
         }
         return (try? fileManager.destinationOfSymbolicLink(
-            atPath: targetURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true).path
+            atPath: targetURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true).path,
         )) == runtimeRootURL.path
     }
 
@@ -802,7 +803,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             }
 
             NetworkDebugLogger.logMessage(
-                "[Local Model Download] kind=whisper-tokenizer source=\(downloadSource.displayName) model=\(modelName) url=\(sourceURL.absoluteString)"
+                "[Local Model Download] kind=whisper-tokenizer source=\(downloadSource.displayName) model=\(modelName) url=\(sourceURL.absoluteString)",
             )
             let data = try await loadRemoteFileWithRetry(sourceURL, operationName: "WhisperKit tokenizer file download")
             try data.write(
@@ -833,8 +834,8 @@ final class LocalModelManager: LocalSTTModelManaging {
             repositoryFilesURL,
             operationName: "WhisperKit repository file list download",
         )
-            .filter { $0.hasPrefix(expectedPrefix) }
-            .sorted()
+        .filter { $0.hasPrefix(expectedPrefix) }
+        .sorted()
 
         guard !remoteFiles.isEmpty else {
             throw NSError(
@@ -880,7 +881,7 @@ final class LocalModelManager: LocalSTTModelManaging {
                 source: downloadSource.displayName,
             ))
             NetworkDebugLogger.logMessage(
-                "[Local Model Download] kind=whisper-model-file source=\(downloadSource.displayName) model=\(modelName) path=\(relativePath) url=\(sourceURL.absoluteString)"
+                "[Local Model Download] kind=whisper-model-file source=\(downloadSource.displayName) model=\(modelName) path=\(relativePath) url=\(sourceURL.absoluteString)",
             )
             try await downloadRemoteFileWithRetry(
                 sourceURL,

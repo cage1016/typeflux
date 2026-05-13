@@ -631,10 +631,10 @@ enum StatusBarMenuSupport {
         switch status {
         case .idle:
             return nil
-        case .downloading(let model, let progress):
+        case let .downloading(model, progress):
             let percent = Int((progress * 100).rounded())
             return L("menu.downloadingLocalModelNamed", model.displayName, percent)
-        case .failed(let model, _):
+        case let .failed(model, _):
             return L("menu.localModelDownloadFailedNamed", model.displayName)
         }
     }
@@ -649,7 +649,7 @@ enum StatusBarMenuSupport {
             }
             .sorted { $0.date > $1.date }
             .prefix(limit)
-            .map { $0 }
+            .map(\.self)
     }
 
     static func recentHistoryTitle(for record: HistoryRecord) -> String {

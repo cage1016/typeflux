@@ -30,7 +30,7 @@ struct BundledLocalModelLocator {
         urls.append(
             Bundle.main.bundleURL
                 .appendingPathComponent("Contents/Resources", isDirectory: true)
-                .appendingPathComponent("BundledModels", isDirectory: true)
+                .appendingPathComponent("BundledModels", isDirectory: true),
         )
 
         var seenPaths = Set<String>()

@@ -5,7 +5,7 @@ import XCTest
 final class SettingsViewModelCloudDefaultsTests: XCTestCase {
     func testCloudDefaultsNotificationSyncsModelSelectionState() async throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.sttProvider = .localModel
@@ -35,7 +35,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
 
     func testUnavailableLocalSTTModelFocusDoesNotCommitUntilPrepareSucceeds() async throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.localSTT.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .senseVoiceSmall
@@ -68,7 +68,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         defer { LocalModelDownloadProgressCenter.shared.clear() }
 
         let suiteName = "SettingsViewModelCloudDefaultsTests.menuProgress.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .senseVoiceSmall
@@ -89,7 +89,8 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         ) { _ in
             if case .downloading(model: .qwen3ASR, progress: let progress) =
                 LocalModelDownloadProgressCenter.shared.status,
-               progress > 0 {
+                progress > 0
+            {
                 progressExpectation.fulfill()
             }
         }
@@ -105,7 +106,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         defer { LocalModelDownloadProgressCenter.shared.clear() }
 
         let suiteName = "SettingsViewModelCloudDefaultsTests.sharedProgress.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .whisperLocal
@@ -132,7 +133,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         defer { LocalModelDownloadProgressCenter.shared.clear() }
 
         let suiteName = "SettingsViewModelCloudDefaultsTests.unfocusedSharedProgress.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .senseVoiceSmall
@@ -157,7 +158,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
 
     func testFocusingDifferentLocalSTTModelDuringPreparationPreventsStaleCommit() async throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.stalePreparation.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .senseVoiceSmall
@@ -185,9 +186,9 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         XCTAssertFalse(viewModel.isPreparingLocalSTT)
     }
 
-    func testDeletingSelectedLocalSTTModelSelectsFirstDownloadedFallback() {
+    func testDeletingSelectedLocalSTTModelSelectsFirstDownloadedFallback() throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.deleteFallback.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .qwen3ASR
@@ -212,9 +213,9 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         XCTAssertEqual(viewModel.localSTTStatus, L("settings.models.localSTT.readyNamed", LocalSTTModel.funASR.displayName))
     }
 
-    func testDeletingOnlyDownloadedLocalSTTModelFallsBackToUndownloadedSenseVoice() {
+    func testDeletingOnlyDownloadedLocalSTTModelFallsBackToUndownloadedSenseVoice() throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.deleteDefaultFallback.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .qwen3ASR
@@ -238,9 +239,9 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         XCTAssertEqual(viewModel.localSTTPreparationProgress, 0)
     }
 
-    func testDeletingFocusedUnselectedLocalSTTModelKeepsCurrentSelection() {
+    func testDeletingFocusedUnselectedLocalSTTModelKeepsCurrentSelection() throws {
         let suiteName = "SettingsViewModelCloudDefaultsTests.deleteFocused.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.localSTTModel = .senseVoiceSmall
@@ -405,11 +406,22 @@ private final class MutableAvailabilityLocalSTTModelManager: LocalSTTModelManagi
 
 private final class EmptyHistoryStore: HistoryStore {
     func save(record _: HistoryRecord) {}
-    func list() -> [HistoryRecord] { [] }
-    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] { [] }
-    func record(id _: UUID) -> HistoryRecord? { nil }
+    func list() -> [HistoryRecord] {
+        []
+    }
+
+    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] {
+        []
+    }
+
+    func record(id _: UUID) -> HistoryRecord? {
+        nil
+    }
+
     func delete(id _: UUID) {}
     func purge(olderThanDays _: Int) {}
     func clear() {}
-    func exportMarkdown() throws -> URL { FileManager.default.temporaryDirectory }
+    func exportMarkdown() throws -> URL {
+        FileManager.default.temporaryDirectory
+    }
 }

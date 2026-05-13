@@ -17,7 +17,7 @@ final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> String {
         let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(
-            manualCredential: ""
+            manualCredential: "",
         )
         let configuration = try await MainActor.run {
             try GoogleCloudSpeechConfiguration(
@@ -40,7 +40,7 @@ final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber,
         onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void,
     ) async throws -> any RealtimeTranscriptionSession {
         let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(
-            manualCredential: ""
+            manualCredential: "",
         )
         let configuration = try await MainActor.run {
             try GoogleCloudSpeechConfiguration(
@@ -171,7 +171,7 @@ enum GoogleCloudSpeechError: LocalizedError {
             "Google Cloud Project ID is required."
         case .missingAPIKey:
             "Google Cloud access token or API key is required."
-        case .rpcFailed(let message):
+        case let .rpcFailed(message):
             "Google Cloud Speech-to-Text error: \(message)"
         }
     }
@@ -232,9 +232,9 @@ enum GoogleCloudSpeechStreamingSession {
         configuration: GoogleCloudSpeechConfiguration,
     ) {
         switch configuration.credential {
-        case .apiKey(let apiKey):
+        case let .apiKey(apiKey):
             callOptions.customMetadata.add(name: "x-goog-api-key", value: apiKey)
-        case .bearerToken(let accessToken):
+        case let .bearerToken(accessToken):
             callOptions.customMetadata.add(name: "authorization", value: "Bearer \(accessToken)")
         }
     }

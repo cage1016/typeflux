@@ -23,7 +23,10 @@ final class AutoUpdater {
 
     private static let autoCheckInterval: TimeInterval = 3 * 3600
 
-    private var websiteURL: URL? { URL(string: AppServerConfiguration.apiBaseURL) }
+    private var websiteURL: URL? {
+        URL(string: AppServerConfiguration.apiBaseURL)
+    }
+
     private var initialAutoCheckWorkItem: DispatchWorkItem?
     private var autoCheckTimer: Timer?
     private weak var settingsStore: SettingsStore?
@@ -89,24 +92,24 @@ final class AutoUpdater {
                 do {
                     envelope = try JSONDecoder().decode(UpdateEnvelope.self, from: data)
                 } catch {
-                    if manual { self.showCheckFailedAlert(message: error.localizedDescription) }
+                    if manual { showCheckFailedAlert(message: error.localizedDescription) }
                     return
                 }
 
                 guard let info = envelope.data else {
-                    if manual { self.showCheckFailedAlert(message: envelope.message ?? L("updater.checkFailed.noData")) }
+                    if manual { showCheckFailedAlert(message: envelope.message ?? L("updater.checkFailed.noData")) }
                     return
                 }
 
                 if info.shouldUpdate {
-                    self.prepareUpdate(info: info, manual: manual)
+                    prepareUpdate(info: info, manual: manual)
                 } else if manual {
-                    self.showUpToDateAlert()
+                    showUpToDateAlert()
                 }
             } catch is CancellationError {
                 return
             } catch {
-                if manual { self.showCheckFailedAlert(message: error.localizedDescription) }
+                if manual { showCheckFailedAlert(message: error.localizedDescription) }
             }
         }
     }
@@ -151,18 +154,18 @@ final class AutoUpdater {
     private func promptUpdate(
         info: UpdateInfo,
         downloadedArchiveURL: URL?,
-        sourceURL: URL?
+        sourceURL: URL?,
     ) {
         let appearanceMode = settingsStore?.appearanceMode ?? .system
         let controller = UpdateAlertWindowController(
             version: info.latestVersion,
             releaseNotes: info.releaseNotes,
             releaseURL: info.releaseURL.flatMap(URL.init),
-            appearanceMode: appearanceMode
+            appearanceMode: appearanceMode,
         )
         controller.onAction = { [weak self, weak controller] action in
             self?.updateAlertWindowController = nil
-            _ = controller  // silence unused-capture warning
+            _ = controller // silence unused-capture warning
             switch action {
             case .update:
                 if let downloadedArchiveURL, let sourceURL {
@@ -170,7 +173,7 @@ final class AutoUpdater {
                         await self?.installDownloadedUpdate(
                             archiveURL: downloadedArchiveURL,
                             sourceURL: sourceURL,
-                            relaunch: true
+                            relaunch: true,
                         )
                     }
                 } else if let url = self?.websiteURL {
@@ -224,26 +227,25 @@ final class AutoUpdater {
     private static func downloadFile(from url: URL) async throws -> URL {
         let (tempFileURL, response) = try await URLSession.shared.download(from: url)
         guard let httpResponse = response as? HTTPURLResponse,
-              (200..<300).contains(httpResponse.statusCode)
+              (200 ..< 300).contains(httpResponse.statusCode)
         else {
             throw UpdateError.downloadFailed
         }
         return tempFileURL
     }
 
-    // Runs off the main actor — only does file I/O and process launching.
-    nonisolated private static func performInstall(from archiveURL: URL, sourceURL: URL, relaunch: Bool) throws {
+    /// Runs off the main actor — only does file I/O and process launching.
+    private nonisolated static func performInstall(from archiveURL: URL, sourceURL: URL, relaunch: Bool) throws {
         let fm = FileManager.default
         let tempDir = fm.temporaryDirectory.appendingPathComponent("typeflux-update-\(UUID().uuidString)")
         try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         do {
-            let newAppURL: URL
-            switch AutoUpdateArchiveInstaller.archiveKind(for: sourceURL) {
+            let newAppURL: URL = switch AutoUpdateArchiveInstaller.archiveKind(for: sourceURL) {
             case .dmg:
-                newAppURL = try AutoUpdateArchiveInstaller.extractAppFromDMG(archiveURL, into: tempDir)
+                try AutoUpdateArchiveInstaller.extractAppFromDMG(archiveURL, into: tempDir)
             case .zip:
-                newAppURL = try AutoUpdateArchiveInstaller.extractAppFromZip(archiveURL, into: tempDir)
+                try AutoUpdateArchiveInstaller.extractAppFromZip(archiveURL, into: tempDir)
             }
 
             guard fm.fileExists(atPath: newAppURL.path) else {
@@ -258,7 +260,7 @@ final class AutoUpdater {
                 newAppURL: newAppURL,
                 cleanupURL: tempDir,
                 currentProcessIdentifier: getpid(),
-                relaunch: relaunch
+                relaunch: relaunch,
             )
             try script.write(to: scriptURL, atomically: true, encoding: .utf8)
             try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
@@ -327,7 +329,7 @@ enum AutoUpdateArchiveInstaller {
 
         let status = try runProcess(
             executablePath: "/usr/bin/ditto",
-            arguments: ["-xk", zipURL.path, extractDir.path]
+            arguments: ["-xk", zipURL.path, extractDir.path],
         )
         guard status == 0 else {
             throw UpdateError.extractionFailed
@@ -344,7 +346,7 @@ enum AutoUpdateArchiveInstaller {
 
         let attachStatus = try runProcess(
             executablePath: "/usr/bin/hdiutil",
-            arguments: ["attach", dmgURL.path, "-nobrowse", "-readonly", "-mountpoint", mountPoint.path]
+            arguments: ["attach", dmgURL.path, "-nobrowse", "-readonly", "-mountpoint", mountPoint.path],
         )
         guard attachStatus == 0 else {
             throw UpdateError.extractionFailed
@@ -353,7 +355,7 @@ enum AutoUpdateArchiveInstaller {
             _ = try? runProcess(
                 executablePath: "/usr/bin/hdiutil",
                 arguments: ["detach", mountPoint.path, "-quiet", "-force"],
-                timeout: 10
+                timeout: 10,
             )
         }
 
@@ -368,7 +370,7 @@ enum AutoUpdateArchiveInstaller {
         guard let enumerator = FileManager.default.enumerator(
             at: rootURL,
             includingPropertiesForKeys: keys,
-            options: [.skipsHiddenFiles]
+            options: [.skipsHiddenFiles],
         ) else {
             throw UpdateError.appNotFound
         }
@@ -388,7 +390,7 @@ enum AutoUpdateArchiveInstaller {
     static func verifyCodeSignature(of appURL: URL) throws {
         let status = try runProcess(
             executablePath: "/usr/bin/codesign",
-            arguments: ["--verify", "--deep", "--strict", appURL.path]
+            arguments: ["--verify", "--deep", "--strict", appURL.path],
         )
         guard status == 0 else {
             throw UpdateError.signatureVerificationFailed
@@ -400,7 +402,7 @@ enum AutoUpdateArchiveInstaller {
         newAppURL: URL,
         cleanupURL: URL? = nil,
         currentProcessIdentifier: pid_t? = nil,
-        relaunch: Bool
+        relaunch: Bool,
     ) -> String {
         let currentAppPath = shellSingleQuoted(currentAppURL.path)
         let newAppPath = shellSingleQuoted(newAppURL.path)
@@ -464,7 +466,7 @@ enum AutoUpdateArchiveInstaller {
     private static func runProcess(
         executablePath: String,
         arguments: [String],
-        timeout: TimeInterval? = nil
+        timeout: TimeInterval? = nil,
     ) throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executablePath)
@@ -501,7 +503,7 @@ enum GitHubProxyDownloadURL {
 enum AutoUpdateRequestSupport {
     static func queryItems(
         currentVersion: String,
-        architecture: String? = packageArchitecture()
+        architecture: String? = packageArchitecture(),
     ) -> [URLQueryItem] {
         var items = [URLQueryItem(name: "version", value: currentVersion)]
         if let architecture, !architecture.isEmpty {

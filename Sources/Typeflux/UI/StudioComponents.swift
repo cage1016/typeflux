@@ -26,7 +26,7 @@ struct TypefluxLogoBadge: View {
         size: CGFloat = 52,
         symbolSize: CGFloat = 26,
         backgroundShape: BackgroundShape = .circle,
-        showsBorder: Bool = false
+        showsBorder: Bool = false,
     ) {
         self.size = size
         self.symbolSize = symbolSize
@@ -339,26 +339,26 @@ private struct StudioLiquidGlassBackground<S: InsettableShape>: View {
     var body: some View {
         Group {
             #if compiler(>=6.2)
-            if #available(macOS 26.0, *) {
-                ZStack {
-                    shape
-                        .fill(Color.clear)
-                        .glassEffect(
-                            Glass.clear
-                                .interactive(interactive)
-                                .tint(StudioTheme.glassTint.opacity(tintOpacity)),
-                            in: shape,
-                        )
+                if #available(macOS 26.0, *) {
+                    ZStack {
+                        shape
+                            .fill(Color.clear)
+                            .glassEffect(
+                                Glass.clear
+                                    .interactive(interactive)
+                                    .tint(StudioTheme.glassTint.opacity(tintOpacity)),
+                                in: shape,
+                            )
 
-                    shape
-                        .fill(StudioTheme.glassScrim.opacity(scrimOpacity))
-                        .allowsHitTesting(false)
+                        shape
+                            .fill(StudioTheme.glassScrim.opacity(scrimOpacity))
+                            .allowsHitTesting(false)
+                    }
+                } else {
+                    fallbackBackground
                 }
-            } else {
-                fallbackBackground
-            }
             #else
-            fallbackBackground
+                fallbackBackground
             #endif
         }
         .clipShape(shape)
@@ -1025,7 +1025,7 @@ struct StudioCard<Content: View>: View {
         isHighlighted: Bool = false,
         isDimmed: Bool = false,
         texture: Texture = .standard,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: () -> Content,
     ) {
         self.padding = padding
         self.showsShadow = showsShadow
@@ -1699,13 +1699,13 @@ struct StudioHistoryRow: View {
                             frame: 24,
                             action: playAction,
                         )
-                            .opacity(isAudioPathHovered ? 0.78 : 0)
-                            .allowsHitTesting(isAudioPathHovered)
-                            .animation(.easeOut(duration: 0.12), value: isAudioPathHovered)
-                            .studioTooltip(
-                                isPlaying ? L("history.action.stopAudio") : L("history.action.playAudio"),
-                                yOffset: 34,
-                            )
+                        .opacity(isAudioPathHovered ? 0.78 : 0)
+                        .allowsHitTesting(isAudioPathHovered)
+                        .animation(.easeOut(duration: 0.12), value: isAudioPathHovered)
+                        .studioTooltip(
+                            isPlaying ? L("history.action.stopAudio") : L("history.action.playAudio"),
+                            yOffset: 34,
+                        )
                     }
                 }
             }

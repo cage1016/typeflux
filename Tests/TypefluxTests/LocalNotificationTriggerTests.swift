@@ -5,8 +5,8 @@ import XCTest
 final class LocalNotificationTriggerTests: XCTestCase {
     func testPrepareOllamaModelSendsReadyNotificationOnSuccess() async throws {
         let notificationService = RecordingLocalNotificationService()
-        let viewModel = StudioViewModel(
-            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "LocalNotificationTriggerTests.ollama.\(UUID().uuidString)")!),
+        let viewModel = try StudioViewModel(
+            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "LocalNotificationTriggerTests.ollama.\(UUID().uuidString)"))),
             historyStore: InMemoryNotificationHistoryStore(),
             initialSection: .models,
             modelManager: MockOllamaModelManager(),
@@ -27,8 +27,8 @@ final class LocalNotificationTriggerTests: XCTestCase {
     func testPrepareLocalSTTModelSendsReadyNotificationOnSuccess() async throws {
         let notificationService = RecordingLocalNotificationService()
         let localModelManager = MockLocalSTTModelManager()
-        let viewModel = StudioViewModel(
-            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "LocalNotificationTriggerTests.localSTT.\(UUID().uuidString)")!),
+        let viewModel = try StudioViewModel(
+            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "LocalNotificationTriggerTests.localSTT.\(UUID().uuidString)"))),
             historyStore: InMemoryNotificationHistoryStore(),
             initialSection: .models,
             modelManager: MockOllamaModelManager(),
@@ -46,14 +46,14 @@ final class LocalNotificationTriggerTests: XCTestCase {
         XCTAssertEqual(notification.body, L("notification.localModelReady.body"))
     }
 
-    func testDeleteLocalSTTModelKeepsBundledModelReady() {
+    func testDeleteLocalSTTModelKeepsBundledModelReady() throws {
         let bundledInfo = LocalSTTPreparedModelInfo(
             storagePath: "/Applications/Typeflux.app/Contents/Resources/BundledModels/senseVoiceSmall/sensevoice-small",
             sourceDisplayName: L("common.bundled"),
         )
         let localModelManager = BundledLocalSTTModelManager(preparedInfo: bundledInfo)
-        let viewModel = StudioViewModel(
-            settingsStore: SettingsStore(defaults: UserDefaults(suiteName: "LocalNotificationTriggerTests.bundledDelete.\(UUID().uuidString)")!),
+        let viewModel = try StudioViewModel(
+            settingsStore: SettingsStore(defaults: XCTUnwrap(UserDefaults(suiteName: "LocalNotificationTriggerTests.bundledDelete.\(UUID().uuidString)"))),
             historyStore: InMemoryNotificationHistoryStore(),
             initialSection: .models,
             modelManager: MockOllamaModelManager(),
@@ -169,9 +169,18 @@ private actor RecordingLocalNotificationService: LocalNotificationSending {
 
 private final class InMemoryNotificationHistoryStore: HistoryStore {
     func save(record _: HistoryRecord) {}
-    func list() -> [HistoryRecord] { [] }
-    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] { [] }
-    func record(id _: UUID) -> HistoryRecord? { nil }
+    func list() -> [HistoryRecord] {
+        []
+    }
+
+    func list(limit _: Int, offset _: Int, searchQuery _: String?) -> [HistoryRecord] {
+        []
+    }
+
+    func record(id _: UUID) -> HistoryRecord? {
+        nil
+    }
+
     func delete(id _: UUID) {}
     func purge(olderThanDays _: Int) {}
     func clear() {}

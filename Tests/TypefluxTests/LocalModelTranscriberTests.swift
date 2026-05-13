@@ -149,7 +149,7 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertTrue(updates.values().contains(where: { $0.message == "fake sherpa ready" }))
     }
 
-    func testPreparedModelInfoDoesNotInstallBundledSenseVoice() async throws {
+    func testPreparedModelInfoDoesNotInstallBundledSenseVoice() throws {
         let suiteName = "LocalModelTranscriberTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -442,12 +442,12 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertEqual(resolvedPath, fakeInstaller.lastStorageURL?.path)
         XCTAssertEqual(fakeInstaller.preparedSources, [.modelScope, .huggingFace])
         XCTAssertTrue(
-            SherpaOnnxModelLayout.layout(for: .senseVoiceSmall)!
-                .isInstalled(storageURL: URL(fileURLWithPath: resolvedPath, isDirectory: true))
+            try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall)?
+                .isInstalled(storageURL: URL(fileURLWithPath: resolvedPath, isDirectory: true))),
         )
     }
 
-    func testNetworkDownloadSourceResolverRanksReachableSourcesByLatency() async throws {
+    func testNetworkDownloadSourceResolverRanksReachableSourcesByLatency() async {
         let resolver = NetworkLocalModelDownloadSourceResolver { url in
             let latency: TimeInterval
             let reachable: Bool
@@ -476,7 +476,7 @@ final class LocalModelTranscriberTests: XCTestCase {
         XCTAssertEqual(sources, [.modelScope, .huggingFace])
     }
 
-    func testNetworkDownloadSourceResolverKeepsFallbackSourcesWhenProbeFails() async throws {
+    func testNetworkDownloadSourceResolverKeepsFallbackSourcesWhenProbeFails() async {
         let resolver = NetworkLocalModelDownloadSourceResolver { _ in
             LocalModelDownloadSourceCandidate(source: .huggingFace, latency: nil, isReachable: false)
         }
@@ -540,7 +540,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             resolvedPath,
             URL(fileURLWithPath: downloadBasePath, isDirectory: true)
                 .appendingPathComponent("models/argmaxinc/whisperkit-coreml/openai_whisper-medium", isDirectory: true)
-                .path
+                .path,
         )
         let requestedURLs = await remoteLoader.requestedURLs()
         XCTAssertEqual(requestedURLs.map(\.absoluteString), [
@@ -614,7 +614,7 @@ final class LocalModelTranscriberTests: XCTestCase {
             .path
         let preparedFolder = try makeWhisperKitPreparedFolder(
             at: URL(fileURLWithPath: downloadBasePath, isDirectory: true)
-                .appendingPathComponent("models/argmaxinc/whisperkit-coreml/openai_whisper-large-v3", isDirectory: true)
+                .appendingPathComponent("models/argmaxinc/whisperkit-coreml/openai_whisper-large-v3", isDirectory: true),
         )
         let remoteLoader = CapturingRemoteFileLoader()
         let manager = LocalModelManager(
@@ -832,8 +832,8 @@ final class LocalModelTranscriberTests: XCTestCase {
             )
         case let .files(files):
             modelDownloadCount = files.count
-            downloadMap.merge(
-                try makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
+            try downloadMap.merge(
+                makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
                 uniquingKeysWith: { _, new in new },
             )
         }
@@ -898,12 +898,12 @@ final class LocalModelTranscriberTests: XCTestCase {
         )
         XCTAssertFalse(layout.isInstalled(storageURL: installRoot, fileManager: .default))
 
-        let installer = SherpaOnnxModelInstaller(
+        let installer = try SherpaOnnxModelInstaller(
             fileManager: .default,
             processRunner: ProcessCommandRunner(),
             archiveDownloader: StaticArchiveDownloader(archiveMap: [
                 layout.runtimeArchiveURL: runtimeArchiveURL,
-                try XCTUnwrap(layout.modelArchiveURL): modelArchiveURL,
+                XCTUnwrap(layout.modelArchiveURL): modelArchiveURL,
             ]),
         )
 
@@ -955,8 +955,8 @@ final class LocalModelTranscriberTests: XCTestCase {
         var archiveMap: [URL: URL] = [
             layout.runtimeArchiveURL: runtimeArchiveURL,
         ]
-        archiveMap.merge(
-            try makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
+        try archiveMap.merge(
+            makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
             uniquingKeysWith: { _, new in new },
         )
 
@@ -1009,11 +1009,11 @@ final class LocalModelTranscriberTests: XCTestCase {
             return XCTFail("Expected file-based FunASR artifact for Hugging Face")
         }
 
-        let installer = SherpaOnnxModelInstaller(
+        let installer = try SherpaOnnxModelInstaller(
             fileManager: .default,
             processRunner: ProcessCommandRunner(),
             archiveDownloader: StaticArchiveDownloader(
-                archiveMap: try makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
+                archiveMap: makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
             ),
             runtimeLocator: BundledSherpaOnnxRuntimeLocator(explicitRuntimeRootURL: bundledRuntimeRoot),
         )
@@ -1061,8 +1061,8 @@ final class LocalModelTranscriberTests: XCTestCase {
         var archiveMap: [URL: URL] = [
             layout.runtimeArchiveURL: runtimeArchiveURL,
         ]
-        archiveMap.merge(
-            try makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
+        try archiveMap.merge(
+            makeDownloadedFileFixtures(for: files, outputDirectory: fixturesRoot),
             uniquingKeysWith: { _, new in new },
         )
         let installer = SherpaOnnxModelInstaller(
@@ -1133,7 +1133,7 @@ final class LocalModelTranscriberTests: XCTestCase {
         manager: LocalModelManager,
         bundledStorageURL: URL,
         installer: FakeSherpaOnnxInstaller,
-        applicationSupportURL: URL
+        applicationSupportURL: URL,
     ) {
         let bundledModelsRootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("typeflux-bundled-models-\(UUID().uuidString)", isDirectory: true)

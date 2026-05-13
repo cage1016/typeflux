@@ -1,5 +1,5 @@
-import XCTest
 @testable import Typeflux
+import XCTest
 
 final class HistoryExportDestinationTests: XCTestCase {
     private var testDir: URL!

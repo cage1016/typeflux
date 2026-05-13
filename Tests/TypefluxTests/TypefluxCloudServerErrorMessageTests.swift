@@ -7,7 +7,7 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
             let message = TypefluxCloudServerErrorMessage.userMessage(
                 code: "AUTH_INVALID_CREDENTIALS",
                 message: "raw backend message",
-                fallback: "fallback"
+                fallback: "fallback",
             )
 
             XCTAssertEqual(message, "The email or password is incorrect.")
@@ -17,14 +17,14 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
     func testCodeNormalizationAcceptsHyphenatedLowercaseValues() {
         XCTAssertEqual(
             TypefluxCloudServerErrorMessage.localizationKey(for: "auth-invalid-credentials"),
-            "cloud.error.authInvalidCredentials"
+            "cloud.error.authInvalidCredentials",
         )
     }
 
     func testCodeFamilyFallbackHandlesProviderSpecificQuotaCodes() {
         XCTAssertEqual(
             TypefluxCloudServerErrorMessage.localizationKey(for: "asr_daily_quota_exceeded"),
-            "cloud.error.quotaExceeded"
+            "cloud.error.quotaExceeded",
         )
     }
 
@@ -36,16 +36,16 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
     }
 
     func testBillingErrorParsesFailingHTTP402ResponseFromNSError() throws {
-        let response = try XCTUnwrap(HTTPURLResponse(
-            url: URL(string: "https://api.example/asr")!,
+        let response = try XCTUnwrap(try HTTPURLResponse(
+            url: XCTUnwrap(URL(string: "https://api.example/asr")),
             statusCode: 402,
             httpVersion: "HTTP/1.1",
-            headerFields: nil
+            headerFields: nil,
         ))
         let error = NSError(
             domain: NSURLErrorDomain,
             code: URLError.badServerResponse.rawValue,
-            userInfo: ["NSErrorFailingURLResponseKey": response]
+            userInfo: ["NSErrorFailingURLResponseKey": response],
         )
 
         XCTAssertEqual(TypefluxCloudBillingError.fromError(error)?.reason, .subscriptionRequired)
@@ -54,11 +54,11 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
     func testBillingErrorParsesQuotaAndPaymentCodes() {
         XCTAssertEqual(
             TypefluxCloudBillingError.fromServerCode("INSUFFICIENT_CREDITS", message: nil)?.reason,
-            .quotaExceeded
+            .quotaExceeded,
         )
         XCTAssertEqual(
             TypefluxCloudBillingError.fromServerCode("PAYMENT_REQUIRED", message: nil)?.reason,
-            .subscriptionRequired
+            .subscriptionRequired,
         )
     }
 
@@ -67,13 +67,13 @@ final class TypefluxCloudServerErrorMessageTests: XCTestCase {
             TypefluxCloudServerErrorMessage.userMessage(
                 code: "CUSTOM_ERROR",
                 message: "  Custom failure  ",
-                fallback: "fallback"
+                fallback: "fallback",
             ),
-            "Custom failure"
+            "Custom failure",
         )
         XCTAssertEqual(
             TypefluxCloudServerErrorMessage.userMessage(code: "CUSTOM_ERROR", message: "  ", fallback: "fallback"),
-            "fallback"
+            "fallback",
         )
     }
 

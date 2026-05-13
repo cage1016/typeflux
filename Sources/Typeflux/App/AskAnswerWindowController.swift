@@ -176,7 +176,7 @@ final class AskAnswerWindowController: NSObject {
         NetworkDebugLogger.logMessage(
             String(
                 format: "[Ask Timing] answer window presented in %.1fms",
-                Date().timeIntervalSince(presentationStartedAt) * 1_000,
+                Date().timeIntervalSince(presentationStartedAt) * 1000,
             ),
         )
         _ = title
@@ -343,9 +343,9 @@ private struct AskAnswerWindowView: View {
 
             ZStack(alignment: .bottomTrailing) {
                 MarkdownSwiftUIView(markdown: model.answerMarkdown)
-                .padding(.top, AskAnswerWindowController.Metrics.answerContentTopPadding)
-                .padding(.bottom, 28)
-                .frame(maxWidth: .infinity)
+                    .padding(.top, AskAnswerWindowController.Metrics.answerContentTopPadding)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: .infinity)
 
                 copyButton(isVisible: isAnswerHovered) {
                     model.onAnswerCopyRequested?()

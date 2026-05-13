@@ -59,7 +59,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         XCTAssertTrue(files.allSatisfy { $0.url.absoluteString.contains("/resolve/main/") })
     }
 
-    func testDownloadCatalogProvidesLocalModelDownloadLocations() throws {
+    func testDownloadCatalogProvidesLocalModelDownloadLocations() {
         XCTAssertEqual(LocalModelDownloadCatalog.whisperKitDefaultModelIdentifier, "whisperkit-medium")
         XCTAssertEqual(
             LocalModelDownloadCatalog.whisperKitModelRepository(source: .huggingFace),
@@ -99,7 +99,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         XCTAssertFalse(funASRURLs.contains(runtimeArchiveURL))
     }
 
-    func testDownloadCatalogProvidesChinaMirrorLocations() throws {
+    func testDownloadCatalogProvidesChinaMirrorLocations() {
         XCTAssertEqual(
             LocalModelDownloadCatalog.whisperKitModelRepository(source: .modelScope),
             "argmaxinc/whisperkit-coreml",
@@ -182,7 +182,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .senseVoiceSmall))
         XCTAssertEqual(layout.requiredRelativePaths.count, 6)
         XCTAssertTrue(layout.requiredRelativePaths.contains(
-            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)",
         ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt"))
@@ -203,7 +203,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
     func testQwen3ASRRequiredPaths() throws {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .qwen3ASR))
         XCTAssertTrue(layout.requiredRelativePaths.contains(
-            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)",
         ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/conv_frontend.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25/encoder.int8.onnx"))
@@ -227,7 +227,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         let layout = try XCTUnwrap(SherpaOnnxModelLayout.layout(for: .funASR))
         XCTAssertEqual(layout.requiredRelativePaths.count, 6)
         XCTAssertTrue(layout.requiredRelativePaths.contains(
-            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)"
+            "sherpa-onnx-v1.12.35-osx-universal2-shared-no-tts/lib/\(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)",
         ))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-paraformer-zh-small-2024-03-09/model.int8.onnx"))
         XCTAssertTrue(layout.requiredRelativePaths.contains("sherpa-onnx-paraformer-zh-small-2024-03-09/tokens.txt"))
@@ -368,7 +368,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
                         majorVersion: 15,
                         minorVersion: 5,
                         patchVersion: 0,
-                    )
+                    ),
                 ).write(to: fullURL)
             case let name where name.hasSuffix(".dylib"):
                 try machOFixtureData().write(to: fullURL)

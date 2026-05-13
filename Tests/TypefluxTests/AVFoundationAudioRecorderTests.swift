@@ -4,11 +4,11 @@ import XCTest
 
 final class AVFoundationAudioRecorderTests: XCTestCase {
     func testValidateInputFormatAcceptsUsableMicrophoneFormat() throws {
-        XCTAssertNoThrow(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 44_100))
+        XCTAssertNoThrow(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 1, sampleRate: 44100))
     }
 
     func testValidateInputFormatRejectsZeroChannelFormat() throws {
-        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 0, sampleRate: 44_100)) { error in
+        XCTAssertThrowsError(try AVFoundationAudioRecorder.validateInputFormat(channelCount: 0, sampleRate: 44100)) { error in
             XCTAssertEqual(error as? AVFoundationAudioRecorder.RecorderError, .inputDeviceUnavailable)
         }
     }
@@ -195,7 +195,7 @@ final class AVFoundationAudioRecorderTests: XCTestCase {
         await sleepController.waitUntilSleeping()
 
         let durations = await sleepController.recordedDurations()
-        XCTAssertEqual(durations, [.milliseconds(1_225)])
+        XCTAssertEqual(durations, [.milliseconds(1225)])
         recorder.cancelMutedSessionForTesting()
         await sleepController.resume()
     }
