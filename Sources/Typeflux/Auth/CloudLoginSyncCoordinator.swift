@@ -41,16 +41,16 @@ final class CloudModelDefaultsAlertPresenter: CloudModelDefaultsPrompting {
 }
 
 /// Offers to switch STT and LLM selections to the Typeflux Cloud providers
-/// after checkout confirms an active Cloud subscription.
+/// after explicit login, or after checkout confirms a paid Cloud subscription.
 ///
-/// Listens for `.authCheckoutSubscriptionDidBecomeEntitled` and is
-/// intentionally silent when both providers already point at Cloud.
+/// Listens for `.authDidLogin` and `.authCheckoutSubscriptionDidBecomeEntitled`,
+/// and is intentionally silent when both providers already point at Cloud.
 @MainActor
 final class CloudLoginSyncCoordinator {
     private let settingsStore: SettingsStore
     private let promptPresenter: CloudModelDefaultsPrompting
     private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "CloudLoginSyncCoordinator")
-    private var observer: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
 
     init(
         settingsStore: SettingsStore,
@@ -58,7 +58,20 @@ final class CloudLoginSyncCoordinator {
     ) {
         self.settingsStore = settingsStore
         self.promptPresenter = promptPresenter ?? CloudModelDefaultsAlertPresenter()
-        observer = NotificationCenter.default.addObserver(
+        observers.append(NotificationCenter.default.addObserver(
+            forName: .authDidLogin,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor [weak self] in
+                guard notification.object is AuthState else {
+                    self?.logger.debug("Login notification missing AuthState; skipping cloud defaults prompt")
+                    return
+                }
+                self?.offerCloudDefaultsIfNeeded()
+            }
+        })
+        observers.append(NotificationCenter.default.addObserver(
             forName: .authCheckoutSubscriptionDidBecomeEntitled,
             object: nil,
             queue: .main
@@ -66,17 +79,17 @@ final class CloudLoginSyncCoordinator {
             Task { @MainActor [weak self] in
                 self?.offerCloudDefaultsIfNeeded()
             }
-        }
+        })
     }
 
     deinit {
-        if let observer {
+        for observer in observers {
             NotificationCenter.default.removeObserver(observer)
         }
     }
 
-    /// Exposed for tests; in production triggered only after checkout confirms
-    /// a newly entitled subscription.
+    /// Exposed for tests; in production triggered after login, or after checkout
+    /// confirms a newly entitled or newly paid subscription.
     func offerCloudDefaultsIfNeeded() {
         let alreadySTTCloud = settingsStore.sttProvider == .typefluxOfficial
         let alreadyLLMCloud = settingsStore.llmProvider == .openAICompatible

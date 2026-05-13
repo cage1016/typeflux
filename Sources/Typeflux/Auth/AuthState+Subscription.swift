@@ -21,10 +21,13 @@ extension AuthState {
 
         do {
             let wasEntitled = subscription.entitled
+            let hadPaidSubscription = subscription.hasPaidSubscription
             let snapshot = try await fetchSubscription(token)
             subscription = snapshot
             subscriptionError = nil
-            if pendingCheckoutSubscriptionEntitlement, !wasEntitled, snapshot.entitled {
+            let becameEntitled = !wasEntitled && snapshot.entitled
+            let becamePaid = !hadPaidSubscription && snapshot.hasPaidSubscription
+            if pendingCheckoutSubscriptionEntitlement, becameEntitled || becamePaid {
                 pendingCheckoutSubscriptionEntitlement = false
                 NotificationCenter.default.post(name: .authCheckoutSubscriptionDidBecomeEntitled, object: self)
             }
@@ -76,7 +79,7 @@ extension AuthState {
             throw AuthError.unauthorized
         }
         let session = try await createCheckoutSession(token, planCode)
-        if !subscription.entitled {
+        if !subscription.hasPaidSubscription {
             pendingCheckoutSubscriptionEntitlement = true
         }
         startCheckoutPolling()
@@ -101,7 +104,7 @@ extension AuthState {
                 }
                 guard !Task.isCancelled else { return }
                 _ = await refreshSubscription()
-                if subscription.entitled {
+                if subscription.hasPaidSubscription {
                     return
                 }
             }

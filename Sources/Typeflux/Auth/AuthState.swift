@@ -8,7 +8,8 @@ extension Notification.Name {
     static let authDidLogin = Notification.Name("AuthState.authDidLogin")
 
     /// Posted on the main actor when a checkout-started subscription refresh
-    /// observes that the account has become entitled to Typeflux Cloud.
+    /// observes that the account has become entitled to Typeflux Cloud or has
+    /// upgraded from a free/non-paid plan to a paid Cloud subscription.
     static let authCheckoutSubscriptionDidBecomeEntitled = Notification.Name(
         "AuthState.authCheckoutSubscriptionDidBecomeEntitled"
     )

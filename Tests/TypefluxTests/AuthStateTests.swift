@@ -390,6 +390,68 @@ final class AuthStateTests: XCTestCase {
         NotificationCenter.default.removeObserver(observer)
     }
 
+    func testStartCheckoutPostsEntitlementNotificationWhenFreeSubscriptionBecomesPaid() async throws {
+        var storedToken: (token: String, expiresAt: Int)?
+        var checkoutStarted = false
+        let freeSubscription = BillingSubscriptionSnapshot(
+            planCode: "free",
+            status: "free",
+            currentPeriodStart: nil,
+            currentPeriodEnd: nil,
+            cancelAtPeriodEnd: false,
+            entitled: true,
+            active: true,
+            paid: false,
+            periodSource: "free"
+        )
+        let paidSubscription = BillingSubscriptionSnapshot(
+            planCode: BillingPlan.defaultPlanCode,
+            status: "active",
+            currentPeriodStart: nil,
+            currentPeriodEnd: "2026-06-01T00:00:00Z",
+            cancelAtPeriodEnd: false,
+            entitled: true,
+            active: true,
+            paid: true
+        )
+        let state = AuthState(
+            loadStoredToken: { storedToken },
+            loadStoredUserProfile: { nil },
+            saveStoredToken: { token, expiresAt in storedToken = (token, expiresAt) },
+            saveStoredUserProfile: { _ in },
+            clearStoredSession: { storedToken = nil },
+            fetchProfile: { _ in self.makeProfile(email: "checkout-free-to-paid@test.com") },
+            fetchSubscription: { _ in checkoutStarted ? paidSubscription : freeSubscription },
+            createCheckoutSession: { _, _ in
+                checkoutStarted = true
+                return BillingCheckoutSession(
+                    sessionID: "cs_test_1",
+                    url: URL(string: "https://checkout.stripe.com/cs_test_1")!
+                )
+            }
+        )
+        await state.handleLoginSuccess(token: "token-1", expiresAt: Int(Date().timeIntervalSince1970) + 3600)
+        await state.refreshSubscription()
+        XCTAssertTrue(state.subscription.entitled)
+        XCTAssertTrue(state.subscription.isFreePlan)
+        XCTAssertFalse(state.subscription.hasPaidSubscription)
+
+        let expectation = expectation(description: "checkout subscription paid upgrade notification")
+        let observer = NotificationCenter.default.addObserver(
+            forName: .authCheckoutSubscriptionDidBecomeEntitled,
+            object: state,
+            queue: .main
+        ) { _ in
+            expectation.fulfill()
+        }
+
+        _ = try await state.startCheckout()
+
+        await fulfillment(of: [expectation], timeout: 1)
+        NotificationCenter.default.removeObserver(observer)
+        XCTAssertEqual(state.subscription, paidSubscription)
+    }
+
     func testLogoutClearsSubscription() async {
         var storedToken: (token: String, expiresAt: Int)? = validStoredToken()
         let state = AuthState(
