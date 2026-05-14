@@ -354,6 +354,34 @@ final class STTRouterTests: XCTestCase {
         XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
     }
 
+    func testTypefluxOfficialLoginRequiredFallsBackToAppleSpeech() async throws {
+        settings.sttProvider = .typefluxOfficial
+        settings.useAppleSpeechFallback = true
+        typefluxOfficial.errorToThrow = TypefluxOfficialASRError.notLoggedIn
+        appleSpeech.resultToReturn = "apple fallback"
+        let router = makeRouter()
+
+        let result = try await router.transcribe(audioFile: dummyAudioFile())
+
+        XCTAssertEqual(result, "apple fallback")
+        XCTAssertEqual(typefluxOfficial.transcribeCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 1)
+    }
+
+    func testTypefluxOfficialRoutingUnauthorizedFallsBackToAppleSpeech() async throws {
+        settings.sttProvider = .typefluxOfficial
+        settings.useAppleSpeechFallback = true
+        typefluxOfficial.errorToThrow = TypefluxOfficialASRRoutingError.unauthorized
+        appleSpeech.resultToReturn = "apple fallback"
+        let router = makeRouter()
+
+        let result = try await router.transcribe(audioFile: dummyAudioFile())
+
+        XCTAssertEqual(result, "apple fallback")
+        XCTAssertEqual(typefluxOfficial.transcribeCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 1)
+    }
+
     func testDoesNotUseTypefluxCloudForUnpreparedLocalModelWhenLoggedOut() async {
         settings.sttProvider = .localModel
         settings.useAppleSpeechFallback = false

@@ -796,6 +796,14 @@ extension WorkflowController {
             logPipelineEvent("pipeline-completed", for: record)
             UsageStatsStore.shared.recordSession(record: record)
             enforceHistoryRetentionPolicy()
+            if await shouldShowTypefluxCloudASRLoginFallbackNotice() {
+                let isAlreadyPreservingNotice = await MainActor.run {
+                    self.shouldPreserveLLMConfigurationNotice
+                }
+                if !isAlreadyPreservingNotice {
+                    await presentLLMNotConfigured(.notConfigured(reason: .cloudNotLoggedIn))
+                }
+            }
             let retryResultText = forceResultDialogOnSuccess ? record.finalText : nil
             let finalMode = record.mode
             let finalTranscriptText = record.transcriptText
@@ -836,6 +844,23 @@ extension WorkflowController {
             logPipelineEvent("pipeline-failed", for: record)
             UsageStatsStore.shared.recordSession(record: record)
             enforceHistoryRetentionPolicy()
+        } catch let error as TypefluxCloudLoginRequiredError {
+            let message = error.localizedDescription
+            ErrorLogStore.shared.log("Processing skipped because Typeflux Cloud login is required: \(message)")
+            markFailure(&record, message: message)
+            saveHistoryRecord(record)
+            logPipelineEvent("pipeline-failed", for: record)
+            UsageStatsStore.shared.recordSession(record: record)
+            enforceHistoryRetentionPolicy()
+            let shouldPresentLogin = await MainActor.run {
+                guard self.processingSessionID == sessionID else { return false }
+                self.lastRetryableFailureRecord = nil
+                self.appState.setStatus(.failed(message: message))
+                return true
+            }
+            if shouldPresentLogin {
+                await presentTypefluxCloudLoginRequired()
+            }
         } catch is CancellationError {
             markCancelled(&record)
             saveHistoryRecord(record)
@@ -857,6 +882,26 @@ extension WorkflowController {
                         self.appState.setStatus(.idle)
                         self.overlayController.showNotice(message: L("workflow.transcription.noSpeech"))
                     }
+                }
+                return
+            }
+
+            if let loginRequiredError = TypefluxCloudLoginRequiredError.fromError(error) {
+                let message = loginRequiredError.localizedDescription
+                ErrorLogStore.shared.log("Processing skipped because Typeflux Cloud login is required: \(message)")
+                markFailure(&record, message: message)
+                saveHistoryRecord(record)
+                logPipelineEvent("pipeline-failed", for: record)
+                UsageStatsStore.shared.recordSession(record: record)
+                enforceHistoryRetentionPolicy()
+                let shouldPresentLogin = await MainActor.run {
+                    guard self.processingSessionID == sessionID else { return false }
+                    self.lastRetryableFailureRecord = nil
+                    self.appState.setStatus(.failed(message: message))
+                    return true
+                }
+                if shouldPresentLogin {
+                    await presentTypefluxCloudLoginRequired()
                 }
                 return
             }
@@ -1588,6 +1633,11 @@ extension WorkflowController {
         inputContext: InputContextSnapshot?
     ) -> Bool {
         hasRewritePersona(personaPrompt) || inputContext?.hasContent == true
+    }
+
+    func shouldShowTypefluxCloudASRLoginFallbackNotice() async -> Bool {
+        guard settingsStore.sttProvider == .typefluxOfficial else { return false }
+        return await MainActor.run { !AuthState.shared.isLoggedIn }
     }
 
     func shouldTreatAsSkippedSpeechInput(error: Error, audioFile: AudioFile) -> Bool {

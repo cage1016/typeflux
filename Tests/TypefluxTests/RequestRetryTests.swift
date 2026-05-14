@@ -149,6 +149,40 @@ final class RequestRetryTests: XCTestCase {
         XCTAssertTrue(retryNumbers.isEmpty)
         XCTAssertTrue(sleptDurations.isEmpty)
     }
+
+    func testDoesNotRetryTypefluxCloudLoginRequiredError() async {
+        let recorder = Recorder()
+        let expectedError = TypefluxCloudLoginRequiredError()
+
+        do {
+            _ = try await RequestRetry.perform(
+                operationName: "test-operation",
+                onRetry: { retryNumber, _, delay in
+                    await recorder.recordRetry(number: retryNumber, delay: delay)
+                },
+                sleep: { duration in
+                    await recorder.recordSleep(duration)
+                },
+                operation: {
+                    _ = await recorder.incrementAttempt()
+                    throw expectedError
+                }
+            ) as String
+            XCTFail("Expected login required error to be rethrown")
+        } catch let error as TypefluxCloudLoginRequiredError {
+            XCTAssertEqual(error, expectedError)
+        } catch {
+            XCTFail("Expected TypefluxCloudLoginRequiredError, got \(error)")
+        }
+
+        let attempts = await recorder.attemptCount
+        let retryNumbers = await recorder.retryNumbers
+        let sleptDurations = await recorder.sleptDurations
+
+        XCTAssertEqual(attempts, 1)
+        XCTAssertTrue(retryNumbers.isEmpty)
+        XCTAssertTrue(sleptDurations.isEmpty)
+    }
 }
 
 // MARK: - Extended RequestRetry tests

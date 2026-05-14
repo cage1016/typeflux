@@ -345,6 +345,7 @@
 "workflow.ask.selectionRequired" = "“随便问”需要先选中文本。";
 "workflow.retry.audioMissing" = "重试失败：缺少音频文件。";
 "workflow.retry.audioGone" = "重试失败：音频文件已不存在。";
+"workflow.typefluxCloud.loginRequired" = "请先登录 Typeflux Cloud，以使用云端功能。";
 "workflow.llmNotConfigured.missingAPIKey" = "尚未配置大语言模型的 API Key。请前往设置页面配置，或使用 Typeflux Cloud。";
 "workflow.llmNotConfigured.cloudNotLoggedIn" = "请先登录 Typeflux Cloud，以使用云端大语言模型。";
 "workflow.llmNotConfigured.incomplete" = "大语言模型配置不完整，请检查设置。";

@@ -345,6 +345,7 @@
 "workflow.ask.selectionRequired" = "Ask Anything requires selected text first.";
 "workflow.retry.audioMissing" = "Retry failed: audio file is missing.";
 "workflow.retry.audioGone" = "Retry failed: audio file no longer exists.";
+"workflow.typefluxCloud.loginRequired" = "Please sign in to Typeflux Cloud to use cloud features.";
 "workflow.llmNotConfigured.missingAPIKey" = "LLM API key is not configured. Please set it in Settings or use Typeflux Cloud.";
 "workflow.llmNotConfigured.cloudNotLoggedIn" = "Please sign in to Typeflux Cloud to use the cloud language model.";
 "workflow.llmNotConfigured.incomplete" = "LLM configuration is incomplete. Please check your settings.";

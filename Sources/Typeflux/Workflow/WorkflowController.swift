@@ -1273,6 +1273,10 @@ final class WorkflowController {
         }
     }
 
+    func presentTypefluxCloudLoginRequired() async {
+        await presentLLMNotConfigured(.notConfigured(reason: .cloudNotLoggedIn))
+    }
+
     func presentCloudBillingError(_ error: TypefluxCloudBillingError) async {
         await MainActor.run {
             self.shouldPreserveLLMConfigurationNotice = true

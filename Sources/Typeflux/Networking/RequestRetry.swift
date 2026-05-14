@@ -28,6 +28,9 @@ enum RequestRetry {
                 if TypefluxCloudBillingError.fromError(error) != nil {
                     throw error
                 }
+                if TypefluxCloudLoginRequiredError.fromError(error) != nil {
+                    throw error
+                }
 
                 guard attempt < retryDelays.count else {
                     NetworkDebugLogger.logError(

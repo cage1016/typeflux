@@ -40,6 +40,24 @@ final class LLMConfigurationReminderPolicyTests: XCTestCase {
         XCTAssertEqual(store.lastTypefluxCloudLoginReminderAt, lastShownAt)
     }
 
+    func testTypefluxCloudLoginReminderAppliesWhenCloudASRFallsBackLocally() {
+        let store = makeSettingsStore()
+        store.llmRemoteProvider = .openAI
+        let lastShownAt = Date(timeIntervalSince1970: 1000)
+        store.lastTypefluxCloudLoginReminderAt = lastShownAt
+        let policy = LLMConfigurationReminderPolicy(
+            settingsStore: store,
+            now: {
+                lastShownAt.addingTimeInterval(LLMConfigurationReminderPolicy.typefluxCloudLoginReminderInterval - 1)
+            }
+        )
+
+        let presentation = policy.presentation(for: .notConfigured(reason: .cloudNotLoggedIn))
+
+        XCTAssertEqual(presentation, .passiveNotice)
+        XCTAssertEqual(store.lastTypefluxCloudLoginReminderAt, lastShownAt)
+    }
+
     func testTypefluxCloudLoginReminderShowsActionDialogAfterThreeHours() {
         let store = makeSettingsStore()
         let lastShownAt = Date(timeIntervalSince1970: 1000)
