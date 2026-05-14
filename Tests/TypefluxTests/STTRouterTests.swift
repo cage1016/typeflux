@@ -174,6 +174,7 @@ final class STTRouterTests: XCTestCase {
         localModelOverride: Transcriber? = nil,
         doubaoRealtimeOverride: Transcriber? = nil,
         typefluxOfficialOverride: Transcriber? = nil,
+        typefluxCloudLoginFallbackLocalModel: Transcriber? = nil,
         isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = { false }
     ) -> STTRouter {
         STTRouter(
@@ -188,6 +189,7 @@ final class STTRouterTests: XCTestCase {
             googleCloud: googleCloud,
             groq: groq,
             typefluxOfficial: typefluxOfficialOverride ?? typefluxOfficial,
+            typefluxCloudLoginFallbackLocalModel: typefluxCloudLoginFallbackLocalModel,
             isTypefluxCloudLoggedIn: isTypefluxCloudLoggedIn
         )
     }
@@ -380,6 +382,52 @@ final class STTRouterTests: XCTestCase {
         XCTAssertEqual(result, "apple fallback")
         XCTAssertEqual(typefluxOfficial.transcribeCallCount, 1)
         XCTAssertEqual(appleSpeech.transcribeCallCount, 1)
+    }
+
+    func testTypefluxOfficialLoginRequiredUsesDefaultSenseVoiceFallbackWhenLocalOptimizationIsDisabled() async throws {
+        settings.sttProvider = .typefluxOfficial
+        settings.localOptimizationEnabled = false
+        settings.useAppleSpeechFallback = false
+        typefluxOfficial.errorToThrow = TypefluxOfficialASRError.notLoggedIn
+        let defaultSenseVoiceFallback = MockTranscriber()
+        defaultSenseVoiceFallback.resultToReturn = "sensevoice fallback"
+        let router = makeRouter(typefluxCloudLoginFallbackLocalModel: defaultSenseVoiceFallback)
+
+        let result = try await router.transcribe(audioFile: dummyAudioFile())
+
+        XCTAssertEqual(result, "sensevoice fallback")
+        XCTAssertEqual(typefluxOfficial.transcribeCallCount, 1)
+        XCTAssertEqual(defaultSenseVoiceFallback.transcribeCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
+    }
+
+    func testIntegratedTypefluxLoginRequiredUsesDefaultSenseVoiceFallbackWhenLocalOptimizationIsDisabled() async throws {
+        settings.sttProvider = .typefluxOfficial
+        settings.localOptimizationEnabled = false
+        settings.useAppleSpeechFallback = false
+        let integrated = MockIntegratedTypefluxTranscriber()
+        integrated.errorToThrow = TypefluxOfficialASRError.notLoggedIn
+        let defaultSenseVoiceFallback = MockTranscriber()
+        defaultSenseVoiceFallback.resultToReturn = "sensevoice fallback"
+        let router = makeRouter(
+            typefluxOfficialOverride: integrated,
+            typefluxCloudLoginFallbackLocalModel: defaultSenseVoiceFallback
+        )
+
+        let result = try await router.transcribeStreamWithLLMRewrite(
+            audioFile: dummyAudioFile(),
+            llmConfig: ASRLLMConfig(systemPrompt: "sys", userPromptTemplate: "{{transcript}}"),
+            scenario: .voiceInput,
+            onASRUpdate: { _ in },
+            onLLMStart: {},
+            onLLMChunk: { _ in }
+        )
+
+        XCTAssertEqual(result.transcript, "sensevoice fallback")
+        XCTAssertNil(result.rewritten)
+        XCTAssertEqual(integrated.integratedCallCount, 1)
+        XCTAssertEqual(defaultSenseVoiceFallback.transcribeCallCount, 1)
+        XCTAssertEqual(appleSpeech.transcribeCallCount, 0)
     }
 
     func testDoesNotUseTypefluxCloudForUnpreparedLocalModelWhenLoggedOut() async {

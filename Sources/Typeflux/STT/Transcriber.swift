@@ -78,6 +78,7 @@ final class STTRouter {
     private let googleCloud: Transcriber
     private let groq: Transcriber
     private let typefluxOfficial: Transcriber
+    private let typefluxCloudLoginFallbackLocalModel: Transcriber?
     private let autoModelDownloadService: AutoModelDownloadService?
     private let isTypefluxCloudLoggedIn: @Sendable () async -> Bool
 
@@ -93,6 +94,7 @@ final class STTRouter {
         googleCloud: Transcriber,
         groq: Transcriber,
         typefluxOfficial: Transcriber,
+        typefluxCloudLoginFallbackLocalModel: Transcriber? = nil,
         autoModelDownloadService: AutoModelDownloadService? = nil,
         isTypefluxCloudLoggedIn: @escaping @Sendable () async -> Bool = {
             await MainActor.run { AuthState.shared.isLoggedIn }
@@ -109,6 +111,7 @@ final class STTRouter {
         self.googleCloud = googleCloud
         self.groq = groq
         self.typefluxOfficial = typefluxOfficial
+        self.typefluxCloudLoginFallbackLocalModel = typefluxCloudLoginFallbackLocalModel
         self.autoModelDownloadService = autoModelDownloadService
         self.isTypefluxCloudLoggedIn = isTypefluxCloudLoggedIn
     }
@@ -136,6 +139,22 @@ final class STTRouter {
             return nil
         }
         return try? await transcriber.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+    }
+
+    private func transcribeWithTypefluxCloudLoginFallbackModelIfAvailable(
+        audioFile: AudioFile,
+        onUpdate: @escaping @Sendable (TranscriptionSnapshot) async -> Void
+    ) async -> String? {
+        guard let fallback = typefluxCloudLoginFallbackLocalModel else {
+            return nil
+        }
+        do {
+            NetworkDebugLogger.logMessage("Falling back to default SenseVoice after Typeflux Cloud login failure")
+            return try await fallback.transcribeStream(audioFile: audioFile, onUpdate: onUpdate)
+        } catch {
+            NetworkDebugLogger.logError(context: "Default SenseVoice fallback failed", error: error)
+            return nil
+        }
     }
 
     private func transcribeWithTypefluxOfficial(
@@ -319,6 +338,14 @@ final class STTRouter {
                         if let billingError = TypefluxCloudBillingError.fromError(error) {
                             throw billingError
                         }
+                        if TypefluxCloudLoginRequiredError.fromError(error) != nil,
+                           let localResult = await transcribeWithTypefluxCloudLoginFallbackModelIfAvailable(
+                               audioFile: audioFile,
+                               onUpdate: onUpdate
+                           )
+                        {
+                            return localResult
+                        }
                         if settingsStore.useAppleSpeechFallback {
                             NetworkDebugLogger.logMessage(
                                 "Falling back to Apple Speech after Typeflux Cloud fallback failure"
@@ -447,6 +474,14 @@ final class STTRouter {
                 if let billingError = TypefluxCloudBillingError.fromError(error) {
                     throw billingError
                 }
+                if TypefluxCloudLoginRequiredError.fromError(error) != nil,
+                   let localResult = await transcribeWithTypefluxCloudLoginFallbackModelIfAvailable(
+                       audioFile: audioFile,
+                       onUpdate: onUpdate
+                   )
+                {
+                    return localResult
+                }
                 if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onUpdate) {
                     NetworkDebugLogger.logMessage("Auto local model succeeded after Typeflux Official STT failure")
                     return localResult
@@ -505,6 +540,14 @@ final class STTRouter {
             }
             if let billingError = TypefluxCloudBillingError.fromError(error) {
                 throw billingError
+            }
+            if TypefluxCloudLoginRequiredError.fromError(error) != nil,
+               let localResult = await transcribeWithTypefluxCloudLoginFallbackModelIfAvailable(
+                   audioFile: audioFile,
+                   onUpdate: onASRUpdate
+               )
+            {
+                return (transcript: localResult, rewritten: nil)
             }
             if let localResult = await transcribeWithAutoModelIfReady(audioFile: audioFile, onUpdate: onASRUpdate) {
                 NetworkDebugLogger.logMessage("Auto local model succeeded after integrated Typeflux Official failure")

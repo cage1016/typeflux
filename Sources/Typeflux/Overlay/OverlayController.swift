@@ -887,14 +887,18 @@ final class OverlayController {
         let isShrinkingAfterPreview = previousPresentation?.isRecordingPreview == true
             && !model.presentation.isRecordingPreview
             && previousFrame.map { targetFrame.height < $0.height } == true
-        let shouldAnimate = window.isVisible
+        let shouldAnimate = model.presentation != .notice
+            && window.isVisible
             && previousFrame != nil
             && targetFrame != previousFrame
 
         pendingFrameAnimationWorkItem?.cancel()
         pendingFrameAnimationWorkItem = nil
 
-        if isShrinkingAfterPreview {
+        if model.presentation == .notice {
+            window.setFrame(targetFrame, display: true)
+            lastPositionedFrame = targetFrame
+        } else if isShrinkingAfterPreview {
             let presentation = model.presentation
             let workItem = DispatchWorkItem { [weak self, weak window] in
                 guard let self, let window, model.presentation == presentation else { return }
@@ -1460,7 +1464,7 @@ private struct OverlayView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: contentAlignment)
             .padding(containerPadding)
-            .animation(recordingMotion, value: model.presentation)
+            .animation(model.presentation == .notice ? nil : recordingMotion, value: model.presentation)
         }
     }
 

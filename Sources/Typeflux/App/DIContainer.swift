@@ -91,6 +91,9 @@ final class DIContainer {
                 modelOverride: { [settingsStore] in settingsStore.groqSTTModel }
             ),
             typefluxOfficial: TypefluxOfficialTranscriber(),
+            typefluxCloudLoginFallbackLocalModel: DefaultSenseVoiceFallbackTranscriber(
+                modelManager: localModelManager
+            ),
             autoModelDownloadService: autoModelDownloadService
         )
     }

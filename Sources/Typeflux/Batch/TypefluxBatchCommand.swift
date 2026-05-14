@@ -542,7 +542,10 @@ private final class SingleAudioProcessor {
                 apiKeyOverride: { [settingsStore] in settingsStore.groqSTTAPIKey },
                 modelOverride: { [settingsStore] in settingsStore.groqSTTModel }
             ),
-            typefluxOfficial: TypefluxOfficialTranscriber()
+            typefluxOfficial: TypefluxOfficialTranscriber(),
+            typefluxCloudLoginFallbackLocalModel: DefaultSenseVoiceFallbackTranscriber(
+                modelManager: localModelManager
+            )
         )
     }
 
@@ -850,7 +853,10 @@ private final class WAVPersonaBenchmark {
                 apiKeyOverride: { [settingsStore] in settingsStore.groqSTTAPIKey },
                 modelOverride: { [settingsStore] in settingsStore.groqSTTModel }
             ),
-            typefluxOfficial: TypefluxOfficialTranscriber()
+            typefluxOfficial: TypefluxOfficialTranscriber(),
+            typefluxCloudLoginFallbackLocalModel: DefaultSenseVoiceFallbackTranscriber(
+                modelManager: localModelManager
+            )
         )
     }
 
