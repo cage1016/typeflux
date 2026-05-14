@@ -376,8 +376,7 @@ extension WorkflowController {
     ) async -> CurrentInputTextSnapshot {
         var latestSnapshot = await textInjector.currentInputTextSnapshot()
         if latestSnapshot.text != nil,
-           automaticVocabularyBaselineContainsExpected(latestSnapshot.text, expected: expectedSubstring)
-        {
+           automaticVocabularyBaselineContainsExpected(latestSnapshot.text, expected: expectedSubstring) {
             return latestSnapshot
         }
 
@@ -395,8 +394,7 @@ extension WorkflowController {
 
             latestSnapshot = await textInjector.currentInputTextSnapshot()
             if latestSnapshot.text != nil,
-               automaticVocabularyBaselineContainsExpected(latestSnapshot.text, expected: expectedSubstring)
-            {
+               automaticVocabularyBaselineContainsExpected(latestSnapshot.text, expected: expectedSubstring) {
                 logAutomaticVocabulary(
                     "baseline read recovered on retry \(attempt) | "
                         + describeCurrentInputTextSnapshot(latestSnapshot)
@@ -464,20 +462,17 @@ extension WorkflowController {
         expectedApp: AutomaticVocabularyExpectedApp
     ) -> Bool {
         if let expectedBundleIdentifier = expectedApp.bundleIdentifier,
-           let actualBundleIdentifier = normalizedAutomaticVocabularyAppField(snapshot.bundleIdentifier)
-        {
+           let actualBundleIdentifier = normalizedAutomaticVocabularyAppField(snapshot.bundleIdentifier) {
             return expectedBundleIdentifier == actualBundleIdentifier
         }
 
         if let expectedProcessID = expectedApp.processID,
-           let actualProcessID = snapshot.processID
-        {
+           let actualProcessID = snapshot.processID {
             return expectedProcessID == actualProcessID
         }
 
         if let expectedProcessName = expectedApp.processName,
-           let actualProcessName = normalizedAutomaticVocabularyAppField(snapshot.processName)
-        {
+           let actualProcessName = normalizedAutomaticVocabularyAppField(snapshot.processName) {
             return expectedProcessName == actualProcessName
         }
 

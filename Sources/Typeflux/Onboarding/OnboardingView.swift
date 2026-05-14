@@ -1005,8 +1005,7 @@ struct OnboardingView: View {
             if llmProviderSupportsTest {
                 HStack(spacing: 12) {
                     if let url = llmProviderAPIKeyURL(viewModel.llmRemoteProvider),
-                       viewModel.llmProvider != .ollama
-                    {
+                       viewModel.llmProvider != .ollama {
                         Link(destination: url) {
                             HStack(spacing: 5) {
                                 Image(systemName: "key")
@@ -1366,8 +1365,7 @@ struct OnboardingView: View {
     }
 
     private func providerIconBadgeBackground(for providerID: StudioModelProviderID,
-                                             isSelected: Bool) -> LinearGradient
-    {
+                                             isSelected: Bool) -> LinearGradient {
         switch OnboardingProviderStyle.iconPlateStyle(for: providerID) {
         case .light:
             let top = isSelected

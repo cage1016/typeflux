@@ -65,8 +65,7 @@ enum NetworkDebugLogger {
         var redacted = headers
         for key in headers.keys {
             if key.caseInsensitiveCompare("Authorization") == .orderedSame
-                || key.caseInsensitiveCompare(TypefluxCloudRequestHeaders.clientIDField) == .orderedSame
-            {
+                || key.caseInsensitiveCompare(TypefluxCloudRequestHeaders.clientIDField) == .orderedSame {
                 redacted[key] = "<redacted>"
             }
         }
@@ -79,8 +78,7 @@ enum NetworkDebugLogger {
         if
             let object = try? JSONSerialization.jsonObject(with: data),
             let pretty = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]),
-            let string = String(data: pretty, encoding: .utf8)
-        {
+            let string = String(data: pretty, encoding: .utf8) {
             return string
         }
 

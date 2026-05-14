@@ -35,6 +35,31 @@ final class TypefluxCloudRequestHeadersTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: TypefluxCloudRequestHeaders.clientArchitectureField), "arm64")
     }
 
+    func testClientPreferredLanguagesUsesAppLanguageBeforeSystemLanguages() {
+        let languages = TypefluxCloudClientInfoProvider.clientPreferredLanguages(
+            appLanguage: .simplifiedChinese,
+            systemPreferredLanguages: ["en-CN", "zh-Hans-CN"]
+        )
+
+        XCTAssertEqual(languages, ["zh-Hans", "en-CN", "zh-Hans-CN"])
+    }
+
+    func testClientPreferredLanguagesDeduplicatesAppLanguage() {
+        let languages = TypefluxCloudClientInfoProvider.clientPreferredLanguages(
+            appLanguage: .simplifiedChinese,
+            systemPreferredLanguages: ["zh-Hans", "en-CN", "ZH-HANS"]
+        )
+
+        XCTAssertEqual(languages, ["zh-Hans", "en-CN"])
+    }
+
+    func testClientLocaleIdentifierUsesAppLanguage() {
+        XCTAssertEqual(
+            TypefluxCloudClientInfoProvider.clientLocaleIdentifier(appLanguage: .simplifiedChinese),
+            "zh-Hans"
+        )
+    }
+
     func testTypefluxCloudScenarioHeadersIncludeClientInfo() {
         let headers = TypefluxCloudRequestHeaders.applyingScenario(
             .askAnything,

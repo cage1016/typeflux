@@ -547,8 +547,7 @@ private actor DoubaoRealtimeSession: PCM16RealtimeTranscriptionSession {
                appID: appID,
                accessToken: accessToken,
                resourceID: resourceID
-           )
-        {
+           ) {
             activeConnection = preparedConnection
         } else {
             activeConnection = try await DoubaoConnectionFactory.open(

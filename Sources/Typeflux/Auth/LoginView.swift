@@ -1268,8 +1268,7 @@ struct LoginView: View {
                 // ASWebAuthenticationSession cancellation produces a specific error; suppress it silently.
                 let nsError = error as NSError
                 if nsError.domain == ASWebAuthenticationSessionErrorDomain,
-                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
-                {
+                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
                     return
                 }
                 errorMessage = error.localizedDescription
@@ -1306,8 +1305,7 @@ struct LoginView: View {
                 isAppleLoading = false
                 let nsError = error as NSError
                 if nsError.domain == ASAuthorizationError.errorDomain,
-                   nsError.code == ASAuthorizationError.canceled.rawValue
-                {
+                   nsError.code == ASAuthorizationError.canceled.rawValue {
                     return
                 }
                 errorMessage = error.localizedDescription
@@ -1344,8 +1342,7 @@ struct LoginView: View {
                 // ASWebAuthenticationSession cancellation produces a specific error; suppress it silently.
                 let nsError = error as NSError
                 if nsError.domain == ASWebAuthenticationSessionErrorDomain,
-                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
-                {
+                   nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
                     return
                 }
                 errorMessage = error.localizedDescription

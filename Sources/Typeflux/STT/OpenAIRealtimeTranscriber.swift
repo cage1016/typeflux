@@ -367,8 +367,7 @@ private actor RealtimeTranscriberWSDelegateState {
 }
 
 private final class RealtimeTranscriberWSDelegate: NSObject, URLSessionWebSocketDelegate,
-    URLSessionTaskDelegate
-{
+    URLSessionTaskDelegate {
     private let state = RealtimeTranscriberWSDelegateState()
 
     func waitUntilOpen(timeout: Duration) async throws {

@@ -31,8 +31,7 @@ final class AppleSignInService: NSObject {
     private func performSignIn() async throws -> String {
         if
             let runtimeConfiguration = Self.currentRuntimeConfiguration(),
-            let description = Self.configurationIssueDescription(for: runtimeConfiguration)
-        {
+            let description = Self.configurationIssueDescription(for: runtimeConfiguration) {
             throw AppleSignInError.configurationIssue(description)
         }
 

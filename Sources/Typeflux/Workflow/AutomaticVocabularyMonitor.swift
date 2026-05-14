@@ -103,15 +103,13 @@ enum AutomaticVocabularyMonitor {
         if let jsonPayload = extractJSONObjectOrArray(from: response),
            let data = jsonPayload.data(using: .utf8),
            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let terms = object["terms"] as? [String]
-        {
+           let terms = object["terms"] as? [String] {
             return sanitizeAcceptedTerms(terms)
         }
 
         if let jsonPayload = extractJSONObjectOrArray(from: response),
            let data = jsonPayload.data(using: .utf8),
-           let terms = try? JSONSerialization.jsonObject(with: data) as? [String]
-        {
+           let terms = try? JSONSerialization.jsonObject(with: data) as? [String] {
             return sanitizeAcceptedTerms(terms)
         }
 
@@ -401,8 +399,7 @@ enum AutomaticVocabularyMonitor {
 
         var count = 0
         while count < limit,
-              lhs[lhs.count - 1 - count] == rhs[rhs.count - 1 - count]
-        {
+              lhs[lhs.count - 1 - count] == rhs[rhs.count - 1 - count] {
             count += 1
         }
         return count

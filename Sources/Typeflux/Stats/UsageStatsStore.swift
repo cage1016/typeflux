@@ -332,8 +332,7 @@ final class UsageStatsStore {
         var suffixCount = 0
         while suffixCount < original.count - prefixCount,
               suffixCount < edited.count - prefixCount,
-              original[original.count - 1 - suffixCount] == edited[edited.count - 1 - suffixCount]
-        {
+              original[original.count - 1 - suffixCount] == edited[edited.count - 1 - suffixCount] {
             suffixCount += 1
         }
 

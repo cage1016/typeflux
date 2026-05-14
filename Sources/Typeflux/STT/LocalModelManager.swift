@@ -615,8 +615,7 @@ final class LocalModelManager: LocalSTTModelManaging {
 
     private func bundledModelInfo(for configuration: LocalSTTConfiguration) -> LocalSTTPreparedModelInfo? {
         for candidateURL in bundledModelLocator.storageURLs(for: configuration)
-            where isPreparedStoragePathValid(candidateURL.path, for: configuration.model)
-        {
+            where isPreparedStoragePathValid(candidateURL.path, for: configuration.model) {
             return LocalSTTPreparedModelInfo(
                 storagePath: candidateURL.path,
                 sourceDisplayName: L("common.bundled")
@@ -673,8 +672,7 @@ final class LocalModelManager: LocalSTTModelManaging {
             .fileExists(atPath: targetURL.path) || (
                 try? fileManager.destinationOfSymbolicLink(atPath: targetURL.path)
             ) !=
-            nil
-        {
+            nil {
             try fileManager.removeItem(at: targetURL)
         }
 
@@ -705,15 +703,13 @@ final class LocalModelManager: LocalSTTModelManaging {
         try ensurePath(targetRuntimeURL, isInside: runtimesRootURL)
 
         if layout.isRuntimeInstalled(storageURL: runtimesRootURL, fileManager: fileManager),
-           directoryContentsMatch(sourceURL: bundledRuntimeURL, targetURL: targetRuntimeURL)
-        {
+           directoryContentsMatch(sourceURL: bundledRuntimeURL, targetURL: targetRuntimeURL) {
             return targetRuntimeURL
         }
 
         if fileManager
             .fileExists(atPath: targetRuntimeURL.path) ||
-            (try? fileManager.destinationOfSymbolicLink(atPath: targetRuntimeURL.path)) != nil
-        {
+            (try? fileManager.destinationOfSymbolicLink(atPath: targetRuntimeURL.path)) != nil {
             try fileManager.removeItem(at: targetRuntimeURL)
         }
         try fileManager.createDirectory(

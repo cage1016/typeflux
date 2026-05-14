@@ -39,8 +39,7 @@ final class SettingsViewModelHotkeyTests: XCTestCase {
     ) async throws {
         for _ in 0 ..< 50 {
             if viewModel.activationHotkey?.signature == activation.signature,
-               viewModel.askHotkey?.signature == ask.signature
-            {
+               viewModel.askHotkey?.signature == ask.signature {
                 return
             }
             try await Task.sleep(nanoseconds: 20_000_000)

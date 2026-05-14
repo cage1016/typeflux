@@ -15,8 +15,7 @@ struct MCPToolAdapter: AgentTool {
 
     func execute(arguments: String) async throws -> String {
         let args: [String: Any] = if let data = arguments.data(using: .utf8),
-                                     let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        {
+                                     let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             dict
         } else {
             [:]

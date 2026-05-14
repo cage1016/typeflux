@@ -478,8 +478,7 @@ final class EventTapHotkeyService: HotkeyService {
     private func requestHistoryPicker() {
         let now = Date()
         if let lastHistoryRequestAt,
-           now.timeIntervalSince(lastHistoryRequestAt) < Self.duplicateHistoryRequestSuppression
-        {
+           now.timeIntervalSince(lastHistoryRequestAt) < Self.duplicateHistoryRequestSuppression {
             ErrorLogStore.shared.log("Hotkey: suppressed duplicate History request")
             return
         }

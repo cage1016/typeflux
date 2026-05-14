@@ -115,8 +115,7 @@ final class AutoModelDownloadService {
            let path = state.completedStoragePath,
            state.completedModelType == config.model.rawValue,
            state.completedModelIdentifier == config.modelIdentifier,
-           modelManager.isStoragePathReady(path, for: config.model)
-        {
+           modelManager.isStoragePathReady(path, for: config.model) {
             markReady(config: config, storagePath: path)
             return
         }

@@ -1,7 +1,5 @@
 import Foundation
 
-// swiftlint:disable opening_brace trailing_comma
-
 /// Prompt catalog dedicated to the agent.
 enum AgentPromptCatalog {
     // MARK: - Phase 1: Router prompts
@@ -36,8 +34,7 @@ enum AgentPromptCatalog {
         ]
 
         if let persona = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !persona.isEmpty
-        {
+           !persona.isEmpty {
             parts.append(PromptCatalog.xmlSection(tag: "persona_definition", content: persona))
         }
 
@@ -49,8 +46,7 @@ enum AgentPromptCatalog {
         var parts: [String] = []
 
         if let selected = selectedText?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !selected.isEmpty
-        {
+           !selected.isEmpty {
             parts.append(PromptCatalog.xmlSection(tag: "selected_text", content: selected))
         }
 
@@ -93,8 +89,7 @@ enum AgentPromptCatalog {
         ]
 
         if let persona = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !persona.isEmpty
-        {
+           !persona.isEmpty {
             parts.append(PromptCatalog.xmlSection(tag: "persona_definition", content: persona))
         }
 
@@ -124,13 +119,10 @@ enum AgentPromptCatalog {
         ))
 
         if let selected = selectedText?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !selected.isEmpty
-        {
+           !selected.isEmpty {
             parts.append(PromptCatalog.xmlSection(tag: "selected_text", content: selected))
         }
 
         return parts.joined(separator: "\n\n")
     }
 }
-
-// swiftlint:enable opening_brace trailing_comma

@@ -89,8 +89,7 @@ final class SettingsViewModelCloudDefaultsTests: XCTestCase {
         ) { _ in
             if case .downloading(model: .qwen3ASR, progress: let progress) =
                 LocalModelDownloadProgressCenter.shared.status,
-                progress > 0
-            {
+                progress > 0 {
                 progressExpectation.fulfill()
             }
         }

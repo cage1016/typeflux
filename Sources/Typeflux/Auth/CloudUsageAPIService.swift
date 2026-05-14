@@ -51,8 +51,7 @@ struct CloudUsageAPIService: Sendable {
         if httpResponse.statusCode >= 200, httpResponse.statusCode < 300 {
             if let envelope = try? JSONDecoder().decode(APIResponse<Response>.self, from: data),
                envelope.code == "OK",
-               let responseData = envelope.data
-            {
+               let responseData = envelope.data {
                 return responseData
             }
             do {

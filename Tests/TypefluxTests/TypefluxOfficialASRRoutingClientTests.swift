@@ -313,8 +313,7 @@ private actor MockTypefluxRoutingClient: TypefluxOfficialASRRoutingClient {
     }
 
     func fetchRoute(accessToken _: String,
-                    scenario _: TypefluxCloudScenario) async throws -> TypefluxOfficialASRRouteDecision
-    {
+                    scenario _: TypefluxCloudScenario) async throws -> TypefluxOfficialASRRouteDecision {
         route
     }
 

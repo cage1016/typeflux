@@ -91,8 +91,7 @@ struct MarkdownSwiftUIView: View {
     private func listItemContent(_ item: Markup) -> AnyView {
         if let listItem = item as? ListItem,
            listItem.childCount == 1,
-           let paragraph = listItem.child(at: 0) as? Paragraph
-        {
+           let paragraph = listItem.child(at: 0) as? Paragraph {
             return AnyView(inlineChildren(paragraph)
                 .font(.studioBody(StudioTheme.Typography.body, weight: .regular))
                 .foregroundStyle(StudioTheme.textPrimary)

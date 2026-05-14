@@ -76,8 +76,7 @@ protocol TypefluxOfficialASRTransport: Sendable {
 // MARK: - Main Transcriber
 
 final class TypefluxOfficialTranscriber: TypefluxCloudScenarioAwareTranscriber, TypefluxCloudLLMIntegratedTranscriber,
-    RealtimeTranscriptionSessionFactory
-{
+    RealtimeTranscriptionSessionFactory {
     private let logger = Logger(subsystem: "ai.gulu.app.typeflux", category: "TypefluxOfficialTranscriber")
     private let routingClient: any TypefluxOfficialASRRoutingClient
     private let transport: any TypefluxOfficialASRTransport
@@ -747,8 +746,7 @@ private actor TypefluxOfficialASRSession {
             let transcript = assembleTranscript()
             if llmConfig != nil,
                !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               TypefluxCloudBillingError.fromError(error) != nil
-            {
+               TypefluxCloudBillingError.fromError(error) != nil {
                 throw TypefluxCloudIntegratedRewriteError(
                     transcript: transcript,
                     underlyingError: error
@@ -970,8 +968,7 @@ private actor TypefluxOfficialRealtimePCMStream: PCM16RealtimeTranscriptionSessi
                    TypefluxOfficialASRClosePolicy.shouldTreatReceiveFailureAsUnexpectedClose(
                        completed: completed,
                        finalSegments: finalSegments
-                   )
-                {
+                   ) {
                     logger.error("WebSocket receive error: \(error.localizedDescription)")
                     sessionError = sessionError
                         ?? TypefluxCloudBillingError.fromError(error)

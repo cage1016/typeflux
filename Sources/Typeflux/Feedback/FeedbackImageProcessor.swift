@@ -50,8 +50,7 @@ enum FeedbackImageProcessor {
 
     private static func bitmapRepresentation(for image: NSImage) -> NSBitmapImageRep? {
         if let tiffData = image.tiffRepresentation,
-           let rep = NSBitmapImageRep(data: tiffData)
-        {
+           let rep = NSBitmapImageRep(data: tiffData) {
             return rep
         }
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {

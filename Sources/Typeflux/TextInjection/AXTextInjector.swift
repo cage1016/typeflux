@@ -184,8 +184,7 @@ final class AXTextInjector: TextInjector {
         let selectedRange = target.textView.selectedRange()
         let selectedText: String? = if selectedRange.length > 0,
                                        selectedRange.location != NSNotFound,
-                                       NSMaxRange(selectedRange) <= target.textView.string.utf16.count
-        {
+                                       NSMaxRange(selectedRange) <= target.textView.string.utf16.count {
             (target.textView.string as NSString).substring(with: selectedRange)
         } else {
             nil
@@ -424,8 +423,7 @@ final class AXTextInjector: TextInjector {
 
         if let selectedRange = candidate.selectedRange,
            selectedRange.location >= 0,
-           selectedRange.length >= 0
-        {
+           selectedRange.length >= 0 {
             score += 4
         }
 
@@ -487,8 +485,7 @@ final class AXTextInjector: TextInjector {
             if !Self.didRequestAccessibility {
                 Self.didRequestAccessibility = true
                 if let url =
-                    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
-                {
+                    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
                     NSWorkspace.shared.open(url)
                 }
             }
@@ -787,8 +784,7 @@ final class AXTextInjector: TextInjector {
                 )
             }
             if let placeholder = copyTextAttribute(kAXPlaceholderValueAttribute as String, from: element),
-               placeholder == value
-            {
+               placeholder == value {
                 return CurrentInputTextSnapshot(
                     processID: processID,
                     processName: processName,

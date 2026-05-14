@@ -1005,8 +1005,7 @@ private final class WAVPersonaBenchmark {
             )
             let realtimeFactor = if let sttMs = record.sttMilliseconds,
                                     let duration = record.audioDurationSeconds,
-                                    duration > 0
-            {
+                                    duration > 0 {
                 String(format: "%.3f", Double(sttMs) / 1000 / duration)
             } else {
                 ""

@@ -59,8 +59,7 @@ final class GoogleCloudSpeechTranscriber: TypefluxCloudScenarioAwareTranscriber,
     }
 
     static func testConnection(projectID: String, apiKey: String, model: String,
-                               appLanguage: AppLanguage) async throws -> String
-    {
+                               appLanguage: AppLanguage) async throws -> String {
         _ = apiKey
         let effectiveCredential = try await GoogleCloudSpeechCredentialResolver.resolveCredential(manualCredential: "")
         let configuration = try GoogleCloudSpeechConfiguration(

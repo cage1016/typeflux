@@ -38,16 +38,38 @@ struct TypefluxCloudClientInfoProvider: Sendable {
     var info: @Sendable () -> TypefluxCloudClientInfo
 
     static let live = TypefluxCloudClientInfoProvider {
-        TypefluxCloudClientInfo(
+        let appLanguage = SettingsStore().appLanguage
+        return TypefluxCloudClientInfo(
             appName: bundleString("CFBundleName") ?? bundleString("CFBundleDisplayName") ?? "Typeflux",
             appVersion: bundleString("CFBundleShortVersionString") ?? "0.0.0",
             clientID: TypefluxCloudClientIdentityStore.shared.clientID(),
-            localeIdentifier: Locale.autoupdatingCurrent.identifier,
-            preferredLanguages: Locale.preferredLanguages,
+            localeIdentifier: clientLocaleIdentifier(appLanguage: appLanguage),
+            preferredLanguages: clientPreferredLanguages(appLanguage: appLanguage),
             osName: "macOS",
             osVersion: operatingSystemVersion(),
             architecture: architecture()
         )
+    }
+
+    static func clientLocaleIdentifier(appLanguage: AppLanguage) -> String {
+        appLanguage.localeIdentifier
+    }
+
+    static func clientPreferredLanguages(
+        appLanguage: AppLanguage,
+        systemPreferredLanguages: [String] = Locale.preferredLanguages
+    ) -> [String] {
+        var languages = [appLanguage.localeIdentifier]
+        languages.append(contentsOf: systemPreferredLanguages)
+
+        return languages.reduce(into: []) { uniqueLanguages, language in
+            let trimmed = language.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            guard !uniqueLanguages.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else {
+                return
+            }
+            uniqueLanguages.append(trimmed)
+        }
     }
 
     private static func bundleString(_ key: String) -> String? {
@@ -94,8 +116,7 @@ final class TypefluxCloudClientIdentityStore: @unchecked Sendable {
         defer { lock.unlock() }
 
         if let existing = defaults.string(forKey: key),
-           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        {
+           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return existing
         }
 

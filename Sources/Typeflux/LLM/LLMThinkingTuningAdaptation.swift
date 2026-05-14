@@ -185,8 +185,7 @@ final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
             if containsThinking {
                 let state = stateLocked(for: baseURL)
                 let reason: LLMThinkingTuningFailureReason = if state.mode == .locked,
-                                                                state.lockedCandidateID == candidate.id
-                {
+                                                                state.lockedCandidateID == candidate.id {
                     .regressed
                 } else {
                     .ineffective
@@ -256,8 +255,7 @@ final class LLMThinkingTuningAdaptationStore: @unchecked Sendable {
 
         case .unsupported:
             if let markedAt = state.unsupportedMarkedAt,
-               now().timeIntervalSince(markedAt) < Self.cooldownInterval
-            {
+               now().timeIntervalSince(markedAt) < Self.cooldownInterval {
                 return nil
             }
             states[key] = .probing()

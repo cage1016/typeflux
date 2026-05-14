@@ -42,8 +42,7 @@ extension Google_Cloud_Speech_V2_SpeechClientProtocol {
         handler: @escaping (Google_Cloud_Speech_V2_StreamingRecognizeResponse) -> Void
     )
         -> BidirectionalStreamingCall<Google_Cloud_Speech_V2_StreamingRecognizeRequest,
-            Google_Cloud_Speech_V2_StreamingRecognizeResponse>
-    {
+            Google_Cloud_Speech_V2_StreamingRecognizeResponse> {
         makeBidirectionalStreamingCall(
             path: Google_Cloud_Speech_V2_SpeechClientMetadata.Methods.streamingRecognize.path,
             callOptions: callOptions ?? defaultCallOptions,
@@ -137,8 +136,7 @@ extension Google_Cloud_Speech_V2_SpeechAsyncClientProtocol {
         callOptions: CallOptions? = nil
     )
         -> GRPCAsyncBidirectionalStreamingCall<Google_Cloud_Speech_V2_StreamingRecognizeRequest,
-            Google_Cloud_Speech_V2_StreamingRecognizeResponse>
-    {
+            Google_Cloud_Speech_V2_StreamingRecognizeResponse> {
         makeAsyncBidirectionalStreamingCall(
             path: Google_Cloud_Speech_V2_SpeechClientMetadata.Methods.streamingRecognize.path,
             callOptions: callOptions ?? defaultCallOptions,
@@ -165,8 +163,7 @@ extension Google_Cloud_Speech_V2_SpeechAsyncClientProtocol {
         _ requests: RequestStream,
         callOptions: CallOptions? = nil
     ) -> GRPCAsyncResponseStream<Google_Cloud_Speech_V2_StreamingRecognizeResponse>
-        where RequestStream.Element == Google_Cloud_Speech_V2_StreamingRecognizeRequest
-    {
+        where RequestStream.Element == Google_Cloud_Speech_V2_StreamingRecognizeRequest {
         performAsyncBidirectionalStreamingCall(
             path: Google_Cloud_Speech_V2_SpeechClientMetadata.Methods.streamingRecognize.path,
             requests: requests,

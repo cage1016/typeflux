@@ -31,6 +31,7 @@ final class DIContainer {
     let mcpRegistry: MCPRegistry
     let cloudLoginSyncCoordinator: CloudLoginSyncCoordinator
 
+    // swiftlint:disable:next function_body_length
     init() {
         hotkeyService = EventTapHotkeyService(settingsStore: settingsStore)
         audioRecorder = AVFoundationAudioRecorder(

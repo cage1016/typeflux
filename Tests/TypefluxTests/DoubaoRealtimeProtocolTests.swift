@@ -108,8 +108,7 @@ final class DoubaoProtocolExtendedTests: XCTestCase {
     func testDoubaoHeaderDecodeThrowsOnTooShortData() {
         XCTAssertThrowsError(try DoubaoHeader.decode(from: Data([0x11]))) { error in
             if let protoError = error as? DoubaoProtocolError,
-               case .headerTooShort = protoError
-            {
+               case .headerTooShort = protoError {
                 // expected
             } else {
                 XCTFail("Expected headerTooShort, got \(error)")

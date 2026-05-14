@@ -1,5 +1,5 @@
 // swiftlint:disable file_length function_body_length function_parameter_count line_length
-// swiftlint:disable multiple_closures_with_trailing_closure opening_brace trailing_comma
+// swiftlint:disable multiple_closures_with_trailing_closure
 import Foundation
 
 extension WorkflowController {
@@ -685,8 +685,7 @@ extension WorkflowController {
                 }
             } else if canMergeWithLLM,
                       let resolvedPersonaPrompt = personaPrompt?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      !resolvedPersonaPrompt.isEmpty
-            {
+                      !resolvedPersonaPrompt.isEmpty {
                 let mergedResult = try await performMergedCloudTranscription(
                     audioFile: audioFile,
                     personaPrompt: resolvedPersonaPrompt,
@@ -1738,8 +1737,7 @@ extension WorkflowController {
         lastRetryableFailureRecord = nil
 
         if let activeProcessingRecordID,
-           var record = historyStore.record(id: activeProcessingRecordID)
-        {
+           var record = historyStore.record(id: activeProcessingRecordID) {
             record.errorMessage = reason
             if record.transcriptionStatus == .running {
                 record.transcriptionStatus = .failed
@@ -1900,8 +1898,7 @@ extension WorkflowController {
 
         if snapshot.source == "typeflux-ask-answer-window"
             || snapshot.source == "typeflux-non-text-window"
-            || snapshot.source == "typeflux-owned-target"
-        {
+            || snapshot.source == "typeflux-owned-target" {
             return true
         }
 
@@ -2044,5 +2041,5 @@ extension WorkflowController {
     }
 }
 
-// swiftlint:enable multiple_closures_with_trailing_closure opening_brace trailing_comma
+// swiftlint:enable multiple_closures_with_trailing_closure
 // swiftlint:enable file_length function_body_length function_parameter_count line_length

@@ -361,8 +361,7 @@ enum VocabularyStore {
         }
 
         if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let terms = object["terms"] as? [String]
-        {
+           let terms = object["terms"] as? [String] {
             return terms.map { VocabularyTransferItem(term: $0, source: defaultSource) }
         }
 

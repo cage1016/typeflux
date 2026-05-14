@@ -3,7 +3,7 @@ import ApplicationServices
 import Foundation
 
 // swiftlint:disable closure_parameter_position file_length function_body_length
-// swiftlint:disable identifier_name line_length opening_brace trailing_comma
+// swiftlint:disable identifier_name line_length
 extension AXTextInjector {
     func setText(_ text: String, replaceSelection: Bool) throws {
         if try insertIntoTypefluxNativeTextTarget(text, replaceSelection: replaceSelection) {
@@ -76,8 +76,7 @@ extension AXTextInjector {
                    replaceSelection: true,
                    selectionRange: context.range,
                    beforeSnapshot: beforeSnapshot
-               )
-            {
+               ) {
                 NetworkDebugLogger.logMessage(
                     "[Text Injection] replace completed via AX selected-text write"
                 )
@@ -96,8 +95,7 @@ extension AXTextInjector {
                replaceSelection: replaceSelection,
                selectionRange: nil,
                beforeSnapshot: beforeSnapshot
-           )
-        {
+           ) {
             NetworkDebugLogger.logMessage("[Text Injection] completed via focused AX path")
             if replaceSelection {
                 latestSelectionContext = nil
@@ -260,8 +258,7 @@ extension AXTextInjector {
         if replaceSelection,
            strictFallbackEnabled,
            beforeSnapshot == nil,
-           !allowClipboardSelectionFallback
-        {
+           !allowClipboardSelectionFallback {
             NetworkDebugLogger.logMessage(
                 "[Text Injection] paste aborted because replacement target is not verifiable"
             )
@@ -437,8 +434,7 @@ extension AXTextInjector {
                 }
             } else if replaceSelection,
                       !normalizedInsertedText.isEmpty,
-                      normalizedAfterText != normalizedInsertedText
-            {
+                      normalizedAfterText != normalizedInsertedText {
                 return .indeterminate
             }
         }
@@ -577,5 +573,5 @@ extension AXTextInjector {
     }
 }
 
-// swiftlint:enable identifier_name line_length opening_brace trailing_comma
+// swiftlint:enable identifier_name line_length
 // swiftlint:enable closure_parameter_position file_length function_body_length

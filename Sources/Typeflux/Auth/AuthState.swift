@@ -77,8 +77,7 @@ final class AuthState: ObservableObject {
 
     var accessToken: String? {
         if let inMemorySessionToken,
-           inMemorySessionToken.expiresAt > Int(Date().timeIntervalSince1970)
-        {
+           inMemorySessionToken.expiresAt > Int(Date().timeIntervalSince1970) {
             return inMemorySessionToken.token
         }
         guard let stored = cachedStoredToken,

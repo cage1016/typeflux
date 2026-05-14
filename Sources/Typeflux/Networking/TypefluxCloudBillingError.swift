@@ -40,8 +40,7 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
 
     static func fromHTTPStatus(_ statusCode: Int, bodyData: Data) -> TypefluxCloudBillingError? {
         if let envelope = try? JSONDecoder().decode(BillingErrorEnvelope.self, from: bodyData),
-           let error = fromServerCode(envelope.code, message: envelope.message)
-        {
+           let error = fromServerCode(envelope.code, message: envelope.message) {
             return error
         }
 
@@ -60,21 +59,18 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
         }
 
         if let routingError = error as? TypefluxOfficialASRRoutingError,
-           case let .serverError(code, message) = routingError
-        {
+           case let .serverError(code, message) = routingError {
             return fromServerCode(code, message: message)
         }
 
         if let asrError = error as? TypefluxOfficialASRError,
-           case let .serverError(message) = asrError
-        {
+           case let .serverError(message) = asrError {
             return fromMessage(message)
         }
 
         let nsError = error as NSError
         if let response = nsError.userInfo["NSErrorFailingURLResponseKey"] as? HTTPURLResponse,
-           response.statusCode == 402
-        {
+           response.statusCode == 402 {
             return TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: nsError.localizedDescription)
         }
         if nsError.code == 402, let error = fromMessage(error.localizedDescription) {
@@ -89,8 +85,7 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
 
         if let data = trimmed.data(using: .utf8),
            let envelope = try? JSONDecoder().decode(BillingErrorEnvelope.self, from: data),
-           let error = fromServerCode(envelope.code, message: envelope.message)
-        {
+           let error = fromServerCode(envelope.code, message: envelope.message) {
             return error
         }
 
@@ -98,8 +93,7 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
             let jsonText = String(trimmed[jsonStart...])
             if let data = jsonText.data(using: .utf8),
                let envelope = try? JSONDecoder().decode(BillingErrorEnvelope.self, from: data),
-               let error = fromServerCode(envelope.code, message: envelope.message)
-            {
+               let error = fromServerCode(envelope.code, message: envelope.message) {
                 return error
             }
         }
@@ -108,16 +102,14 @@ struct TypefluxCloudBillingError: LocalizedError, Equatable {
         if subscriptionRequiredCodes.contains(where: { normalizedMessage.contains($0) })
             || normalizedMessage.contains("ACTIVE_SUBSCRIPTION_REQUIRED")
             || normalizedMessage.contains("SUBSCRIPTION_REQUIRED")
-            || normalizedMessage.contains("PLAN_REQUIRED")
-        {
+            || normalizedMessage.contains("PLAN_REQUIRED") {
             return TypefluxCloudBillingError(reason: .subscriptionRequired, serverMessage: message)
         }
 
         if quotaExceededCodes.contains(where: { normalizedMessage.contains($0) })
             || normalizedMessage.contains("QUOTA_EXCEEDED")
             || normalizedMessage.contains("CREDIT_EXHAUSTED")
-            || normalizedMessage.contains("INSUFFICIENT_CREDITS")
-        {
+            || normalizedMessage.contains("INSUFFICIENT_CREDITS") {
             return TypefluxCloudBillingError(reason: .quotaExceeded, serverMessage: message)
         }
 

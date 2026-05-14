@@ -120,8 +120,7 @@ enum OpenAICompatibleResponseSupport {
         if normalizedModel.contains("gemini-3") {
             generationConfig["thinkingConfig"] = ["thinkingLevel": "low"]
         } else if normalizedModel.contains("gemini-2.5"),
-                  normalizedModel.contains("flash") || normalizedModel.contains("lite")
-        {
+                  normalizedModel.contains("flash") || normalizedModel.contains("lite") {
             generationConfig["thinkingConfig"] = ["thinkingBudget": 0]
         }
     }
@@ -171,20 +170,17 @@ enum OpenAICompatibleResponseSupport {
         }
 
         if let delta = choice["delta"] as? [String: Any],
-           let text = extractText(from: delta["content"])
-        {
+           let text = extractText(from: delta["content"]) {
             return text
         }
 
         if let delta = choice["delta"] as? [String: Any],
-           let text = extractText(from: delta["text"])
-        {
+           let text = extractText(from: delta["text"]) {
             return text
         }
 
         if let message = choice["message"] as? [String: Any],
-           let text = extractText(from: message["content"])
-        {
+           let text = extractText(from: message["content"]) {
             return text
         }
 
@@ -314,13 +310,11 @@ enum OpenAICompatibleResponseSupport {
 
         if host == "api.openai.com" || host.hasSuffix(".openai.com"),
            normalizedModel.hasPrefix("gpt-5"),
-           !normalizedModel.contains("pro")
-        {
+           !normalizedModel.contains("pro") {
             if normalizedModel.hasPrefix("gpt-5.1")
                 || normalizedModel.hasPrefix("gpt-5.2")
                 || normalizedModel.hasPrefix("gpt-5.3")
-                || normalizedModel.hasPrefix("gpt-5.4")
-            {
+                || normalizedModel.hasPrefix("gpt-5.4") {
                 return "none"
             }
 

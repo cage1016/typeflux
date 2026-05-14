@@ -406,8 +406,7 @@ final class SettingsStore {
 
     func effectivePersona(appName: String?, bundleIdentifier: String?) -> PersonaProfile? {
         if personaAppBindingsEnabled,
-           let binding = personaAppBinding(appName: appName, bundleIdentifier: bundleIdentifier)
-        {
+           let binding = personaAppBinding(appName: appName, bundleIdentifier: bundleIdentifier) {
             guard let personaID = binding.personaID else {
                 return nil
             }

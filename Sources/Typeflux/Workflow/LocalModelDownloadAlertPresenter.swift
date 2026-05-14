@@ -7,8 +7,7 @@ protocol LocalModelDownloadAlertPresenting {
 }
 
 final class SystemLocalModelDownloadAlertPresenter: NSObject, LocalModelDownloadAlertPresenting, NSWindowDelegate,
-    @unchecked Sendable
-{
+    @unchecked Sendable {
     private var alertWindow: NSPanel?
     private var alertViewModel: LocalModelDownloadAlertViewModel?
     private var progressObserver: NSObjectProtocol?

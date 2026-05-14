@@ -184,8 +184,7 @@ final class HotkeyRecorder: ObservableObject {
         if let lastModifierTap,
            lastModifierTap.binding.keyCode == binding.keyCode,
            lastModifierTap.binding.modifierFlags == binding.modifierFlags,
-           timestamp - lastModifierTap.timestamp <= Self.doubleTapMaximumInterval
-        {
+           timestamp - lastModifierTap.timestamp <= Self.doubleTapMaximumInterval {
             pendingModifierOnlyWorkItem?.cancel()
             pendingModifierOnlyWorkItem = nil
             pendingModifierOnlyBinding = nil

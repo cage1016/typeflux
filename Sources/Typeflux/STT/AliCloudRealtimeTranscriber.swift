@@ -842,8 +842,7 @@ private actor AliCloudQwenASRSession: PCM16RealtimeTranscriptionSession {
             // (i.e. conversation.item.input_audio_transcription.completed received).
             // signal() is idempotent so calling it on every event is safe.
             if !accumulator.orderedItemIDs.isEmpty,
-               accumulator.orderedItemIDs.allSatisfy({ accumulator.finalTexts[$0] != nil })
-            {
+               accumulator.orderedItemIDs.allSatisfy({ accumulator.finalTexts[$0] != nil }) {
                 await drainState.signal()
             }
         }

@@ -10,8 +10,7 @@ struct NoopLocalNotificationService: LocalNotificationSending {
 }
 
 final class SystemLocalNotificationService: NSObject, LocalNotificationSending, UNUserNotificationCenterDelegate,
-    @unchecked Sendable
-{
+    @unchecked Sendable {
     static let shared = SystemLocalNotificationService()
 
     private let notificationCenter: UNUserNotificationCenter

@@ -485,7 +485,7 @@ final class WorkflowController {
         guard processingSessionID == sessionID else { return }
         let recordID = activeProcessingRecordID
         cancelCurrentProcessing(resetUI: false, reason: L("workflow.timeout.reason"))
-        var timeoutRecord: HistoryRecord? = nil
+        var timeoutRecord: HistoryRecord?
         if let recordID {
             timeoutRecord = historyStore.record(id: recordID)
         }
@@ -596,8 +596,7 @@ final class WorkflowController {
 
         let selectedModel = settingsStore.localSTTModel
         if case let .downloading(model, progress) = LocalModelDownloadProgressCenter.shared.status,
-           model == selectedModel
-        {
+           model == selectedModel {
             showLocalModelDownloadAlert(model: model, progress: progress)
             return true
         }
@@ -678,8 +677,7 @@ final class WorkflowController {
         let prePromotionInputContextTask = inputContextTask
         selectionTask = Task {
             if let snapshot = await prePromotionSelectionTask?.value,
-               snapshot.hasAskSelectionContext
-            {
+               snapshot.hasAskSelectionContext {
                 NetworkDebugLogger.logMessage(
                     "[Ask Flow] preserved pre-promotion selection capture for Ask Anything recording"
                 )
@@ -858,14 +856,13 @@ final class WorkflowController {
     ) -> NSImage? {
         if PersonaAppBinding.normalize(bundleIdentifier) == PersonaAppBinding
             .normalize(frontmostApplicationContext.bundleIdentifier)
-            || PersonaAppBinding.normalize(appName) == PersonaAppBinding.normalize(frontmostApplicationContext.appName)
-        {
+            || PersonaAppBinding.normalize(appName) == PersonaAppBinding
+            .normalize(frontmostApplicationContext.appName) {
             return frontmostApplicationContext.icon
         }
 
         if let bundleIdentifier,
-           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
-        {
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
             return NSWorkspace.shared.icon(forFile: appURL.path)
         }
 

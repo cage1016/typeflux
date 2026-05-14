@@ -45,8 +45,7 @@ enum AuthAPIService {
     }
 
     static func changePassword(token: String, oldPassword: String,
-                               newPassword: String) async throws -> ChangePasswordResponse
-    {
+                               newPassword: String) async throws -> ChangePasswordResponse {
         try await post(
             path: "/api/v1/auth/change-password",
             body: ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword),

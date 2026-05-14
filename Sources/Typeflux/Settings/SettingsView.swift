@@ -227,13 +227,13 @@ struct StudioView: View {
     @State private var isLoadingPersonaAppCandidates = false
     @State private var hasLoadedPersonaAppInstalledCandidates = false
     @State private var personaAppCandidateLoadToken = UUID()
-    @State private var localSTTPendingDelete: LocalSTTModel? = nil
-    @State private var localSTTPendingDownload: LocalSTTModel? = nil
+    @State private var localSTTPendingDelete: LocalSTTModel?
+    @State private var localSTTPendingDownload: LocalSTTModel?
 
-    @State private var localSTTPendingRedownload: LocalSTTModel? = nil
+    @State private var localSTTPendingRedownload: LocalSTTModel?
     @State private var llmActivationMissingAPIKeyProviderName: String?
     @State private var isMCPServerDialogPresented = false
-    @State private var mcpServerPendingDeletion: MCPServerConfig? = nil
+    @State private var mcpServerPendingDeletion: MCPServerConfig?
     @State private var agentJobPendingDeletion: AgentJob?
     @State private var showingClearAllJobsConfirmation = false
     @State private var showingClearHistoryConfirmation = false
@@ -930,8 +930,7 @@ struct StudioView: View {
                             }
                         } else if viewModel.personaRewriteEnabled,
                                   !viewModel.activePersonaID.isEmpty,
-                                  viewModel.selectedPersonaID?.uuidString == viewModel.activePersonaID
-                        {
+                                  viewModel.selectedPersonaID?.uuidString == viewModel.activePersonaID {
                             StudioPill(
                                 title: L("settings.models.active"),
                                 tone: StudioTheme.success,
@@ -1571,8 +1570,7 @@ struct StudioView: View {
         }
 
         if let bundleIdentifier = candidate.bundleIdentifier,
-           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
-        {
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
             return NSWorkspace.shared.icon(forFile: appURL.path)
         }
 
@@ -1619,14 +1617,12 @@ struct StudioView: View {
             guard let url = application.bundleURL else { continue }
 
             if let localizedName = application.localizedName?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !localizedName.isEmpty
-            {
+               !localizedName.isEmpty {
                 runningLookup[localizedName.lowercased()] = url
             }
 
             if let bundleIdentifier = application.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !bundleIdentifier.isEmpty
-            {
+               !bundleIdentifier.isEmpty {
                 runningLookup[bundleIdentifier.lowercased()] = url
             }
         }
@@ -1782,14 +1778,12 @@ struct StudioView: View {
 
         if let bundle = Bundle(url: url) {
             if let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
-               !name.isEmpty
-            {
+               !name.isEmpty {
                 return name
             }
 
             if let name = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String,
-               !name.isEmpty
-            {
+               !name.isEmpty {
                 return name
             }
         }
@@ -4042,8 +4036,7 @@ struct StudioView: View {
     }
 
     private func homeMiniMetric(icon: String, value: String, title: String, size: CGSize)
-        -> some View
-    {
+        -> some View {
         StudioCard(padding: StudioTheme.Insets.cardCompact) {
             VStack(alignment: .center, spacing: StudioTheme.Spacing.smallMedium) {
                 RoundedRectangle(
@@ -4190,8 +4183,7 @@ struct StudioView: View {
     }
 
     private func architectureModeButton(title: String, subtitle: String, isActive: Bool)
-        -> some View
-    {
+        -> some View {
         HStack(spacing: StudioTheme.Spacing.medium) {
             RoundedRectangle(cornerRadius: StudioTheme.CornerRadius.medium, style: .continuous)
                 .fill(isActive ? StudioTheme.accentSoft : StudioTheme.surfaceMuted)
@@ -4267,8 +4259,7 @@ struct StudioView: View {
             )
         default:
             if let providerID = StudioModelProviderID(rawValue: card.id),
-               let provider = LLMRemoteProvider.from(providerID: providerID)
-            {
+               let provider = LLMRemoteProvider.from(providerID: providerID) {
                 viewModel.setLLMRemoteProvider(provider)
             }
         }
@@ -4626,8 +4617,7 @@ struct StudioView: View {
                             StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .aliCloud,
                             .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial
                         ].contains(viewModel.focusedModelProvider),
-                            !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
-                        {
+                            !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn {
                             StudioButton(
                                 title: viewModel.sttConnectionTestState == .testing
                                     ? L("settings.models.testingConnection") : L("common.test"),
@@ -4656,8 +4646,7 @@ struct StudioView: View {
                         StudioModelProviderID.freeSTT, .whisperAPI, .multimodalLLM, .aliCloud,
                         .doubaoRealtime, .googleCloud, .groqSTT, .typefluxOfficial
                     ].contains(viewModel.focusedModelProvider),
-                        !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn
-                    {
+                        !viewModel.focusedModelProvider.requiresLoginForConnectionTest || authState.isLoggedIn {
                         connectionTestResultView(viewModel.sttConnectionTestState)
                     }
                 }
@@ -5302,8 +5291,7 @@ struct StudioView: View {
     }
 
     private func providerBadgeBackground(for provider: StudioModelProviderID, isFocused: Bool)
-        -> Color
-    {
+        -> Color {
         if provider.usesTypefluxBranding {
             return isFocused ? StudioTheme.controlSurface : Color.clear
         }

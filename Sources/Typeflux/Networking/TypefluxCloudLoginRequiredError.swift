@@ -11,8 +11,7 @@ struct TypefluxCloudLoginRequiredError: LocalizedError, Equatable {
         }
 
         if let executorError = error as? CloudRequestExecutorError,
-           case let .allEndpointsFailed(lastError) = executorError
-        {
+           case let .allEndpointsFailed(lastError) = executorError {
             return fromError(lastError)
         }
 
@@ -21,20 +20,17 @@ struct TypefluxCloudLoginRequiredError: LocalizedError, Equatable {
         }
 
         if let routingError = error as? TypefluxOfficialASRRoutingError,
-           case .unauthorized = routingError
-        {
+           case .unauthorized = routingError {
             return TypefluxCloudLoginRequiredError()
         }
 
         if let asrError = error as? TypefluxOfficialASRError,
-           case .notLoggedIn = asrError
-        {
+           case .notLoggedIn = asrError {
             return TypefluxCloudLoginRequiredError()
         }
 
         if let llmError = error as? TypefluxCloudLLMError,
-           case .notLoggedIn = llmError
-        {
+           case .notLoggedIn = llmError {
             return TypefluxCloudLoginRequiredError()
         }
 

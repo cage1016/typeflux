@@ -150,8 +150,8 @@ final class StudioViewModel: ObservableObject {
     @Published var localSTTPreparedSource = L("common.automatic")
     @Published var isLocalSTTPrepared = false
     @Published var isPreparingLocalSTT = false
-    @Published var localSTTPendingDelete: LocalSTTModel? = nil
-    @Published var localSTTPendingRedownload: LocalSTTModel? = nil
+    @Published var localSTTPendingDelete: LocalSTTModel?
+    @Published var localSTTPendingRedownload: LocalSTTModel?
     @Published var localSTTMemoryOptimizationEnabled: Bool
 
     @Published var localOptimizationEnabled: Bool
@@ -174,16 +174,16 @@ final class StudioViewModel: ObservableObject {
     @Published var mcpDraftHTTPHeaders: String = ""
     @Published var mcpDraftEnabled: Bool = true
     @Published var mcpDraftAutoConnect: Bool = false
-    @Published var mcpDraftEditingServerID: UUID? = nil
-    @Published var mcpConnectionTestTargetServerID: UUID? = nil
+    @Published var mcpDraftEditingServerID: UUID?
+    @Published var mcpConnectionTestTargetServerID: UUID?
     @Published var mcpConnectionTestState: MCPConnectionTestState = .idle
 
     // Agent Jobs
     @Published private(set) var agentJobs: [AgentJob] = []
     @Published private(set) var isLoadingJobs = false
     @Published var showingJobsPage = false
-    @Published var selectedJobID: UUID? = nil
-    @Published private(set) var selectedJobDetail: AgentJob? = nil
+    @Published var selectedJobID: UUID?
+    @Published private(set) var selectedJobDetail: AgentJob?
     private static let jobsPageSize = 50
 
     @Published var personaRewriteEnabled: Bool
@@ -515,8 +515,7 @@ final class StudioViewModel: ObservableObject {
 
     var localSTTDisplayedPreparationProgress: Double {
         if case let .downloading(model, progress) = LocalModelDownloadProgressCenter.shared.status,
-           model == localSTTFocusedModel
-        {
+           model == localSTTFocusedModel {
             return progress
         }
         return localSTTPreparationProgress
@@ -940,8 +939,7 @@ final class StudioViewModel: ObservableObject {
         availableMicrophones = devices
 
         if !preferredMicrophoneID.isEmpty,
-           devices.contains(where: { $0.id == preferredMicrophoneID }) == false
-        {
+           devices.contains(where: { $0.id == preferredMicrophoneID }) == false {
             preferredMicrophoneID = AudioDeviceManager.automaticDeviceID
             settingsStore.preferredMicrophoneID = AudioDeviceManager.automaticDeviceID
             showToast(L("settings.audio.microphone.unavailable"))
@@ -1448,8 +1446,7 @@ final class StudioViewModel: ObservableObject {
         }
 
         if let editingID = mcpDraftEditingServerID,
-           let idx = mcpServers.firstIndex(where: { $0.id == editingID })
-        {
+           let idx = mcpServers.firstIndex(where: { $0.id == editingID }) {
             mcpServers[idx].name = mcpDraftName.trimmingCharacters(in: .whitespacesAndNewlines)
             mcpServers[idx].transport = transport
             mcpServers[idx].enabled = mcpDraftEnabled
@@ -2393,7 +2390,7 @@ final class StudioViewModel: ObservableObject {
 
             do {
                 let (firstTokenDate, collected) = try await ConnectionTestSupport.runWithTimeout {
-                    var firstTokenDate: Date? = nil
+                    var firstTokenDate: Date?
                     var collected = ""
 
                     switch capturedProvider {

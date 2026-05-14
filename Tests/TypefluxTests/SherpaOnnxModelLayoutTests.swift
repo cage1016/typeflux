@@ -320,8 +320,7 @@ final class SherpaOnnxModelLayoutTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tmpURL) }
 
         for relativePath in layout.requiredRelativePaths
-            where !relativePath.hasSuffix(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName)
-        {
+            where !relativePath.hasSuffix(LocalModelDownloadCatalog.sherpaOnnxRuntimeVersionedLibraryName) {
             let fullURL = tmpURL.appendingPathComponent(relativePath, isDirectory: false)
             try FileManager.default.createDirectory(
                 at: fullURL.deletingLastPathComponent(),

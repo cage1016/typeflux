@@ -305,8 +305,7 @@ struct Google_Cloud_Speech_V2_StreamingRecognizeResponse: Sendable {
 private let _protobuf_package = "google.cloud.speech.v2"
 
 extension Google_Cloud_Speech_V2_AutoDetectDecodingConfig: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".AutoDetectDecodingConfig"
     static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
@@ -330,8 +329,7 @@ extension Google_Cloud_Speech_V2_AutoDetectDecodingConfig: SwiftProtobuf.Message
 
 extension Google_Cloud_Speech_V2_ExplicitDecodingConfig: SwiftProtobuf.Message,
     SwiftProtobuf._MessageImplementationBase,
-    SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".ExplicitDecodingConfig"
     static let _protobuf_nameMap = SwiftProtobuf
         ._NameMap(bytecode: "\0\u{1}encoding\0\u{3}sample_rate_hertz\0\u{3}audio_channel_count\0")
@@ -381,8 +379,7 @@ extension Google_Cloud_Speech_V2_ExplicitDecodingConfig.AudioEncoding: SwiftProt
 }
 
 extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase,
-    SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".RecognitionConfig"
     static let _protobuf_nameMap = SwiftProtobuf
         ._NameMap(
@@ -454,8 +451,7 @@ extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, Swift
     }
 
     static func == (lhs: Google_Cloud_Speech_V2_RecognitionConfig,
-                    rhs: Google_Cloud_Speech_V2_RecognitionConfig) -> Bool
-    {
+                    rhs: Google_Cloud_Speech_V2_RecognitionConfig) -> Bool {
         if lhs.decodingConfig != rhs.decodingConfig { return false }
         if lhs.model != rhs.model { return false }
         if lhs.languageCodes != rhs.languageCodes { return false }
@@ -465,8 +461,7 @@ extension Google_Cloud_Speech_V2_RecognitionConfig: SwiftProtobuf.Message, Swift
 }
 
 extension Google_Cloud_Speech_V2_StreamingRecognitionFeatures: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognitionFeatures"
     static let _protobuf_nameMap = SwiftProtobuf
         ._NameMap(bytecode: "\0\u{3}enable_voice_activity_events\0\u{3}interim_results\0")
@@ -506,8 +501,7 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionFeatures: SwiftProtobuf.Mes
 }
 
 extension Google_Cloud_Speech_V2_StreamingRecognitionConfig: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognitionConfig"
     static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}config\0\u{3}streaming_features\0")
 
@@ -550,8 +544,7 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionConfig: SwiftProtobuf.Messa
 }
 
 extension Google_Cloud_Speech_V2_StreamingRecognizeRequest: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognizeRequest"
     static let _protobuf_nameMap = SwiftProtobuf
         ._NameMap(bytecode: "\0\u{2}\u{3}recognizer\0\u{2}\u{2}audio\0\u{3}streaming_config\0")
@@ -623,8 +616,7 @@ extension Google_Cloud_Speech_V2_StreamingRecognizeRequest: SwiftProtobuf.Messag
 }
 
 extension Google_Cloud_Speech_V2_SpeechRecognitionAlternative: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".SpeechRecognitionAlternative"
     static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}transcript\0\u{1}confidence\0")
 
@@ -663,8 +655,7 @@ extension Google_Cloud_Speech_V2_SpeechRecognitionAlternative: SwiftProtobuf.Mes
 }
 
 extension Google_Cloud_Speech_V2_StreamingRecognitionResult: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognitionResult"
     static let _protobuf_nameMap = SwiftProtobuf
         ._NameMap(
@@ -721,8 +712,7 @@ extension Google_Cloud_Speech_V2_StreamingRecognitionResult: SwiftProtobuf.Messa
 }
 
 extension Google_Cloud_Speech_V2_StreamingRecognizeResponse: SwiftProtobuf.Message,
-    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding
-{
+    SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = _protobuf_package + ".StreamingRecognizeResponse"
     static let _protobuf_nameMap = SwiftProtobuf
         ._NameMap(bytecode: "\0\u{4}\u{3}speech_event_type\0\u{2}\u{3}results\0")

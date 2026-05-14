@@ -159,8 +159,7 @@ actor StdioMCPClient: MCPClient {
                     buffer.removeSubrange(buffer.startIndex ... newlineRange.lowerBound)
 
                     if let msg = try? JSONDecoder().decode(MCPJsonRPCMessage.self, from: lineData),
-                       let msgId = msg.id
-                    {
+                       let msgId = msg.id {
                         let idStr = msgId.stringValue
                         pendingRequests[idStr]?.resume(returning: msg)
                         pendingRequests.removeValue(forKey: idStr)

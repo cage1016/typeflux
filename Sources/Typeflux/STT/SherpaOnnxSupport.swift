@@ -577,8 +577,7 @@ struct BundledSherpaOnnxRuntimeLocator: SherpaOnnxRuntimeLocating {
         for candidateURL in candidateRuntimeRootURLs(for: layout) {
             let storageURL = candidateURL.deletingLastPathComponent()
             if candidateURL.lastPathComponent == layout.runtimeRootDirectory,
-               layout.isRuntimeInstalled(storageURL: storageURL, fileManager: fileManager)
-            {
+               layout.isRuntimeInstalled(storageURL: storageURL, fileManager: fileManager) {
                 return candidateURL
             }
         }
@@ -713,8 +712,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             ))
         }
         if layout.isModelInstalled(storageURL: storageURL, fileManager: fileManager),
-           layout.isRuntimeInstalled(storageURL: runtimeStorageURL, fileManager: fileManager)
-        {
+           layout.isRuntimeInstalled(storageURL: runtimeStorageURL, fileManager: fileManager) {
             try linkSharedRuntimeIfNeeded(
                 layout: layout,
                 modelStorageURL: storageURL,
@@ -809,8 +807,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
 
         let targetURL = runtimeStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
         if layout.isRuntimeInstalled(storageURL: runtimeStorageURL, fileManager: fileManager),
-           directoryContentsMatch(sourceURL: runtimeRootURL, targetURL: targetURL)
-        {
+           directoryContentsMatch(sourceURL: runtimeRootURL, targetURL: targetURL) {
             return
         }
 
@@ -818,8 +815,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
             .fileExists(atPath: targetURL.path) || (
                 try? fileManager.destinationOfSymbolicLink(atPath: targetURL.path)
             ) !=
-            nil
-        {
+            nil {
             try fileManager.removeItem(at: targetURL)
         }
 
@@ -848,8 +844,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         let targetRuntimeURL = runtimeStorageURL.appendingPathComponent(layout.runtimeRootDirectory, isDirectory: true)
         if fileManager
             .fileExists(atPath: targetRuntimeURL.path) ||
-            (try? fileManager.destinationOfSymbolicLink(atPath: targetRuntimeURL.path)) != nil
-        {
+            (try? fileManager.destinationOfSymbolicLink(atPath: targetRuntimeURL.path)) != nil {
             try fileManager.removeItem(at: targetRuntimeURL)
         }
         try fileManager.createDirectory(
@@ -1018,8 +1013,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
         let compatibilityLibraryURL = libDirectoryURL.appendingPathComponent("libonnxruntime.dylib", isDirectory: false)
 
         if !fileManager.fileExists(atPath: versionedLibraryURL.path),
-           fileManager.fileExists(atPath: compatibilityLibraryURL.path)
-        {
+           fileManager.fileExists(atPath: compatibilityLibraryURL.path) {
             try fileManager.copyItem(at: compatibilityLibraryURL, to: versionedLibraryURL)
         }
 
@@ -1068,8 +1062,7 @@ final class SherpaOnnxModelInstaller: SherpaOnnxModelInstalling {
 
         for directoryURL in directories.sorted(by: { $0.path.count > $1.path.count }) {
             if let contents = try? fileManager.contentsOfDirectory(atPath: directoryURL.path),
-               contents.isEmpty
-            {
+               contents.isEmpty {
                 try? fileManager.removeItem(at: directoryURL)
             }
         }

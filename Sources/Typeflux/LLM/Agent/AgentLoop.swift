@@ -35,7 +35,7 @@ actor AgentLoop {
         var accumulatedText = ""
         var steps: [AgentStep] = []
         let startTime = DispatchTime.now()
-        var cumulativeTokenUsage: LLMTokenUsage? = nil
+        var cumulativeTokenUsage: LLMTokenUsage?
 
         for stepIndex in config.initialStepIndex ..< (config.initialStepIndex + config.maxSteps) {
             let stepStart = DispatchTime.now()

@@ -155,8 +155,7 @@ final class AppLocalization: ObservableObject {
     private func bundle(for language: AppLanguage) -> Bundle {
         for localizationName in language.bundleLocalizationCandidates {
             if let path = Bundle.appResources.path(forResource: localizationName, ofType: "lproj"),
-               let bundle = Bundle(path: path)
-            {
+               let bundle = Bundle(path: path) {
                 return bundle
             }
         }

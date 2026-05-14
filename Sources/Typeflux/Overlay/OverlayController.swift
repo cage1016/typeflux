@@ -1029,8 +1029,7 @@ final class OverlayController {
         } else if model.presentation == .recordingLocked
             || model.presentation == .recordingLockedPreview
             || model.presentation == .failure
-            || model.presentation == .resultDialog
-        {
+            || model.presentation == .resultDialog {
             removePickerSystemKeyCapture()
             installKeyMonitoringIfNeeded()
         } else {
@@ -1209,8 +1208,7 @@ final class OverlayController {
 
     private func handleKeyCode(_ keyCode: Int) -> Bool {
         if model.presentation == .recordingHold || model.presentation == .recordingHoldPreview || model
-            .presentation == .recordingLocked || model.presentation == .recordingLockedPreview
-        {
+            .presentation == .recordingLocked || model.presentation == .recordingLockedPreview {
             if keyCode == 53 {
                 model.requestCancel()
                 return true

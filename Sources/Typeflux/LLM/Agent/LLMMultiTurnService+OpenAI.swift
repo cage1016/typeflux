@@ -405,13 +405,11 @@ extension OpenAICompatibleAgentService: LLMMultiTurnService {
             if let textContent = part["text"] as? String {
                 text += textContent
             } else if let functionCall = part["functionCall"] as? [String: Any],
-                      let name = functionCall["name"] as? String
-            {
+                      let name = functionCall["name"] as? String {
                 let args = functionCall["args"] ?? [:]
                 let argsJSON: String = if JSONSerialization.isValidJSONObject(args),
                                           let argsData = try? JSONSerialization.data(withJSONObject: args),
-                                          let str = String(data: argsData, encoding: .utf8)
-                {
+                                          let str = String(data: argsData, encoding: .utf8) {
                     str
                 } else {
                     "{}"
