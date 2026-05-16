@@ -7,6 +7,7 @@ final class StatusBarController: NSObject {
         static let agentTasks = 9001
         static let transcriptionHistory = 9002
         static let personas = 9003
+        static let textTransformation = 9004
     }
 
     private enum MenuValue {
@@ -225,6 +226,10 @@ final class StatusBarController: NSObject {
         historyItem.tag = MenuTag.transcriptionHistory
         historyItem.submenu = buildTranscriptionHistoryMenu()
         menu.addItem(historyItem)
+        let textTransformationItem = NSMenuItem(title: L("menu.textTransformation"), action: nil, keyEquivalent: "")
+        textTransformationItem.tag = MenuTag.textTransformation
+        textTransformationItem.submenu = buildTextTransformationMenu()
+        menu.addItem(textTransformationItem)
         let personasItem = NSMenuItem(title: L("menu.personas"), action: nil, keyEquivalent: "")
         personasItem.tag = MenuTag.personas
         personasItem.submenu = buildPersonasMenu()
@@ -302,6 +307,49 @@ final class StatusBarController: NSObject {
 
         menu.addItem(NSMenuItem.separator())
         menu.addItem(makeItem(title: L("menu.transcriptionHistory.viewAll"), action: #selector(openHistory)))
+    }
+
+    private func buildTextTransformationMenu() -> NSMenu {
+        let menu = NSMenu(title: L("menu.textTransformation"))
+        menu.delegate = self
+        populateTextTransformationMenu(menu)
+        return menu
+    }
+
+    private func populateTextTransformationMenu(_ menu: NSMenu) {
+        let isEnabled = settingsStore.outputOpenCCEnabled
+        let activeConfig = settingsStore.outputOpenCCConfig
+
+        let enableItem = NSMenuItem(
+            title: L("menu.textTransformation.enable"),
+            action: #selector(toggleTextTransformation(_:)),
+            keyEquivalent: ""
+        )
+        enableItem.target = self
+        enableItem.state = isEnabled ? .on : .off
+        menu.addItem(enableItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let rules = [
+            (label: L("settings.output.opencc.config.s2twp"), value: "s2twp"),
+            (label: L("settings.output.opencc.config.s2tw"), value: "s2tw"),
+            (label: L("settings.output.opencc.config.s2hk"), value: "s2hk"),
+            (label: L("settings.output.opencc.config.t2s"), value: "t2s")
+        ]
+
+        for rule in rules {
+            let item = NSMenuItem(
+                title: rule.label,
+                action: #selector(selectTextTransformationRule(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = rule.value
+            item.state = (isEnabled && rule.value == activeConfig) ? .on : .off
+            item.isEnabled = isEnabled
+            menu.addItem(item)
+        }
     }
 
     private func buildPersonasMenu() -> NSMenu {
@@ -520,6 +568,17 @@ final class StatusBarController: NSObject {
         rebuildMenu()
     }
 
+    @objc private func toggleTextTransformation(_ sender: NSMenuItem) {
+        settingsStore.outputOpenCCEnabled.toggle()
+        rebuildMenu()
+    }
+
+    @objc private func selectTextTransformationRule(_ sender: NSMenuItem) {
+        guard let rule = sender.representedObject as? String else { return }
+        settingsStore.outputOpenCCConfig = rule
+        rebuildMenu()
+    }
+
     @objc private func checkUpdates() {
         AutoUpdater.shared.checkForUpdates()
     }
@@ -615,6 +674,11 @@ extension StatusBarController: NSMenuDelegate {
         if menu.title == L("menu.personas") {
             menu.removeAllItems()
             populatePersonasMenu(menu)
+        }
+
+        if menu.title == L("menu.textTransformation") {
+            menu.removeAllItems()
+            populateTextTransformationMenu(menu)
         }
     }
 

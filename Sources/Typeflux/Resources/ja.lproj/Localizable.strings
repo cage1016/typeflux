@@ -84,6 +84,14 @@
 "settings.appearance.subtitle" = "コンポーネント システムを明るいテーマ、暗いテーマ、またはシステムに従うテーマの間で切り替えます。";
 "settings.language.title" = "言語";
 "settings.language.subtitle" = "Typeflux インターフェイス全体で使用される表示言語を選択します。";
+"settings.output.title" = "出力";
+"settings.output.opencc.title" = "中国語出力を変換";
+"settings.output.opencc.subtitle" = "AI 出力の中国語形式を自動調整します。";
+"settings.output.opencc.config.title" = "中国語形式";
+"settings.output.opencc.config.s2twp" = "簡体字 → 繁體字（台湾）";
+"settings.output.opencc.config.s2tw" = "簡体字 → 繁體字";
+"settings.output.opencc.config.s2hk" = "簡体字 → 繁體字（香港）";
+"settings.output.opencc.config.t2s" = "繁體字 → 簡体字";
 "settings.audio" = "オーディオ";
 "settings.microphone.title" = "マイク";
 "settings.microphone.subtitle" = "ディクテーションに使用するデバイスを選択します。自動は、現在の macOS デフォルト入力に従います。";

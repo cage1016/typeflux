@@ -100,6 +100,14 @@
 "settings.advanced.autoUpdate.subtitle" = "每 3 小時自動檢查並安裝新版本。";
 "settings.permissionStatus.title" = "權限狀態";
 "settings.permissionStatus.subtitle" = "檢視 Typeflux 依賴的 macOS 權限，並在需要時完成授權。";
+"settings.output.title" = "輸出";
+"settings.output.opencc.title" = "文本轉換與優化";
+"settings.output.opencc.subtitle" = "自動應用語言特定的規則，如繁簡轉換。";
+"settings.output.opencc.config.title" = "轉換規則";
+"settings.output.opencc.config.s2twp" = "簡體 → 繁體（台灣）";
+"settings.output.opencc.config.s2tw" = "簡體 → 繁體";
+"settings.output.opencc.config.s2hk" = "簡體 → 繁體（香港）";
+"settings.output.opencc.config.t2s" = "繁體 → 簡體";
 
 "menu.openVoiceStudio" = "打開 Typeflux";
 "menu.history" = "歷史";
@@ -110,6 +118,8 @@
 "menu.transcriptionHistory" = "轉寫歷史";
 "menu.transcriptionHistory.empty" = "暫無轉寫歷史";
 "menu.transcriptionHistory.viewAll" = "查看全部";
+"menu.textTransformation" = "文本轉換";
+"menu.textTransformation.enable" = "啟用轉換";
 "menu.personas" = "人設";
 "menu.personas.empty" = "暫無人設";
 "menu.personas.edit" = "編輯人設";
@@ -368,7 +378,9 @@
 "history.detail.noAudioFile" = "沒有音訊檔";
 "history.detail.rawTranscript" = "原始轉寫";
 "history.detail.personaResult" = "人設處理結果";
-"history.detail.selectionOriginal" = "選取文字";
+"history.detail.openCCResult" = "文本轉換結果";
+"history.detail.postProcessedResult" = "最終輸出結果";
+"history.detail.selectionOriginal" = "選中文本";
 "history.detail.selectionEdited" = "選取文字修改結果";
 "history.detail.pipelineStats" = "處理耗時指標";
 "history.detail.error" = "錯誤資訊";

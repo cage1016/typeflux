@@ -84,6 +84,14 @@
 "settings.appearance.subtitle" = "Switch the component system between light, dark, or system-following themes.";
 "settings.language.title" = "Language";
 "settings.language.subtitle" = "Choose the display language used across the Typeflux interface.";
+"settings.output.title" = "Output";
+"settings.output.opencc.title" = "Text Transformation & Optimization";
+"settings.output.opencc.subtitle" = "Automatically apply language-specific rules, such as Chinese conversion.";
+"settings.output.opencc.config.title" = "Transformation Rule";
+"settings.output.opencc.config.s2twp" = "Simplified → Traditional (Taiwan)";
+"settings.output.opencc.config.s2tw" = "Simplified → Traditional";
+"settings.output.opencc.config.s2hk" = "Simplified → Traditional (Hong Kong)";
+"settings.output.opencc.config.t2s" = "Traditional → Simplified";
 "settings.audio" = "Audio";
 "settings.microphone.title" = "Microphone";
 "settings.microphone.subtitle" = "Pick the device used for dictation. Automatic follows the current macOS default input.";
@@ -110,6 +118,8 @@
 "menu.transcriptionHistory" = "Transcription History";
 "menu.transcriptionHistory.empty" = "No transcription history";
 "menu.transcriptionHistory.viewAll" = "View All";
+"menu.textTransformation" = "Text Transformation";
+"menu.textTransformation.enable" = "Enable Transformation";
 "menu.personas" = "Personas";
 "menu.personas.empty" = "No personas";
 "menu.personas.edit" = "Edit Personas";
@@ -370,6 +380,8 @@
 "history.detail.noAudioFile" = "No audio file";
 "history.detail.rawTranscript" = "Raw Transcript";
 "history.detail.personaResult" = "Persona Result";
+"history.detail.openCCResult" = "Text Transformation";
+"history.detail.postProcessedResult" = "Final Output";
 "history.detail.selectionOriginal" = "Selected Text";
 "history.detail.selectionEdited" = "Edited Selection";
 "history.detail.pipelineStats" = "Processing Metrics";

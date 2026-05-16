@@ -84,6 +84,14 @@
 "settings.appearance.subtitle" = "밝은 테마, 어두운 테마 또는 시스템 테마에 따라 구성 요소 시스템을 전환합니다.";
 "settings.language.title" = "언어";
 "settings.language.subtitle" = "Typeflux 인터페이스에서 사용되는 표시 언어를 선택하세요.";
+"settings.output.title" = "출력";
+"settings.output.opencc.title" = "중국어 출력 변환";
+"settings.output.opencc.subtitle" = "AI 출력의 중국어 형식을 자동으로 조정합니다.";
+"settings.output.opencc.config.title" = "중국어 형식";
+"settings.output.opencc.config.s2twp" = "간체 → 번체 (대만)";
+"settings.output.opencc.config.s2tw" = "간체 → 번체";
+"settings.output.opencc.config.s2hk" = "간체 → 번체 (홍콩)";
+"settings.output.opencc.config.t2s" = "번체 → 간체";
 "settings.audio" = "오디오";
 "settings.microphone.title" = "마이크";
 "settings.microphone.subtitle" = "받아쓰기에 사용되는 장치를 선택하세요. 자동은 현재 macOS 기본 입력을 따릅니다.";
