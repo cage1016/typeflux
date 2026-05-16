@@ -109,6 +109,9 @@ struct HistoryRecord: Codable, Identifiable {
     var transcriptText: String?
     var personaPrompt: String?
     var personaResultText: String?
+    var openCCResultText: String?
+    var openCCConfig: String?
+    var postProcessedText: String?
     var selectionOriginalText: String?
     var selectionEditedText: String?
     var recordingDurationSeconds: TimeInterval?
@@ -129,6 +132,9 @@ struct HistoryRecord: Codable, Identifiable {
         transcriptText: String? = nil,
         personaPrompt: String? = nil,
         personaResultText: String? = nil,
+        openCCResultText: String? = nil,
+        openCCConfig: String? = nil,
+        postProcessedText: String? = nil,
         selectionOriginalText: String? = nil,
         selectionEditedText: String? = nil,
         recordingDurationSeconds: TimeInterval? = nil,
@@ -148,6 +154,9 @@ struct HistoryRecord: Codable, Identifiable {
         self.transcriptText = transcriptText
         self.personaPrompt = personaPrompt
         self.personaResultText = personaResultText
+        self.openCCResultText = openCCResultText
+        self.openCCConfig = openCCConfig
+        self.postProcessedText = postProcessedText
         self.selectionOriginalText = selectionOriginalText
         self.selectionEditedText = selectionEditedText
         self.recordingDurationSeconds = recordingDurationSeconds
@@ -162,11 +171,11 @@ struct HistoryRecord: Codable, Identifiable {
     }
 
     var text: String {
-        selectionEditedText ?? personaResultText ?? transcriptText ?? errorMessage ?? ""
+        postProcessedText ?? openCCResultText ?? selectionEditedText ?? personaResultText ?? transcriptText ?? errorMessage ?? ""
     }
 
     var finalText: String? {
-        selectionEditedText ?? personaResultText ?? transcriptText
+        postProcessedText ?? openCCResultText ?? selectionEditedText ?? personaResultText ?? transcriptText
     }
 
     var hasFailure: Bool {
@@ -196,6 +205,9 @@ struct HistoryRecord: Codable, Identifiable {
         case transcriptText
         case personaPrompt
         case personaResultText
+        case openCCResultText
+        case openCCConfig
+        case postProcessedText
         case selectionOriginalText
         case selectionEditedText
         case recordingDurationSeconds
@@ -222,6 +234,9 @@ struct HistoryRecord: Codable, Identifiable {
         transcriptText = try container.decodeIfPresent(String.self, forKey: .transcriptText) ?? legacyText
         personaPrompt = try container.decodeIfPresent(String.self, forKey: .personaPrompt)
         personaResultText = try container.decodeIfPresent(String.self, forKey: .personaResultText)
+        openCCResultText = try container.decodeIfPresent(String.self, forKey: .openCCResultText)
+        openCCConfig = try container.decodeIfPresent(String.self, forKey: .openCCConfig)
+        postProcessedText = try container.decodeIfPresent(String.self, forKey: .postProcessedText)
         selectionOriginalText = try container.decodeIfPresent(String.self, forKey: .selectionOriginalText)
         selectionEditedText = try container.decodeIfPresent(String.self, forKey: .selectionEditedText)
         recordingDurationSeconds = try container.decodeIfPresent(TimeInterval.self, forKey: .recordingDurationSeconds)
@@ -248,6 +263,9 @@ struct HistoryRecord: Codable, Identifiable {
         try container.encodeIfPresent(transcriptText, forKey: .transcriptText)
         try container.encodeIfPresent(personaPrompt, forKey: .personaPrompt)
         try container.encodeIfPresent(personaResultText, forKey: .personaResultText)
+        try container.encodeIfPresent(openCCResultText, forKey: .openCCResultText)
+        try container.encodeIfPresent(openCCConfig, forKey: .openCCConfig)
+        try container.encodeIfPresent(postProcessedText, forKey: .postProcessedText)
         try container.encodeIfPresent(selectionOriginalText, forKey: .selectionOriginalText)
         try container.encodeIfPresent(selectionEditedText, forKey: .selectionEditedText)
         try container.encodeIfPresent(recordingDurationSeconds, forKey: .recordingDurationSeconds)

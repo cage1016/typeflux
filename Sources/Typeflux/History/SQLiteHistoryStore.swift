@@ -206,6 +206,9 @@ final class SQLiteHistoryStore: HistoryStore {
             transcript_text TEXT,
             persona_prompt TEXT,
             persona_result_text TEXT,
+            open_cc_result_text TEXT,
+            open_cc_config TEXT,
+            post_processed_text TEXT,
             selection_original_text TEXT,
             selection_edited_text TEXT,
             recording_duration_seconds REAL,
@@ -227,6 +230,9 @@ final class SQLiteHistoryStore: HistoryStore {
     private func migrateSchemaIfNeeded() throws {
         try ensureColumnExists(name: "pipeline_timing_json", definition: "TEXT")
         try ensureColumnExists(name: "pipeline_stats_json", definition: "TEXT")
+        try ensureColumnExists(name: "post_processed_text", definition: "TEXT")
+        try ensureColumnExists(name: "open_cc_result_text", definition: "TEXT")
+        try ensureColumnExists(name: "open_cc_config", definition: "TEXT")
     }
 
     private func migrateLegacyJSONIfNeeded() throws {
@@ -266,7 +272,7 @@ final class SQLiteHistoryStore: HistoryStore {
         try fetchRecords(
             sql: """
             SELECT id, date, mode, audio_file_path, transcript_text, persona_prompt, persona_result_text,
-                   selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
+                   open_cc_result_text, open_cc_config, post_processed_text, selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
                    error_message, apply_message, recording_status, transcription_status, processing_status, apply_status
             FROM history_records
             ORDER BY date DESC;
@@ -280,7 +286,7 @@ final class SQLiteHistoryStore: HistoryStore {
             return try fetchRecords(
                 sql: """
                 SELECT id, date, mode, audio_file_path, transcript_text, persona_prompt, persona_result_text,
-                       selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
+                       open_cc_result_text, open_cc_config, post_processed_text, selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
                        error_message, apply_message, recording_status, transcription_status, processing_status, apply_status
                 FROM history_records
                 ORDER BY date DESC
@@ -297,12 +303,14 @@ final class SQLiteHistoryStore: HistoryStore {
         return try fetchRecords(
             sql: """
             SELECT id, date, mode, audio_file_path, transcript_text, persona_prompt, persona_result_text,
-                   selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
+                   open_cc_result_text, open_cc_config, post_processed_text, selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
                    error_message, apply_message, recording_status, transcription_status, processing_status, apply_status
             FROM history_records
             WHERE mode LIKE ? COLLATE NOCASE
                OR transcript_text LIKE ? COLLATE NOCASE
                OR persona_result_text LIKE ? COLLATE NOCASE
+               OR open_cc_result_text LIKE ? COLLATE NOCASE
+               OR post_processed_text LIKE ? COLLATE NOCASE
                OR selection_edited_text LIKE ? COLLATE NOCASE
                OR error_message LIKE ? COLLATE NOCASE
                OR audio_file_path LIKE ? COLLATE NOCASE
@@ -326,7 +334,7 @@ final class SQLiteHistoryStore: HistoryStore {
         try fetchRecords(
             sql: """
             SELECT id, date, mode, audio_file_path, transcript_text, persona_prompt, persona_result_text,
-                   selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
+                   open_cc_result_text, open_cc_config, post_processed_text, selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
                    error_message, apply_message, recording_status, transcription_status, processing_status, apply_status
             FROM history_records
             WHERE id = ?
@@ -362,9 +370,9 @@ final class SQLiteHistoryStore: HistoryStore {
         let sql = """
         INSERT INTO history_records (
             id, date, mode, audio_file_path, transcript_text, persona_prompt, persona_result_text,
-            selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
+            open_cc_result_text, open_cc_config, post_processed_text, selection_original_text, selection_edited_text, recording_duration_seconds, pipeline_timing_json, pipeline_stats_json,
             error_message, apply_message, recording_status, transcription_status, processing_status, apply_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             date = excluded.date,
             mode = excluded.mode,
@@ -372,6 +380,9 @@ final class SQLiteHistoryStore: HistoryStore {
             transcript_text = excluded.transcript_text,
             persona_prompt = excluded.persona_prompt,
             persona_result_text = excluded.persona_result_text,
+            open_cc_result_text = excluded.open_cc_result_text,
+            open_cc_config = excluded.open_cc_config,
+            post_processed_text = excluded.post_processed_text,
             selection_original_text = excluded.selection_original_text,
             selection_edited_text = excluded.selection_edited_text,
             recording_duration_seconds = excluded.recording_duration_seconds,
@@ -393,21 +404,24 @@ final class SQLiteHistoryStore: HistoryStore {
             self.bind(record.transcriptText, at: 5, in: statement)
             self.bind(record.personaPrompt, at: 6, in: statement)
             self.bind(record.personaResultText, at: 7, in: statement)
-            self.bind(record.selectionOriginalText, at: 8, in: statement)
-            self.bind(record.selectionEditedText, at: 9, in: statement)
-            self.bind(record.recordingDurationSeconds, at: 10, in: statement)
-            self.bind(self.encodeCodable(record.pipelineTiming), at: 11, in: statement)
+            self.bind(record.openCCResultText, at: 8, in: statement)
+            self.bind(record.openCCConfig, at: 9, in: statement)
+            self.bind(record.postProcessedText, at: 10, in: statement)
+            self.bind(record.selectionOriginalText, at: 11, in: statement)
+            self.bind(record.selectionEditedText, at: 12, in: statement)
+            self.bind(record.recordingDurationSeconds, at: 13, in: statement)
+            self.bind(self.encodeCodable(record.pipelineTiming), at: 14, in: statement)
             self.bind(
                 self.encodeCodable(record.pipelineStats ?? record.pipelineTiming?.generatedStats()),
-                at: 12,
+                at: 15,
                 in: statement
             )
-            self.bind(record.errorMessage, at: 13, in: statement)
-            self.bind(record.applyMessage, at: 14, in: statement)
-            self.bind(record.recordingStatus.rawValue, at: 15, in: statement)
-            self.bind(record.transcriptionStatus.rawValue, at: 16, in: statement)
-            self.bind(record.processingStatus.rawValue, at: 17, in: statement)
-            self.bind(record.applyStatus.rawValue, at: 18, in: statement)
+            self.bind(record.errorMessage, at: 16, in: statement)
+            self.bind(record.applyMessage, at: 17, in: statement)
+            self.bind(record.recordingStatus.rawValue, at: 18, in: statement)
+            self.bind(record.transcriptionStatus.rawValue, at: 19, in: statement)
+            self.bind(record.processingStatus.rawValue, at: 20, in: statement)
+            self.bind(record.applyStatus.rawValue, at: 21, in: statement)
         }
     }
 
@@ -466,13 +480,13 @@ final class SQLiteHistoryStore: HistoryStore {
             let id = UUID(uuidString: idString),
             let modeRaw = string(at: 2, in: statement),
             let mode = HistoryRecord.Mode(rawValue: modeRaw),
-            let recordingStatusRaw = string(at: 14, in: statement),
+            let recordingStatusRaw = string(at: 17, in: statement),
             let recordingStatus = HistoryRecord.StepStatus(rawValue: recordingStatusRaw),
-            let transcriptionStatusRaw = string(at: 15, in: statement),
+            let transcriptionStatusRaw = string(at: 18, in: statement),
             let transcriptionStatus = HistoryRecord.StepStatus(rawValue: transcriptionStatusRaw),
-            let processingStatusRaw = string(at: 16, in: statement),
+            let processingStatusRaw = string(at: 19, in: statement),
             let processingStatus = HistoryRecord.StepStatus(rawValue: processingStatusRaw),
-            let applyStatusRaw = string(at: 17, in: statement),
+            let applyStatusRaw = string(at: 20, in: statement),
             let applyStatus = HistoryRecord.StepStatus(rawValue: applyStatusRaw)
         else {
             throw databaseError(message: "History database returned invalid record data")
@@ -486,13 +500,16 @@ final class SQLiteHistoryStore: HistoryStore {
             transcriptText: string(at: 4, in: statement),
             personaPrompt: string(at: 5, in: statement),
             personaResultText: string(at: 6, in: statement),
-            selectionOriginalText: string(at: 7, in: statement),
-            selectionEditedText: string(at: 8, in: statement),
-            recordingDurationSeconds: double(at: 9, in: statement),
-            pipelineTiming: decodeCodable(from: string(at: 10, in: statement), as: HistoryPipelineTiming.self),
-            pipelineStats: decodeCodable(from: string(at: 11, in: statement), as: HistoryPipelineStats.self),
-            errorMessage: string(at: 12, in: statement),
-            applyMessage: string(at: 13, in: statement),
+            openCCResultText: string(at: 7, in: statement),
+            openCCConfig: string(at: 8, in: statement),
+            postProcessedText: string(at: 9, in: statement),
+            selectionOriginalText: string(at: 10, in: statement),
+            selectionEditedText: string(at: 11, in: statement),
+            recordingDurationSeconds: double(at: 12, in: statement),
+            pipelineTiming: decodeCodable(from: string(at: 13, in: statement), as: HistoryPipelineTiming.self),
+            pipelineStats: decodeCodable(from: string(at: 14, in: statement), as: HistoryPipelineStats.self),
+            errorMessage: string(at: 15, in: statement),
+            applyMessage: string(at: 16, in: statement),
             recordingStatus: recordingStatus,
             transcriptionStatus: transcriptionStatus,
             processingStatus: processingStatus,

@@ -276,6 +276,9 @@ struct HistoryPresentationRecord: Identifiable {
     let transcriptText: String?
     let personaPrompt: String?
     let personaResultText: String?
+    let openCCResultText: String?
+    let openCCConfig: String?
+    let postProcessedText: String?
     let selectionOriginalText: String?
     let selectionEditedText: String?
     let pipelineStatItems: [HistoryPipelineStatPresentationItem]
