@@ -908,5 +908,58 @@ extension SettingsStoreTests {
 
         XCTAssertEqual(store.llmAPIKey(for: .openAI), "sk-openai")
         XCTAssertEqual(store.llmAPIKey(for: .anthropic), "sk-anthropic")
+
+        // MARK: - Output OpenCC
+
+        func testDefaultOutputOpenCCEnabled() {
+            #if DEBUG
+                XCTAssertTrue(store.outputOpenCCEnabled, "OpenCC should be enabled by default in debug builds")
+            #else
+                XCTAssertTrue(store.outputOpenCCEnabled, "OpenCC should be enabled by default in release builds")
+            #endif
+        }
+
+        func testDefaultOutputOpenCCConfig() {
+            XCTAssertEqual(
+                store.outputOpenCCConfig,
+                "s2twp",
+                "Default config should be s2twp (Simplified to Traditional Taiwan)"
+            )
+        }
+
+        func testSetOutputOpenCCEnabled() {
+            store.outputOpenCCEnabled = false
+            XCTAssertFalse(store.outputOpenCCEnabled)
+
+            store.outputOpenCCEnabled = true
+            XCTAssertTrue(store.outputOpenCCEnabled)
+        }
+
+        func testSetOutputOpenCCConfig() {
+            store.outputOpenCCConfig = "s2tw"
+            XCTAssertEqual(store.outputOpenCCConfig, "s2tw")
+
+            store.outputOpenCCConfig = "t2s"
+            XCTAssertEqual(store.outputOpenCCConfig, "t2s")
+
+            store.outputOpenCCConfig = "s2twp"
+            XCTAssertEqual(store.outputOpenCCConfig, "s2twp")
+        }
+
+        func testOutputOpenCCEnabledPersistence() {
+            store.outputOpenCCEnabled = false
+
+            // Create new store instance with same defaults
+            let newStore = SettingsStore(defaults: defaults)
+            XCTAssertFalse(newStore.outputOpenCCEnabled, "Setting should persist across store instances")
+        }
+
+        func testOutputOpenCCConfigPersistence() {
+            store.outputOpenCCConfig = "t2s"
+
+            // Create new store instance with same defaults
+            let newStore = SettingsStore(defaults: defaults)
+            XCTAssertEqual(newStore.outputOpenCCConfig, "t2s", "Config should persist across store instances")
+        }
     }
 }

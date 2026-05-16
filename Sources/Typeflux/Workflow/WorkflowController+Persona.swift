@@ -216,30 +216,28 @@ extension WorkflowController {
                 )
                 try ensureProcessingIsActive(sessionID)
 
-                record.selectionEditedText = rewriteResult.text
-                record.processingStatus = .succeeded
-                record.applyStatus = .running
-                saveHistoryRecord(record)
-
+                let processedText = await outputPostProcessor.process(rewriteResult.text)
                 let outcome: ApplyOutcome
                 if shouldShowResultDialog {
                     await MainActor.run {
-                        self.lastDialogResultText = rewriteResult.text
+                        self.lastDialogResultText = processedText
                         self.overlayController.showResultDialog(
                             title: L("workflow.result.copyTitle"),
-                            message: rewriteResult.text
+                            message: processedText
                         )
                     }
                     outcome = .presentedInDialog
                 } else {
-                    outcome = applyText(
-                        rewriteResult.text,
+                    let applyResult = await applyText(
+                        processedText,
                         replace: true,
                         fallbackTitle: L("workflow.result.copyTitle")
                     )
+                    outcome = applyResult.0
                 }
 
                 try ensureProcessingIsActive(sessionID)
+                record.selectionEditedText = processedText
                 record.applyStatus = .succeeded
                 record.applyMessage = outcome.message
                 saveHistoryRecord(record)

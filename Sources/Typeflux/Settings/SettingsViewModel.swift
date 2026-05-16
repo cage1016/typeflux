@@ -158,6 +158,8 @@ final class StudioViewModel: ObservableObject {
     @Published var appleSpeechFallback: Bool
     @Published var automaticVocabularyCollectionEnabled: Bool
     @Published var inputContextOptimizationEnabled: Bool
+    @Published var textTransformationEnabled: Bool
+    @Published var textTransformationRule: String
     @Published var autoUpdateEnabled: Bool
 
     @Published var stubbornPasteFallbackEnabled: Bool
@@ -343,6 +345,8 @@ final class StudioViewModel: ObservableObject {
         appleSpeechFallback = settingsStore.useAppleSpeechFallback
         automaticVocabularyCollectionEnabled = settingsStore.automaticVocabularyCollectionEnabled
         inputContextOptimizationEnabled = settingsStore.inputContextOptimizationEnabled
+        textTransformationEnabled = settingsStore.outputOpenCCEnabled
+        textTransformationRule = settingsStore.outputOpenCCConfig
         autoUpdateEnabled = settingsStore.autoUpdateEnabled
         stubbornPasteFallbackEnabled = settingsStore.stubbornPasteFallbackEnabled
         agentFrameworkEnabled = settingsStore.agentFrameworkEnabled
@@ -1340,6 +1344,18 @@ final class StudioViewModel: ObservableObject {
         } else {
             AutoUpdater.shared.stopAutoCheck()
         }
+    }
+
+    // MARK: - Output Post-Processing
+
+    func setTextTransformationEnabled(_ value: Bool) {
+        textTransformationEnabled = value
+        settingsStore.outputOpenCCEnabled = value
+    }
+
+    func setTextTransformationRule(_ value: String) {
+        textTransformationRule = value
+        settingsStore.outputOpenCCConfig = value
     }
 
     // MARK: - Text Injection
@@ -2866,6 +2882,9 @@ final class StudioViewModel: ObservableObject {
             transcriptText: record.transcriptText,
             personaPrompt: record.personaPrompt,
             personaResultText: record.personaResultText,
+            openCCResultText: record.openCCResultText,
+            openCCConfig: record.openCCConfig,
+            postProcessedText: record.postProcessedText,
             selectionOriginalText: record.selectionOriginalText,
             selectionEditedText: record.selectionEditedText,
             pipelineStatItems: historyPipelineStatItems(record.pipelineStats ?? record.pipelineTiming?

@@ -692,6 +692,27 @@ final class SettingsStore {
         set { defaults.set(newValue, forKey: "inputContext.optimization.enabled") }
     }
 
+    // MARK: - Output Post-Processing
+
+    var outputOpenCCEnabled: Bool {
+        get {
+            if defaults.object(forKey: "output.opencc.enabled") == nil {
+                #if DEBUG
+                    return true
+                #else
+                    return false
+                #endif
+            }
+            return defaults.bool(forKey: "output.opencc.enabled")
+        }
+        set { defaults.set(newValue, forKey: "output.opencc.enabled") }
+    }
+
+    var outputOpenCCConfig: String {
+        get { defaults.string(forKey: "output.opencc.config") ?? "s2twp" }
+        set { defaults.set(newValue, forKey: "output.opencc.config") }
+    }
+
     var activationHotkeyJSON: String {
         get { defaults.string(forKey: "hotkey.activation.json") ?? "" }
         set { defaults.set(newValue, forKey: "hotkey.activation.json") }
@@ -867,7 +888,7 @@ final class SettingsStore {
 
             核心原则：
             - 理解用户真正想表达的意思，而不是机械保留不流畅的口语字面表达。
-            - 去除口头填充词（如 um、uh、like、you know、basically 等）、重复和语病，同时保留意图、语气和重要细节。
+            - 去除口头填充词（如 um、 uh、 like、 you know、 basically 等）、重复和语病，同时保留意图、语气和重要细节。
             - 让结果更清晰、更有结构、更有用，但不要添加用户没有表达或暗示的新事实。
             - 保留关键约束、请求、决定、行动项、人名、数字和承诺。
             - 在不改变原意的前提下，提升句子结构与表达清晰度。
@@ -896,7 +917,7 @@ final class SettingsStore {
 
             核心原則：
             - 理解使用者真正想表達的意思，而不是機械保留不流暢的口語字面表達。
-            - 去除口語填充詞（如 um、uh、like、you know、basically 等）、重複和語病，同時保留意圖、語氣和重要細節。
+            - 去除口語填充詞（如 um、 uh、 like、 you know、 basically 等）、重複和語病，同時保留意圖、語氣和重要細節。
             - 讓結果更清晰、更有結構、更有用，但不要添加使用者沒有表達或暗示的新事實。
             - 保留關鍵限制、請求、決定、行動項目、人名、數字和承諾。
             - 在不改變原意的前提下，提升句子結構與表達清晰度。
@@ -925,7 +946,7 @@ final class SettingsStore {
 
             基本原則：
             - 流暢でない口語表現を機械的に残すのではなく、ユーザーが本当に伝えたい意味を理解する。
-            - 口頭のフィラー（um、uh、like、you know、basically など）、繰り返し、文法上の乱れを取り除きつつ、意図、トーン、重要な詳細を保持する。
+            - 口頭のフィラー（ um、 uh、 like、 you know、 basically など）、繰り返し、文法上の乱れを取り除きつつ、意図、トーン、重要な詳細を保持する。
             - ユーザーが表現または示唆していない新しい事実を加えずに、結果をより明確で、構造化され、有用なものにする。
             - 重要な制約、依頼、決定、アクション項目、人名、数字、約束を保持する。
             - 元の意味を変えずに、文構造と表現の明確さを高める。
@@ -942,7 +963,7 @@ final class SettingsStore {
             出力ルール：
             - 最終的に整理したテキストだけを返す。
             - 説明、引用符、コードブロック、見出し、複雑な Markdown を含めない。
-            - 構造化された表現を考慮する。リストが必要な場合は、通常の段落、「- 」で始まるシンプルな箇条書き、または「1. 2. 3.」形式の番号付きリストだけを使う。
+            - 構造化された表現を考慮する。リストが必要な場合は、通常の段落、「- 」で始まるシンプルな箇条書き、または「 1. 2. 3.」形式の番号付きリストだけを使う。
             - ユーザー入力が非常に短い場合は、自然なままにし、不要な終止符を追加しない。
             """
         case .korean:

@@ -9,6 +9,7 @@ final class AppCoordinator {
     private var onboardingWindowController: OnboardingWindowController?
     private let cloudEndpointProbeScheduler = CloudEndpointProbeScheduler()
 
+    // swiftlint:disable:next function_body_length
     func start() {
         let settingsStore = di.settingsStore
         let localModelManager = di.localModelManager
@@ -50,7 +51,8 @@ final class AppCoordinator {
                 appleBackendFactory: { AppleSpeechPreviewBackend() }
             ),
             localModelManager: localModelManager,
-            notificationService: di.notificationService
+            notificationService: di.notificationService,
+            outputPostProcessor: di.outputPostProcessor
         )
         self.workflowController = workflowController
 

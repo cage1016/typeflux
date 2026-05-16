@@ -366,12 +366,14 @@ final class WorkflowControllerAutomaticVocabularyTests: XCTestCase {
             overlayController: overlayController,
             askAnswerWindowController: AskAnswerWindowController(
                 clipboard: MockClipboardService(),
-                settingsStore: settingsStore
+                settingsStore: settingsStore,
+                outputPostProcessor: NoopOutputPostProcessor()
             ),
             agentClarificationWindowController: AgentClarificationWindowController(
                 settingsStore: settingsStore
             ),
-            soundEffectPlayer: SoundEffectPlayer(settingsStore: settingsStore)
+            soundEffectPlayer: SoundEffectPlayer(settingsStore: settingsStore),
+            outputPostProcessor: NoopOutputPostProcessor()
         )
     }
 }

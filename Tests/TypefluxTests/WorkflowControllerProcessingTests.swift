@@ -3,7 +3,7 @@ import AVFoundation
 import XCTest
 
 final class WorkflowControllerProcessingTests: XCTestCase {
-    func testApplyDetachedAgentEditResultInsertsIntoEditableInputWithoutSelection() {
+    func testApplyDetachedAgentEditResultInsertsIntoEditableInputWithoutSelection() async {
         let textInjector = MockProcessingTextInjector()
         let controller = makeWorkflowController(textInjector: textInjector)
         let snapshot = TextSelectionSnapshot(
@@ -18,14 +18,14 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isFocusedTarget: true
         )
 
-        let outcome = controller.applyDetachedAgentEditResult("Draft reply", selectionSnapshot: snapshot)
+        let (outcome, _) = await controller.applyDetachedAgentEditResult("Draft reply", selectionSnapshot: snapshot)
 
         XCTAssertEqual(outcome, .inserted)
         XCTAssertEqual(textInjector.insertedTexts, ["Draft reply"])
         XCTAssertTrue(textInjector.replacedTexts.isEmpty)
     }
 
-    func testApplyDetachedAgentEditResultReplacesSelectionWhenSelectionIsReplaceable() {
+    func testApplyDetachedAgentEditResultReplacesSelectionWhenSelectionIsReplaceable() async {
         let textInjector = MockProcessingTextInjector()
         let controller = makeWorkflowController(textInjector: textInjector)
         let snapshot = TextSelectionSnapshot(
@@ -40,14 +40,14 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             isFocusedTarget: true
         )
 
-        let outcome = controller.applyDetachedAgentEditResult("updated", selectionSnapshot: snapshot)
+        let (outcome, _) = await controller.applyDetachedAgentEditResult("updated", selectionSnapshot: snapshot)
 
         XCTAssertEqual(outcome, .inserted)
         XCTAssertEqual(textInjector.replacedTexts, ["updated"])
         XCTAssertTrue(textInjector.insertedTexts.isEmpty)
     }
 
-    func testApplyTextPresentsCopyDialogWhenInsertThrows() {
+    func testApplyTextPresentsCopyDialogWhenInsertThrows() async {
         let textInjector = MockProcessingTextInjector(
             insertError: NSError(
                 domain: "AXTextInjector",
@@ -57,9 +57,10 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         )
         let controller = makeWorkflowController(textInjector: textInjector)
 
-        let outcome = controller.applyText("Manual copy fallback", replace: false)
+        let (outcome, processed) = await controller.applyText("Manual copy fallback", replace: false)
 
         XCTAssertEqual(outcome, .presentedInDialog)
+        XCTAssertEqual(processed, "Manual copy fallback")
         XCTAssertEqual(controller.lastDialogResultText, "Manual copy fallback")
         XCTAssertTrue(textInjector.insertedTexts.isEmpty)
     }
@@ -321,7 +322,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
         XCTAssertFalse(eventRecorder.snapshot().contains("cue-play"))
     }
 
-    func testHistoryPickerConfirmCopiesAndInsertsSelectedHistory() {
+    func testHistoryPickerConfirmCopiesAndInsertsSelectedHistory() async {
         let textInjector = MockProcessingTextInjector()
         let clipboard = MockClipboardService()
         let historyStore = MockProcessingHistoryStore()
@@ -343,7 +344,9 @@ final class WorkflowControllerProcessingTests: XCTestCase {
 
         XCTAssertFalse(controller.isHistoryPickerPresented)
         XCTAssertEqual(clipboard.storedText, "new result")
-        XCTAssertEqual(textInjector.insertedTexts, ["new result"])
+        await waitUntil {
+            textInjector.insertedTexts == ["new result"]
+        }
         XCTAssertTrue(textInjector.replacedTexts.isEmpty)
     }
 
@@ -1057,7 +1060,8 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             overlayController: overlayController,
             askAnswerWindowController: AskAnswerWindowController(
                 clipboard: MockClipboardService(),
-                settingsStore: settingsStore
+                settingsStore: settingsStore,
+                outputPostProcessor: NoopOutputPostProcessor()
             ),
             agentClarificationWindowController: AgentClarificationWindowController(
                 settingsStore: settingsStore
@@ -1065,6 +1069,7 @@ final class WorkflowControllerProcessingTests: XCTestCase {
             soundEffectPlayer: soundEffectPlayer ?? SoundEffectPlayer(settingsStore: settingsStore),
             localModelManager: localModelManager,
             localModelDownloadAlertPresenter: localModelDownloadAlertPresenter,
+            outputPostProcessor: NoopOutputPostProcessor(),
             sleep: sleep
         )
     }

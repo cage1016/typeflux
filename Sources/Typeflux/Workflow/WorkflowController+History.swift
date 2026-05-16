@@ -98,11 +98,13 @@ extension WorkflowController {
         soundEffectPlayer.playAsync(.tip)
         dismissHistoryPicker(immediate: true)
         clipboard.write(text: selected.text)
-        _ = applyText(
-            selected.text,
-            replace: false,
-            fallbackTitle: L("overlay.historyPicker.pasteFallbackTitle")
-        )
+        Task {
+            _ = await applyText(
+                selected.text,
+                replace: false,
+                fallbackTitle: L("overlay.historyPicker.pasteFallbackTitle")
+            )
+        }
     }
 
     func retryHistorySelection(at index: Int) {

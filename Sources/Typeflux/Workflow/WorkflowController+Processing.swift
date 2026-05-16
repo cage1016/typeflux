@@ -205,7 +205,24 @@ extension WorkflowController {
             record.pipelineTiming = pipelineTiming
             logPipelineEvent("llm-processing-completed", for: record)
             record.mode = .askAnswer
+            
+            var openCCResult: String? = nil
+            let finalAnswer: String
+            if settingsStore.outputOpenCCEnabled {
+                let config = settingsStore.outputOpenCCConfig
+                let converted = await outputPostProcessor.process(askDecisionResult.decision.trimmedContent)
+                if converted != askDecisionResult.decision.trimmedContent {
+                    openCCResult = converted
+                }
+                finalAnswer = converted
+                record.openCCConfig = config
+            } else {
+                finalAnswer = askDecisionResult.decision.trimmedContent
+            }
+            
             record.personaResultText = askDecisionResult.decision.trimmedContent
+            record.openCCResultText = openCCResult
+            record.postProcessedText = finalAnswer
             record.processingStatus = .succeeded
             record.applyStatus = .running
             saveHistoryRecord(record)
@@ -217,7 +234,7 @@ extension WorkflowController {
                 self.presentAskAnswer(
                     question: question,
                     selectedText: selectedText,
-                    answerMarkdown: askDecisionResult.decision.trimmedContent
+                    answerMarkdown: finalAnswer
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -231,43 +248,25 @@ extension WorkflowController {
             record.pipelineTiming = pipelineTiming
             logPipelineEvent("llm-processing-completed", for: record)
             record.mode = .editSelection
-            record.selectionEditedText = askDecisionResult.decision.trimmedContent
-            record.processingStatus = .succeeded
-            record.applyStatus = .running
-            saveHistoryRecord(record)
 
             let replaceSelection = shouldReplaceActiveSelection(for: selectionSnapshot)
-            let shouldShowResultDialog = hasAskSelectionContext(selectionSnapshot) && !replaceSelection
             try ensureProcessingIsActive(sessionID)
             pipelineTiming.applyStartedAt = Date()
             record.pipelineTiming = pipelineTiming
-            let outcome: ApplyOutcome
-            NetworkDebugLogger.logMessage(
-                "[Apply Decision] mode=editSelection hasSelection=\(selectionSnapshot.hasSelection) " +
-                    "isEditable=\(selectionSnapshot.isEditable) hasRange=\(selectionSnapshot.selectedRange != nil) " +
-                    "replaceSelection=\(replaceSelection) showResultDialog=\(shouldShowResultDialog)"
+            let (outcome, processedText) = await applyText(
+                askDecisionResult.decision.trimmedContent,
+                replace: replaceSelection,
+                fallbackTitle: L("workflow.result.copyTitle"),
+                targetSnapshot: selectionSnapshot
             )
-            if shouldShowResultDialog {
-                await MainActor.run {
-                    self.lastDialogResultText = askDecisionResult.decision.trimmedContent
-                    self.overlayController.showResultDialog(
-                        title: L("workflow.result.copyTitle"),
-                        message: askDecisionResult.decision.trimmedContent
-                    )
-                }
-                outcome = .presentedInDialog
-            } else {
-                outcome = applyText(
-                    askDecisionResult.decision.trimmedContent,
-                    replace: replaceSelection,
-                    fallbackTitle: L("workflow.result.copyTitle"),
-                    targetSnapshot: selectionSnapshot
-                )
-            }
+            record.selectionEditedText = askDecisionResult.decision.trimmedContent
+            record.postProcessedText = processedText
             pipelineTiming.applyCompletedAt = Date()
             record.pipelineTiming = pipelineTiming
+            record.processingStatus = .succeeded
             record.applyStatus = .succeeded
             record.applyMessage = outcome.message
+            saveHistoryRecord(record)
         }
     }
 
@@ -288,7 +287,7 @@ extension WorkflowController {
         replace: Bool,
         fallbackTitle: String = L("workflow.result.copyTitle"),
         targetSnapshot: TextSelectionSnapshot? = nil
-    ) -> ApplyOutcome {
+    ) async -> (ApplyOutcome, String) {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         NetworkDebugLogger.logMessage(
             """
@@ -310,7 +309,7 @@ extension WorkflowController {
                 """
             )
             presentResultDialog(title: fallbackTitle, text: text)
-            return .presentedInDialog
+            return (.presentedInDialog, text)
         }
         do {
             if replace {
@@ -333,24 +332,41 @@ extension WorkflowController {
                 textLength: \(text.count)
                 """
             )
-            return .inserted
+            return (.inserted, text)
         } catch {
             NetworkDebugLogger.logError(context: "[Apply Text] fallback to result dialog", error: error)
             presentResultDialog(title: fallbackTitle, text: text)
-            return .presentedInDialog
+            return (.presentedInDialog, text)
         }
     }
 
     func applyTranscribedText(
         _ text: String,
-        selectionSnapshot: TextSelectionSnapshot
-    ) -> ApplyOutcome {
+        selectionSnapshot: TextSelectionSnapshot,
+        record: inout HistoryRecord
+    ) async -> (outcome: ApplyOutcome, openCCResult: String?, finalResult: String) {
+        // 1. Final optimization (punctuation, spaces)
         let optimizedText = DictationOutputOptimizer.optimize(text)
-        return applyText(
-            optimizedText,
+        
+        // 2. OpenCC
+        var openCCResult: String? = nil
+        let afterOpenCC: String
+        if settingsStore.outputOpenCCEnabled {
+            let config = settingsStore.outputOpenCCConfig
+            afterOpenCC = await outputPostProcessor.process(optimizedText)
+            openCCResult = afterOpenCC
+            record.openCCConfig = config
+        } else {
+            afterOpenCC = optimizedText
+        }
+        
+        // 3. Apply to target
+        let (outcome, finalAppliedText) = await applyText(
+            afterOpenCC,
             replace: shouldReplaceActiveSelection(for: selectionSnapshot),
             targetSnapshot: selectionSnapshot
         )
+        return (outcome, openCCResult, finalAppliedText)
     }
 
     func finishRecordingAndProcess(recordingStoppedAt: Date) async {
@@ -777,7 +793,7 @@ extension WorkflowController {
                 )
             } else {
                 detachedAgentExecution = false
-                try processDictationFlow(
+                try await processDictationFlow(
                     transcribedText: transcribedText,
                     selectionSnapshot: selectionSnapshot,
                     sessionID: sessionID,
@@ -1246,7 +1262,24 @@ extension WorkflowController {
         switch Self.askWithoutSelectionAgentDisposition(for: execution.result) {
         case let .answer(text):
             record.mode = .askAnswer
+            
+            var openCCResult: String? = nil
+            let finalAnswer: String
+            if settingsStore.outputOpenCCEnabled {
+                let config = settingsStore.outputOpenCCConfig
+                let converted = await outputPostProcessor.process(text)
+                if converted != text {
+                    openCCResult = converted
+                }
+                finalAnswer = converted
+                record.openCCConfig = config
+            } else {
+                finalAnswer = text
+            }
+            
             record.personaResultText = text
+            record.openCCResultText = openCCResult
+            record.postProcessedText = finalAnswer
             record.processingStatus = .succeeded
             record.applyStatus = .running
             saveHistoryRecord(record)
@@ -1260,7 +1293,7 @@ extension WorkflowController {
                 self.presentAskAnswer(
                     question: transcribedText,
                     selectedText: selectedTextForAnswerPresentation,
-                    answerMarkdown: text
+                    answerMarkdown: finalAnswer
                 )
             }
             pipelineTiming.applyCompletedAt = Date()
@@ -1270,14 +1303,15 @@ extension WorkflowController {
 
         case let .insert(text):
             record.mode = .editSelection
-            record.selectionEditedText = text
             record.processingStatus = .succeeded
             record.applyStatus = .running
             saveHistoryRecord(record)
 
             pipelineTiming.applyStartedAt = Date()
             record.pipelineTiming = pipelineTiming
-            let outcome = applyDetachedAgentEditResult(text, selectionSnapshot: selectionSnapshot)
+            let (outcome, processedText) = await applyDetachedAgentEditResult(text, selectionSnapshot: selectionSnapshot)
+            record.selectionEditedText = text
+            record.postProcessedText = processedText
             pipelineTiming.applyCompletedAt = Date()
             record.pipelineTiming = pipelineTiming
             record.applyStatus = .succeeded
@@ -1472,19 +1506,21 @@ extension WorkflowController {
         record.mode = Self.hasRewritePersona(personaPrompt) ? .personaRewrite : .dictation
 
         if multimodalHandlesPersona {
-            record.personaResultText = transcribedText
             record.processingStatus = .succeeded
             record.applyStatus = .running
-            saveHistoryRecord(record)
 
             try ensureProcessingIsActive(sessionID)
             pipelineTiming.applyStartedAt = Date()
             record.pipelineTiming = pipelineTiming
-            let outcome = applyTranscribedText(transcribedText, selectionSnapshot: selectionSnapshot)
+            let result = await applyTranscribedText(transcribedText, selectionSnapshot: selectionSnapshot, record: &record)
+            record.personaResultText = transcribedText
+            record.openCCResultText = result.openCCResult
+            record.postProcessedText = result.finalResult
             pipelineTiming.applyCompletedAt = Date()
             record.pipelineTiming = pipelineTiming
             record.applyStatus = .succeeded
-            record.applyMessage = outcome.message
+            record.applyMessage = result.outcome.message
+            saveHistoryRecord(record)
             return
         }
 
@@ -1500,7 +1536,6 @@ extension WorkflowController {
             pipelineTiming.llmProcessingStartedAt = pipelineTiming.transcriptionCompletedAt ?? Date()
             pipelineTiming.llmProcessingCompletedAt = Date()
             record.pipelineTiming = pipelineTiming
-            record.personaResultText = merged
             rewriteOutput = merged
             logPipelineEvent("llm-processing-completed", for: record)
         } else {
@@ -1533,10 +1568,8 @@ extension WorkflowController {
                 if rewriteResult.text.isEmpty {
                     ErrorLogStore.shared.log("Persona rewrite returned an empty response, using transcript as fallback")
                     rewriteOutput = transcribedText
-                    record.personaResultText = transcribedText
                 } else {
                     rewriteOutput = rewriteResult.text
-                    record.personaResultText = rewriteResult.text
                 }
                 logPipelineEvent("llm-processing-completed", for: record)
             } catch is LLMRequestTimeoutError {
@@ -1547,21 +1580,18 @@ extension WorkflowController {
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
-                record.personaResultText = transcribedText
             } catch let error where Self.isServiceOverloadedError(error) {
                 // Service overloaded (HTTP 529): all retries exhausted; insert transcript as
                 // fallback so the user isn't left with an error dialog.
                 ErrorLogStore.shared.log("LLM service overloaded after retries, using transcript as fallback")
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
-                record.personaResultText = transcribedText
             } catch let error as LLMConfigurationError {
                 ErrorLogStore.shared.log(
                     "LLM configuration unavailable (\(error.localizedDescription)), using transcript as fallback"
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
-                record.personaResultText = transcribedText
             } catch let error where TypefluxCloudBillingError.fromError(error) != nil {
                 let billingError = TypefluxCloudBillingError.fromError(error)
                 ErrorLogStore.shared.log(
@@ -1569,7 +1599,6 @@ extension WorkflowController {
                 )
                 pipelineTiming.llmProcessingCompletedAt = Date()
                 rewriteOutput = transcribedText
-                record.personaResultText = transcribedText
                 billingFallbackError = billingError
             } catch {
                 // All other failures (network error, API error, etc.) are surfaced to the
@@ -1586,11 +1615,15 @@ extension WorkflowController {
         try ensureProcessingIsActive(sessionID)
         pipelineTiming.applyStartedAt = Date()
         record.pipelineTiming = pipelineTiming
-        let outcome = applyTranscribedText(rewriteOutput, selectionSnapshot: selectionSnapshot)
+        let result = await applyTranscribedText(rewriteOutput, selectionSnapshot: selectionSnapshot, record: &record)
+        record.personaResultText = rewriteOutput
+        record.openCCResultText = result.openCCResult
+        record.postProcessedText = result.finalResult
         pipelineTiming.applyCompletedAt = Date()
         record.pipelineTiming = pipelineTiming
         record.applyStatus = .succeeded
-        record.applyMessage = outcome.message
+        record.applyMessage = result.outcome.message
+        saveHistoryRecord(record)
 
         if let billingFallbackError {
             await presentCloudBillingError(billingFallbackError)
@@ -1603,7 +1636,7 @@ extension WorkflowController {
         sessionID: UUID,
         record: inout HistoryRecord,
         pipelineTiming: inout HistoryPipelineTiming
-    ) throws {
+    ) async throws {
         record.mode = .dictation
         record.processingStatus = .skipped
         record.applyStatus = .running
@@ -1612,11 +1645,14 @@ extension WorkflowController {
         try ensureProcessingIsActive(sessionID)
         pipelineTiming.applyStartedAt = Date()
         record.pipelineTiming = pipelineTiming
-        let outcome = applyTranscribedText(transcribedText, selectionSnapshot: selectionSnapshot)
+        let result = await applyTranscribedText(transcribedText, selectionSnapshot: selectionSnapshot, record: &record)
+        record.transcriptText = transcribedText
+        record.openCCResultText = result.openCCResult
+        record.postProcessedText = result.finalResult
         pipelineTiming.applyCompletedAt = Date()
         record.pipelineTiming = pipelineTiming
         record.applyStatus = .succeeded
-        record.applyMessage = outcome.message
+        record.applyMessage = result.outcome.message
     }
 
     static func isServiceOverloadedError(_ error: Error) -> Bool {
@@ -1631,7 +1667,7 @@ extension WorkflowController {
         personaPrompt: String?,
         inputContext: InputContextSnapshot?
     ) -> Bool {
-        hasRewritePersona(personaPrompt) || inputContext?.hasContent == true
+        hasRewritePersona(personaPrompt)
     }
 
     func shouldShowTypefluxCloudASRLoginFallbackNotice() async -> Bool {
@@ -1947,7 +1983,7 @@ extension WorkflowController {
     func applyDetachedAgentEditResult(
         _ text: String,
         selectionSnapshot: TextSelectionSnapshot
-    ) -> ApplyOutcome {
+    ) async -> (ApplyOutcome, String) {
         let replaceSelection = shouldReplaceActiveSelection(for: selectionSnapshot)
         let shouldShowResultDialog = shouldShowDialogForDetachedAgentEdit(using: selectionSnapshot)
         NetworkDebugLogger.logMessage(
@@ -1956,13 +1992,14 @@ extension WorkflowController {
                 "replaceSelection=\(replaceSelection) showResultDialog=\(shouldShowResultDialog)"
         )
 
+        let processedText = await outputPostProcessor.process(text)
         if shouldShowResultDialog {
-            presentResultDialog(title: L("workflow.result.copyTitle"), text: text)
-            return .presentedInDialog
+            presentResultDialog(title: L("workflow.result.copyTitle"), text: processedText)
+            return (.presentedInDialog, processedText)
         }
 
-        return applyText(
-            text,
+        return await applyText(
+            processedText,
             replace: replaceSelection,
             fallbackTitle: L("workflow.result.copyTitle"),
             targetSnapshot: selectionSnapshot

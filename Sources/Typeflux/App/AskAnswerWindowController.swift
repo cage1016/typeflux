@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -96,13 +97,15 @@ final class AskAnswerWindowController: NSObject {
 
     private let clipboard: ClipboardService
     private let settingsStore: SettingsStore
+    private let outputPostProcessor: OutputPostProcessing
 
     private var sessions: [ObjectIdentifier: WindowSession] = [:]
     private var appearanceObserver: NSObjectProtocol?
 
-    init(clipboard: ClipboardService, settingsStore: SettingsStore) {
+    init(clipboard: ClipboardService, settingsStore: SettingsStore, outputPostProcessor: OutputPostProcessing) {
         self.clipboard = clipboard
         self.settingsStore = settingsStore
+        self.outputPostProcessor = outputPostProcessor
         super.init()
 
         appearanceObserver = NotificationCenter.default.addObserver(
@@ -125,6 +128,7 @@ final class AskAnswerWindowController: NSObject {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func show(title: String, question: String, selectedText: String?, answerMarkdown: String) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
@@ -152,7 +156,13 @@ final class AskAnswerWindowController: NSObject {
             self?.clipboard.write(text: promptText)
         }
         model.onAnswerCopyRequested = { [weak self] in
-            self?.clipboard.write(text: trimmedAnswer)
+            guard let self else { return }
+            Task {
+                let processedAnswer = await self.outputPostProcessor.process(trimmedAnswer)
+                await MainActor.run {
+                    self.clipboard.write(text: processedAnswer)
+                }
+            }
         }
 
         NetworkDebugLogger.logMessage(
