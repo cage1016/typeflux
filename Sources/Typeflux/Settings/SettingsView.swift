@@ -111,6 +111,51 @@ private func vocabularySourceLogoURL(for resourceName: String) -> URL? {
     return nil
 }
 
+enum StudioOverviewPanelArrangement: Equatable {
+    case sideBySide
+    case stacked
+}
+
+struct StudioOverviewPanelLayout: Equatable {
+    let arrangement: StudioOverviewPanelArrangement
+    let activityWidth: CGFloat
+    let metricsWidth: CGFloat
+    let height: CGFloat
+}
+
+enum StudioOverviewPanelLayoutCalculator {
+    static let compactBreakpoint: CGFloat = 840
+    static let compactActivityHeight: CGFloat = 240
+
+    static func layout(for availableWidth: CGFloat) -> StudioOverviewPanelLayout {
+        let width = max(availableWidth, 0)
+        let spacing = StudioTheme.Spacing.large
+        let primaryHeight = StudioTheme.Layout.overviewPrimaryMinHeight
+
+        guard width >= compactBreakpoint else {
+            return StudioOverviewPanelLayout(
+                arrangement: .stacked,
+                activityWidth: width,
+                metricsWidth: width,
+                height: compactActivityHeight + spacing + primaryHeight
+            )
+        }
+
+        let metricsWidth = min(
+            StudioTheme.Layout.overviewSideMetricsWidth,
+            max((width - spacing) * 0.46, 0)
+        )
+        let activityWidth = max(width - metricsWidth - spacing, 0)
+
+        return StudioOverviewPanelLayout(
+            arrangement: .sideBySide,
+            activityWidth: activityWidth,
+            metricsWidth: metricsWidth,
+            height: primaryHeight
+        )
+    }
+}
+
 private struct StudioAutoHidingScrollIndicatorConfigurator: NSViewRepresentable {
     func makeNSView(context _: Context) -> NSView {
         NSView(frame: .zero)
@@ -273,7 +318,7 @@ struct StudioView: View {
                         modelsPage(viewportHeight: proxy.size.height)
                     }
                 } else {
-                    currentPage
+                    currentPage(viewportWidth: viewportSize.width)
                 }
             }
             .frame(
@@ -741,10 +786,10 @@ struct StudioView: View {
     }
 
     @ViewBuilder
-    private var currentPage: some View {
+    private func currentPage(viewportWidth: CGFloat) -> some View {
         switch viewModel.currentSection {
         case .home:
-            homePage
+            homePage(viewportWidth: viewportWidth)
         case .models:
             EmptyView()
         case .personas:
@@ -764,9 +809,9 @@ struct StudioView: View {
         }
     }
 
-    private var homePage: some View {
+    private func homePage(viewportWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: StudioTheme.Spacing.pageGroup) {
-            overviewPanel
+            overviewPanel(width: viewportWidth)
 
             HStack {
                 Text(L("home.recentTranscriptions"))
@@ -3883,31 +3928,47 @@ struct StudioView: View {
         }
     }
 
-    private var overviewPanel: some View {
-        GeometryReader { proxy in
-            let spacing = StudioTheme.Spacing.large
-            let availableWidth = max(proxy.size.width, 0)
-            let metricsWidth = min(
-                StudioTheme.Layout.overviewSideMetricsWidth,
-                max((availableWidth - spacing) * 0.46, 0)
-            )
-            let activityWidth = max(availableWidth - metricsWidth - spacing, 0)
+    private func overviewPanel(width: CGFloat) -> some View {
+        let layout = StudioOverviewPanelLayoutCalculator.layout(for: width)
 
-            HStack(alignment: .top, spacing: spacing) {
-                overviewActivityCard
-                    .frame(width: activityWidth)
-                    .frame(minHeight: StudioTheme.Layout.overviewPrimaryMinHeight)
+        return Group {
+            if layout.arrangement == .stacked {
+                VStack(alignment: .leading, spacing: StudioTheme.Spacing.large) {
+                    overviewActivityCard(availableWidth: layout.activityWidth, compact: true)
+                        .frame(
+                            width: layout.activityWidth,
+                            height: StudioOverviewPanelLayoutCalculator.compactActivityHeight
+                        )
 
-                overviewMetricsGrid(width: metricsWidth)
+                    overviewMetricsGrid(width: layout.metricsWidth)
+                }
+            } else {
+                HStack(alignment: .top, spacing: StudioTheme.Spacing.large) {
+                    overviewActivityCard(availableWidth: layout.activityWidth, compact: false)
+                        .frame(width: layout.activityWidth)
+                        .frame(minHeight: StudioTheme.Layout.overviewPrimaryMinHeight)
+
+                    overviewMetricsGrid(width: layout.metricsWidth)
+                }
             }
         }
-        .frame(height: StudioTheme.Layout.overviewPrimaryMinHeight)
+        .frame(width: width, height: layout.height, alignment: .topLeading)
     }
 
-    private var overviewActivityCard: some View {
-        StudioCard(padding: StudioTheme.Insets.cardDense) {
+    private func overviewActivityCard(availableWidth: CGFloat, compact: Bool) -> some View {
+        let donutSize = compact
+            ? min(128, max(104, availableWidth * 0.24))
+            : StudioTheme.Layout.overviewDonutSize
+        let donutLineWidth = compact
+            ? StudioTheme.BorderWidth.overviewDonut * 0.62
+            : StudioTheme.BorderWidth.overviewDonut
+
+        return StudioCard(padding: StudioTheme.Insets.cardDense) {
             VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
-                HStack(alignment: .top, spacing: StudioTheme.Spacing.xxLarge) {
+                HStack(
+                    alignment: .center,
+                    spacing: compact ? StudioTheme.Spacing.medium : StudioTheme.Spacing.xxLarge
+                ) {
                     VStack(alignment: .leading, spacing: StudioTheme.Spacing.small) {
                         HStack(spacing: StudioTheme.Spacing.small) {
                             RoundedRectangle(
@@ -3935,28 +3996,31 @@ struct StudioView: View {
                                 )
                                 .foregroundStyle(StudioTheme.textSecondary)
                                 .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
                         }
 
                         Text("\(viewModel.statsCompletionRate)%")
                             .font(.studioDisplay(StudioTheme.Typography.displayLarge, weight: .bold))
                             .foregroundStyle(StudioTheme.textPrimary)
+                            .minimumScaleFactor(0.72)
+                            .lineLimit(1)
 
                         Text(L("home.activity.completionRate"))
                             .font(.studioBody(StudioTheme.Typography.body))
                             .foregroundStyle(StudioTheme.textSecondary)
+                            .lineLimit(2)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Spacer(minLength: StudioTheme.Spacing.medium)
 
                     Circle()
                         .stroke(
                             StudioTheme.controlSurface,
-                            lineWidth: StudioTheme.BorderWidth.overviewDonut
+                            lineWidth: donutLineWidth
                         )
                         .frame(
-                            width: StudioTheme.Layout.overviewDonutSize,
-                            height: StudioTheme.Layout.overviewDonutSize
+                            width: donutSize,
+                            height: donutSize
                         )
                         .overlay(
                             Circle()
@@ -3971,14 +4035,20 @@ struct StudioView: View {
                                         endPoint: .topTrailing
                                     ),
                                     style: StrokeStyle(
-                                        lineWidth: StudioTheme.BorderWidth.overviewDonut,
+                                        lineWidth: donutLineWidth,
                                         lineCap: .round
                                     )
                                 )
                                 .rotationEffect(.degrees(StudioTheme.Angles.overviewProgressStart))
                         )
-                        .padding(.trailing, StudioTheme.Spacing.smallMedium)
-                        .padding(.vertical, StudioTheme.Spacing.smallMedium)
+                        .padding(
+                            .trailing,
+                            compact ? StudioTheme.Spacing.none : StudioTheme.Spacing.smallMedium
+                        )
+                        .padding(
+                            .vertical,
+                            compact ? StudioTheme.Spacing.none : StudioTheme.Spacing.smallMedium
+                        )
                 }
 
                 Spacer(minLength: StudioTheme.Spacing.smallMedium)

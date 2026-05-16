@@ -41,4 +41,24 @@ final class StudioThemeTests: XCTestCase {
     func testTopLevelContentInsetMatchesLayout() {
         XCTAssertEqual(StudioTheme.contentInset, StudioTheme.Layout.contentInset)
     }
+
+    // MARK: - Overview Layout
+
+    func testOverviewLayoutUsesStackedArrangementForNarrowContent() {
+        let layout = StudioOverviewPanelLayoutCalculator.layout(for: 700)
+
+        XCTAssertEqual(layout.arrangement, .stacked)
+        XCTAssertEqual(layout.activityWidth, 700)
+        XCTAssertEqual(layout.metricsWidth, 700)
+        XCTAssertGreaterThan(layout.height, StudioTheme.Layout.overviewPrimaryMinHeight)
+    }
+
+    func testOverviewLayoutUsesSideBySideArrangementForWideContent() {
+        let layout = StudioOverviewPanelLayoutCalculator.layout(for: 1_100)
+
+        XCTAssertEqual(layout.arrangement, .sideBySide)
+        XCTAssertEqual(layout.height, StudioTheme.Layout.overviewPrimaryMinHeight)
+        XCTAssertLessThan(layout.metricsWidth, 1_100)
+        XCTAssertGreaterThan(layout.activityWidth, layout.metricsWidth)
+    }
 }
