@@ -30,6 +30,7 @@ final class DIContainer {
     let agentJobsWindowController: AgentJobsWindowController
     let mcpRegistry: MCPRegistry
     let cloudLoginSyncCoordinator: CloudLoginSyncCoordinator
+    let outputPostProcessor: OutputPostProcessing
 
     // swiftlint:disable:next function_body_length
     init() {
@@ -40,7 +41,12 @@ final class DIContainer {
         )
         overlayController = OverlayController(appState: appState)
         clipboard = SystemClipboardService()
-        askAnswerWindowController = AskAnswerWindowController(clipboard: clipboard, settingsStore: settingsStore)
+        outputPostProcessor = OpenCCOutputPostProcessor(settingsStore: settingsStore)
+        askAnswerWindowController = AskAnswerWindowController(
+            clipboard: clipboard,
+            settingsStore: settingsStore,
+            outputPostProcessor: outputPostProcessor
+        )
         agentClarificationWindowController = AgentClarificationWindowController(settingsStore: settingsStore)
         soundEffectPlayer = SoundEffectPlayer(settingsStore: settingsStore)
         textInjector = AXTextInjector(settingsStore: settingsStore)

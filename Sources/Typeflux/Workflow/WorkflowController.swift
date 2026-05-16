@@ -92,6 +92,7 @@ final class WorkflowController {
     let localModelManager: (any LocalSTTModelManaging)?
     let notificationService: LocalNotificationSending
     let localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting
+    let outputPostProcessor: OutputPostProcessing
     let sleep: @Sendable (Duration) async -> Void
 
     var currentSelectedText: String?
@@ -189,6 +190,7 @@ final class WorkflowController {
         notificationService: LocalNotificationSending = NoopLocalNotificationService(),
         localModelDownloadAlertPresenter: any LocalModelDownloadAlertPresenting =
             SystemLocalModelDownloadAlertPresenter(),
+        outputPostProcessor: OutputPostProcessing,
         sleep: @escaping @Sendable (Duration) async -> Void = { duration in
             try? await Task.sleep(for: duration)
         }
@@ -214,6 +216,7 @@ final class WorkflowController {
         self.localModelManager = localModelManager
         self.notificationService = notificationService
         self.localModelDownloadAlertPresenter = localModelDownloadAlertPresenter
+        self.outputPostProcessor = outputPostProcessor
         self.sleep = sleep
         self.overlayController.setRecordingActionHandlers(
             onCancel: { [weak self] in
